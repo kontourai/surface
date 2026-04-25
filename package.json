@@ -5,6 +5,17 @@
   "license": "Apache-2.0",
   "type": "module",
   "private": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kontourai/surface.git"
+  },
+  "homepage": "https://kontourai.io/surface",
+  "bugs": {
+    "url": "https://github.com/kontourai/surface/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "surface": "bin/surface.mjs"
   },
@@ -13,7 +24,8 @@
   },
   "files": [
     "bin/",
-    "dist/",
+    "dist/src/",
+    "dist/bin/",
     "schemas/",
     "examples/",
     "docs/",
@@ -23,6 +35,7 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "npm run build && node --test dist/tests/*.test.js",
+    "test:coverage": "npm run build && node --test --experimental-test-coverage dist/tests/*.test.js",
     "docs:build": "node scripts/build-pages-site.mjs",
     "surface:report": "npm run build && node bin/surface.mjs report",
     "surface:summary": "npm run build && node bin/surface.mjs report --format summary",
