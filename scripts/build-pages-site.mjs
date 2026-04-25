@@ -12,6 +12,8 @@ const pages = [
   ["schema-versioning", "docs/schema-versioning.md", "Schema Versioning"],
   ["fixtures", "docs/fixtures.md", "Fixtures"],
   ["veritas-adapter", "docs/adapters/veritas.md", "Veritas Adapter"],
+  ["campfit-adapter", "docs/adapters/campfit.md", "Campfit Adapter"],
+  ["taxes-adapter", "docs/adapters/taxes.md", "Taxes Adapter"],
   ["roadmap", "docs/roadmap.md", "Roadmap"],
   ["brand-language", "docs/brand-language.md", "Brand Language"],
 ];

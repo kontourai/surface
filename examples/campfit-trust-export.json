@@ -1,0 +1,134 @@
+{
+  "source": "campfit:trust-export:denver-demo",
+  "generatedAt": "2026-04-25T03:55:00.000Z",
+  "camps": [
+    {
+      "id": "camp-denver-art-1",
+      "slug": "denver-art-lab",
+      "name": "Denver Art Lab",
+      "registrationStatus": "OPEN",
+      "websiteUrl": "https://example.org/denver-art-lab",
+      "city": "Denver",
+      "dataConfidence": "VERIFIED",
+      "lastVerifiedAt": "2026-04-22T16:00:00.000Z",
+      "lastCrawledAt": "2026-04-24T18:00:00.000Z",
+      "fieldSources": {
+        "registrationStatus": {
+          "excerpt": "Registration is open for summer workshops.",
+          "sourceUrl": "https://example.org/denver-art-lab/register",
+          "approvedAt": "2026-04-24T18:10:00.000Z"
+        },
+        "websiteUrl": {
+          "excerpt": "Official camp homepage.",
+          "sourceUrl": "https://example.org/denver-art-lab",
+          "approvedAt": "2026-04-24T18:11:00.000Z"
+        }
+      }
+    }
+  ],
+  "fieldAttestations": [
+    {
+      "id": "attest-active-1",
+      "entityType": "CAMP",
+      "entityId": "camp-denver-art-1",
+      "fieldKey": "city",
+      "valueSnapshot": "Denver",
+      "excerpt": "Camp location confirmed as Denver.",
+      "sourceUrl": "https://example.org/denver-art-lab/location",
+      "observedAt": "2026-04-23T14:00:00.000Z",
+      "approvedAt": "2026-04-23T14:05:00.000Z",
+      "approvedBy": "admin@example.test",
+      "status": "ACTIVE",
+      "createdAt": "2026-04-23T14:00:00.000Z"
+    },
+    {
+      "id": "attest-stale-1",
+      "entityType": "CAMP",
+      "entityId": "camp-denver-art-1",
+      "fieldKey": "pricing",
+      "valueSnapshot": [{ "label": "Week", "amount": 350 }],
+      "observedAt": "2026-02-01T12:00:00.000Z",
+      "approvedAt": "2026-02-01T12:10:00.000Z",
+      "approvedBy": "admin@example.test",
+      "status": "STALE",
+      "lastRecheckedAt": "2026-04-20T12:00:00.000Z",
+      "notes": "Price page changed and needs recheck.",
+      "createdAt": "2026-02-01T12:00:00.000Z"
+    }
+  ],
+  "reviewFlags": [
+    {
+      "id": "flag-open-1",
+      "entityType": "CAMP",
+      "entityId": "camp-denver-art-1",
+      "comment": "Parent reported registration may be waitlist-only.",
+      "status": "OPEN",
+      "createdBy": "moderator@example.test",
+      "createdAt": "2026-04-24T20:00:00.000Z"
+    }
+  ],
+  "crawlRuns": [
+    {
+      "id": "crawl-good-1",
+      "startedAt": "2026-04-24T18:00:00.000Z",
+      "completedAt": "2026-04-24T18:12:00.000Z",
+      "status": "COMPLETED",
+      "totalCamps": 1,
+      "processedCamps": 1,
+      "errorCount": 0,
+      "newProposals": 1,
+      "trigger": "MANUAL",
+      "triggeredBy": "admin@example.test",
+      "campIds": ["camp-denver-art-1"],
+      "errorLog": []
+    },
+    {
+      "id": "crawl-fail-1",
+      "startedAt": "2026-04-25T02:00:00.000Z",
+      "completedAt": "2026-04-25T02:02:00.000Z",
+      "status": "FAILED",
+      "totalCamps": 1,
+      "processedCamps": 0,
+      "errorCount": 1,
+      "newProposals": 0,
+      "trigger": "SCHEDULED",
+      "triggeredBy": null,
+      "campIds": ["camp-denver-art-1"],
+      "errorLog": [{ "campId": "camp-denver-art-1", "error": "timeout", "url": "https://example.org/denver-art-lab" }]
+    }
+  ],
+  "proposals": [
+    {
+      "id": "proposal-pending-1",
+      "campId": "camp-denver-art-1",
+      "crawlRunId": "crawl-good-1",
+      "createdAt": "2026-04-24T18:12:00.000Z",
+      "reviewedAt": null,
+      "reviewedBy": null,
+      "status": "PENDING",
+      "sourceUrl": "https://example.org/denver-art-lab/register",
+      "proposedChanges": {
+        "registrationCloseDate": { "old": null, "new": "2026-06-01", "confidence": 0.82 }
+      },
+      "overallConfidence": 0.82,
+      "extractionModel": "campfit-crawler",
+      "reviewerNotes": null
+    },
+    {
+      "id": "proposal-rejected-1",
+      "campId": "camp-denver-art-1",
+      "crawlRunId": "crawl-good-1",
+      "createdAt": "2026-04-24T18:14:00.000Z",
+      "reviewedAt": "2026-04-24T19:00:00.000Z",
+      "reviewedBy": "admin@example.test",
+      "status": "REJECTED",
+      "sourceUrl": "https://example.org/denver-art-lab/register",
+      "proposedChanges": {
+        "registrationStatus": { "old": "OPEN", "new": "CLOSED", "confidence": 0.42 }
+      },
+      "overallConfidence": 0.42,
+      "extractionModel": "campfit-crawler",
+      "reviewerNotes": "Model confused session close date with registration close."
+    }
+  ]
+}

@@ -1,0 +1,129 @@
+{
+  "source": "taxes:trust-export:anderson-2025",
+  "generatedAt": "2026-04-25T03:56:00.000Z",
+  "householdId": "anderson",
+  "taxYear": 2025,
+  "verifiedFacts": [
+    {
+      "householdId": "anderson",
+      "taxYear": 2025,
+      "factKey": "filing_status",
+      "label": "Filing status",
+      "value": "married_filing_jointly",
+      "verifiedBy": "brian",
+      "verifiedAt": "2026-04-20T15:00:00.000Z",
+      "rationale": "Confirmed by household review."
+    }
+  ],
+  "resolvedFacts": [
+    {
+      "householdId": "anderson",
+      "taxYear": 2025,
+      "factKey": "filing_status",
+      "label": "Filing status",
+      "value": "married_filing_jointly",
+      "selectedFactId": "fact-filing-status",
+      "selectedSource": "current_year_manual",
+      "needsVerification": false,
+      "rationale": "Already verified by user.",
+      "candidates": [{ "factId": "fact-filing-status", "sourceType": "current_year_manual", "confidence": 1, "value": "married_filing_jointly" }]
+    },
+    {
+      "householdId": "anderson",
+      "taxYear": 2025,
+      "factKey": "1099_b:brokerage:capital_gain",
+      "label": "Brokerage capital gain",
+      "value": 1250,
+      "selectedFactId": "fact-1099b-capgain",
+      "selectedSource": "medium_confidence_document",
+      "needsVerification": true,
+      "rationale": "Imported 1099-B value conflicts with prepared return worksheet.",
+      "candidates": [
+        { "factId": "fact-1099b-capgain", "sourceType": "medium_confidence_document", "confidence": 0.74, "value": 1250 },
+        { "factId": "fact-prepared-capgain", "sourceType": "user_override", "confidence": 0.9, "value": 1210 }
+      ]
+    }
+  ],
+  "returnPackage": {
+    "householdId": "anderson",
+    "taxYear": 2025,
+    "generatedAt": "2026-04-25T03:56:00.000Z",
+    "readiness": "generated",
+    "preparedReturnReferencePath": "prepared/anderson-2025-return.pdf",
+    "federal": {
+      "form1040": {
+        "wages": {
+          "value": 180000,
+          "source": "imported",
+          "citations": ["W2-Acme.pdf"],
+          "preparedReturnValue": 180000,
+          "importedValue": 180000
+        }
+      }
+    },
+    "colorado": {
+      "dr0104": {
+        "totalAdditions": {
+          "value": 0,
+          "source": "unresolved_generated",
+          "citations": [],
+          "preparedReturnValue": 150,
+          "notes": ["Prepared return has an addition that the generated package has not explained yet."]
+        }
+      }
+    },
+    "unresolved": ["colorado.totalAdditions"],
+    "assumptions": [
+      {
+        "key": "missing_basis_zero",
+        "field": "capital_gain_or_loss",
+        "source": "assumed_zero_missing_basis",
+        "value": 0,
+        "reason": "Brokerage statement marks basis unavailable, so zero basis was used pending review.",
+        "citations": ["1099-B-Brokerage.pdf"],
+        "impactAmount": 1250,
+        "notes": ["High-impact assumption."]
+      }
+    ],
+    "comparisonSummary": [
+      {
+        "field": "federal.wages",
+        "generatedValue": 180000,
+        "preparedReturnValue": 180000,
+        "delta": 0,
+        "severity": "match",
+        "source": "imported",
+        "investigationHint": "Generated wages match the prepared return.",
+        "citations": ["W2-Acme.pdf"],
+        "likelyCauses": [],
+        "missingInformation": []
+      },
+      {
+        "field": "colorado.totalAdditions",
+        "generatedValue": 0,
+        "preparedReturnValue": 150,
+        "delta": -150,
+        "severity": "large",
+        "source": "unresolved_generated",
+        "investigationHint": "Prepared return includes Colorado additions that are not yet explained by imported documents.",
+        "citations": ["prepared/anderson-2025-return.pdf"],
+        "likelyCauses": [{ "category": "missing_supporting_document", "summary": "Missing document for Colorado additions.", "citations": ["prepared/anderson-2025-return.pdf"] }],
+        "missingInformation": ["source document for Colorado additions"]
+      }
+    ],
+    "reviewSignals": [
+      {
+        "field": "capital_gain_or_loss",
+        "severity": "review_required",
+        "driver": "assumption",
+        "reason": "Capital gain depends on zero-basis assumption."
+      }
+    ],
+    "citationIndex": {
+      "W2-Acme.pdf": "uploads/W2-Acme.pdf",
+      "1099-B-Brokerage.pdf": "uploads/1099-B-Brokerage.pdf",
+      "prepared/anderson-2025-return.pdf": "prepared/anderson-2025-return.pdf"
+    },
+    "citations": ["W2-Acme.pdf", "1099-B-Brokerage.pdf", "prepared/anderson-2025-return.pdf"]
+  }
+}

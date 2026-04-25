@@ -41,6 +41,13 @@ npm run build
 node bin/surface.mjs report --adapter veritas --input examples/veritas-evidence.json --format summary
 ```
 
+Campfit and taxes trust exports use the same report contract:
+
+```bash
+node bin/surface.mjs report --adapter campfit --format summary
+node bin/surface.mjs report --adapter taxes --format summary
+```
+
 ## Repository layout
 
 - `src/`: TypeScript trust kernel and CLI helpers.

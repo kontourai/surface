@@ -22,6 +22,8 @@ Surface should be able to represent claims like:
 - This registration status is stale because the validity window expired.
 - This user report conflicts with the approved value.
 
+The `campfit` adapter now imports field sources, attestations, review flags, crawl outcomes, and proposals into the same Surface trust report shape.
+
 ## Taxes
 
 `taxes` is a high-stakes fact-verification use case. The workflow extracts facts, resolves candidates, promotes verified facts, and emits return packages with citations and review signals.
@@ -33,7 +35,8 @@ Surface should be able to represent claims like:
 - This fact was manually verified.
 - This derived assumption still needs review.
 
+The `taxes` adapter now imports verified facts, return-package citations, assumptions, comparison gaps, unresolved fields, and review signals into the same Surface trust report shape.
+
 ## Future products
 
 Surface should also fit recommendation systems, marketplaces, local directories, compliance workflows, education data, health data, and any product where AI agents need trustworthy context before acting.
-

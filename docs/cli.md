@@ -16,6 +16,13 @@ Generate a report from a Veritas evidence artifact:
 surface report --adapter veritas --input examples/veritas-evidence.json --format summary
 ```
 
+Generate reports from cross-domain trust exports:
+
+```bash
+surface report --adapter campfit --input examples/campfit-trust-export.json --format summary
+surface report --adapter taxes --input examples/taxes-trust-export.json --format summary
+```
+
 Output formats:
 
 - `json`: full trust report with claims, evidence, policies, events, and derived summary.
@@ -29,5 +36,5 @@ The CLI does not trust incoming status labels by default. A claim is only `verif
 
 - `surface validate` for schema-only checks.
 - `surface diff` for comparing two reports.
-- `surface adapters` for listing supported importers.
+- `surface adapters` for listing supported importers and their expected input shapes.
 - `surface publish` for writing static reports to Pages or artifact storage.

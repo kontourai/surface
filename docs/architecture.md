@@ -25,7 +25,7 @@ Initial adapters:
 - `campfit`: field sources, attestations, proposals, review flags, crawl runs, change logs.
 - `taxes`: extracted facts, resolved facts, verified facts, citations, discrepancy traces, review signals.
 
-Adapters should start read-only. The first implemented adapter is `veritas`, which maps evidence artifacts into affected-surface claims, proof-lane claims, policy-result claims, and verification events.
+Adapters should start read-only. The first implemented adapter is `veritas`, which maps evidence artifacts into affected-surface claims, proof-lane claims, policy-result claims, and verification events. The next adapters, `campfit` and `taxes`, prove the same contract across public-data verification and high-stakes financial fact verification.
 
 ## 3. Reports and Agent API
 
