@@ -34,9 +34,17 @@ npm run docs:build
 
 The first prototype reads [examples/surface-fixtures.json](examples/surface-fixtures.json), derives claim statuses, and emits a local trust report.
 
+Veritas evidence can be imported directly:
+
+```bash
+npm run build
+node bin/surface.mjs report --adapter veritas --input examples/veritas-evidence.json --format summary
+```
+
 ## Repository layout
 
 - `src/`: TypeScript trust kernel and CLI helpers.
+- `src/adapters/`: importers that map product-specific proof artifacts into the Surface kernel.
 - `schemas/`: JSON schema contracts for Surface records.
 - `examples/`: validation fixtures from `veritas`, `campfit`, and `taxes`.
 - `tests/`: unit and fixture coverage.
@@ -46,4 +54,3 @@ The first prototype reads [examples/surface-fixtures.json](examples/surface-fixt
 ## Current scope
 
 This repo is intentionally local-first. Hosted dashboards, accounts, storage, and full production adapters are later stages. The first milestone is proving that different product types can share one inspectable trust report without losing evidence detail.
-

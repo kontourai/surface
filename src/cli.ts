@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { adaptVeritasEvidenceToTrustInput } from "./adapters/veritas.js";
 import { buildTrustReport, formatTrustReportSummary } from "./report.js";
 import { validateTrustInput } from "./validate.js";
 
@@ -16,7 +17,10 @@ export async function runCli(args: string[]): Promise<void> {
 
   const options = parseReportArgs(rest);
   const raw = await readFile(options.input, "utf8");
-  const input = validateTrustInput(JSON.parse(raw));
+  const parsed = JSON.parse(raw);
+  const input = options.adapter === "veritas"
+    ? validateTrustInput(adaptVeritasEvidenceToTrustInput(parsed))
+    : validateTrustInput(parsed);
   const report = buildTrustReport(input, { id: options.runId });
 
   if (options.format === "summary") {
@@ -26,10 +30,11 @@ export async function runCli(args: string[]): Promise<void> {
   }
 }
 
-function parseReportArgs(args: string[]): { input: string; format: "json" | "summary"; runId?: string } {
+function parseReportArgs(args: string[]): { input: string; format: "json" | "summary"; runId?: string; adapter: "surface" | "veritas" } {
   let input = resolve("examples/surface-fixtures.json");
   let format: "json" | "summary" = "json";
   let runId: string | undefined;
+  let adapter: "surface" | "veritas" = "surface";
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -39,10 +44,18 @@ function parseReportArgs(args: string[]): { input: string; format: "json" | "sum
       if (value !== "json" && value !== "summary") throw new Error("--format must be json or summary");
       format = value;
     } else if (arg === "--run-id") runId = requireValue(args, ++index, "--run-id");
+    else if (arg === "--adapter") {
+      const value = requireValue(args, ++index, "--adapter");
+      if (value !== "surface" && value !== "veritas") throw new Error("--adapter must be surface or veritas");
+      adapter = value;
+      if (value === "veritas" && input.endsWith("examples/surface-fixtures.json")) {
+        input = resolve("examples/veritas-evidence.json");
+      }
+    }
     else throw new Error(`Unknown report argument: ${arg}`);
   }
 
-  return { input, format, runId };
+  return { input, format, runId, adapter };
 }
 
 function requireValue(args: string[], index: number, flag: string): string {
@@ -56,8 +69,8 @@ function printHelp(): void {
 
 Usage:
   surface report [--input examples/surface-fixtures.json] [--format json|summary]
+  surface report --adapter veritas [--input examples/veritas-evidence.json] [--format json|summary]
 
 Surface reports map product claims to evidence, freshness, and trust status.
 `);
 }
-

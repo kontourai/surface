@@ -1,0 +1,68 @@
+{
+  "framework_version": 1,
+  "run_id": "surface-veritas-fail",
+  "timestamp": "2026-04-25T03:45:00.000Z",
+  "source_ref": "working-tree",
+  "source_kind": "working-tree",
+  "source_scope": ["staged", "unstaged"],
+  "resolved_phase": "Phase 1 (Hardening)",
+  "resolved_workstream": "Policy Regression",
+  "matched_artifacts": [".veritas/**"],
+  "affected_nodes": ["verification.tests"],
+  "affected_lanes": ["tests/**"],
+  "selected_proof_commands": ["npm run verify"],
+  "proof_resolution_source": "required-proof-lane",
+  "uncovered_path_result": "fail",
+  "baseline_ci_fast_passed": false,
+  "recommendations": [],
+  "false_positive_review": "unknown",
+  "promotion_candidate": false,
+  "override_or_bypass": false,
+  "owner": null,
+  "files": ["tests/reference.test.mjs"],
+  "unresolved_files": [],
+  "promotion_allowed": false,
+  "framework": {
+    "version": 1,
+    "resolver_precedence": ["explicit task", "matching local artifact"],
+    "policy_defaults": {
+      "false_positive_review": "unknown",
+      "promotion_candidate": false,
+      "override_or_bypass": false
+    }
+  },
+  "adapter": {
+    "name": "veritas",
+    "kind": "repo-adapter",
+    "report_transport": "local-json",
+    "default_resolution": {
+      "phase": "Phase 0 (Bootstrap)",
+      "workstream": "Initial Project Setup",
+      "matchedArtifacts": ["README.md"]
+    },
+    "non_sliceable_invariants": ["baseline proof lane", "tracked policy artifacts"],
+    "required_proof_lanes": ["npm run verify"],
+    "default_proof_lanes": ["npm run verify"],
+    "surface_proof_lanes": [],
+    "uncovered_path_policy": "fail"
+  },
+  "policy_pack": {
+    "name": "veritas-default",
+    "version": 1,
+    "rule_count": 1
+  },
+  "policy_results": [
+    {
+      "rule_id": "required-proof-lane",
+      "classification": "hard-invariant",
+      "stage": "block",
+      "message": "The selected proof lane must pass before promotion.",
+      "owner": "repo-core",
+      "rollback_switch": null,
+      "implemented": true,
+      "passed": false,
+      "summary": "The selected proof lane failed.",
+      "findings": [{ "path": "tests/reference.test.mjs", "message": "fixture regression" }]
+    }
+  ]
+}

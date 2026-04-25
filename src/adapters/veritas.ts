@@ -1,0 +1,410 @@
+import type {
+  Claim,
+  Evidence,
+  EvidenceType,
+  ImpactLevel,
+  TrustInput,
+  TrustStatus,
+  VerificationEvent,
+  VerificationPolicy,
+} from "../types.js";
+
+export interface VeritasPolicyResult {
+  rule_id: string;
+  classification: string;
+  stage: string;
+  message: string;
+  owner: string | null;
+  rollback_switch?: string | null;
+  implemented: boolean;
+  passed: boolean | null;
+  summary: string;
+  findings: unknown[];
+}
+
+export interface VeritasEvidenceRecord {
+  framework_version: number;
+  run_id: string;
+  timestamp: string;
+  source_ref: string;
+  source_kind: string;
+  source_scope: string[];
+  resolved_phase: string;
+  resolved_workstream: string;
+  matched_artifacts: string[];
+  affected_nodes: string[];
+  affected_lanes: string[];
+  selected_proof_commands: string[];
+  proof_resolution_source: string;
+  uncovered_path_result: "clear" | "ignore" | "warn" | "fail";
+  baseline_ci_fast_passed: boolean | null;
+  promotion_allowed: boolean;
+  adapter?: {
+    name?: string;
+    kind?: string;
+    required_proof_lanes?: string[];
+    default_proof_lanes?: string[];
+    uncovered_path_policy?: string;
+  };
+  policy_pack?: {
+    name?: string;
+    version?: number;
+    rule_count?: number;
+  };
+  policy_results: VeritasPolicyResult[];
+  files?: string[];
+  unresolved_files?: string[];
+}
+
+const SURFACE_POLICY: VerificationPolicy = {
+  id: "veritas.surface",
+  claimType: "veritas-affected-surface",
+  requiredEvidence: ["policy_rule"],
+  requiredProof: ["veritas evidence artifact"],
+  reviewAuthority: "veritas",
+  validityRule: { kind: "commit" },
+  stalenessTriggers: ["source_ref changes", "affected node changes"],
+  conflictRules: ["newer evidence for the same node supersedes older evidence"],
+  impactLevel: "medium",
+};
+
+const PROOF_POLICY: VerificationPolicy = {
+  id: "veritas.proof-lane",
+  claimType: "software-proof",
+  requiredEvidence: ["test_output"],
+  requiredProof: ["selected proof command"],
+  reviewAuthority: "veritas",
+  validityRule: { kind: "commit" },
+  stalenessTriggers: ["source_ref changes", "proof command changes", "baseline proof fails"],
+  conflictRules: ["failed proof rejects a previously verified proof claim"],
+  impactLevel: "high",
+};
+
+const POLICY_RESULT_POLICY: VerificationPolicy = {
+  id: "veritas.policy-result",
+  claimType: "veritas-policy-result",
+  requiredEvidence: ["policy_rule"],
+  requiredProof: ["policy pack evaluation"],
+  reviewAuthority: "veritas policy pack",
+  validityRule: { kind: "commit" },
+  stalenessTriggers: ["source_ref changes", "policy pack changes", "rule implementation changes"],
+  conflictRules: ["blocking failed rules reject the affected policy claim"],
+  impactLevel: "high",
+};
+
+export function adaptVeritasEvidenceToTrustInput(record: unknown): TrustInput {
+  const veritas = assertVeritasEvidenceRecord(record);
+  const claims: Claim[] = [];
+  const evidence: Evidence[] = [];
+  const events: VerificationEvent[] = [];
+  const adapterName = veritas.adapter?.name ?? "veritas";
+  const source = `veritas:${veritas.run_id}`;
+
+  for (const node of veritas.affected_nodes) {
+    const id = claimId(veritas.run_id, "surface", node);
+    const evidenceId = `${id}.evidence`;
+    claims.push({
+      id,
+      subjectType: "repo-surface",
+      subjectId: `${adapterName}:${node}`,
+      surface: "veritas.affected-surface",
+      claimType: "veritas-affected-surface",
+      fieldOrBehavior: "affectedNode",
+      value: node,
+      createdAt: veritas.timestamp,
+      updatedAt: veritas.timestamp,
+      impactLevel: "medium",
+      currentIntegrityRef: veritas.source_ref,
+      verificationPolicyId: SURFACE_POLICY.id,
+      confidenceBasis: {
+        sourceQuality: "strong",
+        reviewerAuthority: "system",
+        proofStrength: veritas.selected_proof_commands.length > 0 ? "moderate" : "weak",
+        impactLevel: "medium",
+      },
+      metadata: {
+        resolvedPhase: veritas.resolved_phase,
+        resolvedWorkstream: veritas.resolved_workstream,
+        affectedLanes: veritas.affected_lanes,
+      },
+    });
+    evidence.push(buildEvidence({
+      id: evidenceId,
+      claimId: id,
+      type: "policy_rule",
+      record: veritas,
+      locator: "affected_nodes",
+      summary: `Veritas marked ${node} as an affected repo surface for ${veritas.resolved_workstream}.`,
+    }));
+    events.push(buildEvent({
+      id: `${id}.verified`,
+      claimId: id,
+      status: "verified",
+      method: "affected surface resolution",
+      evidenceIds: [evidenceId],
+      record: veritas,
+    }));
+  }
+
+  for (const command of veritas.selected_proof_commands) {
+    const id = claimId(veritas.run_id, "proof", command);
+    const evidenceId = `${id}.evidence`;
+    claims.push({
+      id,
+      subjectType: "repo-proof-lane",
+      subjectId: `${adapterName}:${command}`,
+      surface: "veritas.proof-lanes",
+      claimType: "software-proof",
+      fieldOrBehavior: "selectedProofCommand",
+      value: command,
+      createdAt: veritas.timestamp,
+      updatedAt: veritas.timestamp,
+      impactLevel: "high",
+      currentIntegrityRef: veritas.source_ref,
+      verificationPolicyId: PROOF_POLICY.id,
+      confidenceBasis: {
+        sourceQuality: "strong",
+        reviewerAuthority: "system",
+        proofStrength: veritas.baseline_ci_fast_passed === true ? "strong" : "weak",
+        impactLevel: "high",
+      },
+      metadata: {
+        proofResolutionSource: veritas.proof_resolution_source,
+        baselineCiFastPassed: veritas.baseline_ci_fast_passed,
+      },
+    });
+    evidence.push(buildEvidence({
+      id: evidenceId,
+      claimId: id,
+      type: "test_output",
+      record: veritas,
+      locator: "selected_proof_commands",
+      summary: proofSummary(command, veritas.baseline_ci_fast_passed),
+    }));
+    if (veritas.baseline_ci_fast_passed !== null) {
+      events.push(buildEvent({
+        id: `${id}.${veritas.baseline_ci_fast_passed ? "verified" : "rejected"}`,
+        claimId: id,
+        status: veritas.baseline_ci_fast_passed ? "verified" : "rejected",
+        method: command,
+        evidenceIds: [evidenceId],
+        record: veritas,
+      }));
+    }
+  }
+
+  for (const result of veritas.policy_results) {
+    const id = claimId(veritas.run_id, "policy", result.rule_id);
+    const evidenceId = `${id}.evidence`;
+    const status = policyResultStatus(result);
+    claims.push({
+      id,
+      subjectType: "veritas-policy-rule",
+      subjectId: `${veritas.policy_pack?.name ?? "policy-pack"}:${result.rule_id}`,
+      surface: "veritas.policy-results",
+      claimType: "veritas-policy-result",
+      fieldOrBehavior: "policyResult",
+      value: {
+        ruleId: result.rule_id,
+        classification: result.classification,
+        stage: result.stage,
+        implemented: result.implemented,
+        passed: result.passed,
+      },
+      createdAt: veritas.timestamp,
+      updatedAt: veritas.timestamp,
+      impactLevel: policyImpact(result),
+      currentIntegrityRef: veritas.source_ref,
+      verificationPolicyId: POLICY_RESULT_POLICY.id,
+      confidenceBasis: {
+        sourceQuality: "strong",
+        reviewerAuthority: "system",
+        proofStrength: result.passed === true ? "strong" : "weak",
+        impactLevel: policyImpact(result),
+        conflictCount: result.passed === false ? 1 : 0,
+      },
+      metadata: {
+        message: result.message,
+        owner: result.owner,
+        findings: result.findings,
+        policyPack: veritas.policy_pack,
+      },
+    });
+    evidence.push(buildEvidence({
+      id: evidenceId,
+      claimId: id,
+      type: "policy_rule",
+      record: veritas,
+      locator: `policy_results.${result.rule_id}`,
+      summary: result.summary,
+      metadata: {
+        stage: result.stage,
+        classification: result.classification,
+        implemented: result.implemented,
+        passed: result.passed,
+      },
+    }));
+    if (status !== "proposed") {
+      events.push(buildEvent({
+        id: `${id}.${status}`,
+        claimId: id,
+        status,
+        method: "policy pack evaluation",
+        evidenceIds: [evidenceId],
+        record: veritas,
+        notes: result.message,
+      }));
+    }
+  }
+
+  return {
+    source,
+    claims,
+    evidence,
+    policies: [SURFACE_POLICY, PROOF_POLICY, POLICY_RESULT_POLICY],
+    events,
+  };
+}
+
+function assertVeritasEvidenceRecord(value: unknown): VeritasEvidenceRecord {
+  if (!isObject(value)) throw new Error("Veritas evidence must be an object");
+  for (const field of [
+    "run_id",
+    "timestamp",
+    "source_ref",
+    "source_kind",
+    "resolved_phase",
+    "resolved_workstream",
+    "proof_resolution_source",
+    "uncovered_path_result",
+  ]) {
+    requireString(value, field);
+  }
+  for (const field of ["source_scope", "matched_artifacts", "affected_nodes", "affected_lanes", "selected_proof_commands", "policy_results"]) {
+    requireArray(value, field);
+  }
+  if (typeof value.framework_version !== "number") throw new Error("Veritas evidence framework_version must be a number");
+  if (typeof value.promotion_allowed !== "boolean") throw new Error("Veritas evidence promotion_allowed must be a boolean");
+  if (typeof value.baseline_ci_fast_passed !== "boolean" && value.baseline_ci_fast_passed !== null) {
+    throw new Error("Veritas evidence baseline_ci_fast_passed must be boolean or null");
+  }
+  for (const field of ["source_scope", "matched_artifacts", "affected_nodes", "affected_lanes", "selected_proof_commands"]) {
+    requireStringArray(value, field);
+  }
+  for (const result of requireArray(value, "policy_results")) {
+    assertVeritasPolicyResult(result);
+  }
+  return value as unknown as VeritasEvidenceRecord;
+}
+
+function assertVeritasPolicyResult(value: unknown): void {
+  if (!isObject(value)) throw new Error("Veritas policy result must be an object");
+  for (const field of ["rule_id", "classification", "stage", "message", "summary"]) {
+    requireString(value, field);
+  }
+  if (typeof value.owner !== "string" && value.owner !== null) throw new Error("Veritas policy result owner must be string or null");
+  if (typeof value.implemented !== "boolean") throw new Error("Veritas policy result implemented must be boolean");
+  if (typeof value.passed !== "boolean" && value.passed !== null) throw new Error("Veritas policy result passed must be boolean or null");
+  if (!Array.isArray(value.findings)) throw new Error("Veritas policy result findings must be an array");
+}
+
+function buildEvidence(input: {
+  id: string;
+  claimId: string;
+  type: EvidenceType;
+  record: VeritasEvidenceRecord;
+  locator: string;
+  summary: string;
+  metadata?: Record<string, unknown>;
+}): Evidence {
+  return {
+    id: input.id,
+    claimId: input.claimId,
+    evidenceType: input.type,
+    sourceRef: input.record.run_id,
+    sourceLocator: input.locator,
+    excerptOrSummary: input.summary,
+    observedAt: input.record.timestamp,
+    collectedBy: "veritas",
+    integrityRef: input.record.source_ref,
+    metadata: {
+      sourceKind: input.record.source_kind,
+      sourceScope: input.record.source_scope,
+      files: input.record.files ?? [],
+      unresolvedFiles: input.record.unresolved_files ?? [],
+      ...input.metadata,
+    },
+  };
+}
+
+function buildEvent(input: {
+  id: string;
+  claimId: string;
+  status: TrustStatus;
+  method: string;
+  evidenceIds: string[];
+  record: VeritasEvidenceRecord;
+  notes?: string;
+}): VerificationEvent {
+  return {
+    id: input.id,
+    claimId: input.claimId,
+    status: input.status,
+    actor: "veritas",
+    method: input.method,
+    evidenceIds: input.evidenceIds,
+    createdAt: input.record.timestamp,
+    verifiedAt: input.status === "verified" ? input.record.timestamp : undefined,
+    notes: input.notes,
+  };
+}
+
+function policyResultStatus(result: VeritasPolicyResult): TrustStatus {
+  if (result.passed === true) return "verified";
+  if (result.passed === false && result.stage === "block") return "rejected";
+  if (result.passed === false) return "disputed";
+  return "proposed";
+}
+
+function policyImpact(result: VeritasPolicyResult): ImpactLevel {
+  if (result.stage === "block" || result.classification === "hard-invariant") return "high";
+  if (result.stage === "warn") return "medium";
+  return "low";
+}
+
+function proofSummary(command: string, passed: boolean | null): string {
+  if (passed === true) return `Selected proof command passed: ${command}`;
+  if (passed === false) return `Selected proof command failed: ${command}`;
+  return `Selected proof command has no recorded pass/fail result yet: ${command}`;
+}
+
+function claimId(runId: string, group: string, value: string): string {
+  return `veritas.${safeId(runId)}.${group}.${safeId(value)}`;
+}
+
+function safeId(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "unknown";
+}
+
+function requireString(object: Record<string, unknown>, field: string): string {
+  const value = object[field];
+  if (typeof value !== "string" || value.length === 0) throw new Error(`Veritas evidence missing string field: ${field}`);
+  return value;
+}
+
+function requireArray(object: Record<string, unknown>, field: string): unknown[] {
+  const value = object[field];
+  if (!Array.isArray(value)) throw new Error(`Veritas evidence missing array field: ${field}`);
+  return value;
+}
+
+function requireStringArray(object: Record<string, unknown>, field: string): void {
+  const values = requireArray(object, field);
+  if (!values.every((item) => typeof item === "string")) {
+    throw new Error(`Veritas evidence ${field} must contain only strings`);
+  }
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}

@@ -25,11 +25,11 @@ Initial adapters:
 - `campfit`: field sources, attestations, proposals, review flags, crawl runs, change logs.
 - `taxes`: extracted facts, resolved facts, verified facts, citations, discrepancy traces, review signals.
 
-Adapters should start read-only.
+Adapters should start read-only. The first implemented adapter is `veritas`, which maps evidence artifacts into affected-surface claims, proof-lane claims, policy-result claims, and verification events.
 
 ## 3. Reports and Agent API
 
-Reports summarize trust state for humans and agents. The first interface is a local CLI. MCP and runtime integrations can follow after the contract stabilizes.
+Reports summarize trust state for humans and agents. The first interface is a local CLI with native Surface input and Veritas evidence import. MCP and runtime integrations can follow after the contract stabilizes.
 
 ## 4. Human Console
 
@@ -38,4 +38,3 @@ The console is a later product surface. It should show coverage, stale zones, fa
 ## Local-first first
 
 The first milestone should run locally with fixtures and static docs. Hosted sinks and dashboards come after the schema and report contract prove useful.
-

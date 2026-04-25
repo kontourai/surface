@@ -7,7 +7,11 @@ const pages = [
   ["concepts", "docs/concepts.md", "Concepts"],
   ["use-cases", "docs/use-cases.md", "Use Cases"],
   ["architecture", "docs/architecture.md", "Architecture"],
+  ["cli", "docs/cli.md", "CLI"],
   ["schemas", "docs/schemas.md", "Schemas"],
+  ["schema-versioning", "docs/schema-versioning.md", "Schema Versioning"],
+  ["fixtures", "docs/fixtures.md", "Fixtures"],
+  ["veritas-adapter", "docs/adapters/veritas.md", "Veritas Adapter"],
   ["roadmap", "docs/roadmap.md", "Roadmap"],
   ["brand-language", "docs/brand-language.md", "Brand Language"],
 ];
