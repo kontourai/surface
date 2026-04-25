@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kontour.ai/schemas/surface/evidence.schema.json",
+  "title": "Kontour Surface Evidence",
+  "type": "object",
+  "required": ["id", "claimId", "evidenceType", "sourceRef", "excerptOrSummary", "observedAt", "collectedBy"],
+  "properties": {
+    "id": { "type": "string" },
+    "claimId": { "type": "string" },
+    "evidenceType": {
+      "enum": ["source_excerpt", "test_output", "human_attestation", "calculation_trace", "document_citation", "crawl_observation", "policy_rule"]
+    },
+    "sourceRef": { "type": "string" },
+    "sourceLocator": { "type": "string" },
+    "excerptOrSummary": { "type": "string" },
+    "observedAt": { "type": "string", "format": "date-time" },
+    "collectedBy": { "type": "string" },
+    "integrityRef": { "type": "string" },
+    "metadata": { "type": "object" }
+  },
+  "additionalProperties": false
+}
+

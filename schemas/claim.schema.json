@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kontour.ai/schemas/surface/claim.schema.json",
+  "title": "Kontour Surface Claim",
+  "type": "object",
+  "required": ["id", "subjectType", "subjectId", "surface", "claimType", "fieldOrBehavior", "value", "createdAt", "updatedAt"],
+  "properties": {
+    "id": { "type": "string" },
+    "subjectType": { "type": "string" },
+    "subjectId": { "type": "string" },
+    "surface": { "type": "string" },
+    "claimType": { "type": "string" },
+    "fieldOrBehavior": { "type": "string" },
+    "value": {},
+    "status": { "enum": ["unknown", "proposed", "verified", "stale", "disputed", "superseded", "rejected"] },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" },
+    "impactLevel": { "enum": ["low", "medium", "high", "critical"] },
+    "currentIntegrityRef": { "type": "string" },
+    "verificationPolicyId": { "type": "string" },
+    "confidenceBasis": { "type": "object" },
+    "metadata": { "type": "object" }
+  },
+  "additionalProperties": false
+}

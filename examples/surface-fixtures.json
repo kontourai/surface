@@ -1,0 +1,211 @@
+{
+  "source": "kontour-surface-validation-fixtures",
+  "claims": [
+    {
+      "id": "claim.veritas.api-proof",
+      "subjectType": "repo-surface",
+      "subjectId": "kontourai/veritas:src/api",
+      "surface": "veritas.developer-proof",
+      "claimType": "software-proof",
+      "fieldOrBehavior": "requiredProofLane",
+      "value": "npm test passed for API surface change",
+      "createdAt": "2026-04-25T00:00:00.000Z",
+      "updatedAt": "2026-04-25T00:05:00.000Z",
+      "impactLevel": "high",
+      "currentIntegrityRef": "commit-or-run-id-placeholder",
+      "verificationPolicyId": "policy.software-proof.commit",
+      "confidenceBasis": {
+        "sourceQuality": "strong",
+        "reviewerAuthority": "system",
+        "proofStrength": "strong",
+        "impactLevel": "high"
+      }
+    },
+    {
+      "id": "claim.campfit.registration-status",
+      "subjectType": "camp",
+      "subjectId": "campfit:denver-example-camp",
+      "surface": "campfit.public-data",
+      "claimType": "public-data-field",
+      "fieldOrBehavior": "registrationStatus",
+      "value": "OPEN",
+      "createdAt": "2026-04-01T00:00:00.000Z",
+      "updatedAt": "2026-04-01T00:00:00.000Z",
+      "impactLevel": "high",
+      "verificationPolicyId": "policy.public-data-field.short-lived",
+      "confidenceBasis": {
+        "sourceQuality": "strong",
+        "extractionConfidence": 0.92,
+        "corroborationCount": 1,
+        "reviewerAuthority": "operator",
+        "proofStrength": "moderate",
+        "impactLevel": "high"
+      }
+    },
+    {
+      "id": "claim.taxes.w2-wages",
+      "subjectType": "tax-fact",
+      "subjectId": "taxes:anderson-2025:w2.wages",
+      "surface": "taxes.financial-facts",
+      "claimType": "verified-financial-fact",
+      "fieldOrBehavior": "w2.wages",
+      "value": 123456,
+      "createdAt": "2026-04-20T00:00:00.000Z",
+      "updatedAt": "2026-04-20T00:00:00.000Z",
+      "impactLevel": "critical",
+      "verificationPolicyId": "policy.financial-fact.historical",
+      "confidenceBasis": {
+        "sourceQuality": "strong",
+        "corroborationCount": 2,
+        "reviewerAuthority": "domain_expert",
+        "proofStrength": "strong",
+        "impactLevel": "critical"
+      }
+    },
+    {
+      "id": "claim.surface.future-dashboard",
+      "subjectType": "roadmap-item",
+      "subjectId": "kontour-surface:hosted-dashboard",
+      "surface": "surface.roadmap",
+      "claimType": "roadmap-capability",
+      "fieldOrBehavior": "implementationStatus",
+      "value": "planned",
+      "createdAt": "2026-04-25T00:00:00.000Z",
+      "updatedAt": "2026-04-25T00:00:00.000Z",
+      "impactLevel": "medium",
+      "verificationPolicyId": "policy.roadmap.manual"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "evidence.veritas.test-output",
+      "claimId": "claim.veritas.api-proof",
+      "evidenceType": "test_output",
+      "sourceRef": "veritas local proof lane",
+      "sourceLocator": "npm test",
+      "excerptOrSummary": "84 tests passed for the verified repo state.",
+      "observedAt": "2026-04-25T00:05:00.000Z",
+      "collectedBy": "veritas",
+      "integrityRef": "commit-or-run-id-placeholder"
+    },
+    {
+      "id": "evidence.campfit.source-excerpt",
+      "claimId": "claim.campfit.registration-status",
+      "evidenceType": "source_excerpt",
+      "sourceRef": "https://example.org/camps/register",
+      "sourceLocator": "registration section",
+      "excerptOrSummary": "Registration is open now for summer sessions.",
+      "observedAt": "2026-04-01T00:00:00.000Z",
+      "collectedBy": "campfit-crawler"
+    },
+    {
+      "id": "evidence.campfit.admin-attestation",
+      "claimId": "claim.campfit.registration-status",
+      "evidenceType": "human_attestation",
+      "sourceRef": "campfit admin review",
+      "sourceLocator": "FieldAttestation.registrationStatus",
+      "excerptOrSummary": "Admin approved the registration status from the source excerpt.",
+      "observedAt": "2026-04-01T00:10:00.000Z",
+      "collectedBy": "campfit-admin"
+    },
+    {
+      "id": "evidence.taxes.document-citation",
+      "claimId": "claim.taxes.w2-wages",
+      "evidenceType": "document_citation",
+      "sourceRef": "W-2 imported document",
+      "sourceLocator": "Box 1",
+      "excerptOrSummary": "W-2 Box 1 wages matched the verified fact value.",
+      "observedAt": "2026-04-20T00:00:00.000Z",
+      "collectedBy": "taxes-importer",
+      "integrityRef": "document-hash-placeholder"
+    },
+    {
+      "id": "evidence.taxes.calculation-trace",
+      "claimId": "claim.taxes.w2-wages",
+      "evidenceType": "calculation_trace",
+      "sourceRef": "taxes return package",
+      "sourceLocator": "verified_facts.w2.wages",
+      "excerptOrSummary": "Resolved fact was promoted to verified_facts before downstream tax analysis.",
+      "observedAt": "2026-04-20T00:15:00.000Z",
+      "collectedBy": "taxes-service"
+    }
+  ],
+  "policies": [
+    {
+      "id": "policy.software-proof.commit",
+      "claimType": "software-proof",
+      "requiredEvidence": ["test_output"],
+      "requiredProof": ["proof lane passes for the affected commit or diff"],
+      "reviewAuthority": "repo policy",
+      "validityRule": { "kind": "commit" },
+      "stalenessTriggers": ["new commit touches the same surface", "proof lane changes"],
+      "conflictRules": ["failed proof supersedes prior passing proof"],
+      "impactLevel": "high"
+    },
+    {
+      "id": "policy.public-data-field.short-lived",
+      "claimType": "public-data-field",
+      "requiredEvidence": ["source_excerpt", "human_attestation"],
+      "requiredProof": ["field-level review or crawl approval"],
+      "reviewAuthority": "operator",
+      "validityRule": { "kind": "duration", "durationDays": 14 },
+      "stalenessTriggers": ["source page changes", "validity window expires", "user report conflicts"],
+      "conflictRules": ["new source excerpt conflicts with approved value"],
+      "impactLevel": "high"
+    },
+    {
+      "id": "policy.financial-fact.historical",
+      "claimType": "verified-financial-fact",
+      "requiredEvidence": ["document_citation", "calculation_trace"],
+      "requiredProof": ["resolved fact promoted to verified fact"],
+      "reviewAuthority": "domain expert",
+      "validityRule": { "kind": "historical" },
+      "stalenessTriggers": ["new source document imported", "conflicting candidate appears"],
+      "conflictRules": ["multi-candidate facts require manual resolution"],
+      "impactLevel": "critical"
+    },
+    {
+      "id": "policy.roadmap.manual",
+      "claimType": "roadmap-capability",
+      "requiredEvidence": ["human_attestation"],
+      "requiredProof": ["explicit roadmap acceptance"],
+      "reviewAuthority": "product owner",
+      "validityRule": { "kind": "manual" },
+      "stalenessTriggers": ["roadmap changed"],
+      "conflictRules": ["implementation claim without shipped evidence is unsupported"],
+      "impactLevel": "medium"
+    }
+  ],
+  "events": [
+    {
+      "id": "event.veritas.verified",
+      "claimId": "claim.veritas.api-proof",
+      "status": "verified",
+      "actor": "veritas",
+      "method": "proof-lane",
+      "evidenceIds": ["evidence.veritas.test-output"],
+      "createdAt": "2026-04-25T00:05:00.000Z",
+      "verifiedAt": "2026-04-25T00:05:00.000Z"
+    },
+    {
+      "id": "event.campfit.verified",
+      "claimId": "claim.campfit.registration-status",
+      "status": "verified",
+      "actor": "campfit-admin",
+      "method": "field-attestation",
+      "evidenceIds": ["evidence.campfit.source-excerpt", "evidence.campfit.admin-attestation"],
+      "createdAt": "2026-04-01T00:10:00.000Z",
+      "verifiedAt": "2026-04-01T00:10:00.000Z"
+    },
+    {
+      "id": "event.taxes.verified",
+      "claimId": "claim.taxes.w2-wages",
+      "status": "verified",
+      "actor": "taxes-service",
+      "method": "verified-fact-promotion",
+      "evidenceIds": ["evidence.taxes.document-citation", "evidence.taxes.calculation-trace"],
+      "createdAt": "2026-04-20T00:15:00.000Z",
+      "verifiedAt": "2026-04-20T00:15:00.000Z"
+    }
+  ]
+}

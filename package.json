@@ -1,0 +1,38 @@
+{
+  "name": "@kontourai/surface",
+  "version": "0.1.0",
+  "description": "Evidence-backed trust surface for products built with humans and AI agents.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "private": false,
+  "bin": {
+    "surface": "bin/surface.mjs"
+  },
+  "exports": {
+    ".": "./dist/src/index.js"
+  },
+  "files": [
+    "bin/",
+    "dist/",
+    "schemas/",
+    "examples/",
+    "docs/",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node --test dist/tests/*.test.js",
+    "docs:build": "node scripts/build-pages-site.mjs",
+    "surface:report": "npm run build && node bin/surface.mjs report",
+    "surface:summary": "npm run build && node bin/surface.mjs report --format summary",
+    "verify": "npm run typecheck && npm test && npm run docs:build && npm run surface:summary"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "typescript": "^5.8.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

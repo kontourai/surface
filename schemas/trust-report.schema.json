@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kontour.ai/schemas/surface/trust-report.schema.json",
+  "title": "Kontour Surface Trust Report",
+  "type": "object",
+  "required": ["id", "generatedAt", "source", "claims", "evidence", "policies", "events", "summary"],
+  "properties": {
+    "id": { "type": "string" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "source": { "type": "string" },
+    "claims": { "type": "array", "items": { "$ref": "claim.schema.json" } },
+    "evidence": { "type": "array", "items": { "$ref": "evidence.schema.json" } },
+    "policies": { "type": "array", "items": { "$ref": "verification-policy.schema.json" } },
+    "events": { "type": "array", "items": { "$ref": "verification-event.schema.json" } },
+    "summary": {
+      "type": "object",
+      "required": ["totalClaims", "byStatus", "bySurface", "highImpactUnsupported", "staleClaims", "disputedClaims"],
+      "properties": {
+        "totalClaims": { "type": "number" },
+        "byStatus": { "type": "object" },
+        "bySurface": { "type": "object" },
+        "highImpactUnsupported": { "type": "array", "items": { "type": "string" } },
+        "staleClaims": { "type": "array", "items": { "type": "string" } },
+        "disputedClaims": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
+

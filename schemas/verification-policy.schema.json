@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kontour.ai/schemas/surface/verification-policy.schema.json",
+  "title": "Kontour Surface Verification Policy",
+  "type": "object",
+  "required": ["id", "claimType", "requiredEvidence", "requiredProof", "reviewAuthority", "validityRule", "stalenessTriggers", "conflictRules", "impactLevel"],
+  "properties": {
+    "id": { "type": "string" },
+    "claimType": { "type": "string" },
+    "requiredEvidence": {
+      "type": "array",
+      "items": { "enum": ["source_excerpt", "test_output", "human_attestation", "calculation_trace", "document_citation", "crawl_observation", "policy_rule"] }
+    },
+    "requiredProof": { "type": "array", "items": { "type": "string" } },
+    "reviewAuthority": { "type": "string" },
+    "validityRule": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": { "enum": ["duration", "commit", "historical", "manual"] },
+        "durationDays": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "stalenessTriggers": { "type": "array", "items": { "type": "string" } },
+    "conflictRules": { "type": "array", "items": { "type": "string" } },
+    "impactLevel": { "enum": ["low", "medium", "high", "critical"] }
+  },
+  "additionalProperties": false
+}
+

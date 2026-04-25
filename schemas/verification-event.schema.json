@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kontour.ai/schemas/surface/verification-event.schema.json",
+  "title": "Kontour Surface Verification Event",
+  "type": "object",
+  "required": ["id", "claimId", "status", "actor", "method", "evidenceIds", "createdAt"],
+  "properties": {
+    "id": { "type": "string" },
+    "claimId": { "type": "string" },
+    "status": { "enum": ["unknown", "proposed", "verified", "stale", "disputed", "superseded", "rejected"] },
+    "actor": { "type": "string" },
+    "method": { "type": "string" },
+    "evidenceIds": { "type": "array", "items": { "type": "string" } },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "verifiedAt": { "type": "string", "format": "date-time" },
+    "notes": { "type": "string" }
+  },
+  "additionalProperties": false
+}
+
