@@ -1,0 +1,133 @@
+{
+  "schemaVersion": 2,
+  "source": "kontour-surface-reputation-integrity-fixture",
+  "claims": [
+    {
+      "id": "claim.reputation.raw-star-count",
+      "subjectType": "repository",
+      "subjectId": "example/repo",
+      "surface": "reputation.integrity",
+      "claimType": "repository-popularity-signal",
+      "fieldOrBehavior": "starCount",
+      "value": 12000,
+      "createdAt": "2026-04-25T00:00:00.000Z",
+      "updatedAt": "2026-04-25T00:00:00.000Z",
+      "impactLevel": "medium",
+      "verificationPolicyId": "policy.reputation.observation"
+    },
+    {
+      "id": "claim.reputation.heuristic-suspicion",
+      "subjectType": "repository",
+      "subjectId": "example/repo",
+      "surface": "reputation.integrity",
+      "claimType": "reputation-anomaly",
+      "fieldOrBehavior": "starGrowthPattern",
+      "value": "suspicious burst pattern",
+      "status": "proposed",
+      "createdAt": "2026-04-25T00:05:00.000Z",
+      "updatedAt": "2026-04-25T00:05:00.000Z",
+      "impactLevel": "high",
+      "verificationPolicyId": "policy.reputation.anomaly"
+    },
+    {
+      "id": "claim.reputation.owner-intent",
+      "subjectType": "repository-owner",
+      "subjectId": "example",
+      "surface": "reputation.integrity",
+      "claimType": "owner-intent-accusation",
+      "fieldOrBehavior": "starManipulationIntent",
+      "value": "owner intentionally purchased fake stars",
+      "status": "unknown",
+      "createdAt": "2026-04-25T00:10:00.000Z",
+      "updatedAt": "2026-04-25T00:10:00.000Z",
+      "impactLevel": "critical",
+      "verificationPolicyId": "policy.reputation.accusation"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "evidence.reputation.star-count",
+      "claimId": "claim.reputation.raw-star-count",
+      "evidenceType": "crawl_observation",
+      "method": "observation",
+      "sourceRef": "github api snapshot",
+      "sourceLocator": "repository.stargazers_count",
+      "excerptOrSummary": "GitHub API snapshot observed 12,000 stars.",
+      "observedAt": "2026-04-25T00:00:00.000Z",
+      "collectedBy": "reputation-integrity-fixture"
+    },
+    {
+      "id": "evidence.reputation.burst-heuristic",
+      "claimId": "claim.reputation.heuristic-suspicion",
+      "evidenceType": "calculation_trace",
+      "method": "validation",
+      "sourceRef": "fake-star-detector style heuristic",
+      "sourceLocator": "star growth model",
+      "excerptOrSummary": "Star velocity and follower overlap indicate an anomaly that needs corroboration.",
+      "observedAt": "2026-04-25T00:05:00.000Z",
+      "collectedBy": "reputation-integrity-fixture",
+      "metadata": {
+        "faultLineHints": [
+          {
+            "type": "unsupported_inference",
+            "severity": "critical",
+            "message": "Heuristic anomaly supports suspicion, not owner intent or wrongdoing."
+          }
+        ]
+      }
+    }
+  ],
+  "policies": [
+    {
+      "id": "policy.reputation.observation",
+      "claimType": "repository-popularity-signal",
+      "requiredEvidence": ["crawl_observation"],
+      "requiredMethods": ["observation"],
+      "requiresCorroboration": false,
+      "requiredProof": ["fresh source snapshot"],
+      "reviewAuthority": "reputation workflow",
+      "validityRule": { "kind": "duration", "durationDays": 7 },
+      "stalenessTriggers": ["new star snapshot", "source API changes"],
+      "conflictRules": ["newer source snapshot supersedes prior observation"],
+      "impactLevel": "medium"
+    },
+    {
+      "id": "policy.reputation.anomaly",
+      "claimType": "reputation-anomaly",
+      "requiredEvidence": ["calculation_trace", "crawl_observation"],
+      "requiredMethods": ["validation", "corroboration"],
+      "requiresCorroboration": true,
+      "requiredProof": ["heuristic plus independent corroboration"],
+      "reviewAuthority": "reputation analyst",
+      "validityRule": { "kind": "duration", "durationDays": 7 },
+      "stalenessTriggers": ["new star snapshot", "new corroborating source"],
+      "conflictRules": ["independent audit can dispute heuristic suspicion"],
+      "impactLevel": "high"
+    },
+    {
+      "id": "policy.reputation.accusation",
+      "claimType": "owner-intent-accusation",
+      "requiredEvidence": ["document_citation", "human_attestation"],
+      "requiredMethods": ["corroboration", "attestation"],
+      "requiresCorroboration": true,
+      "requiredProof": ["direct corroborated evidence of intent"],
+      "reviewAuthority": "domain expert",
+      "validityRule": { "kind": "manual" },
+      "stalenessTriggers": ["new direct evidence", "owner response"],
+      "conflictRules": ["heuristic evidence alone cannot verify intent"],
+      "impactLevel": "critical"
+    }
+  ],
+  "events": [
+    {
+      "id": "event.reputation.raw-star-count.verified",
+      "claimId": "claim.reputation.raw-star-count",
+      "status": "verified",
+      "actor": "reputation-integrity-fixture",
+      "method": "source snapshot",
+      "evidenceIds": ["evidence.reputation.star-count"],
+      "createdAt": "2026-04-25T00:00:00.000Z",
+      "verifiedAt": "2026-04-25T00:00:00.000Z"
+    }
+  ]
+}

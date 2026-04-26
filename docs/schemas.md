@@ -1,6 +1,6 @@
 # Schemas
 
-Kontour Surface starts with five contract types.
+Kontour Surface starts with five contract types. Trust inputs and trust reports use `schemaVersion: 2`.
 
 ## Claim
 
@@ -10,13 +10,15 @@ Schema: `schemas/claim.schema.json`
 
 ## Evidence
 
-Evidence records the source, locator, summary or excerpt, observed time, collector, and optional integrity reference.
+Evidence records the source, locator, summary or excerpt, observed time, collector, verification `method`, and optional integrity reference.
+
+The current method vocabulary is `observation`, `extraction`, `validation`, `corroboration`, `attestation`, `auditability`, `anchoring`, and `monitoring`.
 
 Schema: `schemas/evidence.schema.json`
 
 ## Verification Policy
 
-Policy defines required evidence, proof, review authority, validity, staleness triggers, conflict rules, and impact.
+Policy defines required evidence, required methods, corroboration needs, proof, review authority, validity, staleness triggers, conflict rules, and impact.
 
 Schema: `schemas/verification-policy.schema.json`
 
@@ -28,7 +30,7 @@ Schema: `schemas/verification-event.schema.json`
 
 ## Trust Report
 
-A report packages claims, evidence, policies, events, and a derived summary.
+A report packages claims, evidence, policies, events, report-derived proof requirements, typed fault lines, and a derived summary.
 
 Schema: `schemas/trust-report.schema.json`
 

@@ -39,4 +39,17 @@ The `taxes` adapter now imports verified facts, return-package citations, assump
 
 ## Future products
 
+## Reputation integrity
+
+Reputation integrity covers projects where public signals can be useful but are easy to overinterpret. A repository star count can be observed, and a burst pattern can justify suspicion, but that does not prove owner intent or wrongdoing.
+
+Surface should be able to represent claims like:
+
+- This public popularity signal was observed from a source snapshot.
+- This heuristic produced an anomaly that needs corroboration.
+- This stronger accusation is unsupported until direct evidence exists.
+- This workflow has an `unsupported_inference` fault line.
+
+## Future products
+
 Surface should also fit recommendation systems, marketplaces, local directories, compliance workflows, education data, health data, and any product where AI agents need trustworthy context before acting.

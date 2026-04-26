@@ -3,8 +3,9 @@
   "$id": "https://kontour.ai/schemas/surface/trust-report.schema.json",
   "title": "Kontour Surface Trust Report",
   "type": "object",
-  "required": ["id", "generatedAt", "source", "claims", "evidence", "policies", "events", "summary"],
+  "required": ["schemaVersion", "id", "generatedAt", "source", "claims", "evidence", "policies", "events", "proofRequirementsByClaimId", "faultLines", "summary"],
   "properties": {
+    "schemaVersion": { "const": 2 },
     "id": { "type": "string" },
     "generatedAt": { "type": "string", "format": "date-time" },
     "source": { "type": "string" },
@@ -12,13 +13,53 @@
     "evidence": { "type": "array", "items": { "$ref": "evidence.schema.json" } },
     "policies": { "type": "array", "items": { "$ref": "verification-policy.schema.json" } },
     "events": { "type": "array", "items": { "$ref": "verification-event.schema.json" } },
+    "proofRequirementsByClaimId": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "requiredEvidenceTypes": {
+            "type": "array",
+            "items": { "enum": ["source_excerpt", "test_output", "human_attestation", "calculation_trace", "document_citation", "crawl_observation", "policy_rule"] }
+          },
+          "requiredMethods": {
+            "type": "array",
+            "items": { "enum": ["observation", "extraction", "validation", "corroboration", "attestation", "auditability", "anchoring", "monitoring"] }
+          },
+          "requiresCorroboration": { "type": "boolean" },
+          "requiredAuthority": { "type": "string" },
+          "notes": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "faultLines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "claimId", "type", "severity", "message", "createdAt"],
+        "properties": {
+          "id": { "type": "string" },
+          "claimId": { "type": "string" },
+          "type": { "enum": ["contradiction", "provenance_gap", "policy_violation", "freshness_breach", "corroboration_absent", "unsupported_inference"] },
+          "severity": { "enum": ["low", "medium", "high", "critical"] },
+          "message": { "type": "string" },
+          "evidenceIds": { "type": "array", "items": { "type": "string" } },
+          "policyId": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "metadata": { "type": "object" }
+        },
+        "additionalProperties": false
+      }
+    },
     "summary": {
       "type": "object",
-      "required": ["totalClaims", "byStatus", "bySurface", "highImpactUnsupported", "staleClaims", "disputedClaims"],
+      "required": ["totalClaims", "byStatus", "bySurface", "faultLinesByType", "highImpactUnsupported", "staleClaims", "disputedClaims"],
       "properties": {
         "totalClaims": { "type": "number" },
         "byStatus": { "type": "object" },
         "bySurface": { "type": "object" },
+        "faultLinesByType": { "type": "object" },
         "highImpactUnsupported": { "type": "array", "items": { "type": "string" } },
         "staleClaims": { "type": "array", "items": { "type": "string" } },
         "disputedClaims": { "type": "array", "items": { "type": "string" } }
@@ -28,4 +69,3 @@
   },
   "additionalProperties": false
 }
-

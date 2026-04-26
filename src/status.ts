@@ -33,7 +33,6 @@ export function deriveTrustStatus(input: {
 
   const evidenceTypes = new Set(input.evidence.map((evidence) => evidence.evidenceType));
   const hasRequiredEvidence = input.policy.requiredEvidence.every((type) => evidenceTypes.has(type));
-
   return hasRequiredEvidence ? "proposed" : "unknown";
 }
 

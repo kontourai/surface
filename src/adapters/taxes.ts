@@ -1,6 +1,7 @@
 import type {
   Claim,
   Evidence,
+  EvidenceMethod,
   EvidenceType,
   TrustInput,
   TrustStatus,
@@ -109,6 +110,8 @@ const VERIFIED_FACT_POLICY: VerificationPolicy = {
   id: "taxes.verified-fact",
   claimType: "tax-verified-fact",
   requiredEvidence: ["human_attestation"],
+  requiredMethods: ["attestation"],
+  requiresCorroboration: false,
   requiredProof: ["verified fact record"],
   reviewAuthority: "tax workflow operator",
   validityRule: { kind: "historical" },
@@ -121,6 +124,8 @@ const RESOLVED_FACT_POLICY: VerificationPolicy = {
   id: "taxes.resolved-fact",
   claimType: "tax-resolved-fact",
   requiredEvidence: ["calculation_trace"],
+  requiredMethods: ["validation"],
+  requiresCorroboration: false,
   requiredProof: ["fact resolution rationale"],
   reviewAuthority: "tax workflow",
   validityRule: { kind: "manual" },
@@ -133,6 +138,8 @@ const RETURN_FIELD_POLICY: VerificationPolicy = {
   id: "taxes.return-package-field",
   claimType: "tax-return-field",
   requiredEvidence: ["document_citation"],
+  requiredMethods: ["corroboration"],
+  requiresCorroboration: false,
   requiredProof: ["return package citation"],
   reviewAuthority: "tax return package",
   validityRule: { kind: "historical" },
@@ -145,6 +152,8 @@ const REVIEW_POLICY: VerificationPolicy = {
   id: "taxes.review-signal",
   claimType: "tax-review-signal",
   requiredEvidence: ["calculation_trace"],
+  requiredMethods: ["validation"],
+  requiresCorroboration: false,
   requiredProof: ["return package review signal"],
   reviewAuthority: "tax return package",
   validityRule: { kind: "manual" },
@@ -191,6 +200,7 @@ export function adaptTaxesTrustExportToTrustInput(record: unknown): TrustInput {
       id: evidenceId,
       claimId: id,
       type: "human_attestation",
+      method: "attestation",
       sourceRef: fact.verifiedBy,
       locator: `verifiedFacts.${fact.factKey}`,
       summary: fact.rationale,
@@ -246,6 +256,7 @@ export function adaptTaxesTrustExportToTrustInput(record: unknown): TrustInput {
       id: evidenceId,
       claimId: id,
       type: "calculation_trace",
+      method: "validation",
       sourceRef: fact.selectedFactId ?? fact.selectedSource,
       locator: `resolvedFacts.${fact.factKey}`,
       summary: fact.rationale,
@@ -334,6 +345,7 @@ export function adaptTaxesTrustExportToTrustInput(record: unknown): TrustInput {
         id: evidenceId,
         claimId: id,
         type: assumption.citations.length > 0 ? "document_citation" : "calculation_trace",
+        method: assumption.citations.length > 0 ? "corroboration" : "validation",
         sourceRef: assumption.citations[0] ?? assumption.key,
         locator: `assumptions.${assumption.key}`,
         summary: assumption.reason,
@@ -394,6 +406,7 @@ export function adaptTaxesTrustExportToTrustInput(record: unknown): TrustInput {
         id: evidenceId,
         claimId: id,
         type: comparison.citations.length > 0 ? "document_citation" : "calculation_trace",
+        method: comparison.citations.length > 0 ? "corroboration" : "validation",
         sourceRef: comparison.citations[0] ?? returnPackage.preparedReturnReferencePath,
         locator: `comparisonSummary.${comparison.field}`,
         summary: comparison.investigationHint,
@@ -447,6 +460,7 @@ export function adaptTaxesTrustExportToTrustInput(record: unknown): TrustInput {
         id: evidenceId,
         claimId: id,
         type: "calculation_trace",
+        method: "validation",
         sourceRef: signal.driver,
         locator: `reviewSignals.${signal.field}`,
         summary: signal.reason,
@@ -468,6 +482,7 @@ export function adaptTaxesTrustExportToTrustInput(record: unknown): TrustInput {
   }
 
   return {
+    schemaVersion: 2,
     source: taxes.source ?? `taxes:${taxes.householdId}:${taxes.taxYear}`,
     claims,
     evidence,
@@ -523,6 +538,7 @@ function addReturnFields(input: {
         id: evidenceId,
         claimId: id,
         type: "document_citation",
+        method: "corroboration",
         sourceRef: value.citations[0],
         locator: fullField,
         summary: `${fullField} is supported by ${value.citations.join(", ")}.`,
@@ -560,6 +576,7 @@ function buildEvidence(input: {
   id: string;
   claimId: string;
   type: EvidenceType;
+  method: EvidenceMethod;
   sourceRef: string;
   locator: string;
   summary: string;
@@ -571,6 +588,7 @@ function buildEvidence(input: {
     id: input.id,
     claimId: input.claimId,
     evidenceType: input.type,
+    method: input.method,
     sourceRef: input.sourceRef,
     sourceLocator: input.locator,
     excerptOrSummary: input.summary,

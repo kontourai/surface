@@ -1,6 +1,7 @@
 import type {
   Claim,
   Evidence,
+  EvidenceMethod,
   EvidenceType,
   ImpactLevel,
   TrustInput,
@@ -35,6 +36,7 @@ export interface VeritasEvidenceRecord {
   affected_nodes: string[];
   affected_lanes: string[];
   selected_proof_commands: string[];
+  selected_proof_lanes: VeritasSelectedProofLane[];
   proof_resolution_source: string;
   uncovered_path_result: "clear" | "ignore" | "warn" | "fail";
   baseline_ci_fast_passed: boolean | null;
@@ -42,8 +44,9 @@ export interface VeritasEvidenceRecord {
   adapter?: {
     name?: string;
     kind?: string;
-    required_proof_lanes?: string[];
-    default_proof_lanes?: string[];
+    proof_lanes?: VeritasSelectedProofLane[];
+    required_proof_lane_ids?: string[];
+    default_proof_lane_ids?: string[];
     uncovered_path_policy?: string;
   };
   policy_pack?: {
@@ -56,10 +59,20 @@ export interface VeritasEvidenceRecord {
   unresolved_files?: string[];
 }
 
+export interface VeritasSelectedProofLane {
+  id: string;
+  command: string;
+  method: EvidenceMethod;
+  surface_claim_ids?: string[];
+  summary?: string;
+}
+
 const SURFACE_POLICY: VerificationPolicy = {
   id: "veritas.surface",
   claimType: "veritas-affected-surface",
   requiredEvidence: ["policy_rule"],
+  requiredMethods: ["auditability"],
+  requiresCorroboration: false,
   requiredProof: ["veritas evidence artifact"],
   reviewAuthority: "veritas",
   validityRule: { kind: "commit" },
@@ -72,6 +85,8 @@ const PROOF_POLICY: VerificationPolicy = {
   id: "veritas.proof-lane",
   claimType: "software-proof",
   requiredEvidence: ["test_output"],
+  requiredMethods: ["validation"],
+  requiresCorroboration: false,
   requiredProof: ["selected proof command"],
   reviewAuthority: "veritas",
   validityRule: { kind: "commit" },
@@ -84,6 +99,8 @@ const POLICY_RESULT_POLICY: VerificationPolicy = {
   id: "veritas.policy-result",
   claimType: "veritas-policy-result",
   requiredEvidence: ["policy_rule"],
+  requiredMethods: ["validation"],
+  requiresCorroboration: false,
   requiredProof: ["policy pack evaluation"],
   reviewAuthority: "veritas policy pack",
   validityRule: { kind: "commit" },
@@ -119,7 +136,7 @@ export function adaptVeritasEvidenceToTrustInput(record: unknown): TrustInput {
       confidenceBasis: {
         sourceQuality: "strong",
         reviewerAuthority: "system",
-        proofStrength: veritas.selected_proof_commands.length > 0 ? "moderate" : "weak",
+        proofStrength: veritas.selected_proof_lanes.length > 0 ? "moderate" : "weak",
         impactLevel: "medium",
       },
       metadata: {
@@ -132,6 +149,7 @@ export function adaptVeritasEvidenceToTrustInput(record: unknown): TrustInput {
       id: evidenceId,
       claimId: id,
       type: "policy_rule",
+      method: "auditability",
       record: veritas,
       locator: "affected_nodes",
       summary: `Veritas marked ${node} as an affected repo surface for ${veritas.resolved_workstream}.`,
@@ -146,8 +164,10 @@ export function adaptVeritasEvidenceToTrustInput(record: unknown): TrustInput {
     }));
   }
 
-  for (const command of veritas.selected_proof_commands) {
-    const id = claimId(veritas.run_id, "proof", command);
+  const selectedProofLanes = resolveSelectedProofLanes(veritas);
+  for (const lane of selectedProofLanes) {
+    const command = lane.command;
+    const id = claimId(veritas.run_id, "proof", lane.id);
     const evidenceId = `${id}.evidence`;
     claims.push({
       id,
@@ -171,15 +191,18 @@ export function adaptVeritasEvidenceToTrustInput(record: unknown): TrustInput {
       metadata: {
         proofResolutionSource: veritas.proof_resolution_source,
         baselineCiFastPassed: veritas.baseline_ci_fast_passed,
+        proofLaneId: lane.id,
+        surfaceClaimIds: lane.surface_claim_ids ?? [],
       },
     });
     evidence.push(buildEvidence({
       id: evidenceId,
       claimId: id,
       type: "test_output",
+      method: lane.method,
       record: veritas,
-      locator: "selected_proof_commands",
-      summary: proofSummary(command, veritas.baseline_ci_fast_passed),
+      locator: "selected_proof_lanes",
+      summary: lane.summary ?? `Selected proof lane ${lane.id}: ${command}`,
     }));
     if (veritas.baseline_ci_fast_passed !== null) {
       events.push(buildEvent({
@@ -234,6 +257,7 @@ export function adaptVeritasEvidenceToTrustInput(record: unknown): TrustInput {
       id: evidenceId,
       claimId: id,
       type: "policy_rule",
+      method: "validation",
       record: veritas,
       locator: `policy_results.${result.rule_id}`,
       summary: result.summary,
@@ -258,6 +282,7 @@ export function adaptVeritasEvidenceToTrustInput(record: unknown): TrustInput {
   }
 
   return {
+    schemaVersion: 2,
     source,
     claims,
     evidence,
@@ -291,10 +316,27 @@ function assertVeritasEvidenceRecord(value: unknown): VeritasEvidenceRecord {
   for (const field of ["source_scope", "matched_artifacts", "affected_nodes", "affected_lanes", "selected_proof_commands"]) {
     requireStringArray(value, field);
   }
+  for (const lane of requireArray(value, "selected_proof_lanes")) {
+    assertSelectedProofLane(lane);
+  }
   for (const result of requireArray(value, "policy_results")) {
     assertVeritasPolicyResult(result);
   }
   return value as unknown as VeritasEvidenceRecord;
+}
+
+function assertSelectedProofLane(value: unknown): void {
+  if (!isObject(value)) throw new Error("Veritas selected proof lane must be an object");
+  for (const field of ["id", "command", "method"]) requireString(value, field);
+  if (typeof value.method !== "string" || !["observation", "extraction", "validation", "corroboration", "attestation", "auditability", "anchoring", "monitoring"].includes(value.method)) {
+    throw new Error(`Veritas selected proof lane method contains unsupported value: ${String(value.method)}`);
+  }
+  if (value.surface_claim_ids !== undefined) requireStringArray(value, "surface_claim_ids");
+  if (value.summary !== undefined) requireString(value, "summary");
+}
+
+function resolveSelectedProofLanes(record: VeritasEvidenceRecord): VeritasSelectedProofLane[] {
+  return record.selected_proof_lanes;
 }
 
 function assertVeritasPolicyResult(value: unknown): void {
@@ -312,6 +354,7 @@ function buildEvidence(input: {
   id: string;
   claimId: string;
   type: EvidenceType;
+  method: EvidenceMethod;
   record: VeritasEvidenceRecord;
   locator: string;
   summary: string;
@@ -321,6 +364,7 @@ function buildEvidence(input: {
     id: input.id,
     claimId: input.claimId,
     evidenceType: input.type,
+    method: input.method,
     sourceRef: input.record.run_id,
     sourceLocator: input.locator,
     excerptOrSummary: input.summary,
@@ -370,12 +414,6 @@ function policyImpact(result: VeritasPolicyResult): ImpactLevel {
   if (result.stage === "block" || result.classification === "hard-invariant") return "high";
   if (result.stage === "warn") return "medium";
   return "low";
-}
-
-function proofSummary(command: string, passed: boolean | null): string {
-  if (passed === true) return `Selected proof command passed: ${command}`;
-  if (passed === false) return `Selected proof command failed: ${command}`;
-  return `Selected proof command has no recorded pass/fail result yet: ${command}`;
 }
 
 function claimId(runId: string, group: string, value: string): string {

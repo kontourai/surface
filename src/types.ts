@@ -18,6 +18,16 @@ export type EvidenceType =
   | "crawl_observation"
   | "policy_rule";
 
+export type EvidenceMethod =
+  | "observation"
+  | "extraction"
+  | "validation"
+  | "corroboration"
+  | "attestation"
+  | "auditability"
+  | "anchoring"
+  | "monitoring";
+
 export interface ConfidenceBasis {
   sourceQuality?: "unknown" | "weak" | "moderate" | "strong";
   extractionConfidence?: number;
@@ -51,6 +61,7 @@ export interface Evidence {
   id: string;
   claimId: string;
   evidenceType: EvidenceType;
+  method: EvidenceMethod;
   sourceRef: string;
   sourceLocator?: string;
   excerptOrSummary: string;
@@ -69,6 +80,8 @@ export interface VerificationPolicy {
   id: string;
   claimType: string;
   requiredEvidence: EvidenceType[];
+  requiredMethods?: EvidenceMethod[];
+  requiresCorroboration?: boolean;
   requiredProof: string[];
   reviewAuthority: string;
   validityRule: ValidityRule;
@@ -90,6 +103,7 @@ export interface VerificationEvent {
 }
 
 export interface TrustInput {
+  schemaVersion: 2;
   source: string;
   claims: Claim[];
   evidence: Evidence[];
@@ -101,14 +115,46 @@ export interface TrustReportSummary {
   totalClaims: number;
   byStatus: Record<TrustStatus, number>;
   bySurface: Record<string, number>;
+  faultLinesByType: Record<FaultLineType, number>;
   highImpactUnsupported: string[];
   staleClaims: string[];
   disputedClaims: string[];
 }
 
+export interface ProofRequirement {
+  requiredEvidenceTypes?: EvidenceType[];
+  requiredMethods?: EvidenceMethod[];
+  requiresCorroboration?: boolean;
+  requiredAuthority?: string;
+  notes?: string;
+}
+
+export type FaultLineType =
+  | "contradiction"
+  | "provenance_gap"
+  | "policy_violation"
+  | "freshness_breach"
+  | "corroboration_absent"
+  | "unsupported_inference";
+
+export interface FaultLine {
+  id: string;
+  claimId: string;
+  type: FaultLineType;
+  severity: ImpactLevel;
+  message: string;
+  evidenceIds?: string[];
+  policyId?: string;
+  createdAt: string;
+  metadata?: Record<string, unknown>;
+}
+
 export interface TrustReport extends TrustInput {
+  schemaVersion: 2;
   id: string;
   generatedAt: string;
   claims: Array<Claim & { status: TrustStatus }>;
+  proofRequirementsByClaimId: Record<string, ProofRequirement>;
+  faultLines: FaultLine[];
   summary: TrustReportSummary;
 }

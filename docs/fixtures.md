@@ -10,6 +10,8 @@ Fixtures are the first proof that Surface is not just a concept document. They s
 - Campfit public-data freshness
 - Taxes verified facts and discrepancy review
 
+It uses `schemaVersion: 2`, required evidence methods, structured policy method requirements, report-derived proof requirements, and typed fault-line output.
+
 ## Veritas fixtures
 
 `examples/veritas-evidence.json` is a passing Veritas evidence artifact. The adapter maps it into:
@@ -21,6 +23,8 @@ Fixtures are the first proof that Surface is not just a concept document. They s
 
 `examples/veritas-evidence-fail.json` is a failing artifact. It proves failed proof lanes and blocking policy rules become rejected Surface claims instead of optimistic confidence.
 
+Veritas fixtures now include `selected_proof_lanes` so Surface can import proof method metadata instead of inferring everything from command strings.
+
 ## Campfit fixture
 
 `examples/campfit-trust-export.json` includes approved field sources, active and stale attestations, an open review flag, completed and failed crawls, and pending/rejected proposals. It proves public-data trust can use the same statuses as developer proof without losing domain context.
@@ -28,6 +32,10 @@ Fixtures are the first proof that Surface is not just a concept document. They s
 ## Taxes fixture
 
 `examples/taxes-trust-export.json` includes verified facts, resolved facts needing verification, return-package citations, unresolved fields, assumptions, comparison gaps, and review signals. It proves high-stakes financial truth needs provenance and review state, not a single confidence score.
+
+## Reputation integrity fixture
+
+`examples/reputation-integrity-trust-export.json` distinguishes observed popularity signals, heuristic suspicion, and unsupported owner-intent accusations. It proves Surface can make a verification gap visible without converting weak evidence into a stronger claim.
 
 ## Fixture rule
 

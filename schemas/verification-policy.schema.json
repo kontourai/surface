@@ -11,6 +11,11 @@
       "type": "array",
       "items": { "enum": ["source_excerpt", "test_output", "human_attestation", "calculation_trace", "document_citation", "crawl_observation", "policy_rule"] }
     },
+    "requiredMethods": {
+      "type": "array",
+      "items": { "enum": ["observation", "extraction", "validation", "corroboration", "attestation", "auditability", "anchoring", "monitoring"] }
+    },
+    "requiresCorroboration": { "type": "boolean" },
     "requiredProof": { "type": "array", "items": { "type": "string" } },
     "reviewAuthority": { "type": "string" },
     "validityRule": {
@@ -28,4 +33,3 @@
   },
   "additionalProperties": false
 }
-

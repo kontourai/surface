@@ -20,6 +20,7 @@ const evidence: Evidence[] = [
     id: "evidence-1",
     claimId: "claim-1",
     evidenceType: "source_excerpt",
+    method: "observation",
     sourceRef: "https://example.test",
     excerptOrSummary: "Registration is open.",
     observedAt: "2026-04-01T00:00:00.000Z",
@@ -29,6 +30,7 @@ const evidence: Evidence[] = [
     id: "evidence-2",
     claimId: "claim-1",
     evidenceType: "human_attestation",
+    method: "attestation",
     sourceRef: "admin",
     excerptOrSummary: "Reviewed by operator.",
     observedAt: "2026-04-01T00:10:00.000Z",
@@ -40,6 +42,8 @@ const policy: VerificationPolicy = {
   id: "policy-1",
   claimType: "public-data-field",
   requiredEvidence: ["source_excerpt", "human_attestation"],
+  requiredMethods: ["observation", "attestation"],
+  requiresCorroboration: true,
   requiredProof: ["field review"],
   reviewAuthority: "operator",
   validityRule: { kind: "duration", durationDays: 14 },
@@ -132,11 +136,35 @@ test("does not allow a claim to self-assert verified without a verification even
   );
 });
 
+test("method and corroboration gaps do not change proposed status", () => {
+  assert.equal(
+    deriveTrustStatus({
+      claim,
+      evidence: [evidence[0]],
+      policy,
+      events: [],
+    }),
+    "unknown",
+  );
+
+  assert.equal(
+    deriveTrustStatus({
+      claim,
+      evidence: [{ ...evidence[0], method: "validation" }],
+      policy: { ...policy, requiredEvidence: ["source_excerpt"], requiredMethods: ["observation"], requiresCorroboration: false },
+      events: [],
+    }),
+    "proposed",
+  );
+});
+
 test("derives stale for commit-scoped verification when current integrity ref drifts", () => {
   const commitPolicy: VerificationPolicy = {
     id: "policy-commit",
     claimType: "software-proof",
     requiredEvidence: ["test_output"],
+    requiredMethods: ["validation"],
+    requiresCorroboration: false,
     requiredProof: ["proof lane"],
     reviewAuthority: "repo policy",
     validityRule: { kind: "commit" },
@@ -154,6 +182,7 @@ test("derives stale for commit-scoped verification when current integrity ref dr
     id: "proof-output",
     claimId: "claim-proof",
     evidenceType: "test_output",
+    method: "validation",
     sourceRef: "npm test",
     excerptOrSummary: "Tests passed.",
     observedAt: "2026-04-25T00:00:00.000Z",

@@ -1,6 +1,7 @@
 import type {
   Claim,
   Evidence,
+  EvidenceMethod,
   EvidenceType,
   TrustInput,
   TrustStatus,
@@ -100,6 +101,8 @@ const FIELD_POLICY: VerificationPolicy = {
   id: "campfit.public-field-source",
   claimType: "public-data-field",
   requiredEvidence: ["source_excerpt"],
+  requiredMethods: ["observation", "attestation"],
+  requiresCorroboration: false,
   requiredProof: ["fieldSources[field].approvedAt"],
   reviewAuthority: "campfit admin review",
   validityRule: { kind: "duration", durationDays: 30 },
@@ -112,6 +115,8 @@ const ATTESTATION_POLICY: VerificationPolicy = {
   id: "campfit.field-attestation",
   claimType: "field-attestation",
   requiredEvidence: ["human_attestation"],
+  requiredMethods: ["attestation"],
+  requiresCorroboration: false,
   requiredProof: ["approved field attestation"],
   reviewAuthority: "campfit admin",
   validityRule: { kind: "duration", durationDays: 90 },
@@ -124,6 +129,8 @@ const FLAG_POLICY: VerificationPolicy = {
   id: "campfit.review-flag",
   claimType: "review-flag",
   requiredEvidence: ["human_attestation"],
+  requiredMethods: ["attestation"],
+  requiresCorroboration: false,
   requiredProof: ["admin flag review"],
   reviewAuthority: "campfit admin",
   validityRule: { kind: "manual" },
@@ -136,6 +143,8 @@ const CRAWL_POLICY: VerificationPolicy = {
   id: "campfit.crawl-run",
   claimType: "crawl-run",
   requiredEvidence: ["crawl_observation"],
+  requiredMethods: ["observation"],
+  requiresCorroboration: false,
   requiredProof: ["crawl run completed"],
   reviewAuthority: "campfit crawler",
   validityRule: { kind: "duration", durationDays: 14 },
@@ -148,6 +157,8 @@ const PROPOSAL_POLICY: VerificationPolicy = {
   id: "campfit.change-proposal",
   claimType: "change-proposal",
   requiredEvidence: ["crawl_observation"],
+  requiredMethods: ["extraction"],
+  requiresCorroboration: false,
   requiredProof: ["proposal review"],
   reviewAuthority: "campfit admin",
   validityRule: { kind: "manual" },
@@ -197,6 +208,7 @@ export function adaptCampfitTrustExportToTrustInput(record: unknown): TrustInput
         id: evidenceId,
         claimId: id,
         type: "source_excerpt",
+        method: "observation",
         sourceRef: source.sourceUrl,
         locator: `fieldSources.${field}`,
         summary: source.excerpt ?? `Campfit field ${field} was approved from ${source.sourceUrl}.`,
@@ -250,6 +262,7 @@ export function adaptCampfitTrustExportToTrustInput(record: unknown): TrustInput
       id: evidenceId,
       claimId: id,
       type: "human_attestation",
+      method: "attestation",
       sourceRef: attestation.sourceUrl ?? attestation.approvedBy ?? attestation.id,
       locator: `fieldAttestations.${attestation.id}`,
       summary: attestation.excerpt ?? attestation.notes ?? `Campfit ${attestation.status} attestation for ${attestation.fieldKey}.`,
@@ -300,6 +313,7 @@ export function adaptCampfitTrustExportToTrustInput(record: unknown): TrustInput
       id: evidenceId,
       claimId: id,
       type: "human_attestation",
+      method: "attestation",
       sourceRef: flag.createdBy,
       locator: `reviewFlags.${flag.id}`,
       summary: flag.comment,
@@ -356,6 +370,7 @@ export function adaptCampfitTrustExportToTrustInput(record: unknown): TrustInput
       id: evidenceId,
       claimId: id,
       type: "crawl_observation",
+      method: "observation",
       sourceRef: run.id,
       locator: "crawlRuns",
       summary: `Campfit crawl ${run.status}: ${run.processedCamps}/${run.totalCamps} camps processed with ${run.errorCount} errors.`,
@@ -409,6 +424,7 @@ export function adaptCampfitTrustExportToTrustInput(record: unknown): TrustInput
       id: evidenceId,
       claimId: id,
       type: "crawl_observation",
+      method: "extraction",
       sourceRef: proposal.sourceUrl,
       locator: `proposals.${proposal.id}`,
       summary: `Campfit proposal ${proposal.status} with ${Object.keys(proposal.proposedChanges).length} proposed field changes.`,
@@ -429,6 +445,7 @@ export function adaptCampfitTrustExportToTrustInput(record: unknown): TrustInput
   }
 
   return {
+    schemaVersion: 2,
     source: campfit.source ?? "campfit-trust-export",
     claims,
     evidence,
@@ -458,6 +475,7 @@ function buildEvidence(input: {
   id: string;
   claimId: string;
   type: EvidenceType;
+  method: EvidenceMethod;
   sourceRef: string;
   locator: string;
   summary: string;
@@ -469,6 +487,7 @@ function buildEvidence(input: {
     id: input.id,
     claimId: input.claimId,
     evidenceType: input.type,
+    method: input.method,
     sourceRef: input.sourceRef,
     sourceLocator: input.locator,
     excerptOrSummary: input.summary,

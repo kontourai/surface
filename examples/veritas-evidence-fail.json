@@ -11,6 +11,15 @@
   "affected_nodes": ["verification.tests"],
   "affected_lanes": ["tests/**"],
   "selected_proof_commands": ["npm run verify"],
+  "selected_proof_lanes": [
+    {
+      "id": "repo-verify",
+      "command": "npm run verify",
+      "method": "validation",
+      "surface_claim_ids": ["veritas.surface-veritas-fail.proof.repo-verify"],
+      "summary": "Runs the repository verification suite for schema and reference tests."
+    }
+  ],
   "proof_resolution_source": "required-proof-lane",
   "uncovered_path_result": "fail",
   "baseline_ci_fast_passed": false,
@@ -41,8 +50,17 @@
       "matchedArtifacts": ["README.md"]
     },
     "non_sliceable_invariants": ["baseline proof lane", "tracked policy artifacts"],
-    "required_proof_lanes": ["npm run verify"],
-    "default_proof_lanes": ["npm run verify"],
+    "proof_lanes": [
+      {
+        "id": "repo-verify",
+        "command": "npm run verify",
+        "method": "validation",
+        "surface_claim_ids": ["veritas.surface-veritas-fail.proof.repo-verify"],
+        "summary": "Runs the repository verification suite for schema and reference tests."
+      }
+    ],
+    "required_proof_lane_ids": ["repo-verify"],
+    "default_proof_lane_ids": ["repo-verify"],
     "surface_proof_lanes": [],
     "uncovered_path_policy": "fail"
   },

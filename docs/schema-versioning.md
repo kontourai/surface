@@ -4,10 +4,10 @@ Surface schemas are product contracts. They should change more slowly than imple
 
 ## Current version
 
-The initial schema family is `0.1.x` and covers:
+The current trust input and report contract is `schemaVersion: 2` and covers:
 
 - claims
-- evidence
+- evidence with required verification `method`
 - verification policies
 - verification events
 - trust reports
@@ -19,6 +19,39 @@ The initial schema family is `0.1.x` and covers:
 - Enum additions are compatibility-sensitive because old validators may reject them.
 - Removed fields require a documented replacement and fixture coverage.
 - Adapter-specific records should stay outside the core schema unless the concept is portable across products.
+
+## v1 to v2 migration
+
+Version 2 intentionally chooses a clean contract over silent compatibility:
+
+- add top-level `"schemaVersion": 2` to Surface trust inputs and reports
+- add `method` to every evidence record
+- add `requiredMethods` and `requiresCorroboration` to verification policies when method depth matters
+- read proof requirements from report-level `proofRequirementsByClaimId`, not duplicated claim fields
+- read typed report gaps from `faultLines` and `summary.faultLinesByType`
+
+Before:
+
+```json
+{
+  "source": "example",
+  "evidence": [
+    { "id": "e1", "claimId": "c1", "evidenceType": "test_output" }
+  ]
+}
+```
+
+After:
+
+```json
+{
+  "schemaVersion": 2,
+  "source": "example",
+  "evidence": [
+    { "id": "e1", "claimId": "c1", "evidenceType": "test_output", "method": "validation" }
+  ]
+}
+```
 
 ## Migration expectation
 

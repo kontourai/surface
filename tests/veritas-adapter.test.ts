@@ -44,6 +44,17 @@ test("rejects malformed Veritas evidence before trust report generation", () => 
   );
 });
 
+test("rejects legacy command-only Veritas evidence before trust report generation", async () => {
+  const raw = await readFile("examples/veritas-evidence.json", "utf8");
+  const legacy = JSON.parse(raw);
+  delete legacy.selected_proof_lanes;
+
+  assert.throws(
+    () => adaptVeritasEvidenceToTrustInput(legacy),
+    /selected_proof_lanes/,
+  );
+});
+
 test("CLI can report directly from a Veritas evidence artifact", async () => {
   const { stdout } = await execFileAsync("node", [
     "bin/surface.mjs",
