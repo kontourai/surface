@@ -7,6 +7,7 @@ const pages = [
   ["concepts", "docs/concepts.md", "Concepts"],
   ["use-cases", "docs/use-cases.md", "Use Cases"],
   ["architecture", "docs/architecture.md", "Architecture"],
+  ["surface-foundation", "docs/architecture/surface-foundation.md", "Surface Foundation"],
   ["cli", "docs/cli.md", "CLI"],
   ["schemas", "docs/schemas.md", "Schemas"],
   ["schema-versioning", "docs/schema-versioning.md", "Schema Versioning"],

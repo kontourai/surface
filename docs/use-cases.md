@@ -11,6 +11,24 @@ Surface should be able to represent claims like:
 - This proof lane passed for this commit.
 - This governance surface was or was not weakened.
 
+Veritas artifacts can now carry `surface.input`, a portable Surface `TrustInput` projection. Surface still generates the final report, fault lines, proof requirements, and summary.
+
+### Work-agent prove-out
+
+`work-agent` is the brownfield proving ground for the Veritas-to-Surface boundary. It has repo governance proof lanes, proof-family inventories, policy packs, and connected-agent tests. The intended flow is:
+
+```bash
+WORK_AGENT_REPO=/path/to/work-agent
+SURFACE_REPO=/path/to/kontourai/surface
+
+cd "$WORK_AGENT_REPO"
+npm exec -- veritas shadow run --working-tree --format feedback --run-id work-agent-surface-shadow
+artifact_path="$(npm exec -- veritas report --working-tree --format json --run-id work-agent-surface-shadow | node -e 'let data=""; process.stdin.on("data", c => data += c); process.stdin.on("end", () => { const parsed = JSON.parse(data); if (!parsed.artifactPath) throw new Error("missing artifactPath"); console.log(parsed.artifactPath); });')"
+node "$SURFACE_REPO/bin/surface.mjs" report --adapter veritas --input "$artifact_path" --format summary
+```
+
+Proof lanes and proof families remain Veritas-local workflow mechanics. Their portable output is the Surface claim/evidence/policy/event input.
+
 ## Campfit
 
 `campfit` is a public-data trust use case. Parents rely on camp details, registration status, pricing, schedules, and provider information.

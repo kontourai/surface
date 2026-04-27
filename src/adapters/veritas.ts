@@ -38,6 +38,8 @@ export interface VeritasEvidenceRecord {
   selected_proof_commands: string[];
   selected_proof_lanes: VeritasSelectedProofLane[];
   proof_resolution_source: string;
+  proof_family_results?: VeritasProofFamilyResult[];
+  verification_budget?: VeritasVerificationBudget;
   uncovered_path_result: "clear" | "ignore" | "warn" | "fail";
   baseline_ci_fast_passed: boolean | null;
   promotion_allowed: boolean;
@@ -57,6 +59,9 @@ export interface VeritasEvidenceRecord {
   policy_results: VeritasPolicyResult[];
   files?: string[];
   unresolved_files?: string[];
+  surface?: {
+    input?: TrustInput;
+  };
 }
 
 export interface VeritasSelectedProofLane {
@@ -65,6 +70,45 @@ export interface VeritasSelectedProofLane {
   method: EvidenceMethod;
   surface_claim_ids?: string[];
   summary?: string;
+}
+
+export interface VeritasProofFamilyResult {
+  id: string;
+  lane_id: string;
+  source_proof_lane_id: string | null;
+  manifest_path: string;
+  destination: string | null;
+  owner: string | null;
+  disposition: string;
+  blocking_status: string;
+  verification_weight: "blocking" | "advisory" | "informational";
+  selected: boolean;
+  recent_catch_evidence: string;
+  regression_severity: string;
+  false_positive_risk: string;
+  replacement_test_available: string | null;
+  review_trigger: string | null;
+  last_reviewed: string | null;
+  evidence_basis: string;
+  freshness_status: "current" | "review-needed" | "stale" | "retiring";
+  rationale: string;
+}
+
+export interface VeritasVerificationBudget {
+  proof_lane_count: number;
+  selected_proof_lane_count: number;
+  proof_family_count: number;
+  required_family_count: number;
+  candidate_family_count: number;
+  advisory_family_count: number;
+  move_to_test_family_count: number;
+  retire_family_count: number;
+  upstream_candidate_count: number;
+  unknown_catch_evidence_family_ids: string[];
+  missing_review_trigger_family_ids: string[];
+  stale_family_ids: string[];
+  stale_or_unknown_family_ids: string[];
+  recommendation: string;
 }
 
 const SURFACE_POLICY: VerificationPolicy = {
@@ -109,8 +153,39 @@ const POLICY_RESULT_POLICY: VerificationPolicy = {
   impactLevel: "high",
 };
 
+const PROOF_FAMILY_POLICY: VerificationPolicy = {
+  id: "veritas.proof-family",
+  claimType: "veritas-proof-family",
+  requiredEvidence: ["policy_rule"],
+  requiredMethods: ["validation"],
+  requiresCorroboration: false,
+  requiredProof: ["proof-family manifest"],
+  reviewAuthority: "veritas proof family owner",
+  validityRule: { kind: "manual" },
+  stalenessTriggers: ["review trigger changes", "freshness status changes", "catch evidence changes"],
+  conflictRules: ["stale or unknown proof families dispute promotion readiness"],
+  impactLevel: "medium",
+};
+
+const VERIFICATION_BUDGET_POLICY: VerificationPolicy = {
+  id: "veritas.verification-budget",
+  claimType: "veritas-verification-budget",
+  requiredEvidence: ["policy_rule"],
+  requiredMethods: ["auditability"],
+  requiresCorroboration: false,
+  requiredProof: ["verification budget"],
+  reviewAuthority: "veritas",
+  validityRule: { kind: "commit" },
+  stalenessTriggers: ["proof family inventory changes", "proof lane inventory changes"],
+  conflictRules: ["unknown or stale proof families dispute budget readiness"],
+  impactLevel: "medium",
+};
+
 export function adaptVeritasEvidenceToTrustInput(record: unknown): TrustInput {
   const veritas = assertVeritasEvidenceRecord(record);
+  if (isObject(veritas.surface) && isObject(veritas.surface.input)) {
+    return veritas.surface.input as unknown as TrustInput;
+  }
   const claims: Claim[] = [];
   const evidence: Evidence[] = [];
   const events: VerificationEvent[] = [];
@@ -266,6 +341,11 @@ export function adaptVeritasEvidenceToTrustInput(record: unknown): TrustInput {
         classification: result.classification,
         implemented: result.implemented,
         passed: result.passed,
+        faultLineHints: result.passed === false ? [{
+          type: "policy_violation",
+          severity: policyImpact(result),
+          message: result.message,
+        }] : [],
       },
     }));
     if (status !== "proposed") {
@@ -281,12 +361,151 @@ export function adaptVeritasEvidenceToTrustInput(record: unknown): TrustInput {
     }
   }
 
+  for (const family of veritas.proof_family_results ?? []) {
+    const id = claimId(veritas.run_id, "proof-family", family.id);
+    const evidenceId = `${id}.evidence`;
+    const status = proofFamilyStatus(family);
+    const impactLevel = proofFamilyImpact(family);
+    claims.push({
+      id,
+      subjectType: "repo-proof-family",
+      subjectId: `${adapterName}:${family.lane_id}:${family.id}`,
+      surface: "veritas.proof-families",
+      claimType: "veritas-proof-family",
+      fieldOrBehavior: "proofFamilyDisposition",
+      value: {
+        id: family.id,
+        destination: family.destination,
+        disposition: family.disposition,
+      },
+      status: status === "verified" ? undefined : status,
+      createdAt: veritas.timestamp,
+      updatedAt: veritas.timestamp,
+      impactLevel,
+      currentIntegrityRef: veritas.source_ref,
+      verificationPolicyId: PROOF_FAMILY_POLICY.id,
+      confidenceBasis: {
+        sourceQuality: family.recent_catch_evidence === "unknown" || family.evidence_basis === "unknown" ? "weak" : "moderate",
+        reviewerAuthority: family.owner ? "operator" : "none",
+        proofStrength: proofFamilyStrength(family),
+        conflictCount: family.false_positive_risk === "high" || family.false_positive_risk === "unknown" ? 1 : 0,
+        impactLevel,
+      },
+      metadata: {
+        laneId: family.lane_id,
+        sourceProofLaneId: family.source_proof_lane_id,
+        manifestPath: family.manifest_path,
+        owner: family.owner,
+        blockingStatus: family.blocking_status,
+        verificationWeight: family.verification_weight,
+        selected: family.selected,
+        regressionSeverity: family.regression_severity,
+        falsePositiveRisk: family.false_positive_risk,
+        replacementTestAvailable: family.replacement_test_available,
+        reviewTrigger: family.review_trigger,
+        lastReviewed: family.last_reviewed,
+        evidenceBasis: family.evidence_basis,
+        freshnessStatus: family.freshness_status,
+      },
+    });
+    evidence.push(buildEvidence({
+      id: evidenceId,
+      claimId: id,
+      type: "policy_rule",
+      method: "validation",
+      record: veritas,
+      locator: family.manifest_path,
+      summary: proofFamilySummary(family),
+      metadata: {
+        familyId: family.id,
+        laneId: family.lane_id,
+        owner: family.owner,
+        selected: family.selected,
+        recentCatchEvidence: family.recent_catch_evidence,
+        evidenceBasis: family.evidence_basis,
+        freshnessStatus: family.freshness_status,
+        faultLineHints: proofFamilyFaultLineHints(family),
+      },
+    }));
+    events.push(buildEvent({
+      id: `${id}.${status}`,
+      claimId: id,
+      status,
+      method: "proof family inventory",
+      evidenceIds: [evidenceId],
+      record: veritas,
+      verifiedAt: isoDateTimeOrUndefined(family.last_reviewed),
+      notes: family.rationale,
+    }));
+  }
+
+  if (veritas.verification_budget) {
+    const id = claimId(veritas.run_id, "budget", "verification");
+    const evidenceId = `${id}.evidence`;
+    const status: TrustStatus = veritas.verification_budget.stale_or_unknown_family_ids.length > 0 ? "disputed" : "verified";
+    claims.push({
+      id,
+      subjectType: "repo-verification-budget",
+      subjectId: `${adapterName}:verification-budget`,
+      surface: "veritas.verification-budget",
+      claimType: "veritas-verification-budget",
+      fieldOrBehavior: "verificationBudget",
+      value: {
+        proofFamilyCount: veritas.verification_budget.proof_family_count,
+        selectedProofLaneCount: veritas.verification_budget.selected_proof_lane_count,
+        staleOrUnknownFamilyIds: veritas.verification_budget.stale_or_unknown_family_ids,
+      },
+      status,
+      createdAt: veritas.timestamp,
+      updatedAt: veritas.timestamp,
+      impactLevel: veritas.verification_budget.stale_or_unknown_family_ids.length > 0 ? "high" : "medium",
+      currentIntegrityRef: veritas.source_ref,
+      verificationPolicyId: VERIFICATION_BUDGET_POLICY.id,
+      confidenceBasis: {
+        sourceQuality: "strong",
+        reviewerAuthority: "system",
+        proofStrength: veritas.verification_budget.stale_or_unknown_family_ids.length > 0 ? "weak" : "moderate",
+        conflictCount: veritas.verification_budget.stale_or_unknown_family_ids.length,
+        impactLevel: veritas.verification_budget.stale_or_unknown_family_ids.length > 0 ? "high" : "medium",
+      },
+      metadata: {
+        verificationBudget: veritas.verification_budget,
+      },
+    });
+    evidence.push(buildEvidence({
+      id: evidenceId,
+      claimId: id,
+      type: "policy_rule",
+      method: "auditability",
+      record: veritas,
+      locator: "verification_budget",
+      summary: veritas.verification_budget.recommendation,
+      metadata: {
+        verificationBudget: veritas.verification_budget,
+        faultLineHints: veritas.verification_budget.stale_or_unknown_family_ids.length > 0 ? [{
+          type: "freshness_breach",
+          severity: "high",
+          message: veritas.verification_budget.recommendation,
+        }] : [],
+      },
+    }));
+    events.push(buildEvent({
+      id: `${id}.${status}`,
+      claimId: id,
+      status,
+      method: "verification budget",
+      evidenceIds: [evidenceId],
+      record: veritas,
+      notes: veritas.verification_budget.recommendation,
+    }));
+  }
+
   return {
     schemaVersion: 2,
     source,
     claims,
     evidence,
-    policies: [SURFACE_POLICY, PROOF_POLICY, POLICY_RESULT_POLICY],
+    policies: [SURFACE_POLICY, PROOF_POLICY, POLICY_RESULT_POLICY, PROOF_FAMILY_POLICY, VERIFICATION_BUDGET_POLICY],
     events,
   };
 }
@@ -322,6 +541,12 @@ function assertVeritasEvidenceRecord(value: unknown): VeritasEvidenceRecord {
   for (const result of requireArray(value, "policy_results")) {
     assertVeritasPolicyResult(result);
   }
+  if (value.proof_family_results !== undefined) {
+    for (const family of requireArray(value, "proof_family_results")) {
+      assertVeritasProofFamilyResult(family);
+    }
+  }
+  if (value.verification_budget !== undefined) assertVeritasVerificationBudget(value.verification_budget);
   return value as unknown as VeritasEvidenceRecord;
 }
 
@@ -348,6 +573,58 @@ function assertVeritasPolicyResult(value: unknown): void {
   if (typeof value.implemented !== "boolean") throw new Error("Veritas policy result implemented must be boolean");
   if (typeof value.passed !== "boolean" && value.passed !== null) throw new Error("Veritas policy result passed must be boolean or null");
   if (!Array.isArray(value.findings)) throw new Error("Veritas policy result findings must be an array");
+}
+
+function assertVeritasProofFamilyResult(value: unknown): void {
+  if (!isObject(value)) throw new Error("Veritas proof family result must be an object");
+  for (const field of [
+    "id",
+    "lane_id",
+    "manifest_path",
+    "disposition",
+    "blocking_status",
+    "verification_weight",
+    "recent_catch_evidence",
+    "regression_severity",
+    "false_positive_risk",
+    "evidence_basis",
+    "freshness_status",
+    "rationale",
+  ]) {
+    requireString(value, field);
+  }
+  for (const field of ["source_proof_lane_id", "destination", "owner", "replacement_test_available", "review_trigger", "last_reviewed"]) {
+    if (typeof value[field] !== "string" && value[field] !== null) {
+      throw new Error(`Veritas proof family result ${field} must be string or null`);
+    }
+  }
+  if (typeof value.selected !== "boolean") throw new Error("Veritas proof family result selected must be boolean");
+}
+
+function assertVeritasVerificationBudget(value: unknown): void {
+  if (!isObject(value)) throw new Error("Veritas verification budget must be an object");
+  for (const field of [
+    "proof_lane_count",
+    "selected_proof_lane_count",
+    "proof_family_count",
+    "required_family_count",
+    "candidate_family_count",
+    "advisory_family_count",
+    "move_to_test_family_count",
+    "retire_family_count",
+    "upstream_candidate_count",
+  ]) {
+    if (typeof value[field] !== "number") throw new Error(`Veritas verification budget ${field} must be a number`);
+  }
+  for (const field of [
+    "unknown_catch_evidence_family_ids",
+    "missing_review_trigger_family_ids",
+    "stale_family_ids",
+    "stale_or_unknown_family_ids",
+  ]) {
+    requireStringArray(value, field);
+  }
+  requireString(value, "recommendation");
 }
 
 function buildEvidence(input: {
@@ -389,6 +666,7 @@ function buildEvent(input: {
   evidenceIds: string[];
   record: VeritasEvidenceRecord;
   notes?: string;
+  verifiedAt?: string;
 }): VerificationEvent {
   return {
     id: input.id,
@@ -398,9 +676,61 @@ function buildEvent(input: {
     method: input.method,
     evidenceIds: input.evidenceIds,
     createdAt: input.record.timestamp,
-    verifiedAt: input.status === "verified" ? input.record.timestamp : undefined,
+    verifiedAt: input.status === "verified" ? (input.verifiedAt ?? input.record.timestamp) : undefined,
     notes: input.notes,
   };
+}
+
+function proofFamilyStatus(family: VeritasProofFamilyResult): TrustStatus {
+  if (family.freshness_status === "stale" || family.freshness_status === "review-needed") return "stale";
+  if (family.freshness_status === "retiring" || family.disposition === "retire") return "superseded";
+  if (family.blocking_status === "rejected") return "rejected";
+  if (family.blocking_status === "disputed") return "disputed";
+  if (family.disposition === "required" && family.recent_catch_evidence !== "unknown") return "verified";
+  return "proposed";
+}
+
+function proofFamilyImpact(family: VeritasProofFamilyResult): ImpactLevel {
+  if (family.regression_severity === "critical") return "critical";
+  if (family.regression_severity === "high" || family.verification_weight === "blocking" || family.blocking_status === "required") return "high";
+  if (family.regression_severity === "low" || family.verification_weight === "informational") return "low";
+  return "medium";
+}
+
+function proofFamilyStrength(family: VeritasProofFamilyResult): "none" | "weak" | "moderate" | "strong" {
+  if (family.recent_catch_evidence === "unknown" || family.evidence_basis === "unknown") return "weak";
+  if (family.disposition === "required" && family.freshness_status === "current") return "strong";
+  return "moderate";
+}
+
+function proofFamilySummary(family: VeritasProofFamilyResult): string {
+  const rationale = family.rationale ? ` ${family.rationale}` : "";
+  return `Proof family ${family.id} is ${family.disposition} / ${family.blocking_status}; freshness ${family.freshness_status}; evidence ${family.evidence_basis}.${rationale}`;
+}
+
+function proofFamilyFaultLineHints(family: VeritasProofFamilyResult): Array<Record<string, unknown>> {
+  const hints: Array<Record<string, unknown>> = [];
+  if (family.freshness_status === "stale" || family.freshness_status === "review-needed" || family.freshness_status === "retiring") {
+    hints.push({
+      type: "freshness_breach",
+      severity: proofFamilyImpact(family),
+      message: `Proof family ${family.id} freshness is ${family.freshness_status}.`,
+    });
+  }
+  if (family.recent_catch_evidence === "unknown" || family.evidence_basis === "unknown") {
+    hints.push({
+      type: "provenance_gap",
+      severity: proofFamilyImpact(family),
+      message: `Proof family ${family.id} has weak or unknown catch evidence.`,
+    });
+  }
+  return hints;
+}
+
+function isoDateTimeOrUndefined(value: string | null): string | undefined {
+  if (!value) return undefined;
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value)) return value;
+  return undefined;
 }
 
 function policyResultStatus(result: VeritasPolicyResult): TrustStatus {

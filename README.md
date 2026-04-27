@@ -41,6 +41,8 @@ npm run build
 node bin/surface.mjs report --adapter veritas --input examples/veritas-evidence.json --format summary
 ```
 
+Architecture note: [Surface Foundation Boundary](docs/architecture/surface-foundation.md) defines the rule that portable truth concepts belong in Surface while product workflow mechanics stay in product layers like Veritas.
+
 Campfit and taxes trust exports use the same report contract:
 
 ```bash

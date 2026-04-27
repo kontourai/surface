@@ -28,6 +28,12 @@ Events are append-only status transitions for a claim.
 
 Schema: `schemas/verification-event.schema.json`
 
+## Trust Input
+
+A trust input packages claims, evidence, policies, and events before Surface generates report-only fields.
+
+Schema: `schemas/trust-input.schema.json`
+
 ## Trust Report
 
 A report packages claims, evidence, policies, events, report-derived proof requirements, typed fault lines, and a derived summary.
