@@ -14,6 +14,7 @@ Surface owns:
 - verification events
 - freshness and status
 - conflict and fault-line generation
+- proof requirements
 - owner and confidence basis
 - generated trust reports
 
@@ -44,3 +45,14 @@ Surface remains responsible for generated report fields such as `id`, `generated
 ## Promotion Rule
 
 A concept should move into Surface only when it repeats across more than one product domain or is clearly independent of a single product's workflow. Until then, keep it product-local and map it through claim/evidence/policy/event metadata.
+
+## Foundation Contract
+
+Every product layer built on Surface should make the boundary explicit:
+
+1. Product artifacts may include native workflow fields.
+2. Product artifacts should expose portable truth through Surface `TrustInput` records or an adapter that produces them.
+3. Surface generates report-only fields after validation.
+4. Product-specific lifecycle language should stay outside Surface until it repeats across domains.
+
+For Veritas, that means proof lanes, proof families, verification budgets, policy packs, and shadow runs remain Veritas-native. Their portable output is `surface.input`, which Surface turns into claims, evidence, policies, events, fault lines, proof requirements, and summaries.

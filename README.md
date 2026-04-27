@@ -1,6 +1,6 @@
 # Kontour Surface
 
-Kontour Surface maps what a product claims, what proves it, where trust is missing or stale, and what humans or AI agents need to verify next.
+Kontour Surface is the foundation trust substrate for Kontour AI products. It maps what a product claims, what proves it, where trust is missing or stale, and what humans or AI agents need to verify next.
 
 It is not a promise of perfect truth. It is infrastructure for evidence-backed systems: claims, evidence, verification policies, freshness, conflict state, and inspectable reports.
 
@@ -15,13 +15,13 @@ AI makes plausible output cheap. Products now need a durable way to answer:
 - What changed or conflicted since then?
 - What should a human or agent prove before relying on it?
 
-## Validation surfaces
+## Product layers
 
-- `veritas`: developer proof for repo surfaces, policy packs, proof lanes, and evidence artifacts.
+- `veritas`: developer and AI-agent governance built on Surface through repo surfaces, policy packs, proof lanes, and evidence artifacts.
 - `campfit`: public-data verification through crawl evidence, field attestations, review flags, and freshness.
 - `taxes`: high-stakes fact verification through extraction, resolution, verified facts, citations, and review signals.
 
-These are proof customers for the trust layer, not the whole Kontour AI business.
+These are product layers and proof customers for the trust layer, not the whole Kontour AI business. Each product can keep its own workflow language, but portable truth flows through Surface claims, evidence, policies, events, and reports.
 
 ## Quickstart
 
@@ -41,7 +41,7 @@ npm run build
 node bin/surface.mjs report --adapter veritas --input examples/veritas-evidence.json --format summary
 ```
 
-Architecture note: [Surface Foundation Boundary](docs/architecture/surface-foundation.md) defines the rule that portable truth concepts belong in Surface while product workflow mechanics stay in product layers like Veritas.
+Architecture note: [Surface Foundation Boundary](docs/architecture/surface-foundation.md) defines the rule that portable truth concepts belong in Surface while product workflow mechanics stay in product layers like Veritas. Veritas artifacts may embed `surface.input`; Surface remains responsible for generated report fields such as summaries, fault lines, proof requirements, freshness, and status.
 
 Campfit and taxes trust exports use the same report contract:
 

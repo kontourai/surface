@@ -16,6 +16,8 @@ Generate a report from a Veritas evidence artifact:
 surface report --adapter veritas --input examples/veritas-evidence.json --format summary
 ```
 
+Veritas artifacts may include `surface.input`, a Surface `TrustInput` projection. Surface still validates the input and generates report-only fields such as `id`, `generatedAt`, `summary`, `faultLines`, and `proofRequirementsByClaimId`.
+
 Generate reports from cross-domain trust exports:
 
 ```bash

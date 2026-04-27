@@ -1,6 +1,6 @@
 # Architecture
 
-Kontour Surface has four layers.
+Kontour Surface has four layers. Product systems such as Veritas sit above these layers; they keep domain workflow language while mapping portable truth into the Surface kernel.
 
 ## 1. Kernel
 
@@ -25,7 +25,7 @@ Initial adapters:
 - `campfit`: field sources, attestations, proposals, review flags, crawl runs, change logs.
 - `taxes`: extracted facts, resolved facts, verified facts, citations, discrepancy traces, review signals.
 
-Adapters should start read-only. The first implemented adapter is `veritas`, which maps evidence artifacts into affected-surface claims, proof-lane claims, policy-result claims, and verification events. The next adapters, `campfit` and `taxes`, prove the same contract across public-data verification and high-stakes financial fact verification.
+Adapters should start read-only. The first implemented adapter is `veritas`, which maps evidence artifacts into affected-surface claims, proof-lane claims, policy-result claims, and verification events. Current Veritas artifacts can also embed `surface.input`; when that exists, Surface treats it as the portable TrustInput and still owns the generated trust report. The next adapters, `campfit` and `taxes`, prove the same contract across public-data verification and high-stakes financial fact verification.
 
 ## 3. Reports and Agent API
 
