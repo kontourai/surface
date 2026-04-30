@@ -12,7 +12,7 @@ test("builds a canonical trust report from validation fixtures", async () => {
   });
 
   assert.equal(report.id, "test-report");
-  assert.equal(report.schemaVersion, 2);
+  assert.equal(report.schemaVersion, 3);
   assert.equal(report.summary.totalClaims, 4);
   assert.equal(report.summary.byStatus.verified, 2);
   assert.equal(report.summary.byStatus.stale, 1);

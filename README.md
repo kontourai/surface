@@ -6,14 +6,14 @@ It is not a promise of perfect truth. It is infrastructure for evidence-backed s
 
 ## Why this exists
 
-AI makes plausible output cheap. Products now need a durable way to answer:
+AI makes plausible output cheap. Before a human or an agent acts on a claim, four things have to hold:
 
-- What are we claiming?
-- What evidence backs that claim?
-- How was it verified?
-- How long is that verification valid?
-- What changed or conflicted since then?
-- What should a human or agent prove before relying on it?
+- **Subject** — we know what or who the claim is about, even when the same real subject appears under different keys in different systems.
+- **Evidence** — there is a traceable record of what supports the claim, who collected it, and how it was verified.
+- **Freshness** — the verification is still valid for this decision and we know what changed since it was made.
+- **Consistency** — no other claim about the same subject contradicts, supersedes, or disputes it.
+
+Surface keeps that structure inspectable instead of burying it inside a prompt, a dashboard, or a single confidence score.
 
 ## Product layers
 

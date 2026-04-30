@@ -11,6 +11,9 @@ import type {
   VerificationPolicy,
 } from "./types.js";
 import { deriveTrustStatus } from "./status.js";
+import { buildIdentityIndex } from "./identity.js";
+import { resolvePolicyForClaim } from "./policy-resolver.js";
+import { applyDerivation } from "./derivation.js";
 
 const STATUSES: TrustStatus[] = ["unknown", "proposed", "verified", "stale", "disputed", "superseded", "rejected"];
 const FAULT_LINE_TYPES: FaultLineType[] = [
@@ -26,13 +29,24 @@ export function buildTrustReport(input: TrustInput, options: { now?: Date; id?: 
   const now = options.now ?? new Date();
   const proofRequirementsByClaimId: Record<string, ProofRequirement> = {};
   const faultLines: FaultLine[] = [];
-  const claims = input.claims.map((claim) => {
+  const identityIndex = buildIdentityIndex(input);
+  const policyByClaimId = new Map<string, VerificationPolicy>();
+
+  // Pass 1: compute each claim's own status (pre-derivation) and per-claim
+  // policy fault lines. Derivation needs the full set of own-statuses, so we
+  // capture them here and apply the derivation ceiling in pass 2.
+  const ownStatusByClaimId = new Map<string, TrustStatus>();
+  const claimsById = new Map<string, Claim>();
+  const ownStatuses = input.claims.map((claim) => {
+    claimsById.set(claim.id, claim);
     const evidence = input.evidence.filter((item) => item.claimId === claim.id);
-    const policy = input.policies.find((item) => item.id === claim.verificationPolicyId || item.claimType === claim.claimType);
-    const status = deriveTrustStatus({ claim, evidence, policy, events: input.events, now });
+    const policy = resolvePolicyForClaim(claim, input.policies);
+    if (policy) policyByClaimId.set(claim.id, policy);
+    const ownStatus = deriveTrustStatus({ claim, evidence, policy, events: input.events, now });
+    ownStatusByClaimId.set(claim.id, ownStatus);
     if (policy) {
       proofRequirementsByClaimId[claim.id] = proofRequirementFromPolicy(policy);
-      faultLines.push(...deriveFaultLines({ claim, evidence, policy, status, now }));
+      faultLines.push(...deriveFaultLines({ claim, evidence, policy, status: ownStatus, now }));
     } else if (evidence.length === 0) {
       faultLines.push({
         id: `${claim.id}.fault.provenance-gap`,
@@ -43,11 +57,27 @@ export function buildTrustReport(input: TrustInput, options: { now?: Date; id?: 
         createdAt: now.toISOString(),
       });
     }
-    return { ...claim, status };
+    return { claim, ownStatus };
   });
 
+  // Pass 2: apply derivedFrom ceilings.
+  const claims = ownStatuses.map(({ claim, ownStatus }) => {
+    const outcome = applyDerivation({ claim, ownStatus, ownStatusByClaimId, claimsById, now });
+    faultLines.push(...outcome.faultLines);
+    return { ...claim, status: outcome.status };
+  });
+
+  // Cross-claim incompatibility detection. For each policy, group its claims by
+  // canonical subject, then check declared incompatible value/status pairs.
+  faultLines.push(...deriveIncompatibilityFaultLines({
+    claims,
+    policyByClaimId,
+    canonicalKeyForClaim: (claim) => identityIndex.canonicalKeyForClaim(claim),
+    now,
+  }));
+
   return {
-    schemaVersion: 2,
+    schemaVersion: input.schemaVersion,
     id: options.id ?? `surface-${now.getTime()}`,
     generatedAt: now.toISOString(),
     source: input.source,
@@ -55,8 +85,10 @@ export function buildTrustReport(input: TrustInput, options: { now?: Date; id?: 
     evidence: input.evidence,
     policies: input.policies,
     events: input.events,
+    identityLinks: input.identityLinks ?? [],
     proofRequirementsByClaimId,
     faultLines,
+    subjectGroups: identityIndex.groups,
     summary: summarizeClaims(claims, faultLines),
   };
 }
@@ -225,4 +257,111 @@ function isFaultLineType(value: unknown): value is FaultLineType {
 
 function isImpactLevel(value: unknown): value is FaultLine["severity"] {
   return value === "low" || value === "medium" || value === "high" || value === "critical";
+}
+
+function deriveIncompatibilityFaultLines(input: {
+  claims: Array<Claim & { status: TrustStatus }>;
+  policyByClaimId: Map<string, VerificationPolicy>;
+  canonicalKeyForClaim: (claim: Claim) => string;
+  now: Date;
+}): FaultLine[] {
+  const faultLines: FaultLine[] = [];
+  const createdAt = input.now.toISOString();
+
+  // Group claims by (policy.id, canonicalSubjectKey).
+  type Group = { policy: VerificationPolicy; subjectKey: string; claims: Array<Claim & { status: TrustStatus }> };
+  const groupsByKey = new Map<string, Group>();
+  for (const claim of input.claims) {
+    const policy = input.policyByClaimId.get(claim.id);
+    if (!policy) continue;
+    if (!hasIncompatibilityRules(policy)) continue;
+    const subjectKey = input.canonicalKeyForClaim(claim);
+    const groupKey = `${policy.id}::${subjectKey}`;
+    const group = groupsByKey.get(groupKey) ?? { policy, subjectKey, claims: [] };
+    group.claims.push(claim);
+    groupsByKey.set(groupKey, group);
+  }
+
+  for (const group of groupsByKey.values()) {
+    if (group.claims.length < 2) continue;
+    for (let i = 0; i < group.claims.length; i += 1) {
+      for (let j = i + 1; j < group.claims.length; j += 1) {
+        const a = group.claims[i];
+        const b = group.claims[j];
+
+        for (const pair of group.policy.incompatibleValues ?? []) {
+          if (matchValuePair(a.value, b.value, pair.values)) {
+            faultLines.push({
+              id: `${a.id}.${b.id}.fault.contradiction-values`,
+              claimId: a.id,
+              type: "contradiction",
+              severity: a.impactLevel ?? b.impactLevel ?? group.policy.impactLevel,
+              message:
+                pair.message ??
+                `Claims ${a.id} and ${b.id} hold incompatible values under policy ${group.policy.id}.`,
+              policyId: group.policy.id,
+              createdAt,
+              metadata: { peerClaimId: b.id, subjectKey: group.subjectKey, source: "policy.incompatibleValues" },
+            });
+          }
+        }
+
+        for (const pair of group.policy.incompatibleStatuses ?? []) {
+          if (matchStatusPair(a.status, b.status, pair.statuses)) {
+            faultLines.push({
+              id: `${a.id}.${b.id}.fault.contradiction-statuses`,
+              claimId: a.id,
+              type: "contradiction",
+              severity: a.impactLevel ?? b.impactLevel ?? group.policy.impactLevel,
+              message:
+                pair.message ??
+                `Claims ${a.id} and ${b.id} hold incompatible statuses under policy ${group.policy.id}.`,
+              policyId: group.policy.id,
+              createdAt,
+              metadata: { peerClaimId: b.id, subjectKey: group.subjectKey, source: "policy.incompatibleStatuses" },
+            });
+          }
+        }
+      }
+    }
+  }
+
+  return faultLines;
+}
+
+function hasIncompatibilityRules(policy: VerificationPolicy): boolean {
+  return (
+    (Array.isArray(policy.incompatibleValues) && policy.incompatibleValues.length > 0) ||
+    (Array.isArray(policy.incompatibleStatuses) && policy.incompatibleStatuses.length > 0)
+  );
+}
+
+function matchValuePair(a: unknown, b: unknown, pair: [unknown, unknown]): boolean {
+  return (deepEqual(a, pair[0]) && deepEqual(b, pair[1])) || (deepEqual(a, pair[1]) && deepEqual(b, pair[0]));
+}
+
+function matchStatusPair(a: TrustStatus, b: TrustStatus, pair: [TrustStatus, TrustStatus]): boolean {
+  return (a === pair[0] && b === pair[1]) || (a === pair[1] && b === pair[0]);
+}
+
+function deepEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (a === null || b === null) return false;
+  if (typeof a !== typeof b) return false;
+  if (typeof a !== "object") return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i += 1) {
+      if (!deepEqual(a[i], b[i])) return false;
+    }
+    return true;
+  }
+  const aKeys = Object.keys(a as Record<string, unknown>);
+  const bKeys = Object.keys(b as Record<string, unknown>);
+  if (aKeys.length !== bKeys.length) return false;
+  for (const key of aKeys) {
+    if (!deepEqual((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key])) return false;
+  }
+  return true;
 }

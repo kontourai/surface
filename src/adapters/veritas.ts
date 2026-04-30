@@ -114,6 +114,7 @@ export interface VeritasVerificationBudget {
 const SURFACE_POLICY: VerificationPolicy = {
   id: "veritas.surface",
   claimType: "veritas-affected-surface",
+  parentType: "developer-claim",
   requiredEvidence: ["policy_rule"],
   requiredMethods: ["auditability"],
   requiresCorroboration: false,
@@ -128,6 +129,7 @@ const SURFACE_POLICY: VerificationPolicy = {
 const PROOF_POLICY: VerificationPolicy = {
   id: "veritas.proof-lane",
   claimType: "software-proof",
+  parentType: "developer-claim",
   requiredEvidence: ["test_output"],
   requiredMethods: ["validation"],
   requiresCorroboration: false,
@@ -142,6 +144,7 @@ const PROOF_POLICY: VerificationPolicy = {
 const POLICY_RESULT_POLICY: VerificationPolicy = {
   id: "veritas.policy-result",
   claimType: "veritas-policy-result",
+  parentType: "developer-claim",
   requiredEvidence: ["policy_rule"],
   requiredMethods: ["validation"],
   requiresCorroboration: false,
@@ -156,6 +159,7 @@ const POLICY_RESULT_POLICY: VerificationPolicy = {
 const PROOF_FAMILY_POLICY: VerificationPolicy = {
   id: "veritas.proof-family",
   claimType: "veritas-proof-family",
+  parentType: "developer-claim",
   requiredEvidence: ["policy_rule"],
   requiredMethods: ["validation"],
   requiresCorroboration: false,
@@ -170,6 +174,7 @@ const PROOF_FAMILY_POLICY: VerificationPolicy = {
 const VERIFICATION_BUDGET_POLICY: VerificationPolicy = {
   id: "veritas.verification-budget",
   claimType: "veritas-verification-budget",
+  parentType: "developer-claim",
   requiredEvidence: ["policy_rule"],
   requiredMethods: ["auditability"],
   requiresCorroboration: false,

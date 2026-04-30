@@ -39,6 +39,19 @@ export interface ConfidenceBasis {
   impactLevel?: ImpactLevel;
 }
 
+export interface SubjectRef {
+  subjectType: string;
+  subjectId: string;
+}
+
+export interface IdentityLink {
+  subjects: SubjectRef[];
+  reason?: string;
+  attestedBy?: string;
+}
+
+export type SchemaVersion = 2 | 3;
+
 export interface Claim {
   id: string;
   subjectType: string;
@@ -54,6 +67,8 @@ export interface Claim {
   currentIntegrityRef?: string;
   verificationPolicyId?: string;
   confidenceBasis?: ConfidenceBasis;
+  subjectAliases?: SubjectRef[];
+  derivedFrom?: string[];
   metadata?: Record<string, unknown>;
 }
 
@@ -76,9 +91,20 @@ export interface ValidityRule {
   durationDays?: number;
 }
 
+export interface IncompatibleValuePair {
+  values: [unknown, unknown];
+  message?: string;
+}
+
+export interface IncompatibleStatusPair {
+  statuses: [TrustStatus, TrustStatus];
+  message?: string;
+}
+
 export interface VerificationPolicy {
   id: string;
   claimType: string;
+  parentType?: string;
   requiredEvidence: EvidenceType[];
   requiredMethods?: EvidenceMethod[];
   requiresCorroboration?: boolean;
@@ -88,6 +114,8 @@ export interface VerificationPolicy {
   stalenessTriggers: string[];
   conflictRules: string[];
   impactLevel: ImpactLevel;
+  incompatibleValues?: IncompatibleValuePair[];
+  incompatibleStatuses?: IncompatibleStatusPair[];
 }
 
 export interface VerificationEvent {
@@ -103,12 +131,13 @@ export interface VerificationEvent {
 }
 
 export interface TrustInput {
-  schemaVersion: 2;
+  schemaVersion: SchemaVersion;
   source: string;
   claims: Claim[];
   evidence: Evidence[];
   policies: VerificationPolicy[];
   events: VerificationEvent[];
+  identityLinks?: IdentityLink[];
 }
 
 export interface TrustReportSummary {
@@ -149,12 +178,19 @@ export interface FaultLine {
   metadata?: Record<string, unknown>;
 }
 
+export interface SubjectGroup {
+  canonicalKey: string;
+  members: SubjectRef[];
+  claimIds: string[];
+}
+
 export interface TrustReport extends TrustInput {
-  schemaVersion: 2;
+  schemaVersion: SchemaVersion;
   id: string;
   generatedAt: string;
   claims: Array<Claim & { status: TrustStatus }>;
   proofRequirementsByClaimId: Record<string, ProofRequirement>;
   faultLines: FaultLine[];
+  subjectGroups: SubjectGroup[];
   summary: TrustReportSummary;
 }

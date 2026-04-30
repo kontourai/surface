@@ -2,4 +2,8 @@ export * from "./types.js";
 export * from "./status.js";
 export * from "./report.js";
 export * from "./validate.js";
+export * from "./identity.js";
+export * from "./policy-resolver.js";
+export * from "./derivation.js";
+export * from "./linked.js";
 export * from "./adapters/index.js";

@@ -19,6 +19,22 @@
     "currentIntegrityRef": { "type": "string" },
     "verificationPolicyId": { "type": "string" },
     "confidenceBasis": { "type": "object" },
+    "subjectAliases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["subjectType", "subjectId"],
+        "properties": {
+          "subjectType": { "type": "string" },
+          "subjectId": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "derivedFrom": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
     "metadata": { "type": "object" }
   },
   "additionalProperties": false

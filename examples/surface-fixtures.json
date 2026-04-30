@@ -1,6 +1,15 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "source": "kontour-surface-validation-fixtures",
+  "identityLinks": [
+    {
+      "subjects": [
+        { "subjectType": "repo-surface", "subjectId": "kontourai/veritas:src/api" },
+        { "subjectType": "release-channel", "subjectId": "veritas:api" }
+      ],
+      "reason": "API source and the named release channel describe the same surface."
+    }
+  ],
   "claims": [
     {
       "id": "claim.veritas.api-proof",
@@ -15,6 +24,9 @@
       "impactLevel": "high",
       "currentIntegrityRef": "commit-or-run-id-placeholder",
       "verificationPolicyId": "policy.software-proof.commit",
+      "subjectAliases": [
+        { "subjectType": "release-channel", "subjectId": "veritas:api" }
+      ],
       "confidenceBasis": {
         "sourceQuality": "strong",
         "reviewerAuthority": "system",
@@ -140,6 +152,7 @@
     {
       "id": "policy.software-proof.commit",
       "claimType": "software-proof",
+      "parentType": "developer-claim",
       "requiredEvidence": ["test_output"],
       "requiredMethods": ["validation"],
       "requiresCorroboration": false,
@@ -148,7 +161,13 @@
       "validityRule": { "kind": "commit" },
       "stalenessTriggers": ["new commit touches the same surface", "proof lane changes"],
       "conflictRules": ["failed proof supersedes prior passing proof"],
-      "impactLevel": "high"
+      "impactLevel": "high",
+      "incompatibleStatuses": [
+        {
+          "statuses": ["verified", "rejected"],
+          "message": "A surface cannot be simultaneously verified and rejected at the same commit."
+        }
+      ]
     },
     {
       "id": "policy.public-data-field.short-lived",

@@ -6,7 +6,7 @@
   "additionalProperties": false,
   "required": ["schemaVersion", "source", "claims", "evidence", "policies", "events"],
   "properties": {
-    "schemaVersion": { "const": 2 },
+    "schemaVersion": { "enum": [2, 3] },
     "source": { "type": "string" },
     "claims": {
       "type": "array",
@@ -23,6 +23,31 @@
     "events": {
       "type": "array",
       "items": { "type": "object" }
+    },
+    "identityLinks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["subjects"],
+        "properties": {
+          "subjects": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "object",
+              "required": ["subjectType", "subjectId"],
+              "properties": {
+                "subjectType": { "type": "string" },
+                "subjectId": { "type": "string" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "reason": { "type": "string" },
+          "attestedBy": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
     }
   },
   "not": {

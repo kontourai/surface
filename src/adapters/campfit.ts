@@ -100,6 +100,7 @@ export interface CampfitCampChangeProposal {
 const FIELD_POLICY: VerificationPolicy = {
   id: "campfit.public-field-source",
   claimType: "public-data-field",
+  parentType: "campfit-claim",
   requiredEvidence: ["source_excerpt"],
   requiredMethods: ["observation", "attestation"],
   requiresCorroboration: false,
@@ -114,6 +115,7 @@ const FIELD_POLICY: VerificationPolicy = {
 const ATTESTATION_POLICY: VerificationPolicy = {
   id: "campfit.field-attestation",
   claimType: "field-attestation",
+  parentType: "campfit-claim",
   requiredEvidence: ["human_attestation"],
   requiredMethods: ["attestation"],
   requiresCorroboration: false,
@@ -128,6 +130,7 @@ const ATTESTATION_POLICY: VerificationPolicy = {
 const FLAG_POLICY: VerificationPolicy = {
   id: "campfit.review-flag",
   claimType: "review-flag",
+  parentType: "campfit-claim",
   requiredEvidence: ["human_attestation"],
   requiredMethods: ["attestation"],
   requiresCorroboration: false,
@@ -142,6 +145,7 @@ const FLAG_POLICY: VerificationPolicy = {
 const CRAWL_POLICY: VerificationPolicy = {
   id: "campfit.crawl-run",
   claimType: "crawl-run",
+  parentType: "campfit-claim",
   requiredEvidence: ["crawl_observation"],
   requiredMethods: ["observation"],
   requiresCorroboration: false,
@@ -156,6 +160,7 @@ const CRAWL_POLICY: VerificationPolicy = {
 const PROPOSAL_POLICY: VerificationPolicy = {
   id: "campfit.change-proposal",
   claimType: "change-proposal",
+  parentType: "campfit-claim",
   requiredEvidence: ["crawl_observation"],
   requiredMethods: ["extraction"],
   requiresCorroboration: false,

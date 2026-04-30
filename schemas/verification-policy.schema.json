@@ -7,6 +7,7 @@
   "properties": {
     "id": { "type": "string" },
     "claimType": { "type": "string" },
+    "parentType": { "type": "string" },
     "requiredEvidence": {
       "type": "array",
       "items": { "enum": ["source_excerpt", "test_output", "human_attestation", "calculation_trace", "document_citation", "crawl_observation", "policy_rule"] }
@@ -29,7 +30,36 @@
     },
     "stalenessTriggers": { "type": "array", "items": { "type": "string" } },
     "conflictRules": { "type": "array", "items": { "type": "string" } },
-    "impactLevel": { "enum": ["low", "medium", "high", "critical"] }
+    "impactLevel": { "enum": ["low", "medium", "high", "critical"] },
+    "incompatibleValues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["values"],
+        "properties": {
+          "values": { "type": "array", "minItems": 2, "maxItems": 2 },
+          "message": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "incompatibleStatuses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["statuses"],
+        "properties": {
+          "statuses": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": { "enum": ["unknown", "proposed", "verified", "stale", "disputed", "superseded", "rejected"] }
+          },
+          "message": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    }
   },
   "additionalProperties": false
 }

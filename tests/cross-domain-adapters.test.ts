@@ -78,3 +78,77 @@ test("CLI can report directly from Campfit and taxes trust exports", async () =>
   assert.match(taxes.stdout, /Source: taxes:trust-export:anderson-2025/);
   assert.match(taxes.stdout, /disputed: 3/);
 });
+
+test("identityLinks let the kernel surface contradictions across adapter outputs", async () => {
+  // Pull real claim shapes from two adapters, then ask the kernel: "if these
+  // two systems are talking about the same subject, do their claims agree?"
+  // Surface answers without either adapter knowing about the other.
+  const campfitRaw = JSON.parse(await readFile("examples/campfit-trust-export.json", "utf8"));
+  const campfitInput = adaptCampfitTrustExportToTrustInput(campfitRaw);
+  const campfitClaim = campfitInput.claims.find((c) => c.subjectType === "camp");
+  assert.ok(campfitClaim, "expected at least one camp claim from the campfit adapter");
+
+  // Build a synthetic "release-channel" claim that holds an incompatible value
+  // against the campfit camp. The two claims live on different subject types
+  // and would otherwise look unrelated; identityLinks tell the kernel they are
+  // the same real subject.
+  const policyId = "cross-domain.release-channel";
+  const releaseClaim = {
+    id: "claim.release-channel.denver-art-lab",
+    subjectType: "release-channel",
+    subjectId: "release:denver-art-lab",
+    surface: "release.public-data",
+    claimType: "public-data-field",
+    fieldOrBehavior: "registrationStatus",
+    value: "CLOSED",
+    createdAt: campfitClaim.createdAt,
+    updatedAt: campfitClaim.updatedAt,
+    impactLevel: campfitClaim.impactLevel,
+    verificationPolicyId: policyId,
+  };
+
+  // Repoint the campfit claim at the cross-domain policy so both claims share
+  // it. We clone the claim to avoid mutating the adapter's output.
+  const linkedCampfitClaim = { ...campfitClaim, verificationPolicyId: policyId };
+  const merged = validateTrustInput({
+    schemaVersion: 3,
+    source: "cross-domain-integration",
+    claims: [linkedCampfitClaim, releaseClaim],
+    evidence: campfitInput.evidence.filter((e) => e.claimId === campfitClaim.id),
+    policies: [
+      {
+        id: policyId,
+        claimType: "public-data-field",
+        requiredEvidence: ["source_excerpt"],
+        requiredProof: ["registration status"],
+        reviewAuthority: "release",
+        validityRule: { kind: "manual" },
+        stalenessTriggers: [],
+        conflictRules: [],
+        impactLevel: "high",
+        incompatibleValues: [
+          { values: ["OPEN", "CLOSED"], message: "Same subject reports both OPEN and CLOSED registration." },
+        ],
+      },
+    ],
+    events: [],
+    identityLinks: [
+      {
+        subjects: [
+          { subjectType: "camp", subjectId: campfitClaim.subjectId },
+          { subjectType: "release-channel", subjectId: releaseClaim.subjectId },
+        ],
+        reason: "Camp listing and release channel describe the same real subject.",
+      },
+    ],
+  });
+
+  const report = buildTrustReport(merged, {
+    id: "cross-domain-link",
+    now: new Date("2026-04-25T05:00:00.000Z"),
+  });
+
+  const contradictions = report.faultLines.filter((fl) => fl.type === "contradiction");
+  assert.ok(contradictions.length >= 1, "expected at least one cross-domain contradiction");
+  assert.equal(report.subjectGroups.length, 1, "the two subjects should collapse into one canonical group");
+});

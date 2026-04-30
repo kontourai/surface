@@ -109,6 +109,7 @@ export interface TaxesReturnPackageReviewSignal {
 const VERIFIED_FACT_POLICY: VerificationPolicy = {
   id: "taxes.verified-fact",
   claimType: "tax-verified-fact",
+  parentType: "tax-claim",
   requiredEvidence: ["human_attestation"],
   requiredMethods: ["attestation"],
   requiresCorroboration: false,
@@ -123,6 +124,7 @@ const VERIFIED_FACT_POLICY: VerificationPolicy = {
 const RESOLVED_FACT_POLICY: VerificationPolicy = {
   id: "taxes.resolved-fact",
   claimType: "tax-resolved-fact",
+  parentType: "tax-claim",
   requiredEvidence: ["calculation_trace"],
   requiredMethods: ["validation"],
   requiresCorroboration: false,
@@ -137,6 +139,7 @@ const RESOLVED_FACT_POLICY: VerificationPolicy = {
 const RETURN_FIELD_POLICY: VerificationPolicy = {
   id: "taxes.return-package-field",
   claimType: "tax-return-field",
+  parentType: "tax-claim",
   requiredEvidence: ["document_citation"],
   requiredMethods: ["corroboration"],
   requiresCorroboration: false,
@@ -151,6 +154,7 @@ const RETURN_FIELD_POLICY: VerificationPolicy = {
 const REVIEW_POLICY: VerificationPolicy = {
   id: "taxes.review-signal",
   claimType: "tax-review-signal",
+  parentType: "tax-claim",
   requiredEvidence: ["calculation_trace"],
   requiredMethods: ["validation"],
   requiresCorroboration: false,

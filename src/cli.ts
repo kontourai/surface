@@ -5,6 +5,7 @@ import { adaptTaxesTrustExportToTrustInput } from "./adapters/taxes.js";
 import { adaptVeritasEvidenceToTrustInput } from "./adapters/veritas.js";
 import { buildTrustReport, formatTrustReportSummary } from "./report.js";
 import { validateTrustInput } from "./validate.js";
+import { toLinkedReport } from "./linked.js";
 
 export async function runCli(args: string[]): Promise<void> {
   const [command, ...rest] = args;
@@ -25,6 +26,8 @@ export async function runCli(args: string[]): Promise<void> {
 
   if (options.format === "summary") {
     console.log(formatTrustReportSummary(report));
+  } else if (options.format === "linked") {
+    console.log(JSON.stringify(toLinkedReport(report), null, 2));
   } else {
     console.log(JSON.stringify(report, null, 2));
   }
@@ -46,9 +49,9 @@ function defaultInputForAdapter(adapter: AdapterName): string {
   return "examples/surface-fixtures.json";
 }
 
-function parseReportArgs(args: string[]): { input: string; format: "json" | "summary"; runId?: string; adapter: AdapterName } {
+function parseReportArgs(args: string[]): { input: string; format: "json" | "summary" | "linked"; runId?: string; adapter: AdapterName } {
   let input = resolve("examples/surface-fixtures.json");
-  let format: "json" | "summary" = "json";
+  let format: "json" | "summary" | "linked" = "json";
   let runId: string | undefined;
   let adapter: AdapterName = "surface";
   let inputExplicit = false;
@@ -61,7 +64,9 @@ function parseReportArgs(args: string[]): { input: string; format: "json" | "sum
     }
     else if (arg === "--format") {
       const value = requireValue(args, ++index, "--format");
-      if (value !== "json" && value !== "summary") throw new Error("--format must be json or summary");
+      if (value !== "json" && value !== "summary" && value !== "linked") {
+        throw new Error("--format must be json, summary, or linked");
+      }
       format = value;
     } else if (arg === "--run-id") runId = requireValue(args, ++index, "--run-id");
     else if (arg === "--adapter") {
@@ -90,10 +95,10 @@ function printHelp(): void {
   console.log(`Kontour Surface
 
 Usage:
-  surface report [--input examples/surface-fixtures.json] [--format json|summary]
-  surface report --adapter veritas [--input examples/veritas-evidence.json] [--format json|summary]
-  surface report --adapter campfit [--input examples/campfit-trust-export.json] [--format json|summary]
-  surface report --adapter taxes [--input examples/taxes-trust-export.json] [--format json|summary]
+  surface report [--input examples/surface-fixtures.json] [--format json|summary|linked]
+  surface report --adapter veritas [--input examples/veritas-evidence.json] [--format json|summary|linked]
+  surface report --adapter campfit [--input examples/campfit-trust-export.json] [--format json|summary|linked]
+  surface report --adapter taxes [--input examples/taxes-trust-export.json] [--format json|summary|linked]
 
 Surface reports map product claims to evidence, freshness, and trust status.
 `);

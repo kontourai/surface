@@ -4,13 +4,17 @@ Surface schemas are product contracts. They should change more slowly than imple
 
 ## Current version
 
-The current trust input and report contract is `schemaVersion: 2` and covers:
+Surface accepts both `schemaVersion: 2` and `schemaVersion: 3`. Version 3 is a
+strict superset of v2: every v2 input remains a valid v3 input. New fields are
+additive and optional, so adapters can adopt them on their own cadence.
 
-- claims
-- evidence with required verification `method`
-- verification policies
-- verification events
-- trust reports
+Version 3 covers everything v2 covers plus:
+
+- `subjectAliases` on a claim and top-level `identityLinks` for cross-system identity resolution
+- `parentType` on a verification policy, enabling claim-type families and most-specific policy resolution
+- `incompatibleValues` and `incompatibleStatuses` on a verification policy, which the kernel uses to surface contradictions across same-subject claim pairs
+- `derivedFrom` on a claim, which bounds derived-claim status by the weakest input
+- a linked-data export envelope with a stable `@context`
 
 ## Compatibility rules
 
@@ -52,6 +56,18 @@ After:
   ]
 }
 ```
+
+## v2 to v3 migration
+
+Version 3 is opt-in. To adopt it:
+
+- bump the top-level field to `"schemaVersion": 3`
+- start using any of the new optional fields (aliases, parent types, incompatibility rules, derived claims, linked export)
+- nothing else has to change — existing fixtures, policies, and adapters remain valid
+
+When the kernel validates a v3 input, every v3-only field passes through the
+same strict validation as v2 fields: structural checks reject malformed shapes
+rather than silently dropping them.
 
 ## Migration expectation
 

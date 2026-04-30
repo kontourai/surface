@@ -4,6 +4,7 @@ import { join } from "node:path";
 const pages = [
   ["index", "README.md", "Kontour Surface"],
   ["vision", "docs/vision.md", "Vision"],
+  ["principles", "docs/principles.md", "Principles"],
   ["concepts", "docs/concepts.md", "Concepts"],
   ["use-cases", "docs/use-cases.md", "Use Cases"],
   ["architecture", "docs/architecture.md", "Architecture"],
@@ -16,6 +17,9 @@ const pages = [
   ["campfit-adapter", "docs/adapters/campfit.md", "Campfit Adapter"],
   ["taxes-adapter", "docs/adapters/taxes.md", "Taxes Adapter"],
   ["roadmap", "docs/roadmap.md", "Roadmap"],
+  ["linked-data-roadmap", "docs/linked-data-roadmap.md", "Linked-Data Roadmap"],
+  ["integration-plan", "docs/integration-plan.md", "Integration Plan"],
+  ["grounding-audit", "docs/grounding-audit.md", "Grounding Audit"],
   ["brand-language", "docs/brand-language.md", "Brand Language"],
 ];
 
