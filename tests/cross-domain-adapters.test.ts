@@ -4,117 +4,117 @@ import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { promisify } from "node:util";
 import {
-  adaptCampfitTrustExportToTrustInput,
-  adaptTaxesTrustExportToTrustInput,
   buildTrustReport,
   validateTrustInput,
 } from "../src/index.js";
+import { adaptFactResolutionExportToTrustInput } from "../examples/adapters/fact-resolution.js";
+import { adaptFieldAttestedRecordsExportToTrustInput } from "../examples/adapters/field-attested-records.js";
 
 const execFileAsync = promisify(execFile);
 
-test("adapts Campfit trust exports into verified, stale, disputed, proposed, and rejected claims", async () => {
-  const raw = await readFile("examples/campfit-trust-export.json", "utf8");
-  const input = validateTrustInput(adaptCampfitTrustExportToTrustInput(JSON.parse(raw)));
+test("adapts field-attested records exports into verified, stale, disputed, proposed, and rejected claims", async () => {
+  const raw = await readFile("examples/field-attested-records-export.json", "utf8");
+  const input = validateTrustInput(adaptFieldAttestedRecordsExportToTrustInput(JSON.parse(raw)));
   const report = buildTrustReport(input, {
-    id: "campfit-cross-domain",
+    id: "field-attested-records-example",
     now: new Date("2026-04-25T04:00:00.000Z"),
   });
 
-  assert.equal(report.source, "campfit:trust-export:denver-demo");
+  assert.equal(report.source, "field-attested-records:demo");
   assert.equal(report.summary.totalClaims, 9);
   assert.equal(report.summary.byStatus.verified, 4);
   assert.equal(report.summary.byStatus.stale, 1);
   assert.equal(report.summary.byStatus.disputed, 1);
   assert.equal(report.summary.byStatus.proposed, 1);
   assert.equal(report.summary.byStatus.rejected, 2);
-  assert.equal(report.summary.bySurface["campfit.public-data"], 2);
-  assert.equal(report.summary.bySurface["campfit.review-flags"], 1);
+  assert.equal(report.summary.bySurface["field-attested-records.public-data"], 2);
+  assert.equal(report.summary.bySurface["field-attestation.review-flags"], 1);
 });
 
-test("adapts taxes trust exports into fact, return-package, assumption, comparison, and review-signal claims", async () => {
-  const raw = await readFile("examples/taxes-trust-export.json", "utf8");
-  const input = validateTrustInput(adaptTaxesTrustExportToTrustInput(JSON.parse(raw)));
+test("adapts fact resolution exports into fact, return-package, assumption, comparison, and review-signal claims", async () => {
+  const raw = await readFile("examples/fact-resolution-export.json", "utf8");
+  const input = validateTrustInput(adaptFactResolutionExportToTrustInput(JSON.parse(raw)));
   const report = buildTrustReport(input, {
-    id: "taxes-cross-domain",
+    id: "fact-resolution-example",
     now: new Date("2026-04-25T04:00:00.000Z"),
   });
 
-  assert.equal(report.source, "taxes:trust-export:anderson-2025");
+  assert.equal(report.source, "fact-resolution:demo-case-2025");
   assert.equal(report.summary.totalClaims, 9);
   assert.equal(report.summary.byStatus.verified, 3);
   assert.equal(report.summary.byStatus.proposed, 2);
   assert.equal(report.summary.byStatus.unknown, 1);
   assert.equal(report.summary.byStatus.disputed, 3);
-  assert.equal(report.summary.bySurface["taxes.verified-facts"], 1);
-  assert.equal(report.summary.bySurface["taxes.review-signals"], 1);
+  assert.equal(report.summary.bySurface["fact-resolution.verified-facts"], 1);
+  assert.equal(report.summary.bySurface["fact-resolution.review-signals"], 1);
 });
 
-test("CLI can report directly from Campfit and taxes trust exports", async () => {
-  const campfit = await execFileAsync("node", [
+test("CLI can report directly from generic example exports", async () => {
+  const fieldAttestedRecords = await execFileAsync("node", [
     "bin/surface.mjs",
     "report",
     "--adapter",
-    "campfit",
+    "field-attested-records",
     "--format",
     "summary",
     "--run-id",
-    "cli-campfit",
+    "cli-field-attested-records",
   ]);
-  assert.match(campfit.stdout, /Kontour Surface report cli-campfit/);
-  assert.match(campfit.stdout, /Source: campfit:trust-export:denver-demo/);
-  assert.match(campfit.stdout, /rejected: 2/);
+  assert.match(fieldAttestedRecords.stdout, /Kontour Surface report cli-field-attested-records/);
+  assert.match(fieldAttestedRecords.stdout, /Source: field-attested-records:demo/);
+  assert.match(fieldAttestedRecords.stdout, /rejected: 2/);
 
-  const taxes = await execFileAsync("node", [
+  const factResolution = await execFileAsync("node", [
     "bin/surface.mjs",
     "report",
     "--adapter",
-    "taxes",
+    "fact-resolution",
     "--format",
     "summary",
     "--run-id",
-    "cli-taxes",
+    "cli-fact-resolution",
   ]);
-  assert.match(taxes.stdout, /Kontour Surface report cli-taxes/);
-  assert.match(taxes.stdout, /Source: taxes:trust-export:anderson-2025/);
-  assert.match(taxes.stdout, /disputed: 3/);
+  assert.match(factResolution.stdout, /Kontour Surface report cli-fact-resolution/);
+  assert.match(factResolution.stdout, /Source: fact-resolution:demo-case-2025/);
+  assert.match(factResolution.stdout, /disputed: 3/);
 });
 
 test("identityLinks let the kernel surface contradictions across adapter outputs", async () => {
-  // Pull real claim shapes from two adapters, then ask the kernel: "if these
+  // Pull real-use-case-shaped claims from two examples, then ask the kernel: "if these
   // two systems are talking about the same subject, do their claims agree?"
-  // Surface answers without either adapter knowing about the other.
-  const campfitRaw = JSON.parse(await readFile("examples/campfit-trust-export.json", "utf8"));
-  const campfitInput = adaptCampfitTrustExportToTrustInput(campfitRaw);
-  const campfitClaim = campfitInput.claims.find((c) => c.subjectType === "camp");
-  assert.ok(campfitClaim, "expected at least one camp claim from the campfit adapter");
+  // Surface answers without either example knowing about the other.
+  const fieldRecordsRaw = JSON.parse(await readFile("examples/field-attested-records-export.json", "utf8"));
+  const fieldRecordsInput = adaptFieldAttestedRecordsExportToTrustInput(fieldRecordsRaw);
+  const attestedRecordClaim = fieldRecordsInput.claims.find((c) => c.subjectType === "attested-record");
+  assert.ok(attestedRecordClaim, "expected at least one record claim from the field-attested records example");
 
-  // Build a synthetic "release-channel" claim that holds an incompatible value
-  // against the campfit camp. The two claims live on different subject types
+  // Build a synthetic alternate listing claim that holds an incompatible value
+  // against the attested record. The two claims live on different subject types
   // and would otherwise look unrelated; identityLinks tell the kernel they are
   // the same real subject.
-  const policyId = "cross-domain.release-channel";
+  const policyId = "cross-domain.alternate-listing";
   const releaseClaim = {
-    id: "claim.release-channel.denver-art-lab",
-    subjectType: "release-channel",
-    subjectId: "release:denver-art-lab",
-    surface: "release.public-data",
+    id: "claim.alternate-listing.denver-art-lab",
+    subjectType: "alternate-listing",
+    subjectId: "listing:denver-art-lab",
+    surface: "alternate-listing.public-data",
     claimType: "public-data-field",
     fieldOrBehavior: "registrationStatus",
     value: "CLOSED",
-    createdAt: campfitClaim.createdAt,
-    updatedAt: campfitClaim.updatedAt,
-    impactLevel: campfitClaim.impactLevel,
+    createdAt: attestedRecordClaim.createdAt,
+    updatedAt: attestedRecordClaim.updatedAt,
+    impactLevel: attestedRecordClaim.impactLevel,
     verificationPolicyId: policyId,
   };
 
-  // Repoint the campfit claim at the cross-domain policy so both claims share
+  // Repoint the field-attested claim at the cross-domain policy so both claims share
   // it. We clone the claim to avoid mutating the adapter's output.
-  const linkedCampfitClaim = { ...campfitClaim, verificationPolicyId: policyId };
+  const linkedAttestedRecordClaim = { ...attestedRecordClaim, verificationPolicyId: policyId };
   const merged = validateTrustInput({
     schemaVersion: 3,
     source: "cross-domain-integration",
-    claims: [linkedCampfitClaim, releaseClaim],
-    evidence: campfitInput.evidence.filter((e) => e.claimId === campfitClaim.id),
+    claims: [linkedAttestedRecordClaim, releaseClaim],
+    evidence: fieldRecordsInput.evidence.filter((e) => e.claimId === attestedRecordClaim.id),
     policies: [
       {
         id: policyId,
@@ -135,10 +135,10 @@ test("identityLinks let the kernel surface contradictions across adapter outputs
     identityLinks: [
       {
         subjects: [
-          { subjectType: "camp", subjectId: campfitClaim.subjectId },
-          { subjectType: "release-channel", subjectId: releaseClaim.subjectId },
+          { subjectType: "attested-record", subjectId: attestedRecordClaim.subjectId },
+          { subjectType: "alternate-listing", subjectId: releaseClaim.subjectId },
         ],
-        reason: "Camp listing and release channel describe the same real subject.",
+        reason: "Attested record and alternate listing describe the same real subject.",
       },
     ],
   });

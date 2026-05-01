@@ -35,10 +35,10 @@
       }
     },
     {
-      "id": "claim.campfit.registration-status",
-      "subjectType": "camp",
-      "subjectId": "campfit:denver-example-camp",
-      "surface": "campfit.public-data",
+      "id": "claim.field-attested-records.registration-status",
+      "subjectType": "attested-record",
+      "subjectId": "field-attested-records:denver-example-record",
+      "surface": "field-attested-records.public-data",
       "claimType": "public-data-field",
       "fieldOrBehavior": "registrationStatus",
       "value": "OPEN",
@@ -56,10 +56,10 @@
       }
     },
     {
-      "id": "claim.taxes.w2-wages",
-      "subjectType": "tax-fact",
-      "subjectId": "taxes:anderson-2025:w2.wages",
-      "surface": "taxes.financial-facts",
+      "id": "claim.fact-resolution.w2-wages",
+      "subjectType": "fact",
+      "subjectId": "fact-resolution:demo-case-2025:w2.wages",
+      "surface": "fact-resolution.financial-facts",
       "claimType": "verified-financial-fact",
       "fieldOrBehavior": "w2.wages",
       "value": 123456,
@@ -103,49 +103,49 @@
       "integrityRef": "commit-or-run-id-placeholder"
     },
     {
-      "id": "evidence.campfit.source-excerpt",
-      "claimId": "claim.campfit.registration-status",
+      "id": "evidence.field-attested-records.source-excerpt",
+      "claimId": "claim.field-attested-records.registration-status",
       "evidenceType": "source_excerpt",
       "method": "observation",
       "sourceRef": "https://example.org/camps/register",
       "sourceLocator": "registration section",
       "excerptOrSummary": "Registration is open now for summer sessions.",
       "observedAt": "2026-04-01T00:00:00.000Z",
-      "collectedBy": "campfit-crawler"
+      "collectedBy": "field-data-crawler"
     },
     {
-      "id": "evidence.campfit.admin-attestation",
-      "claimId": "claim.campfit.registration-status",
+      "id": "evidence.field-attested-records.admin-attestation",
+      "claimId": "claim.field-attested-records.registration-status",
       "evidenceType": "human_attestation",
       "method": "attestation",
-      "sourceRef": "campfit admin review",
+      "sourceRef": "record steward review",
       "sourceLocator": "FieldAttestation.registrationStatus",
       "excerptOrSummary": "Admin approved the registration status from the source excerpt.",
       "observedAt": "2026-04-01T00:10:00.000Z",
-      "collectedBy": "campfit-admin"
+      "collectedBy": "record-steward"
     },
     {
-      "id": "evidence.taxes.document-citation",
-      "claimId": "claim.taxes.w2-wages",
+      "id": "evidence.fact-resolution.document-citation",
+      "claimId": "claim.fact-resolution.w2-wages",
       "evidenceType": "document_citation",
       "method": "corroboration",
       "sourceRef": "W-2 imported document",
       "sourceLocator": "Box 1",
       "excerptOrSummary": "W-2 Box 1 wages matched the verified fact value.",
       "observedAt": "2026-04-20T00:00:00.000Z",
-      "collectedBy": "taxes-importer",
+      "collectedBy": "fact-importer",
       "integrityRef": "document-hash-placeholder"
     },
     {
-      "id": "evidence.taxes.calculation-trace",
-      "claimId": "claim.taxes.w2-wages",
+      "id": "evidence.fact-resolution.calculation-trace",
+      "claimId": "claim.fact-resolution.w2-wages",
       "evidenceType": "calculation_trace",
       "method": "validation",
-      "sourceRef": "taxes return package",
+      "sourceRef": "fact resolution package",
       "sourceLocator": "verified_facts.w2.wages",
-      "excerptOrSummary": "Resolved fact was promoted to verified_facts before downstream tax analysis.",
+      "excerptOrSummary": "Resolved fact was promoted to verified_facts before downstream analysis.",
       "observedAt": "2026-04-20T00:15:00.000Z",
-      "collectedBy": "taxes-service"
+      "collectedBy": "fact-resolution-service"
     }
   ],
   "policies": [
@@ -221,22 +221,22 @@
       "verifiedAt": "2026-04-25T00:05:00.000Z"
     },
     {
-      "id": "event.campfit.verified",
-      "claimId": "claim.campfit.registration-status",
+      "id": "event.field-attested-records.verified",
+      "claimId": "claim.field-attested-records.registration-status",
       "status": "verified",
-      "actor": "campfit-admin",
+      "actor": "record-steward",
       "method": "field-attestation",
-      "evidenceIds": ["evidence.campfit.source-excerpt", "evidence.campfit.admin-attestation"],
+      "evidenceIds": ["evidence.field-attested-records.source-excerpt", "evidence.field-attested-records.admin-attestation"],
       "createdAt": "2026-04-01T00:10:00.000Z",
       "verifiedAt": "2026-04-01T00:10:00.000Z"
     },
     {
-      "id": "event.taxes.verified",
-      "claimId": "claim.taxes.w2-wages",
+      "id": "event.fact-resolution.verified",
+      "claimId": "claim.fact-resolution.w2-wages",
       "status": "verified",
-      "actor": "taxes-service",
+      "actor": "fact-resolution-service",
       "method": "verified-fact-promotion",
-      "evidenceIds": ["evidence.taxes.document-citation", "evidence.taxes.calculation-trace"],
+      "evidenceIds": ["evidence.fact-resolution.document-citation", "evidence.fact-resolution.calculation-trace"],
       "createdAt": "2026-04-20T00:15:00.000Z",
       "verifiedAt": "2026-04-20T00:15:00.000Z"
     }

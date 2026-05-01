@@ -118,7 +118,7 @@ test("incompatibleValues fires across canonical subjects linked via identityLink
       {
         ...baseClaim,
         id: "claim-b",
-        subjectType: "campfit.provider",
+        subjectType: "attested-record.provider",
         subjectId: "provider-X",
         fieldOrBehavior: "channel",
         value: "withdrawn",
@@ -136,7 +136,7 @@ test("incompatibleValues fires across canonical subjects linked via identityLink
       {
         subjects: [
           { subjectType: "veritas.repo", subjectId: "repo-A" },
-          { subjectType: "campfit.provider", subjectId: "provider-X" },
+          { subjectType: "attested-record.provider", subjectId: "provider-X" },
         ],
         reason: "Verified handoff",
       },

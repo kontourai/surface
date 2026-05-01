@@ -1,9 +1,9 @@
 {
-  "source": "campfit:trust-export:denver-demo",
+  "source": "field-attested-records:demo",
   "generatedAt": "2026-04-25T03:55:00.000Z",
-  "camps": [
+  "records": [
     {
-      "id": "camp-denver-art-1",
+      "id": "record-denver-art-1",
       "slug": "denver-art-lab",
       "name": "Denver Art Lab",
       "registrationStatus": "OPEN",
@@ -14,12 +14,12 @@
       "lastCrawledAt": "2026-04-24T18:00:00.000Z",
       "fieldSources": {
         "registrationStatus": {
-          "excerpt": "Registration is open for summer workshops.",
+          "excerpt": "Registration is open for public workshops.",
           "sourceUrl": "https://example.org/denver-art-lab/register",
           "approvedAt": "2026-04-24T18:10:00.000Z"
         },
         "websiteUrl": {
-          "excerpt": "Official camp homepage.",
+          "excerpt": "Official record homepage.",
           "sourceUrl": "https://example.org/denver-art-lab",
           "approvedAt": "2026-04-24T18:11:00.000Z"
         }
@@ -29,11 +29,11 @@
   "fieldAttestations": [
     {
       "id": "attest-active-1",
-      "entityType": "CAMP",
-      "entityId": "camp-denver-art-1",
+      "entityType": "RECORD",
+      "entityId": "record-denver-art-1",
       "fieldKey": "city",
       "valueSnapshot": "Denver",
-      "excerpt": "Camp location confirmed as Denver.",
+      "excerpt": "Record location confirmed as Denver.",
       "sourceUrl": "https://example.org/denver-art-lab/location",
       "observedAt": "2026-04-23T14:00:00.000Z",
       "approvedAt": "2026-04-23T14:05:00.000Z",
@@ -43,8 +43,8 @@
     },
     {
       "id": "attest-stale-1",
-      "entityType": "CAMP",
-      "entityId": "camp-denver-art-1",
+      "entityType": "RECORD",
+      "entityId": "record-denver-art-1",
       "fieldKey": "pricing",
       "valueSnapshot": [{ "label": "Week", "amount": 350 }],
       "observedAt": "2026-02-01T12:00:00.000Z",
@@ -59,9 +59,9 @@
   "reviewFlags": [
     {
       "id": "flag-open-1",
-      "entityType": "CAMP",
-      "entityId": "camp-denver-art-1",
-      "comment": "Parent reported registration may be waitlist-only.",
+      "entityType": "RECORD",
+      "entityId": "record-denver-art-1",
+      "comment": "User reported registration may be waitlist-only.",
       "status": "OPEN",
       "createdBy": "moderator@example.test",
       "createdAt": "2026-04-24T20:00:00.000Z"
@@ -73,13 +73,13 @@
       "startedAt": "2026-04-24T18:00:00.000Z",
       "completedAt": "2026-04-24T18:12:00.000Z",
       "status": "COMPLETED",
-      "totalCamps": 1,
-      "processedCamps": 1,
+      "totalRecords": 1,
+      "processedRecords": 1,
       "errorCount": 0,
       "newProposals": 1,
       "trigger": "MANUAL",
       "triggeredBy": "admin@example.test",
-      "campIds": ["camp-denver-art-1"],
+      "recordIds": ["record-denver-art-1"],
       "errorLog": []
     },
     {
@@ -87,20 +87,20 @@
       "startedAt": "2026-04-25T02:00:00.000Z",
       "completedAt": "2026-04-25T02:02:00.000Z",
       "status": "FAILED",
-      "totalCamps": 1,
-      "processedCamps": 0,
+      "totalRecords": 1,
+      "processedRecords": 0,
       "errorCount": 1,
       "newProposals": 0,
       "trigger": "SCHEDULED",
       "triggeredBy": null,
-      "campIds": ["camp-denver-art-1"],
-      "errorLog": [{ "campId": "camp-denver-art-1", "error": "timeout", "url": "https://example.org/denver-art-lab" }]
+      "recordIds": ["record-denver-art-1"],
+      "errorLog": [{ "recordId": "record-denver-art-1", "error": "timeout", "url": "https://example.org/denver-art-lab" }]
     }
   ],
   "proposals": [
     {
       "id": "proposal-pending-1",
-      "campId": "camp-denver-art-1",
+      "recordId": "record-denver-art-1",
       "crawlRunId": "crawl-good-1",
       "createdAt": "2026-04-24T18:12:00.000Z",
       "reviewedAt": null,
@@ -111,12 +111,12 @@
         "registrationCloseDate": { "old": null, "new": "2026-06-01", "confidence": 0.82 }
       },
       "overallConfidence": 0.82,
-      "extractionModel": "campfit-crawler",
+      "extractionModel": "field-data-extractor",
       "reviewerNotes": null
     },
     {
       "id": "proposal-rejected-1",
-      "campId": "camp-denver-art-1",
+      "recordId": "record-denver-art-1",
       "crawlRunId": "crawl-good-1",
       "createdAt": "2026-04-24T18:14:00.000Z",
       "reviewedAt": "2026-04-24T19:00:00.000Z",
@@ -127,7 +127,7 @@
         "registrationStatus": { "old": "OPEN", "new": "CLOSED", "confidence": 0.42 }
       },
       "overallConfidence": 0.42,
-      "extractionModel": "campfit-crawler",
+      "extractionModel": "field-data-extractor",
       "reviewerNotes": "Model confused session close date with registration close."
     }
   ]

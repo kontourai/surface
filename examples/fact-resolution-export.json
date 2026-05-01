@@ -1,24 +1,24 @@
 {
-  "source": "taxes:trust-export:anderson-2025",
+  "source": "fact-resolution:demo-case-2025",
   "generatedAt": "2026-04-25T03:56:00.000Z",
-  "householdId": "anderson",
-  "taxYear": 2025,
+  "caseId": "demo-case",
+  "period": 2025,
   "verifiedFacts": [
     {
-      "householdId": "anderson",
-      "taxYear": 2025,
+      "caseId": "demo-case",
+      "period": 2025,
       "factKey": "filing_status",
       "label": "Filing status",
       "value": "married_filing_jointly",
       "verifiedBy": "brian",
       "verifiedAt": "2026-04-20T15:00:00.000Z",
-      "rationale": "Confirmed by household review."
+      "rationale": "Confirmed by case review."
     }
   ],
   "resolvedFacts": [
     {
-      "householdId": "anderson",
-      "taxYear": 2025,
+      "caseId": "demo-case",
+      "period": 2025,
       "factKey": "filing_status",
       "label": "Filing status",
       "value": "married_filing_jointly",
@@ -29,15 +29,15 @@
       "candidates": [{ "factId": "fact-filing-status", "sourceType": "current_year_manual", "confidence": 1, "value": "married_filing_jointly" }]
     },
     {
-      "householdId": "anderson",
-      "taxYear": 2025,
+      "caseId": "demo-case",
+      "period": 2025,
       "factKey": "1099_b:brokerage:capital_gain",
       "label": "Brokerage capital gain",
       "value": 1250,
       "selectedFactId": "fact-1099b-capgain",
       "selectedSource": "medium_confidence_document",
       "needsVerification": true,
-      "rationale": "Imported 1099-B value conflicts with prepared return worksheet.",
+      "rationale": "Imported 1099-B value conflicts with prepared package worksheet.",
       "candidates": [
         { "factId": "fact-1099b-capgain", "sourceType": "medium_confidence_document", "confidence": 0.74, "value": 1250 },
         { "factId": "fact-prepared-capgain", "sourceType": "user_override", "confidence": 0.9, "value": 1210 }
@@ -45,11 +45,11 @@
     }
   ],
   "returnPackage": {
-    "householdId": "anderson",
-    "taxYear": 2025,
+    "caseId": "demo-case",
+    "period": 2025,
     "generatedAt": "2026-04-25T03:56:00.000Z",
     "readiness": "generated",
-    "preparedReturnReferencePath": "prepared/anderson-2025-return.pdf",
+    "preparedReturnReferencePath": "prepared/demo-case-2025-package.pdf",
     "federal": {
       "form1040": {
         "wages": {
@@ -93,7 +93,7 @@
         "delta": 0,
         "severity": "match",
         "source": "imported",
-        "investigationHint": "Generated wages match the prepared return.",
+        "investigationHint": "Generated wages match the prepared package.",
         "citations": ["W2-Acme.pdf"],
         "likelyCauses": [],
         "missingInformation": []
@@ -106,8 +106,8 @@
         "severity": "large",
         "source": "unresolved_generated",
         "investigationHint": "Prepared return includes Colorado additions that are not yet explained by imported documents.",
-        "citations": ["prepared/anderson-2025-return.pdf"],
-        "likelyCauses": [{ "category": "missing_supporting_document", "summary": "Missing document for Colorado additions.", "citations": ["prepared/anderson-2025-return.pdf"] }],
+        "citations": ["prepared/demo-case-2025-package.pdf"],
+        "likelyCauses": [{ "category": "missing_supporting_document", "summary": "Missing document for Colorado additions.", "citations": ["prepared/demo-case-2025-package.pdf"] }],
         "missingInformation": ["source document for Colorado additions"]
       }
     ],
@@ -122,8 +122,8 @@
     "citationIndex": {
       "W2-Acme.pdf": "uploads/W2-Acme.pdf",
       "1099-B-Brokerage.pdf": "uploads/1099-B-Brokerage.pdf",
-      "prepared/anderson-2025-return.pdf": "prepared/anderson-2025-return.pdf"
+      "prepared/demo-case-2025-package.pdf": "prepared/demo-case-2025-package.pdf"
     },
-    "citations": ["W2-Acme.pdf", "1099-B-Brokerage.pdf", "prepared/anderson-2025-return.pdf"]
+    "citations": ["W2-Acme.pdf", "1099-B-Brokerage.pdf", "prepared/demo-case-2025-package.pdf"]
   }
 }

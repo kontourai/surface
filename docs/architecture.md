@@ -13,19 +13,19 @@ The kernel owns portable semantics:
 - trust reports
 - status derivation
 
-It should not know about camp schedules, tax forms, or repo paths.
+It should not know about domain schedules, form systems, or repo paths.
 
 ## 2. Adapters
 
 Adapters translate product-specific trust signals into the kernel model.
 
-Initial adapters:
+Initial adapters and examples:
 
-- `veritas`: evidence artifacts, policy results, affected surfaces, proof lanes.
-- `campfit`: field sources, attestations, proposals, review flags, crawl runs, change logs.
-- `taxes`: extracted facts, resolved facts, verified facts, citations, discrepancy traces, review signals.
+- `veritas`: a real adapter for evidence artifacts, policy results, affected surfaces, and proof lanes.
+- `field-attested-records`: a generic example for field sources, attestations, proposals, review flags, crawl runs, and change logs.
+- `fact-resolution`: a generic example for extracted facts, resolved facts, verified facts, citations, discrepancy traces, and review signals.
 
-Adapters should start read-only. The first implemented adapter is `veritas`, which maps evidence artifacts into affected-surface claims, proof-lane claims, policy-result claims, and verification events. Current Veritas artifacts can also embed `surface.input`; when that exists, Surface treats it as the portable TrustInput and still owns the generated trust report. The next adapters, `campfit` and `taxes`, prove the same contract across public-data verification and high-stakes financial fact verification.
+Adapters should start read-only. The implemented kernel adapter is `veritas`, which maps evidence artifacts into affected-surface claims, proof-lane claims, policy-result claims, and verification events. Current Veritas artifacts can also embed `surface.input`; when that exists, Surface treats it as the portable TrustInput and still owns the generated trust report. Domain-specific real adapters belong in their product repos; Surface keeps generic examples to test the contract.
 
 ## 3. Reports and Agent API
 

@@ -7,8 +7,8 @@ Fixtures are the first proof that Surface is not just a concept document. They s
 `examples/surface-fixtures.json` is a canonical Surface trust input. It includes claims inspired by:
 
 - Veritas developer proof lanes
-- Campfit public-data freshness
-- Taxes verified facts and discrepancy review
+- field-attested public-data freshness
+- fact-resolution verified facts and discrepancy review
 
 It uses `schemaVersion: 2`, required evidence methods, structured policy method requirements, report-derived proof requirements, and typed fault-line output.
 
@@ -25,13 +25,13 @@ It uses `schemaVersion: 2`, required evidence methods, structured policy method 
 
 Veritas fixtures now include `selected_proof_lanes` so Surface can import proof method metadata instead of inferring everything from command strings.
 
-## Campfit fixture
+## Field-Attested Records Fixture
 
-`examples/campfit-trust-export.json` includes approved field sources, active and stale attestations, an open review flag, completed and failed crawls, and pending/rejected proposals. It proves public-data trust can use the same statuses as developer proof without losing domain context.
+`examples/field-attested-records-export.json` includes approved field sources, active and stale attestations, an open review flag, completed and failed crawls, and pending/rejected proposals. It proves public-data trust can use the same statuses as developer proof without losing domain context.
 
-## Taxes fixture
+## Fact Resolution Fixture
 
-`examples/taxes-trust-export.json` includes verified facts, resolved facts needing verification, return-package citations, unresolved fields, assumptions, comparison gaps, and review signals. It proves high-stakes financial truth needs provenance and review state, not a single confidence score.
+`examples/fact-resolution-export.json` includes verified facts, resolved facts needing verification, return-package citations, unresolved fields, assumptions, comparison gaps, and review signals. It proves high-stakes truth needs provenance and review state, not a single confidence score.
 
 ## Reputation integrity fixture
 

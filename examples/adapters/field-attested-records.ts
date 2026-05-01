@@ -7,38 +7,38 @@ import type {
   TrustStatus,
   VerificationEvent,
   VerificationPolicy,
-} from "../types.js";
+} from "../../src/types.js";
 
-export interface CampfitTrustExport {
+export interface FieldAttestedRecordsExport {
   source?: string;
   generatedAt: string;
-  camps: CampfitCamp[];
-  fieldAttestations?: CampfitFieldAttestation[];
-  reviewFlags?: CampfitReviewFlag[];
-  crawlRuns?: CampfitCrawlRun[];
-  proposals?: CampfitCampChangeProposal[];
+  records: AttestedRecord[];
+  fieldAttestations?: FieldAttestation[];
+  reviewFlags?: ReviewFlag[];
+  crawlRuns?: CrawlRun[];
+  proposals?: RecordChangeProposal[];
 }
 
-export interface CampfitCamp {
+export interface AttestedRecord {
   id: string;
   slug?: string;
   name: string;
   dataConfidence?: "VERIFIED" | "PLACEHOLDER" | "STALE";
   lastVerifiedAt?: string | null;
   lastCrawledAt?: string | null;
-  fieldSources?: Record<string, CampfitFieldSource> | null;
+  fieldSources?: Record<string, FieldSource> | null;
   [key: string]: unknown;
 }
 
-export interface CampfitFieldSource {
+export interface FieldSource {
   excerpt?: string | null;
   sourceUrl: string;
   approvedAt: string;
 }
 
-export interface CampfitFieldAttestation {
+export interface FieldAttestation {
   id: string;
-  entityType: "CAMP" | "PROVIDER" | "PERSON";
+  entityType: "RECORD" | "PROVIDER" | "PERSON";
   entityId: string;
   fieldKey: string;
   valueSnapshot?: unknown;
@@ -55,9 +55,9 @@ export interface CampfitFieldAttestation {
   createdAt: string;
 }
 
-export interface CampfitReviewFlag {
+export interface ReviewFlag {
   id: string;
-  entityType: "CAMP" | "PROVIDER" | "PERSON";
+  entityType: "RECORD" | "PROVIDER" | "PERSON";
   entityId: string;
   comment: string;
   status: "OPEN" | "RESOLVED" | "DISMISSED";
@@ -67,24 +67,24 @@ export interface CampfitReviewFlag {
   resolvedAt?: string | null;
 }
 
-export interface CampfitCrawlRun {
+export interface CrawlRun {
   id: string;
   startedAt: string;
   completedAt: string | null;
   status: "RUNNING" | "COMPLETED" | "FAILED";
-  totalCamps: number;
-  processedCamps: number;
+  totalRecords: number;
+  processedRecords: number;
   errorCount: number;
   newProposals: number;
   trigger: "MANUAL" | "SCHEDULED";
   triggeredBy: string | null;
-  campIds: string[] | null;
-  errorLog?: Array<{ campId: string; error: string; url: string }>;
+  recordIds: string[] | null;
+  errorLog?: Array<{ recordId: string; error: string; url: string }>;
 }
 
-export interface CampfitCampChangeProposal {
+export interface RecordChangeProposal {
   id: string;
-  campId: string;
+  recordId: string;
   crawlRunId: string | null;
   createdAt: string;
   reviewedAt: string | null;
@@ -98,14 +98,14 @@ export interface CampfitCampChangeProposal {
 }
 
 const FIELD_POLICY: VerificationPolicy = {
-  id: "campfit.public-field-source",
+  id: "field-attestation.public-field-source",
   claimType: "public-data-field",
-  parentType: "campfit-claim",
+  parentType: "field-attested-record-claim",
   requiredEvidence: ["source_excerpt"],
   requiredMethods: ["observation", "attestation"],
   requiresCorroboration: false,
   requiredProof: ["fieldSources[field].approvedAt"],
-  reviewAuthority: "campfit admin review",
+  reviewAuthority: "record steward review",
   validityRule: { kind: "duration", durationDays: 30 },
   stalenessTriggers: ["source page changes", "field attestation becomes stale", "review flag opens"],
   conflictRules: ["open review flags dispute current public data"],
@@ -113,14 +113,14 @@ const FIELD_POLICY: VerificationPolicy = {
 };
 
 const ATTESTATION_POLICY: VerificationPolicy = {
-  id: "campfit.field-attestation",
+  id: "field-attestation.approval",
   claimType: "field-attestation",
-  parentType: "campfit-claim",
+  parentType: "field-attested-record-claim",
   requiredEvidence: ["human_attestation"],
   requiredMethods: ["attestation"],
   requiresCorroboration: false,
   requiredProof: ["approved field attestation"],
-  reviewAuthority: "campfit admin",
+  reviewAuthority: "record steward",
   validityRule: { kind: "duration", durationDays: 90 },
   stalenessTriggers: ["attestation status changes", "source recheck fails"],
   conflictRules: ["invalidated attestations dispute current field trust"],
@@ -128,14 +128,14 @@ const ATTESTATION_POLICY: VerificationPolicy = {
 };
 
 const FLAG_POLICY: VerificationPolicy = {
-  id: "campfit.review-flag",
+  id: "field-attestation.review-flag",
   claimType: "review-flag",
-  parentType: "campfit-claim",
+  parentType: "field-attested-record-claim",
   requiredEvidence: ["human_attestation"],
   requiredMethods: ["attestation"],
   requiresCorroboration: false,
   requiredProof: ["admin flag review"],
-  reviewAuthority: "campfit admin",
+  reviewAuthority: "record steward",
   validityRule: { kind: "manual" },
   stalenessTriggers: ["flag status changes"],
   conflictRules: ["open flags dispute the affected entity"],
@@ -143,14 +143,14 @@ const FLAG_POLICY: VerificationPolicy = {
 };
 
 const CRAWL_POLICY: VerificationPolicy = {
-  id: "campfit.crawl-run",
+  id: "field-attestation.crawl-run",
   claimType: "crawl-run",
-  parentType: "campfit-claim",
+  parentType: "field-attested-record-claim",
   requiredEvidence: ["crawl_observation"],
   requiredMethods: ["observation"],
   requiresCorroboration: false,
   requiredProof: ["crawl run completed"],
-  reviewAuthority: "campfit crawler",
+  reviewAuthority: "field-data crawler",
   validityRule: { kind: "duration", durationDays: 14 },
   stalenessTriggers: ["new crawl run", "crawl error appears"],
   conflictRules: ["failed crawl rejects crawl freshness claims"],
@@ -158,44 +158,44 @@ const CRAWL_POLICY: VerificationPolicy = {
 };
 
 const PROPOSAL_POLICY: VerificationPolicy = {
-  id: "campfit.change-proposal",
+  id: "field-attestation.change-proposal",
   claimType: "change-proposal",
-  parentType: "campfit-claim",
+  parentType: "field-attested-record-claim",
   requiredEvidence: ["crawl_observation"],
   requiredMethods: ["extraction"],
   requiresCorroboration: false,
   requiredProof: ["proposal review"],
-  reviewAuthority: "campfit admin",
+  reviewAuthority: "record steward",
   validityRule: { kind: "manual" },
   stalenessTriggers: ["newer proposal supersedes current proposal"],
   conflictRules: ["rejected proposals reject proposed field changes"],
   impactLevel: "medium",
 };
 
-export function adaptCampfitTrustExportToTrustInput(record: unknown): TrustInput {
-  const campfit = assertCampfitTrustExport(record);
+export function adaptFieldAttestedRecordsExportToTrustInput(record: unknown): TrustInput {
+  const recordsExport = assertFieldAttestedRecordsExport(record);
   const claims: Claim[] = [];
   const evidence: Evidence[] = [];
   const events: VerificationEvent[] = [];
-  const campById = new Map(campfit.camps.map((camp) => [camp.id, camp]));
+  const recordById = new Map(recordsExport.records.map((attestedRecord) => [attestedRecord.id, attestedRecord]));
 
-  for (const camp of campfit.camps) {
-    for (const [field, source] of Object.entries(camp.fieldSources ?? {})) {
-      const id = claimId("field", camp.id, field);
+  for (const attestedRecord of recordsExport.records) {
+    for (const [field, source] of Object.entries(attestedRecord.fieldSources ?? {})) {
+      const id = claimId("field", attestedRecord.id, field);
       const evidenceId = `${id}.source`;
       const observedAt = iso(source.approvedAt);
       claims.push({
         id,
-        subjectType: "camp",
-        subjectId: camp.id,
-        surface: "campfit.public-data",
+        subjectType: "attested-record",
+        subjectId: attestedRecord.id,
+        surface: "field-attested-records.public-data",
         claimType: "public-data-field",
         fieldOrBehavior: field,
-        value: camp[field],
+        value: attestedRecord[field],
         createdAt: observedAt,
         updatedAt: observedAt,
         impactLevel: "high",
-        currentIntegrityRef: `${camp.id}:${field}:${observedAt}`,
+        currentIntegrityRef: `${attestedRecord.id}:${field}:${observedAt}`,
         verificationPolicyId: FIELD_POLICY.id,
         confidenceBasis: {
           sourceQuality: "moderate",
@@ -204,9 +204,9 @@ export function adaptCampfitTrustExportToTrustInput(record: unknown): TrustInput
           impactLevel: "high",
         },
         metadata: {
-          campName: camp.name,
-          campSlug: camp.slug,
-          dataConfidence: camp.dataConfidence,
+          recordName: attestedRecord.name,
+          recordSlug: attestedRecord.slug,
+          dataConfidence: attestedRecord.dataConfidence,
         },
       });
       evidence.push(buildEvidence({
@@ -216,10 +216,10 @@ export function adaptCampfitTrustExportToTrustInput(record: unknown): TrustInput
         method: "observation",
         sourceRef: source.sourceUrl,
         locator: `fieldSources.${field}`,
-        summary: source.excerpt ?? `Campfit field ${field} was approved from ${source.sourceUrl}.`,
+        summary: source.excerpt ?? `Field-attested record field ${field} was approved from ${source.sourceUrl}.`,
         observedAt,
-        collectedBy: "campfit",
-        integrityRef: `${camp.id}:${field}:${observedAt}`,
+        collectedBy: "field-attestation-example",
+        integrityRef: `${attestedRecord.id}:${field}:${observedAt}`,
       }));
       events.push(buildEvent({
         id: `${id}.verified`,
@@ -228,12 +228,12 @@ export function adaptCampfitTrustExportToTrustInput(record: unknown): TrustInput
         method: "field source approval",
         evidenceIds: [evidenceId],
         createdAt: observedAt,
-        actor: "campfit",
+        actor: "field-attestation-example",
       }));
     }
   }
 
-  for (const attestation of campfit.fieldAttestations ?? []) {
+  for (const attestation of recordsExport.fieldAttestations ?? []) {
     const id = claimId("attestation", attestation.entityId, attestation.fieldKey, attestation.id);
     const evidenceId = `${id}.attestation`;
     const observedAt = iso(attestation.approvedAt ?? attestation.observedAt ?? attestation.createdAt);
@@ -242,7 +242,7 @@ export function adaptCampfitTrustExportToTrustInput(record: unknown): TrustInput
       id,
       subjectType: attestation.entityType.toLowerCase(),
       subjectId: attestation.entityId,
-      surface: "campfit.attestations",
+      surface: "field-attested-records.attestations",
       claimType: "field-attestation",
       fieldOrBehavior: attestation.fieldKey,
       value: attestation.valueSnapshot ?? null,
@@ -270,9 +270,9 @@ export function adaptCampfitTrustExportToTrustInput(record: unknown): TrustInput
       method: "attestation",
       sourceRef: attestation.sourceUrl ?? attestation.approvedBy ?? attestation.id,
       locator: `fieldAttestations.${attestation.id}`,
-      summary: attestation.excerpt ?? attestation.notes ?? `Campfit ${attestation.status} attestation for ${attestation.fieldKey}.`,
+      summary: attestation.excerpt ?? attestation.notes ?? `Field-attested records ${attestation.status} attestation for ${attestation.fieldKey}.`,
       observedAt,
-      collectedBy: attestation.approvedBy ?? "campfit",
+      collectedBy: attestation.approvedBy ?? "field-attestation-example",
     }));
     events.push(buildEvent({
       id: `${id}.${status}`,
@@ -281,11 +281,11 @@ export function adaptCampfitTrustExportToTrustInput(record: unknown): TrustInput
       method: "field attestation status",
       evidenceIds: [evidenceId],
       createdAt: observedAt,
-      actor: attestation.approvedBy ?? "campfit",
+      actor: attestation.approvedBy ?? "field-attestation-example",
     }));
   }
 
-  for (const flag of campfit.reviewFlags ?? []) {
+  for (const flag of recordsExport.reviewFlags ?? []) {
     const id = claimId("flag", flag.entityId, flag.id);
     const evidenceId = `${id}.flag`;
     const status = flagStatus(flag.status);
@@ -293,7 +293,7 @@ export function adaptCampfitTrustExportToTrustInput(record: unknown): TrustInput
       id,
       subjectType: flag.entityType.toLowerCase(),
       subjectId: flag.entityId,
-      surface: "campfit.review-flags",
+      surface: "field-attestation.review-flags",
       claimType: "review-flag",
       fieldOrBehavior: "entityTrust",
       value: flag.comment,
@@ -336,7 +336,7 @@ export function adaptCampfitTrustExportToTrustInput(record: unknown): TrustInput
     }));
   }
 
-  for (const run of campfit.crawlRuns ?? []) {
+  for (const run of recordsExport.crawlRuns ?? []) {
     const id = claimId("crawl", run.id);
     const evidenceId = `${id}.observation`;
     const status = crawlStatus(run.status);
@@ -344,12 +344,12 @@ export function adaptCampfitTrustExportToTrustInput(record: unknown): TrustInput
       id,
       subjectType: "crawl-run",
       subjectId: run.id,
-      surface: "campfit.crawls",
+      surface: "field-attested-records.crawls",
       claimType: "crawl-run",
       fieldOrBehavior: "crawlFreshness",
       value: {
-        totalCamps: run.totalCamps,
-        processedCamps: run.processedCamps,
+        totalRecords: run.totalRecords,
+        processedRecords: run.processedRecords,
         errorCount: run.errorCount,
         newProposals: run.newProposals,
       },
@@ -367,7 +367,7 @@ export function adaptCampfitTrustExportToTrustInput(record: unknown): TrustInput
       metadata: {
         trigger: run.trigger,
         triggeredBy: run.triggeredBy,
-        campIds: run.campIds,
+        recordIds: run.recordIds,
         errorLog: run.errorLog ?? [],
       },
     });
@@ -378,9 +378,9 @@ export function adaptCampfitTrustExportToTrustInput(record: unknown): TrustInput
       method: "observation",
       sourceRef: run.id,
       locator: "crawlRuns",
-      summary: `Campfit crawl ${run.status}: ${run.processedCamps}/${run.totalCamps} camps processed with ${run.errorCount} errors.`,
+      summary: `Field-attested crawl ${run.status}: ${run.processedRecords}/${run.totalRecords} records processed with ${run.errorCount} errors.`,
       observedAt: iso(run.completedAt ?? run.startedAt),
-      collectedBy: "campfit crawler",
+      collectedBy: "field-data crawler",
     }));
     events.push(buildEvent({
       id: `${id}.${status}`,
@@ -389,20 +389,20 @@ export function adaptCampfitTrustExportToTrustInput(record: unknown): TrustInput
       method: "crawl run status",
       evidenceIds: [evidenceId],
       createdAt: iso(run.completedAt ?? run.startedAt),
-      actor: "campfit crawler",
+      actor: "field-data crawler",
     }));
   }
 
-  for (const proposal of campfit.proposals ?? []) {
-    const id = claimId("proposal", proposal.campId, proposal.id);
+  for (const proposal of recordsExport.proposals ?? []) {
+    const id = claimId("proposal", proposal.recordId, proposal.id);
     const evidenceId = `${id}.proposal`;
     const status = proposalStatus(proposal.status);
-    const camp = campById.get(proposal.campId);
+    const attestedRecord = recordById.get(proposal.recordId);
     claims.push({
       id,
-      subjectType: "camp",
-      subjectId: proposal.campId,
-      surface: "campfit.proposals",
+      subjectType: "attested-record",
+      subjectId: proposal.recordId,
+      surface: "field-attested-records.proposals",
       claimType: "change-proposal",
       fieldOrBehavior: "proposedChanges",
       value: proposal.proposedChanges,
@@ -419,7 +419,7 @@ export function adaptCampfitTrustExportToTrustInput(record: unknown): TrustInput
         impactLevel: "medium",
       },
       metadata: {
-        campName: camp?.name,
+        recordName: attestedRecord?.name,
         crawlRunId: proposal.crawlRunId,
         extractionModel: proposal.extractionModel,
         reviewerNotes: proposal.reviewerNotes,
@@ -432,7 +432,7 @@ export function adaptCampfitTrustExportToTrustInput(record: unknown): TrustInput
       method: "extraction",
       sourceRef: proposal.sourceUrl,
       locator: `proposals.${proposal.id}`,
-      summary: `Campfit proposal ${proposal.status} with ${Object.keys(proposal.proposedChanges).length} proposed field changes.`,
+      summary: `Field-attested proposal ${proposal.status} with ${Object.keys(proposal.proposedChanges).length} proposed field changes.`,
       observedAt: iso(proposal.createdAt),
       collectedBy: proposal.extractionModel,
     }));
@@ -444,14 +444,14 @@ export function adaptCampfitTrustExportToTrustInput(record: unknown): TrustInput
         method: "proposal review",
         evidenceIds: [evidenceId],
         createdAt: iso(proposal.reviewedAt ?? proposal.createdAt),
-        actor: proposal.reviewedBy ?? "campfit",
+        actor: proposal.reviewedBy ?? "field-attestation-example",
       }));
     }
   }
 
   return {
     schemaVersion: 2,
-    source: campfit.source ?? "campfit-trust-export",
+    source: recordsExport.source ?? "field-attested-records-export",
     claims,
     evidence,
     policies: [FIELD_POLICY, ATTESTATION_POLICY, FLAG_POLICY, CRAWL_POLICY, PROPOSAL_POLICY],
@@ -459,19 +459,19 @@ export function adaptCampfitTrustExportToTrustInput(record: unknown): TrustInput
   };
 }
 
-function assertCampfitTrustExport(value: unknown): CampfitTrustExport {
-  if (!isObject(value)) throw new Error("Campfit trust export must be an object");
+function assertFieldAttestedRecordsExport(value: unknown): FieldAttestedRecordsExport {
+  if (!isObject(value)) throw new Error("Field-attested records export must be an object");
   requireString(value, "generatedAt");
-  for (const camp of requireArray(value, "camps")) assertCamp(camp);
-  for (const attestation of optionalArray(value, "fieldAttestations")) assertObject(attestation, "Campfit field attestation");
-  for (const flag of optionalArray(value, "reviewFlags")) assertObject(flag, "Campfit review flag");
-  for (const run of optionalArray(value, "crawlRuns")) assertObject(run, "Campfit crawl run");
-  for (const proposal of optionalArray(value, "proposals")) assertObject(proposal, "Campfit proposal");
-  return value as unknown as CampfitTrustExport;
+  for (const attestedRecord of requireArray(value, "records")) assertAttestedRecord(attestedRecord);
+  for (const attestation of optionalArray(value, "fieldAttestations")) assertObject(attestation, "Field-attested record field attestation");
+  for (const flag of optionalArray(value, "reviewFlags")) assertObject(flag, "Review flag");
+  for (const run of optionalArray(value, "crawlRuns")) assertObject(run, "Field-attested crawl run");
+  for (const proposal of optionalArray(value, "proposals")) assertObject(proposal, "Field-attested proposal");
+  return value as unknown as FieldAttestedRecordsExport;
 }
 
-function assertCamp(value: unknown): void {
-  assertObject(value, "Campfit camp");
+function assertAttestedRecord(value: unknown): void {
+  assertObject(value, "Attested record");
   requireString(value, "id");
   requireString(value, "name");
 }
@@ -523,25 +523,25 @@ function buildEvent(input: {
   };
 }
 
-function attestationStatus(status: CampfitFieldAttestation["status"]): TrustStatus {
+function attestationStatus(status: FieldAttestation["status"]): TrustStatus {
   if (status === "ACTIVE") return "verified";
   if (status === "STALE") return "stale";
   return "disputed";
 }
 
-function flagStatus(status: CampfitReviewFlag["status"]): TrustStatus {
+function flagStatus(status: ReviewFlag["status"]): TrustStatus {
   if (status === "OPEN") return "disputed";
   if (status === "RESOLVED") return "verified";
   return "rejected";
 }
 
-function crawlStatus(status: CampfitCrawlRun["status"]): TrustStatus {
+function crawlStatus(status: CrawlRun["status"]): TrustStatus {
   if (status === "COMPLETED") return "verified";
   if (status === "FAILED") return "rejected";
   return "proposed";
 }
 
-function proposalStatus(status: CampfitCampChangeProposal["status"]): TrustStatus {
+function proposalStatus(status: RecordChangeProposal["status"]): TrustStatus {
   if (status === "APPROVED") return "verified";
   if (status === "REJECTED") return "rejected";
   if (status === "SKIPPED") return "superseded";
@@ -549,7 +549,7 @@ function proposalStatus(status: CampfitCampChangeProposal["status"]): TrustStatu
 }
 
 function claimId(...parts: string[]): string {
-  return `campfit.${parts.map(safeId).join(".")}`;
+  return `field-attested-records.${parts.map(safeId).join(".")}`;
 }
 
 function safeId(value: string): string {
@@ -558,26 +558,26 @@ function safeId(value: string): string {
 
 function iso(value: string): string {
   const time = Date.parse(value);
-  if (!Number.isFinite(time)) throw new Error(`Invalid Campfit timestamp: ${value}`);
+  if (!Number.isFinite(time)) throw new Error(`Invalid Field-attested records timestamp: ${value}`);
   return new Date(time).toISOString();
 }
 
 function requireString(object: Record<string, unknown>, field: string): string {
   const value = object[field];
-  if (typeof value !== "string" || value.length === 0) throw new Error(`Campfit trust export missing string field: ${field}`);
+  if (typeof value !== "string" || value.length === 0) throw new Error(`Field-attested records export missing string field: ${field}`);
   return value;
 }
 
 function requireArray(object: Record<string, unknown>, field: string): unknown[] {
   const value = object[field];
-  if (!Array.isArray(value)) throw new Error(`Campfit trust export missing array field: ${field}`);
+  if (!Array.isArray(value)) throw new Error(`Field-attested records export missing array field: ${field}`);
   return value;
 }
 
 function optionalArray(object: Record<string, unknown>, field: string): unknown[] {
   const value = object[field];
   if (value === undefined) return [];
-  if (!Array.isArray(value)) throw new Error(`Campfit trust export ${field} must be an array`);
+  if (!Array.isArray(value)) throw new Error(`Field-attested records export ${field} must be an array`);
   return value;
 }
 

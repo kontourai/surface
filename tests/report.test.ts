@@ -19,8 +19,8 @@ test("builds a canonical trust report from validation fixtures", async () => {
   assert.equal(report.summary.byStatus.unknown, 1);
   assert.equal(report.proofRequirementsByClaimId["claim.veritas.api-proof"].requiredMethods?.[0], "validation");
   assert.equal(report.summary.faultLinesByType.freshness_breach, 1);
-  assert.equal(report.faultLines.some((line) => line.claimId === "claim.campfit.registration-status" && line.type === "freshness_breach"), true);
-  assert.deepEqual(report.summary.staleClaims, ["claim.campfit.registration-status"]);
+  assert.equal(report.faultLines.some((line) => line.claimId === "claim.field-attested-records.registration-status" && line.type === "freshness_breach"), true);
+  assert.deepEqual(report.summary.staleClaims, ["claim.field-attested-records.registration-status"]);
   assert.match(formatTrustReportSummary(report), /Kontour Surface report test-report/);
 });
 

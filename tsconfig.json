@@ -10,6 +10,5 @@
     "resolveJsonModule": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*.ts", "tests/**/*.ts"]
+  "include": ["src/**/*.ts", "examples/adapters/**/*.ts", "tests/**/*.ts"]
 }
-

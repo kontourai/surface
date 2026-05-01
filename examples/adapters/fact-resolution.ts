@@ -7,21 +7,21 @@ import type {
   TrustStatus,
   VerificationEvent,
   VerificationPolicy,
-} from "../types.js";
+} from "../../src/types.js";
 
-export interface TaxesTrustExport {
+export interface FactResolutionExport {
   source?: string;
   generatedAt: string;
-  householdId: string;
-  taxYear: number;
-  verifiedFacts?: TaxesVerifiedFact[];
-  resolvedFacts?: TaxesResolvedFact[];
-  returnPackage?: TaxesReturnPackage;
+  caseId: string;
+  period: number;
+  verifiedFacts?: VerifiedFactRecord[];
+  resolvedFacts?: ResolvedFactRecord[];
+  returnPackage?: ReturnPackage;
 }
 
-export interface TaxesVerifiedFact {
-  householdId: string;
-  taxYear: number;
+export interface VerifiedFactRecord {
+  caseId: string;
+  period: number;
   factKey: string;
   label: string;
   value: unknown;
@@ -30,9 +30,9 @@ export interface TaxesVerifiedFact {
   rationale: string;
 }
 
-export interface TaxesResolvedFact {
-  householdId: string;
-  taxYear: number;
+export interface ResolvedFactRecord {
+  caseId: string;
+  period: number;
   factKey: string;
   label: string;
   value: unknown;
@@ -48,23 +48,23 @@ export interface TaxesResolvedFact {
   }>;
 }
 
-export interface TaxesReturnPackage {
-  householdId: string;
-  taxYear: number;
+export interface ReturnPackage {
+  caseId: string;
+  period: number;
   generatedAt: string;
   readiness: "draft" | "generated";
   preparedReturnReferencePath: string;
-  federal?: { form1040?: Record<string, TaxesReturnPackageField> };
-  colorado?: { dr0104?: Record<string, TaxesReturnPackageField> };
+  federal?: { form1040?: Record<string, ReturnPackageField> };
+  colorado?: { dr0104?: Record<string, ReturnPackageField> };
   unresolved?: string[];
-  assumptions?: TaxesReturnPackageAssumption[];
-  comparisonSummary?: TaxesReturnPackageComparisonField[];
-  reviewSignals?: TaxesReturnPackageReviewSignal[];
+  assumptions?: ReturnPackageAssumption[];
+  comparisonSummary?: ReturnPackageComparisonField[];
+  reviewSignals?: ReturnPackageReviewSignal[];
   citationIndex?: Record<string, string>;
   citations?: string[];
 }
 
-export interface TaxesReturnPackageField {
+export interface ReturnPackageField {
   value: number | string | null;
   source: string;
   citations: string[];
@@ -74,7 +74,7 @@ export interface TaxesReturnPackageField {
   trace?: unknown;
 }
 
-export interface TaxesReturnPackageAssumption {
+export interface ReturnPackageAssumption {
   key: string;
   field: string;
   source: string;
@@ -85,7 +85,7 @@ export interface TaxesReturnPackageAssumption {
   notes?: string[];
 }
 
-export interface TaxesReturnPackageComparisonField {
+export interface ReturnPackageComparisonField {
   field: string;
   generatedValue: number | string | null;
   preparedReturnValue: number | string | null;
@@ -99,7 +99,7 @@ export interface TaxesReturnPackageComparisonField {
   missingInformation?: string[];
 }
 
-export interface TaxesReturnPackageReviewSignal {
+export interface ReturnPackageReviewSignal {
   field: string;
   severity: "info" | "review_required";
   driver: "assumption" | "comparison_gap" | "proxy_model";
@@ -107,14 +107,14 @@ export interface TaxesReturnPackageReviewSignal {
 }
 
 const VERIFIED_FACT_POLICY: VerificationPolicy = {
-  id: "taxes.verified-fact",
-  claimType: "tax-verified-fact",
-  parentType: "tax-claim",
+  id: "fact-resolution.verified-fact",
+  claimType: "verified-fact",
+  parentType: "fact-resolution-claim",
   requiredEvidence: ["human_attestation"],
   requiredMethods: ["attestation"],
   requiresCorroboration: false,
   requiredProof: ["verified fact record"],
-  reviewAuthority: "tax workflow operator",
+  reviewAuthority: "workflow operator",
   validityRule: { kind: "historical" },
   stalenessTriggers: ["corrected source document", "manual override"],
   conflictRules: ["newer verified fact supersedes older fact"],
@@ -122,14 +122,14 @@ const VERIFIED_FACT_POLICY: VerificationPolicy = {
 };
 
 const RESOLVED_FACT_POLICY: VerificationPolicy = {
-  id: "taxes.resolved-fact",
-  claimType: "tax-resolved-fact",
-  parentType: "tax-claim",
+  id: "fact-resolution.resolved-fact",
+  claimType: "resolved-fact",
+  parentType: "fact-resolution-claim",
   requiredEvidence: ["calculation_trace"],
   requiredMethods: ["validation"],
   requiresCorroboration: false,
   requiredProof: ["fact resolution rationale"],
-  reviewAuthority: "tax workflow",
+  reviewAuthority: "workflow",
   validityRule: { kind: "manual" },
   stalenessTriggers: ["new candidate fact", "user correction"],
   conflictRules: ["candidate conflicts require verification"],
@@ -137,14 +137,14 @@ const RESOLVED_FACT_POLICY: VerificationPolicy = {
 };
 
 const RETURN_FIELD_POLICY: VerificationPolicy = {
-  id: "taxes.return-package-field",
-  claimType: "tax-return-field",
-  parentType: "tax-claim",
+  id: "fact-resolution.return-package-field",
+  claimType: "return-package-field",
+  parentType: "fact-resolution-claim",
   requiredEvidence: ["document_citation"],
   requiredMethods: ["corroboration"],
   requiresCorroboration: false,
   requiredProof: ["return package citation"],
-  reviewAuthority: "tax return package",
+  reviewAuthority: "return package reviewer",
   validityRule: { kind: "historical" },
   stalenessTriggers: ["return package regenerated", "prepared return reference changes"],
   conflictRules: ["material comparison gaps dispute generated values"],
@@ -152,37 +152,37 @@ const RETURN_FIELD_POLICY: VerificationPolicy = {
 };
 
 const REVIEW_POLICY: VerificationPolicy = {
-  id: "taxes.review-signal",
-  claimType: "tax-review-signal",
-  parentType: "tax-claim",
+  id: "fact-resolution.review-signal",
+  claimType: "review-signal",
+  parentType: "fact-resolution-claim",
   requiredEvidence: ["calculation_trace"],
   requiredMethods: ["validation"],
   requiresCorroboration: false,
   requiredProof: ["return package review signal"],
-  reviewAuthority: "tax return package",
+  reviewAuthority: "return package reviewer",
   validityRule: { kind: "manual" },
   stalenessTriggers: ["review signal resolved", "return package regenerated"],
   conflictRules: ["review_required signals dispute readiness"],
   impactLevel: "critical",
 };
 
-export function adaptTaxesTrustExportToTrustInput(record: unknown): TrustInput {
-  const taxes = assertTaxesTrustExport(record);
+export function adaptFactResolutionExportToTrustInput(record: unknown): TrustInput {
+  const factResolution = assertFactResolutionExport(record);
   const claims: Claim[] = [];
   const evidence: Evidence[] = [];
   const events: VerificationEvent[] = [];
-  const generatedAt = iso(taxes.generatedAt);
-  const verifiedKeys = new Set((taxes.verifiedFacts ?? []).map((fact) => fact.factKey));
+  const generatedAt = iso(factResolution.generatedAt);
+  const verifiedKeys = new Set((factResolution.verifiedFacts ?? []).map((fact) => fact.factKey));
 
-  for (const fact of taxes.verifiedFacts ?? []) {
+  for (const fact of factResolution.verifiedFacts ?? []) {
     const id = claimId("verified", fact.factKey);
     const evidenceId = `${id}.attestation`;
     claims.push({
       id,
-      subjectType: "tax-fact",
-      subjectId: `${fact.householdId}:${fact.taxYear}:${fact.factKey}`,
-      surface: "taxes.verified-facts",
-      claimType: "tax-verified-fact",
+      subjectType: "fact",
+      subjectId: `${fact.caseId}:${fact.period}:${fact.factKey}`,
+      surface: "fact-resolution.verified-facts",
+      claimType: "verified-fact",
       fieldOrBehavior: fact.factKey,
       value: fact.value,
       createdAt: iso(fact.verifiedAt),
@@ -222,16 +222,16 @@ export function adaptTaxesTrustExportToTrustInput(record: unknown): TrustInput {
     }));
   }
 
-  for (const fact of taxes.resolvedFacts ?? []) {
+  for (const fact of factResolution.resolvedFacts ?? []) {
     if (verifiedKeys.has(fact.factKey)) continue;
     const id = claimId("resolved", fact.factKey);
     const evidenceId = `${id}.resolution`;
     claims.push({
       id,
-      subjectType: "tax-fact",
-      subjectId: `${fact.householdId}:${fact.taxYear}:${fact.factKey}`,
-      surface: "taxes.resolved-facts",
-      claimType: "tax-resolved-fact",
+      subjectType: "fact",
+      subjectId: `${fact.caseId}:${fact.period}:${fact.factKey}`,
+      surface: "fact-resolution.resolved-facts",
+      claimType: "resolved-fact",
       fieldOrBehavior: fact.factKey,
       value: fact.value,
       status: "proposed",
@@ -265,11 +265,11 @@ export function adaptTaxesTrustExportToTrustInput(record: unknown): TrustInput {
       locator: `resolvedFacts.${fact.factKey}`,
       summary: fact.rationale,
       observedAt: generatedAt,
-      collectedBy: "tax fact resolver",
+      collectedBy: "fact fact resolver",
     }));
   }
 
-  const returnPackage = taxes.returnPackage;
+  const returnPackage = factResolution.returnPackage;
   if (returnPackage) {
     addReturnFields({
       prefix: "federal.form1040",
@@ -291,10 +291,10 @@ export function adaptTaxesTrustExportToTrustInput(record: unknown): TrustInput {
     for (const field of returnPackage.unresolved ?? []) {
       claims.push({
         id: claimId("unresolved", field),
-        subjectType: "tax-return-field",
-        subjectId: `${returnPackage.householdId}:${returnPackage.taxYear}:${field}`,
-        surface: "taxes.return-package",
-        claimType: "tax-return-field",
+        subjectType: "return-package-field",
+        subjectId: `${returnPackage.caseId}:${returnPackage.period}:${field}`,
+        surface: "fact-resolution.return-package",
+        claimType: "return-package-field",
         fieldOrBehavior: field,
         value: null,
         status: "unknown",
@@ -320,10 +320,10 @@ export function adaptTaxesTrustExportToTrustInput(record: unknown): TrustInput {
       const evidenceId = `${id}.evidence`;
       claims.push({
         id,
-        subjectType: "tax-assumption",
-        subjectId: `${returnPackage.householdId}:${returnPackage.taxYear}:${assumption.key}`,
-        surface: "taxes.assumptions",
-        claimType: "tax-review-signal",
+        subjectType: "assumption",
+        subjectId: `${returnPackage.caseId}:${returnPackage.period}:${assumption.key}`,
+        surface: "fact-resolution.assumptions",
+        claimType: "review-signal",
         fieldOrBehavior: assumption.field,
         value: assumption.value,
         createdAt: iso(returnPackage.generatedAt),
@@ -354,14 +354,14 @@ export function adaptTaxesTrustExportToTrustInput(record: unknown): TrustInput {
         locator: `assumptions.${assumption.key}`,
         summary: assumption.reason,
         observedAt: iso(returnPackage.generatedAt),
-        collectedBy: "tax return package",
+        collectedBy: "return package",
         metadata: { citations: assumption.citations },
       }));
       events.push(buildEvent({
         id: `${id}.disputed`,
         claimId: id,
         status: "disputed",
-        actor: "tax return package",
+        actor: "return package",
         method: "assumption requires review",
         evidenceIds: [evidenceId],
         createdAt: iso(returnPackage.generatedAt),
@@ -374,10 +374,10 @@ export function adaptTaxesTrustExportToTrustInput(record: unknown): TrustInput {
       const status = comparisonStatus(comparison.severity);
       claims.push({
         id,
-        subjectType: "tax-comparison",
-        subjectId: `${returnPackage.householdId}:${returnPackage.taxYear}:${comparison.field}`,
-        surface: "taxes.comparison-summary",
-        claimType: "tax-review-signal",
+        subjectType: "comparison",
+        subjectId: `${returnPackage.caseId}:${returnPackage.period}:${comparison.field}`,
+        surface: "fact-resolution.comparison-summary",
+        claimType: "review-signal",
         fieldOrBehavior: comparison.field,
         value: {
           generatedValue: comparison.generatedValue,
@@ -415,7 +415,7 @@ export function adaptTaxesTrustExportToTrustInput(record: unknown): TrustInput {
         locator: `comparisonSummary.${comparison.field}`,
         summary: comparison.investigationHint,
         observedAt: iso(returnPackage.generatedAt),
-        collectedBy: "tax return package",
+        collectedBy: "return package",
         metadata: { citations: comparison.citations },
       }));
       if (status !== "proposed") {
@@ -423,7 +423,7 @@ export function adaptTaxesTrustExportToTrustInput(record: unknown): TrustInput {
           id: `${id}.${status}`,
           claimId: id,
           status,
-          actor: "tax return package",
+          actor: "return package",
           method: "prepared return comparison",
           evidenceIds: [evidenceId],
           createdAt: iso(returnPackage.generatedAt),
@@ -437,10 +437,10 @@ export function adaptTaxesTrustExportToTrustInput(record: unknown): TrustInput {
       const status: TrustStatus = signal.severity === "review_required" ? "disputed" : "proposed";
       claims.push({
         id,
-        subjectType: "tax-review-signal",
-        subjectId: `${returnPackage.householdId}:${returnPackage.taxYear}:${signal.field}:${signal.driver}`,
-        surface: "taxes.review-signals",
-        claimType: "tax-review-signal",
+        subjectType: "review-signal",
+        subjectId: `${returnPackage.caseId}:${returnPackage.period}:${signal.field}:${signal.driver}`,
+        surface: "fact-resolution.review-signals",
+        claimType: "review-signal",
         fieldOrBehavior: signal.field,
         value: signal.reason,
         status: status === "proposed" ? "proposed" : undefined,
@@ -469,14 +469,14 @@ export function adaptTaxesTrustExportToTrustInput(record: unknown): TrustInput {
         locator: `reviewSignals.${signal.field}`,
         summary: signal.reason,
         observedAt: iso(returnPackage.generatedAt),
-        collectedBy: "tax return package",
+        collectedBy: "return package",
       }));
       if (status === "disputed") {
         events.push(buildEvent({
           id: `${id}.disputed`,
           claimId: id,
           status,
-          actor: "tax return package",
+          actor: "return package",
           method: "review signal",
           evidenceIds: [evidenceId],
           createdAt: iso(returnPackage.generatedAt),
@@ -487,7 +487,7 @@ export function adaptTaxesTrustExportToTrustInput(record: unknown): TrustInput {
 
   return {
     schemaVersion: 2,
-    source: taxes.source ?? `taxes:${taxes.householdId}:${taxes.taxYear}`,
+    source: factResolution.source ?? `fact-resolution:${factResolution.caseId}:${factResolution.period}`,
     claims,
     evidence,
     policies: [VERIFIED_FACT_POLICY, RESOLVED_FACT_POLICY, RETURN_FIELD_POLICY, REVIEW_POLICY],
@@ -497,8 +497,8 @@ export function adaptTaxesTrustExportToTrustInput(record: unknown): TrustInput {
 
 function addReturnFields(input: {
   prefix: string;
-  fields: Record<string, TaxesReturnPackageField>;
-  returnPackage: TaxesReturnPackage;
+  fields: Record<string, ReturnPackageField>;
+  returnPackage: ReturnPackage;
   claims: Claim[];
   evidence: Evidence[];
   events: VerificationEvent[];
@@ -511,10 +511,10 @@ function addReturnFields(input: {
     const status: TrustStatus = hasCitation && input.returnPackage.readiness === "generated" ? "verified" : "proposed";
     input.claims.push({
       id,
-      subjectType: "tax-return-field",
-      subjectId: `${input.returnPackage.householdId}:${input.returnPackage.taxYear}:${fullField}`,
-      surface: "taxes.return-package",
-      claimType: "tax-return-field",
+      subjectType: "return-package-field",
+      subjectId: `${input.returnPackage.caseId}:${input.returnPackage.period}:${fullField}`,
+      surface: "fact-resolution.return-package",
+      claimType: "return-package-field",
       fieldOrBehavior: fullField,
       value: value.value,
       status: status === "proposed" ? "proposed" : undefined,
@@ -547,7 +547,7 @@ function addReturnFields(input: {
         locator: fullField,
         summary: `${fullField} is supported by ${value.citations.join(", ")}.`,
         observedAt: iso(input.returnPackage.generatedAt),
-        collectedBy: "tax return package",
+        collectedBy: "return package",
         metadata: { citations: value.citations },
       }));
     }
@@ -556,7 +556,7 @@ function addReturnFields(input: {
         id: `${id}.verified`,
         claimId: id,
         status,
-        actor: "tax return package",
+        actor: "return package",
         method: "return package citation",
         evidenceIds: [evidenceId],
         createdAt: iso(input.returnPackage.generatedAt),
@@ -565,15 +565,15 @@ function addReturnFields(input: {
   }
 }
 
-function assertTaxesTrustExport(value: unknown): TaxesTrustExport {
-  if (!isObject(value)) throw new Error("Taxes trust export must be an object");
+function assertFactResolutionExport(value: unknown): FactResolutionExport {
+  if (!isObject(value)) throw new Error("Fact resolution export must be an object");
   requireString(value, "generatedAt");
-  requireString(value, "householdId");
-  if (typeof value.taxYear !== "number") throw new Error("Taxes trust export taxYear must be a number");
-  for (const fact of optionalArray(value, "verifiedFacts")) assertObject(fact, "Taxes verified fact");
-  for (const fact of optionalArray(value, "resolvedFacts")) assertObject(fact, "Taxes resolved fact");
-  if (value.returnPackage !== undefined) assertObject(value.returnPackage, "Taxes return package");
-  return value as unknown as TaxesTrustExport;
+  requireString(value, "caseId");
+  if (typeof value.period !== "number") throw new Error("Fact resolution export period must be a number");
+  for (const fact of optionalArray(value, "verifiedFacts")) assertObject(fact, "Verified fact");
+  for (const fact of optionalArray(value, "resolvedFacts")) assertObject(fact, "Resolved fact");
+  if (value.returnPackage !== undefined) assertObject(value.returnPackage, "Return package");
+  return value as unknown as FactResolutionExport;
 }
 
 function buildEvidence(input: {
@@ -623,14 +623,14 @@ function buildEvent(input: {
   };
 }
 
-function comparisonStatus(severity: TaxesReturnPackageComparisonField["severity"]): TrustStatus {
+function comparisonStatus(severity: ReturnPackageComparisonField["severity"]): TrustStatus {
   if (severity === "match") return "verified";
   if (severity === "medium" || severity === "large") return "disputed";
   return "proposed";
 }
 
 function claimId(...parts: string[]): string {
-  return `taxes.${parts.map(safeId).join(".")}`;
+  return `fact-resolution.${parts.map(safeId).join(".")}`;
 }
 
 function safeId(value: string): string {
@@ -639,20 +639,20 @@ function safeId(value: string): string {
 
 function iso(value: string): string {
   const time = Date.parse(value);
-  if (!Number.isFinite(time)) throw new Error(`Invalid taxes timestamp: ${value}`);
+  if (!Number.isFinite(time)) throw new Error(`Invalid fact resolution timestamp: ${value}`);
   return new Date(time).toISOString();
 }
 
 function requireString(object: Record<string, unknown>, field: string): string {
   const value = object[field];
-  if (typeof value !== "string" || value.length === 0) throw new Error(`Taxes trust export missing string field: ${field}`);
+  if (typeof value !== "string" || value.length === 0) throw new Error(`Fact resolution export missing string field: ${field}`);
   return value;
 }
 
 function optionalArray(object: Record<string, unknown>, field: string): unknown[] {
   const value = object[field];
   if (value === undefined) return [];
-  if (!Array.isArray(value)) throw new Error(`Taxes trust export ${field} must be an array`);
+  if (!Array.isArray(value)) throw new Error(`Fact resolution export ${field} must be an array`);
   return value;
 }
 

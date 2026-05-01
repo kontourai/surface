@@ -1,19 +1,19 @@
-# Campfit Adapter
+# Field-Attested Records Example
 
-The Campfit adapter proves Surface can model public-data trust, not just developer proof.
+This example proves Surface can model public-data trust, not just developer proof.
 
 ## Input
 
-The adapter reads a compact Campfit trust export with:
+The example reads a compact field-attested records export with:
 
-- `camps`
+- `records`
 - `fieldSources`
 - `fieldAttestations`
 - `reviewFlags`
 - `crawlRuns`
 - `proposals`
 
-The source product is not changed. Surface only imports a JSON artifact.
+The source product is not named here and real adapters belong in downstream product repos. Surface only imports a JSON artifact.
 
 ## Output
 
@@ -37,5 +37,5 @@ The adapter emits standard Surface records:
 ## CLI
 
 ```bash
-surface report --adapter campfit --input examples/campfit-trust-export.json --format summary
+surface report --adapter field-attested-records --input examples/field-attested-records-export.json --format summary
 ```

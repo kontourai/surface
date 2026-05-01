@@ -32,14 +32,14 @@ test("subjectAliases on a claim group co-referent subjects", () => {
     claims: [
       {
         ...baseClaim,
-        subjectAliases: [{ subjectType: "campfit.provider", subjectId: "provider-A" }],
+        subjectAliases: [{ subjectType: "attested-record.provider", subjectId: "provider-A" }],
       },
     ],
   }));
 
   const index = buildIdentityIndex(input);
   const repoKey = index.canonicalKey({ subjectType: "veritas.repo", subjectId: "repo-A" });
-  const providerKey = index.canonicalKey({ subjectType: "campfit.provider", subjectId: "provider-A" });
+  const providerKey = index.canonicalKey({ subjectType: "attested-record.provider", subjectId: "provider-A" });
   assert.equal(repoKey, providerKey);
 });
 
@@ -48,7 +48,7 @@ test("identityLinks merge subjects across claims transitively", () => {
     claims: [
       { ...baseClaim, id: "claim-a", subjectId: "repo-A" },
       { ...baseClaim, id: "claim-b", subjectId: "repo-B" },
-      { ...baseClaim, id: "claim-c", subjectType: "campfit.provider", subjectId: "provider-X" },
+      { ...baseClaim, id: "claim-c", subjectType: "attested-record.provider", subjectId: "provider-X" },
     ],
     identityLinks: [
       {
@@ -60,7 +60,7 @@ test("identityLinks merge subjects across claims transitively", () => {
       {
         subjects: [
           { subjectType: "veritas.repo", subjectId: "repo-B" },
-          { subjectType: "campfit.provider", subjectId: "provider-X" },
+          { subjectType: "attested-record.provider", subjectId: "provider-X" },
         ],
         reason: "Verified handoff",
       },
@@ -70,7 +70,7 @@ test("identityLinks merge subjects across claims transitively", () => {
   const index = buildIdentityIndex(input);
   const a = index.canonicalKey({ subjectType: "veritas.repo", subjectId: "repo-A" });
   const b = index.canonicalKey({ subjectType: "veritas.repo", subjectId: "repo-B" });
-  const c = index.canonicalKey({ subjectType: "campfit.provider", subjectId: "provider-X" });
+  const c = index.canonicalKey({ subjectType: "attested-record.provider", subjectId: "provider-X" });
   assert.equal(a, b);
   assert.equal(b, c);
 

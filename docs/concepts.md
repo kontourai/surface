@@ -10,8 +10,8 @@ A claim is the smallest trust-bearing unit: a subject, field or behavior, value,
 
 Examples:
 
-- A camp has `registrationStatus = OPEN`.
-- A tax fact has `w2.wages = 123456`.
+- A field-attested record has `registrationStatus = OPEN`.
+- A resolved fact has `w2.wages = 123456`.
 - A repo surface requires `npm test` before a change is trusted.
 
 ## Evidence

@@ -5,7 +5,7 @@
 - README and docs narrative.
 - GitHub Pages-capable static site.
 - Light/dark styling.
-- Use cases for `veritas`, `campfit`, and `taxes`.
+- Use cases for Veritas evidence, field-attested records, and fact resolution.
 
 ## Phase 2: Schema-first kernel
 
@@ -60,4 +60,3 @@ Only after the local contract proves useful, add durable hosted storage for long
 ## Parallel track: Linked-data and ontology
 
 Surface's JSON-LD export is the seed of a longer-running track that hardens trust reports into a portable, W3C-compatible substrate. See [linked-data-roadmap.md](./linked-data-roadmap.md) for the full plan: publishing a resolvable vocabulary, SHACL shapes, Veritas inheritance, optional Turtle/N-Quads emit, Verifiable Credentials alignment, and on-demand OWL reasoning.
-

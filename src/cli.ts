@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { adaptCampfitTrustExportToTrustInput } from "./adapters/campfit.js";
-import { adaptTaxesTrustExportToTrustInput } from "./adapters/taxes.js";
 import { adaptVeritasEvidenceToTrustInput } from "./adapters/veritas.js";
+import { adaptFactResolutionExportToTrustInput } from "../examples/adapters/fact-resolution.js";
+import { adaptFieldAttestedRecordsExportToTrustInput } from "../examples/adapters/field-attested-records.js";
 import { buildTrustReport, formatTrustReportSummary } from "./report.js";
 import { validateTrustInput } from "./validate.js";
 import { toLinkedReport } from "./linked.js";
@@ -33,19 +33,19 @@ export async function runCli(args: string[]): Promise<void> {
   }
 }
 
-type AdapterName = "surface" | "veritas" | "campfit" | "taxes";
+type AdapterName = "surface" | "veritas" | "field-attested-records" | "fact-resolution";
 
 function adaptInput(adapter: AdapterName, parsed: unknown): unknown {
   if (adapter === "veritas") return adaptVeritasEvidenceToTrustInput(parsed);
-  if (adapter === "campfit") return adaptCampfitTrustExportToTrustInput(parsed);
-  if (adapter === "taxes") return adaptTaxesTrustExportToTrustInput(parsed);
+  if (adapter === "field-attested-records") return adaptFieldAttestedRecordsExportToTrustInput(parsed);
+  if (adapter === "fact-resolution") return adaptFactResolutionExportToTrustInput(parsed);
   return parsed;
 }
 
 function defaultInputForAdapter(adapter: AdapterName): string {
   if (adapter === "veritas") return "examples/veritas-evidence.json";
-  if (adapter === "campfit") return "examples/campfit-trust-export.json";
-  if (adapter === "taxes") return "examples/taxes-trust-export.json";
+  if (adapter === "field-attested-records") return "examples/field-attested-records-export.json";
+  if (adapter === "fact-resolution") return "examples/fact-resolution-export.json";
   return "examples/surface-fixtures.json";
 }
 
@@ -71,8 +71,8 @@ function parseReportArgs(args: string[]): { input: string; format: "json" | "sum
     } else if (arg === "--run-id") runId = requireValue(args, ++index, "--run-id");
     else if (arg === "--adapter") {
       const value = requireValue(args, ++index, "--adapter");
-      if (value !== "surface" && value !== "veritas" && value !== "campfit" && value !== "taxes") {
-        throw new Error("--adapter must be surface, veritas, campfit, or taxes");
+      if (value !== "surface" && value !== "veritas" && value !== "field-attested-records" && value !== "fact-resolution") {
+        throw new Error("--adapter must be surface, veritas, field-attested-records, or fact-resolution");
       }
       adapter = value;
       if (!inputExplicit) {
@@ -97,8 +97,8 @@ function printHelp(): void {
 Usage:
   surface report [--input examples/surface-fixtures.json] [--format json|summary|linked]
   surface report --adapter veritas [--input examples/veritas-evidence.json] [--format json|summary|linked]
-  surface report --adapter campfit [--input examples/campfit-trust-export.json] [--format json|summary|linked]
-  surface report --adapter taxes [--input examples/taxes-trust-export.json] [--format json|summary|linked]
+  surface report --adapter field-attested-records [--input examples/field-attested-records-export.json] [--format json|summary|linked]
+  surface report --adapter fact-resolution [--input examples/fact-resolution-export.json] [--format json|summary|linked]
 
 Surface reports map product claims to evidence, freshness, and trust status.
 `);

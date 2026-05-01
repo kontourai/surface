@@ -2,7 +2,7 @@
 
 Kontour Surface is the trust map for AI-era products.
 
-The premise is simple: every product makes claims. A camp directory claims registration is open. A tax workflow claims a number came from a verified source. A developer tool claims a code change passed the proof required for the surface it touched.
+The premise is simple: every product makes claims. A record directory claims registration is open. A fact-resolution workflow claims a number came from a verified source. A developer tool claims a code change passed the proof required for the surface it touched.
 
 AI increases the volume and polish of those claims. Kontour Surface makes the support for those claims inspectable.
 

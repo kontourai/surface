@@ -5,9 +5,9 @@ import type { Claim, Evidence, VerificationEvent, VerificationPolicy } from "../
 
 const claim: Claim = {
   id: "claim-1",
-  subjectType: "camp",
-  subjectId: "camp-1",
-  surface: "campfit.public-data",
+  subjectType: "attested-record",
+  subjectId: "record-1",
+  surface: "field-attested-records.public-data",
   claimType: "public-data-field",
   fieldOrBehavior: "registrationStatus",
   value: "OPEN",

@@ -13,25 +13,25 @@ Surface should be able to represent claims like:
 
 Veritas artifacts can now carry `surface.input`, a portable Surface `TrustInput` projection. Surface still generates the final report, fault lines, proof requirements, and summary.
 
-### Work-agent prove-out
+### Veritas Prove-Out
 
-`work-agent` is the brownfield proving ground for the Veritas-to-Surface boundary. It has repo governance proof lanes, proof-family inventories, policy packs, and connected-agent tests. The intended flow is:
+A brownfield repository can prove the Veritas-to-Surface boundary with repo governance proof lanes, proof-family inventories, policy packs, and integration tests. The intended flow is:
 
 ```bash
-WORK_AGENT_REPO=/path/to/work-agent
+TARGET_REPO=/path/to/repo
 SURFACE_REPO=/path/to/kontourai/surface
 
-cd "$WORK_AGENT_REPO"
-npm exec -- veritas shadow run --working-tree --format feedback --run-id work-agent-surface-shadow
-artifact_path="$(npm exec -- veritas report --working-tree --format json --run-id work-agent-surface-shadow | node -e 'let data=""; process.stdin.on("data", c => data += c); process.stdin.on("end", () => { const parsed = JSON.parse(data); if (!parsed.artifactPath) throw new Error("missing artifactPath"); console.log(parsed.artifactPath); });')"
+cd "$TARGET_REPO"
+npm exec -- veritas shadow run --working-tree --format feedback --run-id surface-shadow
+artifact_path="$(npm exec -- veritas report --working-tree --format json --run-id surface-shadow | node -e 'let data=""; process.stdin.on("data", c => data += c); process.stdin.on("end", () => { const parsed = JSON.parse(data); if (!parsed.artifactPath) throw new Error("missing artifactPath"); console.log(parsed.artifactPath); });')"
 node "$SURFACE_REPO/bin/surface.mjs" report --adapter veritas --input "$artifact_path" --format summary
 ```
 
 Proof lanes and proof families remain Veritas-local workflow mechanics. Their portable output is the Surface claim/evidence/policy/event input.
 
-## Campfit
+## Field-Attested Records
 
-`campfit` is a public-data trust use case. Parents rely on camp details, registration status, pricing, schedules, and provider information.
+Field-attested records are a public-data trust pattern. Users rely on details, registration status, pricing, schedules, and provider information that may come from crawls, human edits, and review workflows.
 
 Surface should be able to represent claims like:
 
@@ -40,11 +40,11 @@ Surface should be able to represent claims like:
 - This registration status is stale because the validity window expired.
 - This user report conflicts with the approved value.
 
-The `campfit` adapter now imports field sources, attestations, review flags, crawl outcomes, and proposals into the same Surface trust report shape.
+The generic example imports field sources, attestations, review flags, crawl outcomes, and proposals into the same Surface trust report shape. Real product adapters should live in the downstream product repo.
 
-## Taxes
+## Fact Resolution
 
-`taxes` is a high-stakes fact-verification use case. The workflow extracts facts, resolves candidates, promotes verified facts, and emits return packages with citations and review signals.
+Fact resolution is a high-stakes verification pattern. The workflow extracts facts, resolves candidates, promotes verified facts, and emits packages with citations and review signals.
 
 Surface should be able to represent claims like:
 
@@ -53,7 +53,7 @@ Surface should be able to represent claims like:
 - This fact was manually verified.
 - This derived assumption still needs review.
 
-The `taxes` adapter now imports verified facts, return-package citations, assumptions, comparison gaps, unresolved fields, and review signals into the same Surface trust report shape.
+The generic example imports verified facts, package citations, assumptions, comparison gaps, unresolved fields, and review signals into the same Surface trust report shape. Real product adapters should live in the downstream product repo.
 
 ## Future products
 

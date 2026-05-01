@@ -15,13 +15,13 @@ AI makes plausible output cheap. Before a human or an agent acts on a claim, fou
 
 Surface keeps that structure inspectable instead of burying it inside a prompt, a dashboard, or a single confidence score.
 
-## Product layers
+## Product Layers
 
 - `veritas`: developer and AI-agent governance built on Surface through repo surfaces, policy packs, proof lanes, and evidence artifacts.
-- `campfit`: public-data verification through crawl evidence, field attestations, review flags, and freshness.
-- `taxes`: high-stakes fact verification through extraction, resolution, verified facts, citations, and review signals.
+- Field-attested records: public-data verification through crawl evidence, field attestations, review flags, and freshness.
+- Fact resolution: high-stakes fact verification through extraction, resolution, verified facts, citations, and review signals.
 
-These are product layers and proof customers for the trust layer, not the whole Kontour AI business. Each product can keep its own workflow language, but portable truth flows through Surface claims, evidence, policies, events, and reports.
+These are generic trust patterns, grounded in planned downstream product usage. Each product keeps its own workflow language and real adapter code, while portable truth flows through Surface claims, evidence, policies, events, and reports.
 
 ## Quickstart
 
@@ -43,19 +43,19 @@ node bin/surface.mjs report --adapter veritas --input examples/veritas-evidence.
 
 Architecture note: [Surface Foundation Boundary](docs/architecture/surface-foundation.md) defines the rule that portable truth concepts belong in Surface while product workflow mechanics stay in product layers like Veritas. Veritas artifacts may embed `surface.input`; Surface remains responsible for generated report fields such as summaries, fault lines, proof requirements, freshness, and status.
 
-Campfit and taxes trust exports use the same report contract:
+Generic example exports use the same report contract:
 
 ```bash
-node bin/surface.mjs report --adapter campfit --format summary
-node bin/surface.mjs report --adapter taxes --format summary
+node bin/surface.mjs report --adapter field-attested-records --format summary
+node bin/surface.mjs report --adapter fact-resolution --format summary
 ```
 
 ## Repository layout
 
 - `src/`: TypeScript trust kernel and CLI helpers.
-- `src/adapters/`: importers that map product-specific proof artifacts into the Surface kernel.
+- `src/adapters/`: importers that map real proof artifacts into the Surface kernel.
 - `schemas/`: JSON schema contracts for Surface records.
-- `examples/`: validation fixtures from `veritas`, `campfit`, and `taxes`.
+- `examples/`: validation fixtures for Veritas evidence plus generic trust-pattern examples.
 - `tests/`: unit and fixture coverage.
 - `docs/`: narrative docs used by the static Pages build.
 - `scripts/build-pages-site.mjs`: dependency-free GitHub Pages builder.
