@@ -1,6 +1,6 @@
 # Architecture
 
-Kontour Surface has four layers. Product systems such as Veritas sit above these layers; they keep domain workflow language while mapping portable truth into the Surface kernel.
+Kontour Surface has four layers. Product systems sit above these layers; they keep domain workflow language while mapping portable truth into the Surface kernel.
 
 ## 1. Kernel
 
@@ -21,15 +21,14 @@ Adapters translate product-specific trust signals into the kernel model.
 
 Initial adapters and examples:
 
-- `veritas`: a real adapter for evidence artifacts, policy results, affected surfaces, and proof lanes.
 - `field-attested-records`: a generic example for field sources, attestations, proposals, review flags, crawl runs, and change logs.
 - `fact-resolution`: a generic example for extracted facts, resolved facts, verified facts, citations, discrepancy traces, and review signals.
 
-Adapters should start read-only. The implemented kernel adapter is `veritas`, which maps evidence artifacts into affected-surface claims, proof-lane claims, policy-result claims, and verification events. Current Veritas artifacts can also embed `surface.input`; when that exists, Surface treats it as the portable TrustInput and still owns the generated trust report. Domain-specific real adapters belong in their product repos; Surface keeps generic examples to test the contract.
+Adapters should start read-only. Domain-specific real adapters belong in their product repos or packages. Surface keeps generic examples and a public adapter registry to test the contract.
 
 ## 3. Reports and Agent API
 
-Reports summarize trust state for humans and agents. The first interface is a local CLI with native Surface input and Veritas evidence import. MCP and runtime integrations can follow after the contract stabilizes.
+Reports summarize trust state for humans and agents. The first interface is a local CLI with native Surface input and explicitly registered adapters. MCP and runtime integrations can follow after the contract stabilizes.
 
 ## 4. Human Console
 

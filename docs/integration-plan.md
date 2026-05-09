@@ -1,6 +1,6 @@
-# Integration Plan: Surface + Veritas in Real Applications
+# Integration Plan: Surface Adapters in Real Applications
 
-This plan defines the generic integration path. Surface should stay product-neutral: it owns portable trust primitives and report generation, while product repos own real adapters and product-specific docs. Products such as Veritas can build on Surface; Surface must not depend on product-layer runtimes.
+This plan defines the generic integration path. Surface should stay product-neutral: it owns portable trust primitives and report generation, while product repos own real adapters and product-specific docs. Products can build on Surface; Surface must not depend on product-layer runtimes.
 
 ## Boundary
 
@@ -8,7 +8,7 @@ Surface owns:
 
 - `TrustInput` and report schemas.
 - Claims, evidence, policies, events, freshness, status, identity links, and fault lines.
-- Artifact import boundaries for product outputs such as Veritas evidence.
+- Adapter registration boundaries for product outputs.
 - Generic examples that are grounded in real planned usage but named by pattern.
 
 Downstream repos own:
@@ -18,11 +18,7 @@ Downstream repos own:
 - Product UI and runtime query wiring.
 - Product docs explaining how their users should interpret trust state.
 
-Veritas owns:
-
-- Repo/code trust.
-- Proof lanes, policy packs, proof-family inventories, and evidence artifacts.
-- Projection into `surface.input` when a repo wants Surface reports.
+Product repos own their own adapter code and may either emit native `TrustInput` or register an adapter that maps product artifacts to `TrustInput`.
 
 ## Generic Patterns
 
@@ -55,24 +51,11 @@ Required primitives:
 - Review signals.
 - Package-level policy context.
 
-### Repo Governance Evidence
-
-Use this pattern when a repo verifies code or workflow integrity through Veritas.
-
-Surface adapter: `src/adapters/veritas.ts`
-
-Required primitives:
-
-- Affected surface claims.
-- Proof-lane claims.
-- Policy-result claims.
-- Verification events grounded in artifact timestamps and source references.
-
 ## Phased Delivery
 
 ### Phase 1: Keep Surface Generic
 
-**Status:** Shipped. Surface is generic; Veritas adapter is stable; generic examples are grounded in patterns.
+**Status:** Shipped. Surface is generic; built-in examples are grounded in reusable trust patterns.
 
 - Remove product-named adapters from `src/`.
 - Rename fixtures and CLI adapters by generic pattern.
@@ -90,11 +73,42 @@ Required primitives:
 - Add explicit freshness/recheck rules.
 - Add confidence basis per claim and ceiling through derivedFrom chains.
 
-### Phase 3: Downstream Product Adapters
+### Phase 3: Building An Adapter
 
-**Status:** Planned. Veritas artifact import is shipped as a boundary example; other product adapters are in progress.
+**Status:** Shipped.
 
-Each downstream product repo can add its own adapter package or module that emits Surface input from real storage. Those adapters should not move back into Surface.
+Adapters are plain modules that call `registerAdapter(adapter)`.
+
+```ts
+import { registerAdapter, type Adapter, type TrustInput } from "@kontourai/surface";
+
+const adapter: Adapter<MyExport> = {
+  name: "my-product",
+  defaultFixture: "examples/my-export.json",
+  adapt(record): TrustInput {
+    return {
+      schemaVersion: 2,
+      source: "my-product:demo",
+      claims: [],
+      evidence: [],
+      policies: [],
+      events: [],
+    };
+  },
+};
+
+registerAdapter(adapter);
+```
+
+Adapter rules:
+
+- Keep product-native parsing in the product repo or package.
+- Emit valid `TrustInput`; call `validateTrustInput` before reporting.
+- Use stable claim ids and policy ids so reports can diff over time.
+- Register explicitly; Surface does not discover adapters from `node_modules` or user config.
+- Add adapter tests that build a report and assert status, fault-line, and proof-requirement behavior.
+
+The worked examples are `examples/adapters/field-attested-records.ts`, `examples/adapters/fact-resolution.ts`, and the package-shaped example in `examples/external-adapter/`.
 
 ### Phase 4: Runtime Query API
 
@@ -115,5 +129,4 @@ Surface is correctly generic when:
 1. No downstream product name appears in executable Surface adapters or fixtures.
 2. Example names describe trust patterns, not products.
 3. Real product repos can emit Surface input without Surface importing their types.
-4. Surface can import Veritas-shaped artifacts as data without depending on Veritas runtime code.
-5. Tests prove field attestation, fact resolution, and Veritas evidence all map into the same trust report contract.
+4. Tests prove field attestation, fact resolution, and an out-of-tree adapter all map into the same trust report contract.

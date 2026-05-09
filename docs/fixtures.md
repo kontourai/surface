@@ -6,29 +6,11 @@ Fixtures are the first proof that Surface is not just a concept document. They s
 
 `examples/surface-fixtures.json` is a canonical Surface trust input. It includes claims inspired by:
 
-- Veritas developer proof lanes
+- repo-governance proof lanes
 - field-attested public-data freshness
 - fact-resolution verified facts and discrepancy review
 
 It uses `schemaVersion: 2`, required evidence methods, structured policy method requirements, report-derived proof requirements, and typed fault-line output.
-
-## Veritas fixtures
-
-`examples/veritas-evidence.json` is a passing Veritas evidence artifact. The adapter maps it into:
-
-- affected surface claims
-- selected proof command claims
-- policy result claims
-- proof-family claims
-- verification-budget claims
-- external-tool result claims when the artifact includes advisory or blocking tool output
-- verification events grounded in the evidence timestamp and source reference
-
-`examples/veritas-evidence-fail.json` is a failing artifact. It proves failed proof lanes and blocking policy rules become rejected Surface claims instead of optimistic confidence.
-
-Veritas fixtures now include `selected_proof_lanes` so Surface can import proof method metadata instead of inferring everything from command strings. Newer Veritas artifacts may also embed `surface.input`; when present, Surface uses that portable projection directly and applies normal report generation, freshness, fault-line, and `derivedFrom` behavior.
-
-The Veritas projection uses `derivedFrom` to keep roll-ups honest: proof-family and external-tool claims derive from proof-lane claims, and verification-budget claims derive from proof-family or policy-result inputs. That lets the Surface kernel cap downstream status when upstream proof becomes stale or disputed.
 
 ## Field-Attested Records Fixture
 

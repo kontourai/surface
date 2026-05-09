@@ -61,7 +61,7 @@ Surface keeps:
 
 - Generic trust primitives.
 - JSON schemas and report derivation.
-- A real Veritas evidence adapter.
+- A public adapter SDK with generic built-in examples.
 - Generic examples under `examples/adapters/`.
 
 Downstream repos keep:
@@ -73,6 +73,6 @@ Downstream repos keep:
 ## Decisions
 
 1. Example adapters stay generic: `field-attested-records` and `fact-resolution`.
-2. The only real adapter in Surface is the Veritas evidence adapter.
+2. Product-specific adapters live outside Surface and use the public SDK.
 3. Surface primitives should be driven by these real-use-case patterns without importing downstream product names or logic.
 4. Linked-data and runtime APIs should wait until candidate, assumption, comparison, review-signal, and freshness semantics are stable.

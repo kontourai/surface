@@ -17,7 +17,7 @@ Surface keeps that structure inspectable instead of burying it inside a prompt, 
 
 ## Product Layers
 
-**Veritas** — a separate developer/AI-agent governance product built on Surface. Veritas owns repo surfaces, policy packs, proof lanes, and check-in workflow language; Surface owns the portable trust report contract. Veritas evidence artifacts may embed `surface.input` projections; Surface validates those inputs and produces `TrustReport` outputs. The `confidenceBasis` summary in Surface reports is computed from per-claim `confidenceBasis` and `derivedFrom` ceilings.
+**Product adapters** — downstream products can depend on Surface, register adapters, and emit portable `TrustInput`. Surface owns the report contract; product packages own product-specific parsing and workflow language. The `confidenceBasis` summary in Surface reports is computed from per-claim `confidenceBasis` and `derivedFrom` ceilings.
 
 **Field-Attested Records** — public-data verification through crawl evidence, field attestations, review flags, and freshness.
 
@@ -36,14 +36,14 @@ npm run docs:build
 
 The first prototype reads [examples/surface-fixtures.json](examples/surface-fixtures.json), derives claim statuses, and emits a local trust report.
 
-Veritas evidence can be imported directly:
+Adapters are explicit registry entries:
 
 ```bash
 npm run build
-node bin/surface.mjs report --adapter veritas --input examples/veritas-evidence.json --format summary
+node bin/surface.mjs report --adapter field-attested-records --format summary
 ```
 
-Architecture note: [Surface Foundation Boundary](docs/architecture/surface-foundation.md) defines the rule that portable truth concepts belong in Surface while product workflow mechanics stay in product layers like Veritas. Veritas artifacts may embed `surface.input`; Surface remains responsible for generated report fields such as summaries, fault lines, proof requirements, freshness, and status.
+Architecture note: [Surface Foundation Boundary](docs/architecture/surface-foundation.md) defines the rule that portable truth concepts belong in Surface while product workflow mechanics stay in product layers. Product artifacts may embed `surface.input`; Surface remains responsible for generated report fields such as summaries, fault lines, proof requirements, freshness, and status.
 
 Generic example exports use the same report contract:
 
@@ -55,9 +55,9 @@ node bin/surface.mjs report --adapter fact-resolution --format summary
 ## Repository layout
 
 - `src/`: TypeScript trust kernel and CLI helpers.
-- `src/adapters/`: importers that map real proof artifacts into the Surface kernel.
+- `src/adapters/`: generic built-in examples and registry wiring.
 - `schemas/`: JSON schema contracts for Surface records.
-- `examples/`: validation fixtures for Veritas evidence plus generic trust-pattern examples.
+- `examples/`: validation fixtures and generic trust-pattern examples.
 - `tests/`: unit and fixture coverage.
 - `docs/`: narrative docs used by the static Pages build.
 - `scripts/build-pages-site.mjs`: dependency-free GitHub Pages builder.

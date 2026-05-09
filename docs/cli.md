@@ -10,14 +10,6 @@ Generate a report from a native Surface trust input:
 surface report --input examples/surface-fixtures.json --format summary
 ```
 
-Generate a report from a Veritas evidence artifact:
-
-```bash
-surface report --adapter veritas --input examples/veritas-evidence.json --format summary
-```
-
-Veritas artifacts may include `surface.input`, a Surface `TrustInput` projection. Surface still validates the input and generates report-only fields such as `id`, `generatedAt`, `summary`, `faultLines`, and `proofRequirementsByClaimId`.
-
 Generate reports from generic example exports:
 
 ```bash
@@ -38,5 +30,5 @@ The CLI does not trust incoming status labels by default. A claim is only `verif
 
 - `surface validate` for schema-only checks.
 - `surface diff` for comparing two reports.
-- `surface adapters` for listing supported importers and their expected input shapes.
+- `surface adapters` for listing registered adapters and their expected input shapes.
 - `surface publish` for writing static reports to Pages or artifact storage.

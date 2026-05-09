@@ -25,13 +25,13 @@ Product layers own:
 - product-native operator feedback
 - local lifecycle language that has not generalized across domains
 
-## Veritas As A Product Built On Surface
+## Product Layers Built On Surface
 
-Veritas is a separate developer- and AI-agent-facing product built on top of Surface. It keeps repo-native terms such as proof lane, proof family, verification budget, shadow run, and policy pack because those terms are useful to coding agents.
+Product layers can build on Surface without moving their workflow language into the kernel. A repo-governance product might keep native terms such as proof lane, proof family, verification budget, shadow run, and policy pack because those terms are useful to coding agents.
 
 Those terms become portable only through a Surface mapping:
 
-| Veritas concept | Surface mapping |
+| Product-layer concept | Surface mapping |
 | --- | --- |
 | affected repo node | claim subject |
 | selected proof lane | verification policy, evidence, and event |
@@ -40,9 +40,9 @@ Those terms become portable only through a Surface mapping:
 | policy result | claim, evidence, event, and policy-violation hint |
 | shadow run | evidence-producing evaluation run |
 
-Surface remains responsible for generated report fields such as `id`, `generatedAt`, `summary`, `faultLines`, and `proofRequirementsByClaimId`. Veritas may embed `surface.input`, but it should not embed a generated Surface report.
+Surface remains responsible for generated report fields such as `id`, `generatedAt`, `summary`, `faultLines`, and `proofRequirementsByClaimId`. Product artifacts may embed `surface.input`, but they should not embed a generated Surface report.
 
-The dependency direction is one-way: Veritas may depend on Surface contracts or tooling, but Surface must not depend on Veritas runtime code. Surface can document and test import of Veritas-shaped artifacts as an adapter boundary, but Veritas remains a product above Surface rather than a module Surface owns.
+The dependency direction is one-way: product layers may depend on Surface contracts or tooling, but Surface must not depend on product-layer runtime code.
 
 ## Promotion Rule
 
@@ -57,4 +57,4 @@ Every product layer built on Surface should make the boundary explicit:
 3. Surface generates report-only fields after validation.
 4. Product-specific lifecycle language should stay outside Surface until it repeats across domains.
 
-For Veritas, that means proof lanes, proof families, verification budgets, policy packs, and shadow runs remain Veritas-native. Their portable output is `surface.input`, which Surface turns into claims, evidence, policies, events, fault lines, proof requirements, and summaries.
+For a repo-governance product, proof lanes, proof families, verification budgets, policy packs, and shadow runs remain product-native. Their portable output is `surface.input`, which Surface turns into claims, evidence, policies, events, fault lines, proof requirements, and summaries.

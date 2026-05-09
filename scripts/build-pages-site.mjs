@@ -13,7 +13,6 @@ const pages = [
   ["schemas", "docs/schemas.md", "Schemas"],
   ["schema-versioning", "docs/schema-versioning.md", "Schema Versioning"],
   ["fixtures", "docs/fixtures.md", "Fixtures"],
-  ["veritas-adapter", "docs/adapters/veritas.md", "Veritas Adapter"],
   ["field-attested-records", "docs/adapters/field-attested-records.md", "Field-Attested Records"],
   ["fact-resolution", "docs/adapters/fact-resolution.md", "Fact Resolution"],
   ["roadmap", "docs/roadmap.md", "Roadmap"],
