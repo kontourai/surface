@@ -40,7 +40,8 @@
     "docs:build": "node scripts/build-pages-site.mjs",
     "surface:report": "npm run build && node bin/surface.mjs report",
     "surface:summary": "npm run build && node bin/surface.mjs report --format summary",
-    "verify": "npm run typecheck && npm test && npm run docs:build && npm run surface:summary"
+    "verify": "npm run typecheck && npm test && npm run docs:build && npm run surface:summary",
+    "prepare": "npm run build"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
