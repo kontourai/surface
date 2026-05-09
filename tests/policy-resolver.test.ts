@@ -5,9 +5,9 @@ import type { Claim, VerificationPolicy } from "../src/index.js";
 
 const baseClaim: Claim = {
   id: "claim-1",
-  subjectType: "veritas.repo",
+  subjectType: "repo-governance.repo",
   subjectId: "repo-A",
-  surface: "veritas.developer-proof",
+  surface: "repo-governance.developer-proof",
   claimType: "software-proof",
   fieldOrBehavior: "passes",
   value: true,

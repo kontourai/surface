@@ -4,18 +4,18 @@
   "identityLinks": [
     {
       "subjects": [
-        { "subjectType": "repo-surface", "subjectId": "kontourai/veritas:src/api" },
-        { "subjectType": "release-channel", "subjectId": "veritas:api" }
+        { "subjectType": "repo-surface", "subjectId": "example/repo:src/api" },
+        { "subjectType": "release-channel", "subjectId": "repo-governance:api" }
       ],
       "reason": "API source and the named release channel describe the same surface."
     }
   ],
   "claims": [
     {
-      "id": "claim.veritas.api-proof",
+      "id": "claim.repo-governance.api-proof",
       "subjectType": "repo-surface",
-      "subjectId": "kontourai/veritas:src/api",
-      "surface": "veritas.developer-proof",
+      "subjectId": "example/repo:src/api",
+      "surface": "repo-governance.developer-proof",
       "claimType": "software-proof",
       "fieldOrBehavior": "requiredProofLane",
       "value": "npm test passed for API surface change",
@@ -25,7 +25,7 @@
       "currentIntegrityRef": "commit-or-run-id-placeholder",
       "verificationPolicyId": "policy.software-proof.commit",
       "subjectAliases": [
-        { "subjectType": "release-channel", "subjectId": "veritas:api" }
+        { "subjectType": "release-channel", "subjectId": "repo-governance:api" }
       ],
       "confidenceBasis": {
         "sourceQuality": "strong",
@@ -91,15 +91,15 @@
   ],
   "evidence": [
     {
-      "id": "evidence.veritas.test-output",
-      "claimId": "claim.veritas.api-proof",
+      "id": "evidence.repo-governance.test-output",
+      "claimId": "claim.repo-governance.api-proof",
       "evidenceType": "test_output",
       "method": "validation",
-      "sourceRef": "veritas local proof lane",
+      "sourceRef": "repo governance proof lane",
       "sourceLocator": "npm test",
       "excerptOrSummary": "84 tests passed for the verified repo state.",
       "observedAt": "2026-04-25T00:05:00.000Z",
-      "collectedBy": "veritas",
+      "collectedBy": "repo-governance",
       "integrityRef": "commit-or-run-id-placeholder"
     },
     {
@@ -211,12 +211,12 @@
   ],
   "events": [
     {
-      "id": "event.veritas.verified",
-      "claimId": "claim.veritas.api-proof",
+      "id": "event.repo-governance.verified",
+      "claimId": "claim.repo-governance.api-proof",
       "status": "verified",
-      "actor": "veritas",
+      "actor": "repo-governance",
       "method": "proof-lane",
-      "evidenceIds": ["evidence.veritas.test-output"],
+      "evidenceIds": ["evidence.repo-governance.test-output"],
       "createdAt": "2026-04-25T00:05:00.000Z",
       "verifiedAt": "2026-04-25T00:05:00.000Z"
     },

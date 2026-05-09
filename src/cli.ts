@@ -1,8 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { adaptVeritasEvidenceToTrustInput } from "./adapters/veritas.js";
-import { adaptFactResolutionExportToTrustInput } from "../examples/adapters/fact-resolution.js";
-import { adaptFieldAttestedRecordsExportToTrustInput } from "../examples/adapters/field-attested-records.js";
+import "./adapters/builtin.js";
+import { getAdapter, listAdapters } from "./adapter.js";
 import { buildTrustReport, formatTrustReportSummary } from "./report.js";
 import { validateTrustInput } from "./validate.js";
 import { toLinkedReport } from "./linked.js";
@@ -21,7 +20,11 @@ export async function runCli(args: string[]): Promise<void> {
   const options = parseReportArgs(rest);
   const raw = await readFile(options.input, "utf8");
   const parsed = JSON.parse(raw);
-  const input = validateTrustInput(adaptInput(options.adapter, parsed));
+  const adapter = getAdapter(options.adapter);
+  if (!adapter) {
+    throw new Error(`Unknown adapter: ${options.adapter}. Registered adapters: ${registeredAdapterNames()}`);
+  }
+  const input = validateTrustInput(adapter.adapt(parsed));
   const report = buildTrustReport(input, { id: options.runId });
 
   if (options.format === "summary") {
@@ -33,27 +36,19 @@ export async function runCli(args: string[]): Promise<void> {
   }
 }
 
-type AdapterName = "surface" | "veritas" | "field-attested-records" | "fact-resolution";
-
-function adaptInput(adapter: AdapterName, parsed: unknown): unknown {
-  if (adapter === "veritas") return adaptVeritasEvidenceToTrustInput(parsed);
-  if (adapter === "field-attested-records") return adaptFieldAttestedRecordsExportToTrustInput(parsed);
-  if (adapter === "fact-resolution") return adaptFactResolutionExportToTrustInput(parsed);
-  return parsed;
+function defaultInputForAdapter(adapterName: string): string {
+  const adapter = getAdapter(adapterName);
+  if (!adapter) {
+    throw new Error(`Unknown adapter: ${adapterName}. Registered adapters: ${registeredAdapterNames()}`);
+  }
+  return adapter.defaultFixture ?? "examples/surface-fixtures.json";
 }
 
-function defaultInputForAdapter(adapter: AdapterName): string {
-  if (adapter === "veritas") return "examples/veritas-evidence.json";
-  if (adapter === "field-attested-records") return "examples/field-attested-records-export.json";
-  if (adapter === "fact-resolution") return "examples/fact-resolution-export.json";
-  return "examples/surface-fixtures.json";
-}
-
-function parseReportArgs(args: string[]): { input: string; format: "json" | "summary" | "linked"; runId?: string; adapter: AdapterName } {
+function parseReportArgs(args: string[]): { input: string; format: "json" | "summary" | "linked"; runId?: string; adapter: string } {
   let input = resolve("examples/surface-fixtures.json");
   let format: "json" | "summary" | "linked" = "json";
   let runId: string | undefined;
-  let adapter: AdapterName = "surface";
+  let adapter = "surface";
   let inputExplicit = false;
 
   for (let index = 0; index < args.length; index += 1) {
@@ -71,9 +66,6 @@ function parseReportArgs(args: string[]): { input: string; format: "json" | "sum
     } else if (arg === "--run-id") runId = requireValue(args, ++index, "--run-id");
     else if (arg === "--adapter") {
       const value = requireValue(args, ++index, "--adapter");
-      if (value !== "surface" && value !== "veritas" && value !== "field-attested-records" && value !== "fact-resolution") {
-        throw new Error("--adapter must be surface, veritas, field-attested-records, or fact-resolution");
-      }
       adapter = value;
       if (!inputExplicit) {
         input = resolve(defaultInputForAdapter(adapter));
@@ -83,6 +75,10 @@ function parseReportArgs(args: string[]): { input: string; format: "json" | "sum
   }
 
   return { input, format, runId, adapter };
+}
+
+function registeredAdapterNames(): string {
+  return listAdapters().map((adapter) => adapter.name).sort().join(", ");
 }
 
 function requireValue(args: string[], index: number, flag: string): string {
@@ -96,7 +92,6 @@ function printHelp(): void {
 
 Usage:
   surface report [--input examples/surface-fixtures.json] [--format json|summary|linked]
-  surface report --adapter veritas [--input examples/veritas-evidence.json] [--format json|summary|linked]
   surface report --adapter field-attested-records [--input examples/field-attested-records-export.json] [--format json|summary|linked]
   surface report --adapter fact-resolution [--input examples/fact-resolution-export.json] [--format json|summary|linked]
 

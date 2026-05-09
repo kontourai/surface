@@ -4,9 +4,9 @@ import { buildTrustReport, validateTrustInput, weakerStatus } from "../src/index
 import type { Claim, TrustInput } from "../src/index.js";
 
 const baseClaim: Omit<Claim, "id" | "value" | "fieldOrBehavior"> = {
-  subjectType: "veritas.repo",
+  subjectType: "repo-governance.repo",
   subjectId: "repo-A",
-  surface: "veritas.developer-proof",
+  surface: "repo-governance.developer-proof",
   claimType: "software-proof",
   createdAt: "2026-04-25T00:00:00.000Z",
   updatedAt: "2026-04-25T00:00:00.000Z",

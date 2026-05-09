@@ -4,9 +4,9 @@ import { buildTrustReport, validateTrustInput } from "../src/index.js";
 import type { Claim, TrustInput, VerificationPolicy } from "../src/index.js";
 
 const baseClaim: Omit<Claim, "id" | "value" | "fieldOrBehavior"> = {
-  subjectType: "veritas.repo",
+  subjectType: "repo-governance.repo",
   subjectId: "repo-A",
-  surface: "veritas.developer-proof",
+  surface: "repo-governance.developer-proof",
   claimType: "release-status",
   createdAt: "2026-04-25T00:00:00.000Z",
   updatedAt: "2026-04-25T00:00:00.000Z",
@@ -135,7 +135,7 @@ test("incompatibleValues fires across canonical subjects linked via identityLink
     identityLinks: [
       {
         subjects: [
-          { subjectType: "veritas.repo", subjectId: "repo-A" },
+          { subjectType: "repo-governance.repo", subjectId: "repo-A" },
           { subjectType: "attested-record.provider", subjectId: "provider-X" },
         ],
         reason: "Verified handoff",

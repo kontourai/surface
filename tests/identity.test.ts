@@ -5,9 +5,9 @@ import type { TrustInput } from "../src/index.js";
 
 const baseClaim = {
   id: "claim-base",
-  subjectType: "veritas.repo",
+  subjectType: "repo-governance.repo",
   subjectId: "repo-A",
-  surface: "veritas.developer-proof",
+  surface: "repo-governance.developer-proof",
   claimType: "software-proof",
   fieldOrBehavior: "passes",
   value: true,
@@ -38,7 +38,7 @@ test("subjectAliases on a claim group co-referent subjects", () => {
   }));
 
   const index = buildIdentityIndex(input);
-  const repoKey = index.canonicalKey({ subjectType: "veritas.repo", subjectId: "repo-A" });
+  const repoKey = index.canonicalKey({ subjectType: "repo-governance.repo", subjectId: "repo-A" });
   const providerKey = index.canonicalKey({ subjectType: "attested-record.provider", subjectId: "provider-A" });
   assert.equal(repoKey, providerKey);
 });
@@ -53,13 +53,13 @@ test("identityLinks merge subjects across claims transitively", () => {
     identityLinks: [
       {
         subjects: [
-          { subjectType: "veritas.repo", subjectId: "repo-A" },
-          { subjectType: "veritas.repo", subjectId: "repo-B" },
+          { subjectType: "repo-governance.repo", subjectId: "repo-A" },
+          { subjectType: "repo-governance.repo", subjectId: "repo-B" },
         ],
       },
       {
         subjects: [
-          { subjectType: "veritas.repo", subjectId: "repo-B" },
+          { subjectType: "repo-governance.repo", subjectId: "repo-B" },
           { subjectType: "attested-record.provider", subjectId: "provider-X" },
         ],
         reason: "Verified handoff",
@@ -68,8 +68,8 @@ test("identityLinks merge subjects across claims transitively", () => {
   }));
 
   const index = buildIdentityIndex(input);
-  const a = index.canonicalKey({ subjectType: "veritas.repo", subjectId: "repo-A" });
-  const b = index.canonicalKey({ subjectType: "veritas.repo", subjectId: "repo-B" });
+  const a = index.canonicalKey({ subjectType: "repo-governance.repo", subjectId: "repo-A" });
+  const b = index.canonicalKey({ subjectType: "repo-governance.repo", subjectId: "repo-B" });
   const c = index.canonicalKey({ subjectType: "attested-record.provider", subjectId: "provider-X" });
   assert.equal(a, b);
   assert.equal(b, c);
@@ -92,8 +92,8 @@ test("trust report carries identityLinks and computed subjectGroups", () => {
     identityLinks: [
       {
         subjects: [
-          { subjectType: "veritas.repo", subjectId: "repo-A" },
-          { subjectType: "veritas.repo", subjectId: "repo-B" },
+          { subjectType: "repo-governance.repo", subjectId: "repo-A" },
+          { subjectType: "repo-governance.repo", subjectId: "repo-B" },
         ],
       },
     ],

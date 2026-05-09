@@ -5,9 +5,9 @@ import type { TrustInput } from "../src/index.js";
 
 const baseClaim = {
   id: "claim-base",
-  subjectType: "veritas.repo",
+  subjectType: "repo-governance.repo",
   subjectId: "repo-A",
-  surface: "veritas.developer-proof",
+  surface: "repo-governance.developer-proof",
   claimType: "software-proof",
   fieldOrBehavior: "passes",
   value: true,

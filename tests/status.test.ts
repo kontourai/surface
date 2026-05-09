@@ -186,14 +186,14 @@ test("derives stale for commit-scoped verification when current integrity ref dr
     sourceRef: "npm test",
     excerptOrSummary: "Tests passed.",
     observedAt: "2026-04-25T00:00:00.000Z",
-    collectedBy: "veritas",
+    collectedBy: "repo-governance",
     integrityRef: "old-commit",
   }];
   const events: VerificationEvent[] = [{
     id: "event-proof",
     claimId: "claim-proof",
     status: "verified",
-    actor: "veritas",
+    actor: "repo-governance",
     method: "proof lane",
     evidenceIds: ["proof-output"],
     createdAt: "2026-04-25T00:00:00.000Z",
