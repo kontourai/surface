@@ -144,6 +144,15 @@ export interface TrustReportSummary {
   totalClaims: number;
   byStatus: Record<TrustStatus, number>;
   bySurface: Record<string, number>;
+  confidenceBasis: {
+    sourceQuality: Record<string, number>;
+    reviewerAuthority: Record<string, number>;
+    proofStrength: Record<string, number>;
+    corroboratedClaims: number;
+    averageExtractionConfidence: number | null;
+    freshnessAtRisk: string[];
+    conflictedClaims: string[];
+  };
   faultLinesByType: Record<FaultLineType, number>;
   highImpactUnsupported: string[];
   staleClaims: string[];

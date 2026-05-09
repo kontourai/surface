@@ -4,3 +4,10 @@ docs-site/
 *.tsbuildinfo
 
 .omx/
+
+# Surface derived state — regenerated each run, never check in.
+# See SURFACE-PRIVACY.md for the input-vs-derived split.
+.surface/claims/
+.surface/reports/
+.surface/runs/
+.surface/cache/

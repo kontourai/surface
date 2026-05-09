@@ -96,6 +96,13 @@ export function buildTrustReport(input: TrustInput, options: { now?: Date; id?: 
 export function summarizeClaims(claims: Array<Claim & { status: TrustStatus }>, faultLines: FaultLine[] = []): TrustReportSummary {
   const byStatus = Object.fromEntries(STATUSES.map((status) => [status, 0])) as Record<TrustStatus, number>;
   const bySurface: Record<string, number> = {};
+  const sourceQuality: Record<string, number> = {};
+  const reviewerAuthority: Record<string, number> = {};
+  const proofStrength: Record<string, number> = {};
+  const extractionConfidences: number[] = [];
+  const freshnessAtRisk: string[] = [];
+  const conflictedClaims: string[] = [];
+  let corroboratedClaims = 0;
   const faultLinesByType = Object.fromEntries(FAULT_LINE_TYPES.map((type) => [type, 0])) as Record<FaultLineType, number>;
   const highImpactUnsupported: string[] = [];
   const staleClaims: string[] = [];
@@ -104,6 +111,14 @@ export function summarizeClaims(claims: Array<Claim & { status: TrustStatus }>, 
   for (const claim of claims) {
     byStatus[claim.status] += 1;
     bySurface[claim.surface] = (bySurface[claim.surface] ?? 0) + 1;
+    const basis = claim.confidenceBasis;
+    if (basis?.sourceQuality) sourceQuality[basis.sourceQuality] = (sourceQuality[basis.sourceQuality] ?? 0) + 1;
+    if (basis?.reviewerAuthority) reviewerAuthority[basis.reviewerAuthority] = (reviewerAuthority[basis.reviewerAuthority] ?? 0) + 1;
+    if (basis?.proofStrength) proofStrength[basis.proofStrength] = (proofStrength[basis.proofStrength] ?? 0) + 1;
+    if (typeof basis?.extractionConfidence === "number") extractionConfidences.push(basis.extractionConfidence);
+    if ((basis?.corroborationCount ?? 0) > 0) corroboratedClaims += 1;
+    if ((basis?.freshnessRemainingDays ?? 1) <= 0) freshnessAtRisk.push(claim.id);
+    if ((basis?.conflictCount ?? 0) > 0) conflictedClaims.push(claim.id);
 
     if ((claim.impactLevel === "high" || claim.impactLevel === "critical") && (claim.status === "unknown" || claim.status === "proposed")) {
       highImpactUnsupported.push(claim.id);
@@ -120,6 +135,17 @@ export function summarizeClaims(claims: Array<Claim & { status: TrustStatus }>, 
     totalClaims: claims.length,
     byStatus,
     bySurface,
+    confidenceBasis: {
+      sourceQuality,
+      reviewerAuthority,
+      proofStrength,
+      corroboratedClaims,
+      averageExtractionConfidence: extractionConfidences.length > 0
+        ? extractionConfidences.reduce((total, value) => total + value, 0) / extractionConfidences.length
+        : null,
+      freshnessAtRisk,
+      conflictedClaims,
+    },
     faultLinesByType,
     highImpactUnsupported,
     staleClaims,
