@@ -38,6 +38,24 @@ A fault line is a conflict between claims, evidence, or policies. Surface should
 
 Fault lines are report annotations in the current contract. They expose provenance gaps, policy violations, freshness breaches, missing corroboration, unsupported inferences, and contradictions without changing trust status by themselves.
 
+## Confidence Basis
+
+Confidence basis records how much verification depth supports a claim. It captures:
+
+- `sourceQuality`: the quality of evidence source (strong, moderate, weak)
+- `reviewerAuthority`: who verified the claim (system, human, agent)
+- `proofStrength`: for technical proofs, the proof strength (strong, moderate, weak)
+
+When claims depend on other claims (`derivedFrom`), the confidence ceiling is determined by the weakest link in the chain. Surface applies derivation ceilings to prevent upstream weak links from inflating downstream confidence.
+
+## Derivation
+
+When one claim depends on another (e.g., a proof-family claim depends on proof-lane outcomes), the dependent claim carries a `derivedFrom` field. This chains the provenance so reviewers and systems can:
+
+- Detect when upstream claims become stale
+- Apply confidence ceilings (derived claims cannot be stronger than their sources)
+- Surface conflict when an upstream claim is disputed or superseded
+
 ## Coverage
 
 Coverage measures how much of a product surface is supported by current evidence and policy.

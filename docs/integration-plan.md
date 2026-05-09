@@ -72,6 +72,8 @@ Required primitives:
 
 ### Phase 1: Keep Surface Generic
 
+**Status:** Shipped. Surface is generic; Veritas adapter is stable; generic examples are grounded in patterns.
+
 - Remove product-named adapters from `src/`.
 - Rename fixtures and CLI adapters by generic pattern.
 - Keep downstream product names out of Surface-facing docs.
@@ -79,17 +81,24 @@ Required primitives:
 
 ### Phase 2: Strengthen Primitives
 
+**Status:** Partially shipped. Confidence basis and derivation ceilings are shipped. Candidate-value support, assumptions, comparisons, and review signals are planned.
+
 - Add candidate-value support.
 - Add assumption and comparison shapes.
 - Add first-class review signals.
 - Add evidence batch references.
 - Add explicit freshness/recheck rules.
+- Add confidence basis per claim and ceiling through derivedFrom chains.
 
 ### Phase 3: Downstream Product Adapters
+
+**Status:** Planned. Veritas adapter is shipped; other product adapters are in progress.
 
 Each downstream product repo can add its own adapter package or module that emits Surface input from real storage. Those adapters should not move back into Surface.
 
 ### Phase 4: Runtime Query API
+
+**Status:** Planned.
 
 Add a generic store/query boundary for:
 
