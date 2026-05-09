@@ -1,6 +1,6 @@
 # Veritas Adapter
 
-Veritas is the first real adapter consumer of Surface and the developer/AI-agent governance product layer. The Veritas adapter bridges Veritas evidence artifacts into Surface trust claims.
+Veritas is a separate developer/AI-agent governance product built on Surface. This adapter documents how Surface can import Veritas evidence artifacts at the product boundary without making Surface depend on Veritas runtime code.
 
 ## Input
 
@@ -21,11 +21,15 @@ Important fields:
 - `external_tool_results`: advisory or blocking external tool verdicts (e.g., Fallow).
 - `baseline_ci_fast_passed`: proof-lane result when available.
 - `policy_results`: policy pack evaluations and failure details.
-- `surface.input`: a `TrustInput` projection for Surface validation.
+- `surface.input`: an embedded `TrustInput` projection for Surface validation.
+
+If `surface.input` is present, the adapter uses it directly. The fallback mapper exists for older Veritas evidence artifacts, but the embedded projection is the preferred contract because Veritas owns the repo-specific mapping decisions at evidence-generation time.
+
+Dependency direction stays one-way: Veritas can build on Surface; Surface should only consume Veritas artifacts as data at this adapter boundary.
 
 ## Output
 
-The adapter emits five claim types:
+The adapter emits six claim types:
 
 ### 1. `veritas-affected-surface`
 
@@ -68,6 +72,15 @@ One claim summarizing the overall budget. Records the count and classification o
 - Evidence: budget metadata and family-count summaries
 - Verification: auditability (budget computation from family manifests)
 
+### 6. `veritas-external-tool-result`
+
+One claim per external tool result attached to a proof lane, such as an advisory or blocking Fallow audit.
+
+- Subject: the external tool plus proof lane
+- Evidence: normalized external tool artifact metadata
+- Verification: auditability (the tool artifact and Veritas normalization)
+- Status: verified for passing verdicts, disputed/rejected for warning or failing verdicts depending on blocking mode
+
 ## Confidence Basis
 
 Every emitted claim carries a `confidenceBasis` block:
@@ -75,8 +88,10 @@ Every emitted claim carries a `confidenceBasis` block:
 ```json
 {
   "sourceQuality": "strong" | "moderate" | "weak",
-  "reviewerAuthority": "system" | "human" | "agent",
-  "proofStrength": "strong" | "moderate" | "weak"  // proof-family claims only
+  "reviewerAuthority": "system" | "operator" | "tool" | "none",
+  "proofStrength": "strong" | "moderate" | "weak",
+  "impactLevel": "low" | "medium" | "high",
+  "conflictCount": 0
 }
 ```
 
@@ -95,6 +110,12 @@ The `TrustReportSummary.confidenceBasis` aggregates per-claim bases:
 
 Derivation ceilings are applied from `derivedFrom` chains: proof-family, external-tool, and verification-budget claims carry `derivedFrom` to signal that their confidence is capped by upstream dependencies.
 
+In current Veritas projections:
+
+- proof-family claims derive from selected proof-lane claims
+- external-tool claims derive from selected proof-lane claims
+- verification-budget claims derive from proof-family claims when present, otherwise policy-result claims
+
 ## Trust behavior
 
 Passing evidence does not become a generic confidence score. Surface preserves the reason:
@@ -102,6 +123,7 @@ Passing evidence does not become a generic confidence score. Surface preserves t
 - proof commands are backed by `test_output`.
 - policy results are backed by `policy_rule`.
 - proof-family results are backed by manifest ownership, review triggers, and recent-catch evidence.
+- external-tool results are backed by normalized tool artifacts and retain advisory/blocking mode.
 - every generated claim keeps the Veritas `source_ref` as its current integrity reference.
 - commit-scoped verification becomes stale when the evidence no longer matches the current integrity reference.
 
@@ -111,10 +133,25 @@ Freshness is tracked per claim:
 - `software-proof` claims become stale when the proof command changes or the baseline proof fails.
 - `veritas-policy-result` claims become stale when the policy pack or rule implementation changes.
 - `veritas-proof-family` claims include explicit `freshness_status`: current, review-needed, stale, or retiring.
+- `veritas-external-tool-result` claims become stale when the source ref or external tool artifact changes.
 
 ## Per-Claim Surface Input Slices
 
-Veritas evidence includes per-claim Surface input slices at `.veritas/claims/*.input.json`. These are trimmed `TrustInput` projections scoped to a single claim, with claims/evidence/events/policy filtered to that claim id. They allow Surface validators and tests to check individual claim shapes without requiring the full evidence artifact.
+Veritas writes per-claim Surface input slices at `.veritas/claims/*.input.json` next to local evidence. These are trimmed input projections scoped to a single claim:
+
+```json
+{
+  "schemaVersion": 2,
+  "source": "veritas:<run-id>",
+  "generatedAt": "2026-05-09T00:00:00.000Z",
+  "claim": {},
+  "evidence": [],
+  "events": [],
+  "policy": {}
+}
+```
+
+They are not generated `TrustReport` artifacts. Surface still owns report-only fields such as `summary`, `faultLines`, `proofRequirementsByClaimId`, and `subjectGroups`.
 
 ## Privacy and Redaction
 

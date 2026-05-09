@@ -19,11 +19,16 @@ It uses `schemaVersion: 2`, required evidence methods, structured policy method 
 - affected surface claims
 - selected proof command claims
 - policy result claims
+- proof-family claims
+- verification-budget claims
+- external-tool result claims when the artifact includes advisory or blocking tool output
 - verification events grounded in the evidence timestamp and source reference
 
 `examples/veritas-evidence-fail.json` is a failing artifact. It proves failed proof lanes and blocking policy rules become rejected Surface claims instead of optimistic confidence.
 
-Veritas fixtures now include `selected_proof_lanes` so Surface can import proof method metadata instead of inferring everything from command strings.
+Veritas fixtures now include `selected_proof_lanes` so Surface can import proof method metadata instead of inferring everything from command strings. Newer Veritas artifacts may also embed `surface.input`; when present, Surface uses that portable projection directly and applies normal report generation, freshness, fault-line, and `derivedFrom` behavior.
+
+The Veritas projection uses `derivedFrom` to keep roll-ups honest: proof-family and external-tool claims derive from proof-lane claims, and verification-budget claims derive from proof-family or policy-result inputs. That lets the Surface kernel cap downstream status when upstream proof becomes stale or disputed.
 
 ## Field-Attested Records Fixture
 

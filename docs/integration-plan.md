@@ -1,6 +1,6 @@
 # Integration Plan: Surface + Veritas in Real Applications
 
-This plan defines the generic integration path. Surface should stay product-neutral: it owns portable trust primitives and report generation, while downstream product repos own real adapters and product-specific docs.
+This plan defines the generic integration path. Surface should stay product-neutral: it owns portable trust primitives and report generation, while product repos own real adapters and product-specific docs. Products such as Veritas can build on Surface; Surface must not depend on product-layer runtimes.
 
 ## Boundary
 
@@ -8,7 +8,7 @@ Surface owns:
 
 - `TrustInput` and report schemas.
 - Claims, evidence, policies, events, freshness, status, identity links, and fault lines.
-- The Veritas evidence adapter.
+- Artifact import boundaries for product outputs such as Veritas evidence.
 - Generic examples that are grounded in real planned usage but named by pattern.
 
 Downstream repos own:
@@ -92,7 +92,7 @@ Required primitives:
 
 ### Phase 3: Downstream Product Adapters
 
-**Status:** Planned. Veritas adapter is shipped; other product adapters are in progress.
+**Status:** Planned. Veritas artifact import is shipped as a boundary example; other product adapters are in progress.
 
 Each downstream product repo can add its own adapter package or module that emits Surface input from real storage. Those adapters should not move back into Surface.
 
@@ -115,5 +115,5 @@ Surface is correctly generic when:
 1. No downstream product name appears in executable Surface adapters or fixtures.
 2. Example names describe trust patterns, not products.
 3. Real product repos can emit Surface input without Surface importing their types.
-4. Veritas remains the only real repo-specific adapter in Surface.
+4. Surface can import Veritas-shaped artifacts as data without depending on Veritas runtime code.
 5. Tests prove field attestation, fact resolution, and Veritas evidence all map into the same trust report contract.

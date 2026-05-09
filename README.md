@@ -17,13 +17,13 @@ Surface keeps that structure inspectable instead of burying it inside a prompt, 
 
 ## Product Layers
 
-**Veritas** — the first real adapter consumer of Surface and the developer/AI-agent governance product layer. Veritas owns repo surfaces, policy packs, proof lanes, and check-in workflow language; Surface owns the portable trust report. Veritas evidence artifacts embed `surface.input` projections; Surface validates and produces a `TrustReport`. The `confidenceBasis` summary in Surface reports is computed from per-claim `confidenceBasis` and `derivedFrom` ceilings.
+**Veritas** — a separate developer/AI-agent governance product built on Surface. Veritas owns repo surfaces, policy packs, proof lanes, and check-in workflow language; Surface owns the portable trust report contract. Veritas evidence artifacts may embed `surface.input` projections; Surface validates those inputs and produces `TrustReport` outputs. The `confidenceBasis` summary in Surface reports is computed from per-claim `confidenceBasis` and `derivedFrom` ceilings.
 
 **Field-Attested Records** — public-data verification through crawl evidence, field attestations, review flags, and freshness.
 
 **Fact Resolution** — high-stakes fact verification through extraction, resolution, verified facts, citations, and review signals.
 
-These are generic trust patterns, grounded in adapter fixtures and local report generation. Each product keeps its own workflow language and real adapter code, while portable truth flows through Surface claims, evidence, policies, events, and reports.
+These are generic trust patterns, grounded in fixtures and local report generation. Each product keeps its own workflow language and adapter code, while portable truth flows through Surface claims, evidence, policies, events, and reports. Dependencies point upward: product layers can depend on Surface, but Surface should not depend on product-layer runtimes.
 
 ## Quickstart
 
