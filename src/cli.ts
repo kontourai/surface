@@ -94,6 +94,7 @@ Usage:
   surface report [--input examples/surface-fixtures.json] [--format json|summary|linked]
   surface report --adapter field-attested-records [--input examples/field-attested-records-export.json] [--format json|summary|linked]
   surface report --adapter fact-resolution [--input examples/fact-resolution-export.json] [--format json|summary|linked]
+  surface report --adapter npm-audit [--input examples/npm-audit-export.json] [--format json|summary|linked]
 
 Surface reports map product claims to evidence, freshness, and trust status.
 `);

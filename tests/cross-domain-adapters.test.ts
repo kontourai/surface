@@ -9,6 +9,7 @@ import {
 } from "../src/index.js";
 import { adaptFactResolutionExportToTrustInput } from "../examples/adapters/fact-resolution.js";
 import { adaptFieldAttestedRecordsExportToTrustInput } from "../examples/adapters/field-attested-records.js";
+import { adaptNpmAuditReportToTrustInput } from "../src/adapters/npm-audit.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -77,6 +78,34 @@ test("CLI can report directly from generic example exports", async () => {
   assert.match(factResolution.stdout, /Kontour Surface report cli-fact-resolution/);
   assert.match(factResolution.stdout, /Source: fact-resolution:demo-case-2025/);
   assert.match(factResolution.stdout, /disputed: 3/);
+
+  const npmAudit = await execFileAsync("node", [
+    "bin/surface.mjs",
+    "report",
+    "--adapter",
+    "npm-audit",
+    "--format",
+    "summary",
+    "--run-id",
+    "cli-npm-audit",
+  ]);
+  assert.match(npmAudit.stdout, /Kontour Surface report cli-npm-audit/);
+  assert.match(npmAudit.stdout, /Source: npm-audit/);
+  assert.match(npmAudit.stdout, /rejected: 1/);
+});
+
+test("adapts npm audit exports into rejected package safety claims", async () => {
+  const raw = await readFile("examples/npm-audit-export.json", "utf8");
+  const input = validateTrustInput(adaptNpmAuditReportToTrustInput(JSON.parse(raw)));
+  const report = buildTrustReport(input, {
+    id: "npm-audit-example",
+    now: new Date("2026-04-25T04:00:00.000Z"),
+  });
+
+  assert.equal(report.source, "npm-audit");
+  assert.equal(report.summary.totalClaims, 1);
+  assert.equal(report.summary.byStatus.rejected, 1);
+  assert.equal(report.summary.bySurface["npm-audit.dependencies"], 1);
 });
 
 test("identityLinks let the kernel surface contradictions across adapter outputs", async () => {

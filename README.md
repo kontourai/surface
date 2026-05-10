@@ -1,40 +1,61 @@
 # Kontour Surface
 
-Kontour Surface is the foundation trust substrate for Kontour AI products. It maps what a product claims, what proves it, where trust is missing or stale, and what humans or AI agents need to verify next.
+Surface is a TypeScript library for representing claims, the evidence behind them, and whether they are still trustworthy enough to act on. It is the foundation trust substrate for Kontour AI products.
 
 It is not a promise of perfect truth. It is infrastructure for evidence-backed systems: claims, evidence, verification policies, freshness, conflict state, and inspectable reports.
-
-## Why this exists
-
-AI makes plausible output cheap. Before a human or an agent acts on a claim, four things have to hold:
-
-- **Subject** — we know what or who the claim is about, even when the same real subject appears under different keys in different systems.
-- **Evidence** — there is a traceable record of what supports the claim, who collected it, and how it was verified.
-- **Freshness** — the verification is still valid for this decision and we know what changed since it was made.
-- **Consistency** — no other claim about the same subject contradicts, supersedes, or disputes it.
-
-Surface keeps that structure inspectable instead of burying it inside a prompt, a dashboard, or a single confidence score.
-
-## Product Layers
-
-**Product adapters** — downstream products can depend on Surface, register adapters, and emit portable `TrustInput`. Surface owns the report contract; product packages own product-specific parsing and workflow language. The `confidenceBasis` summary in Surface reports is computed from per-claim `confidenceBasis` and `derivedFrom` ceilings.
-
-**Field-Attested Records** — public-data verification through crawl evidence, field attestations, review flags, and freshness.
-
-**Fact Resolution** — high-stakes fact verification through extraction, resolution, verified facts, citations, and review signals.
-
-These are generic trust patterns, grounded in fixtures and local report generation. Each product keeps its own workflow language and adapter code, while portable truth flows through Surface claims, evidence, policies, events, and reports. Dependencies point upward: product layers can depend on Surface, but Surface should not depend on product-layer runtimes.
 
 ## Quickstart
 
 ```bash
-npm install
-npm run verify
-npm run surface:report
-npm run docs:build
+npm install -D @kontourai/surface
+npx surface report --format summary
 ```
 
-The first prototype reads [examples/surface-fixtures.json](examples/surface-fixtures.json), derives claim statuses, and emits a local trust report.
+For local development in this repo:
+
+```bash
+npm install
+npm run verify
+npm run surface:summary
+```
+
+The default report reads [examples/surface-fixtures.json](examples/surface-fixtures.json), derives claim statuses, and emits a local trust report.
+
+```text
+$ npx surface report --adapter field-attested-records --format summary
+Kontour Surface report surface-1778389304425
+Source: field-attested-records:demo
+Claims: 9 (proposed: 1, verified: 3, stale: 2, disputed: 1, rejected: 2)
+Surfaces: field-attested-records.public-data: 2, field-attested-records.attestations: 2, field-attestation.review-flags: 1, field-attested-records.crawls: 2, field-attested-records.proposals: 2
+High-impact unsupported: none
+Stale: field-attested-records.attestation.record-denver-art-1.pricing.attest-stale-1, field-attested-records.crawl.crawl-good-1
+Disputed: field-attested-records.flag.record-denver-art-1.flag-open-1
+Fault lines: 4
+```
+
+For a step-by-step tour of the output, see the [Walkthrough](docs/guides/walkthrough.md).
+
+## Why this exists
+
+AI makes plausible output cheap, but decisions still need traceable evidence, freshness, and conflict state. Surface keeps that structure inspectable instead of burying it inside a prompt, a dashboard, or a single confidence score. See [Concepts](docs/concepts.md) for the full vocabulary.
+
+## What sits on top
+
+Surface is a substrate. Anything that needs to answer "is this information verified, fresh, and uncontested?" can build on it.
+
+**Reference adapters** — shipped in this repo to demonstrate the shape:
+
+- **Field-Attested Records** — public-data verification through crawl evidence, field attestations, review flags, and freshness.
+- **Fact Resolution** — high-stakes fact verification through extraction, resolution, verified facts, citations, and review signals.
+- **npm-audit** — dependency vulnerabilities as claims about package safety.
+
+These are not products; they are how Surface explains itself.
+
+**Real consumers** — projects that depend on Surface as their trust substrate:
+
+- **[Veritas](https://github.com/kontourai/veritas)** — repo-local lint for AI-assisted code changes. Projects each code-change run into `surface.input`.
+
+To build your own consumer, start with the [external adapter example](examples/external-adapter/README.md). Each consumer keeps its own workflow language and adapter code; portable truth flows through Surface claims, evidence, policies, events, and reports. Dependencies point upward — consumers can depend on Surface, but Surface does not depend on any consumer's runtime.
 
 Adapters are explicit registry entries:
 
@@ -50,7 +71,12 @@ Generic example exports use the same report contract:
 ```bash
 node bin/surface.mjs report --adapter field-attested-records --format summary
 node bin/surface.mjs report --adapter fact-resolution --format summary
+node bin/surface.mjs report --adapter npm-audit --format summary
 ```
+
+## Building Your Own Adapter
+
+Start with the standalone [external adapter example](examples/external-adapter/README.md). Every adapter defines a product input shape, maps it to Surface claims and evidence, and emits valid `TrustInput`.
 
 ## Repository layout
 
@@ -64,4 +90,15 @@ node bin/surface.mjs report --adapter fact-resolution --format summary
 
 ## Current scope
 
-This repo is intentionally local-first. Hosted dashboards, accounts, storage, and full production adapters are later stages. The first milestone is proving that different product types can share one inspectable trust report without losing evidence detail.
+This repo is intentionally local-first. It ships the trust kernel, schemas, CLI report generation, linked output, and generic adapters for field-attested records, fact resolution, and npm audit output. Hosted dashboards, accounts, durable storage, and product-specific adapters are later stages.
+
+## Documentation
+
+- [What builds on Surface](docs/built-on-surface.md) — when to reach for Surface and what consumes it
+- [Walkthrough](docs/guides/walkthrough.md) — real session, paste output
+- [Concepts](docs/concepts.md) — trust vocabulary and status model
+- [CLI](docs/cli.md) — shipped report commands and output formats
+- [Schemas](docs/schemas.md) — claim, evidence, policy, event, and report contracts
+- [Use Cases](docs/use-cases.md) — where Surface fits
+- [Architecture](docs/architecture.md) — kernel, adapters, and product boundaries
+- [External Adapter Example](examples/external-adapter/README.md) — minimal package-shaped adapter

@@ -23,6 +23,7 @@ Initial adapters and examples:
 
 - `field-attested-records`: a generic example for field sources, attestations, proposals, review flags, crawl runs, and change logs.
 - `fact-resolution`: a generic example for extracted facts, resolved facts, verified facts, citations, discrepancy traces, and review signals.
+- `npm-audit`: a generic third-party example for dependency audit output and package safety claims.
 
 Adapters should start read-only. Domain-specific real adapters belong in their product repos or packages. Surface keeps generic examples and a public adapter registry to test the contract.
 

@@ -21,6 +21,7 @@ Output formats:
 
 - `json`: full trust report with claims, evidence, policies, events, and derived summary.
 - `summary`: compact human-readable status overview.
+- `linked`: JSON-LD-style linked output for graph-oriented consumers.
 
 ## Contract
 

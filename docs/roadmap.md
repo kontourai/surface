@@ -1,31 +1,31 @@
 # Roadmap
 
-## Phase 1: Narrative and static site
+## Phase 1: Narrative and static site [shipped]
 
 - README and docs narrative.
 - GitHub Pages-capable static site.
 - Light/dark styling.
 - Use cases for repo-governance evidence, field-attested records, and fact resolution.
 
-## Phase 2: Schema-first kernel
+## Phase 2: Schema-first kernel [shipped]
 
 - JSON schemas.
 - TypeScript types.
 - Status derivation helpers.
 - Fixture tests.
 
-## Phase 3: Read-only adapters
+## Phase 3: Read-only adapters [shipped]
 
 - Export trust reports from existing product data.
 - Preserve domain evidence instead of flattening everything into generic pass/fail.
 
-## Phase 4: Local report prototype
+## Phase 4: Local report CLI [shipped]
 
 - `surface report`.
 - JSON and summary output.
 - Surface/status/freshness aggregation.
 
-## Phase 4.5: Kernel reasoning
+## Phase 4.5: Kernel reasoning [shipped]
 
 The first four phases let Surface record claims and report on them. Phase 4.5 lets the kernel reason about claims that span surfaces and product systems without leaving the contract.
 
@@ -37,7 +37,7 @@ The first four phases let Surface record claims and report on them. Phase 4.5 le
 
 These additions are deliberately small. They unlock cross-surface derivations the kernel could not previously express.
 
-## Phase 5: Agent query surface
+## Phase 5: Agent query surface [planned]
 
 - `surface get`
 - `surface stale`
@@ -45,7 +45,7 @@ These additions are deliberately small. They unlock cross-surface derivations th
 - `surface policy`
 - MCP resources after CLI stabilization.
 
-## Phase 6: Human console
+## Phase 6: Human console [planned]
 
 - Coverage map.
 - Stale zones.
@@ -53,7 +53,7 @@ These additions are deliberately small. They unlock cross-surface derivations th
 - Evidence drilldowns.
 - High-impact unsupported claim queue.
 
-## Phase 7: Hosted sink
+## Phase 7: Hosted sink [planned]
 
 Only after the local contract proves useful, add durable hosted storage for longitudinal reports, adapter runs, and organization-wide trend analysis.
 
