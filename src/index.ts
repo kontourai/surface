@@ -6,6 +6,8 @@ export * from "./adapter.js";
 export * from "./identity.js";
 export * from "./policy-resolver.js";
 export * from "./policy-helpers.js";
+export * from "./consumer-sdk.js";
+export * from "./attestation.js";
 export * from "./derivation.js";
 export * from "./linked.js";
 export * from "./adapters/index.js";

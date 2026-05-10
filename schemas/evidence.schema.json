@@ -8,7 +8,7 @@
     "id": { "type": "string" },
     "claimId": { "type": "string" },
     "evidenceType": {
-      "enum": ["source_excerpt", "test_output", "human_attestation", "calculation_trace", "document_citation", "crawl_observation", "policy_rule"]
+      "enum": ["source_excerpt", "test_output", "human_attestation", "attestation", "calculation_trace", "document_citation", "crawl_observation", "policy_rule"]
     },
     "method": {
       "enum": ["observation", "extraction", "validation", "corroboration", "attestation", "auditability", "anchoring", "monitoring"]

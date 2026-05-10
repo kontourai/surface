@@ -5,6 +5,7 @@ Start here when you are working on the Surface repo or building an adapter again
 ## Developer Paths
 
 - [Concepts](concepts.md) — the trust model: surfaces, claims, evidence, policies, events, status, and fault lines
+- [Consumer SDK](guides/consumer-sdk.md) — fluent helpers for emitting valid `TrustInput`
 - [CLI](cli.md) — the shipped `surface report` command and output formats
 - [Schemas](schemas.md) — JSON contracts for adapter authors and downstream consumers
 - [Fixtures](fixtures.md) — examples used by tests and docs

@@ -29,9 +29,9 @@ These are not products on their own; they are how Surface explains itself.
 
 These projects use Surface as their trust substrate. They each own their own product workflow and adapter code; Surface owns the schema and report shape underneath.
 
-- **[Veritas](https://github.com/kontourai/veritas)** — repo-local lint for AI-assisted code changes. Projects each code-change run into `surface.input` so the run can become a portable trust report.
+- **[Veritas](https://github.com/kontourai/veritas)** — repo-local lint for AI-assisted code changes. Projects each code-change run into `surface.input`, calls `buildTrustReport`, and consumes the derived `stale` and `disputed` statuses as lint feedback.
 
-If you are building something on Surface, the [external adapter example](../examples/external-adapter/README.md) is the minimum shape: define your input, map it to claims and evidence, emit valid `TrustInput`. Surface handles the rest.
+If you are building something on Surface, start with the [consumer SDK guide](guides/consumer-sdk.md). The [external adapter example](../examples/external-adapter/README.md) is the minimum shape: define your input, map it to claims and evidence with `TrustInputBuilder`, emit valid `TrustInput`, then call `buildTrustReport`. Surface handles the derived status, summary, proof-requirement, and fault-line fields.
 
 ## What Surface deliberately does not do
 

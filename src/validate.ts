@@ -17,6 +17,7 @@ const EVIDENCE_TYPES = [
   "source_excerpt",
   "test_output",
   "human_attestation",
+  "attestation",
   "calculation_trace",
   "document_citation",
   "crawl_observation",

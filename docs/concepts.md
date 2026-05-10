@@ -20,6 +20,12 @@ Evidence explains why a claim deserves trust. It can be a source excerpt, test o
 
 Each evidence record also declares a verification method: observation, extraction, validation, corroboration, attestation, auditability, anchoring, or monitoring. The evidence type says what the artifact is; the method says how much verification depth it represents.
 
+## Attestation
+
+Attestation is the canonical shape for a human saying, "this policy, record, or source is the reviewed thing I approve." Use `evidenceType: "attestation"` with `method: "attestation"`, set `collectedBy` to the attesting actor, and put the attested content hash in `integrityRef`. Consumers should include the actor identity, attestation timestamp, optional expiry, and content hash in `metadata`.
+
+The exported `buildHumanAttestationEvidence({ subject, actor, attestedAt, validUntil, contentHash })` helper builds this evidence record for consumers that need a consistent human attestation payload.
+
 ## Trace
 
 A trace is the evidence path behind a claim. It should let a reviewer move from a badge or status back to the source, proof, or decision.
@@ -37,6 +43,12 @@ Drift means a once-trusted claim may no longer be safe to rely on. Drift can com
 A fault line is a conflict between claims, evidence, or policies. Surface should make conflicts visible instead of smoothing them over.
 
 Fault lines are report annotations in the current contract. They expose provenance gaps, policy violations, freshness breaches, missing corroboration, unsupported inferences, and contradictions without changing trust status by themselves.
+
+## Trust Report
+
+`buildTrustReport(input, options?)` is the stable public API that turns a validated `TrustInput` into a `TrustReport`. The report preserves the input claims, evidence, policies, and events, then adds derived status, freshness outcomes, proof requirements, fault lines, subject groups, and summary counts.
+
+Consumers should project product-specific workflow data into `TrustInput`, call `validateTrustInput`, and then call `buildTrustReport`. Product layers may persist a compact report summary, but Surface remains responsible for deriving statuses such as `verified`, `stale`, `disputed`, and `rejected`.
 
 ## Confidence Basis
 
