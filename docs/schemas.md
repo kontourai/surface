@@ -40,6 +40,26 @@ A report packages claims, evidence, policies, events, report-derived proof requi
 
 Schema: `schemas/trust-report.schema.json`
 
+## Eval Summary
+
+`EvalSummary` is a producer-agnostic record for post-hoc evaluation of a run. Producers such as Veritas write it into the run snapshot after a human reviews a completed run. The dashboard displays it alongside live trust state.
+
+```typescript
+interface EvalSummary {
+  reviewed: boolean;               // always true when present
+  reviewedAt?: string;             // ISO timestamp of the review
+  confidence?: "low" | "medium" | "high";
+  outcome?: "accepted" | "accepted-with-changes" | "rejected";
+  falsePositiveCount?: number;     // rules that fired but were overridden
+  missedIssueCount?: number;       // issues the run did not surface
+  timeToResolutionMinutes?: number;
+  notes?: string[];
+  metadata?: Record<string, unknown>; // producer-specific extras
+}
+```
+
+Producers that do not run human eval cycles omit this field. Surface never fabricates it.
+
 ## Adapter inputs
 
 Adapter inputs are intentionally separate from the core Surface schema. Product adapters read product artifacts and then emit standard Surface claims, evidence, policies, and events. This keeps domain-specific facts at the edge while preserving one report contract for humans and agents.
