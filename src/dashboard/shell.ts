@@ -14,15 +14,15 @@ export function buildDashboardHtml(config: SurfaceDashboardRuntimeConfig = {}): 
     <div class="dash-brand">
       <p class="dash-eyebrow">Surface dashboard</p>
       <h1 id="projectName">Loading…</h1>
+      <div class="dash-run-line">
+        <p class="dash-run-meta" id="dashRunMeta"></p>
+        <select id="runPicker" class="run-picker" hidden aria-label="Switch to a different run"></select>
+      </div>
     </div>
     <div id="dashboardMetrics" class="dash-metrics"></div>
-    <dl class="dash-run">
-      <div><dt>Run</dt><dd id="runId">—</dd></div>
-      <div><dt>Source</dt><dd id="runSource">—</dd></div>
-      <div><dt>Scope</dt><dd id="runScope">—</dd></div>
-    </dl>
   </header>
 
+  <div class="dash-layout">
   <div class="dash-body">
     <div class="dash-toolbar">
       <div id="surfaceChips" class="chip-strip" role="group" aria-label="Filter by surface"></div>
@@ -55,7 +55,6 @@ export function buildDashboardHtml(config: SurfaceDashboardRuntimeConfig = {}): 
     <div id="claimFeed" class="claim-feed"></div>
   </div>
 
-  <div class="sheet-backdrop" id="sheetBackdrop" hidden></div>
   <aside class="detail-sheet" id="detailSheet" hidden aria-label="Claim detail" aria-live="polite">
     <div class="sheet-drag" role="presentation" id="sheetDrag"></div>
     <button class="sheet-close" id="sheetClose" aria-label="Close detail">✕</button>
@@ -117,6 +116,9 @@ export function buildDashboardHtml(config: SurfaceDashboardRuntimeConfig = {}): 
       </details>
     </div>
   </aside>
+  </div><!-- /.dash-layout -->
+
+  <div class="sheet-backdrop" id="sheetBackdrop" hidden></div>
 
   <dialog class="claim-modal" id="claimModal" aria-label="Add or edit claim">
     <form id="claimForm" method="dialog">

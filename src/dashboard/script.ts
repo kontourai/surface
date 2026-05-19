@@ -5,6 +5,7 @@ const claimTypes = cfg.claimTypes ?? [];
 const filters = { search: "", status: "all", surface: "all" };
 let currentData = null;
 let currentDetailClaim = null;
+let allRuns = [];
 
 function el(id) { return document.getElementById(id); }
 function show(id) { const e = el(id); if (e) e.removeAttribute("hidden"); }
@@ -76,6 +77,39 @@ function renderObservedResult(result) {
 function statusColor(status) {
   const m = { verified:"good", disputed:"bad", rejected:"bad", stale:"warn", proposed:"amber", unknown:"muted" };
   return m[status] ?? "muted";
+}
+
+function statusLabel(status) {
+  const m = { verified:"Verified", stale:"Needs refresh", disputed:"Disputed",
+               rejected:"Rejected", unknown:"No evidence", proposed:"Pending" };
+  return m[status] ?? status;
+}
+
+function animateCount(el, target) {
+  const n = parseInt(target, 10);
+  if (!Number.isFinite(n) || n < 3) { el.textContent = target; return; }
+  const duration = 700;
+  const startTime = performance.now();
+  const tick = (now) => {
+    const p = Math.min((now - startTime) / duration, 1);
+    const eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = String(Math.round(n * eased));
+    if (p < 1) requestAnimationFrame(tick);
+    else el.textContent = target;
+  };
+  requestAnimationFrame(tick);
+}
+
+function statusGuidance(status) {
+  const m = {
+    verified: null,
+    unknown:  "No evidence has been collected for this claim yet. Run the producer to gather evidence.",
+    proposed: "This claim is awaiting its first evidence collection run.",
+    stale:    "Evidence exists but is outdated. Re-run the producer to refresh it.",
+    disputed: "Surface derived a different status than the producer declared. Resolve the fault lines above.",
+    rejected: "Verification failed. Check ‘What went wrong’ above for specific remediation steps.",
+  };
+  return m[status] ?? null;
 }
 
 function claimTypeLabel(claimType) {
@@ -187,17 +221,28 @@ function renderDashboard() {
   const d = currentData;
 
   el("projectName").textContent = d.project.name;
-  el("runId").textContent       = d.run?.id     ?? "—";
-  el("runSource").textContent   = d.run?.source ?? "—";
-  el("runScope").textContent    = d.run?.scope  ?? "—";
+  const runMeta = el("dashRunMeta");
+  if (runMeta) runMeta.textContent = d.run?.meta ?? "";
 
-  el("dashboardMetrics").innerHTML = d.metrics.map(([label, value,, delta, color]) =>
-    \`<div class="metric-chip metric-\${esc(color)}">
-      <span class="mc-value">\${esc(value)}</span>
+  el("dashboardMetrics").innerHTML = d.metrics.map(([label, value,, delta, color, filterVal]) =>
+    \`<button type="button" class="metric-chip metric-\${esc(color)}\${filters.status === filterVal ? " metric-chip-active" : ""}"
+      data-metric-filter="\${esc(filterVal ?? "all")}" title="Filter to \${esc(label.toLowerCase())}">
+      <span class="mc-value" data-count="\${esc(value)}">\${esc(value)}</span>
       <span class="mc-label">\${esc(label)}</span>
-      <span class="mc-delta">\${esc(delta)}</span>
-    </div>\`
+      \${delta ? \`<span class="mc-delta">\${esc(delta)}</span>\` : ""}
+    </button>\`
   ).join("");
+  el("dashboardMetrics").querySelectorAll("[data-metric-filter]").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const f = chip.dataset.metricFilter;
+      filters.status = filters.status === f ? "all" : f;
+      el("dashboardMetrics").querySelectorAll("[data-metric-filter]").forEach(c => {
+        c.classList.toggle("metric-chip-active", filters.status === c.dataset.metricFilter);
+      });
+      renderFeed(d);
+    });
+  });
+  el("dashboardMetrics").querySelectorAll("[data-count]").forEach(span => animateCount(span, span.dataset.count));
 
   const attention = (d.claims ?? []).filter(c =>
     ["disputed","stale","rejected","unknown"].includes(c.status)
@@ -253,7 +298,7 @@ function renderFeed(d) {
   el("feedCount").textContent =
     visible.length + " of " + (d.claims?.length ?? 0) + " claims";
   el("claimFeed").innerHTML = visible.length
-    ? visible.map(c => claimCard(c, d.claims.indexOf(c))).join("")
+    ? visible.map((c, i) => claimCard(c, d.claims.indexOf(c), i)).join("")
     : \`<p class="empty-state">No claims match the current filters.</p>\`;
   el("claimFeed").querySelectorAll("[data-claim-index]").forEach(card => {
     card.addEventListener("click", () => {
@@ -278,7 +323,7 @@ function filterClaims(claims) {
   });
 }
 
-function claimCard(claim, index) {
+function claimCard(claim, index, visibleIndex = 0) {
   const isAttention = ["disputed","stale","rejected"].includes(claim.status);
   const label  = claim.fieldOrBehavior || claim.claimType || claim.id;
   const val    = formatValue(claim.value);
@@ -287,13 +332,13 @@ function claimCard(claim, index) {
   const color  = statusColor(claim.status);
 
   return \`<button type="button" class="claim-card\${confidenceTier(claim)}\${isAttention ? " card-attention" : ""}"
-      data-claim-index="\${index}" aria-label="\${esc(label)}">
+      data-claim-index="\${index}" aria-label="\${esc(label)}" style="--card-i:\${Math.min(visibleIndex, 14)}">
     <span class="card-dot dot-\${color}" aria-label="\${esc(claim.status)}"></span>
     <span class="card-body">
       <strong class="card-title">\${esc(label)}</strong>
       <span class="card-meta">
         <span class="card-surface">\${esc(surface)}</span>
-        <span class="card-status-text status-\${esc(claim.status)}">\${esc(claim.status)}</span>
+        <span class="card-status-text status-\${esc(claim.status)}">\${esc(statusLabel(claim.status))}</span>
         \${claim.producerStatus
           ? \`<span class="card-divergence" title="Producer declared \${esc(claim.producerStatus)}">! was \${esc(claim.producerStatus)}</span>\`
           : ""}
@@ -350,6 +395,22 @@ function showClaimDetail(claim, readModel) {
     show("detailDivergenceBlock");
   } else {
     hide("detailDivergenceBlock");
+  }
+
+  const guidance = statusGuidance(claim.status);
+  let guidanceEl = document.getElementById("detailGuidance");
+  if (guidance) {
+    if (!guidanceEl) {
+      guidanceEl = document.createElement("p");
+      guidanceEl.id = "detailGuidance";
+      guidanceEl.className = "detail-guidance";
+      el("detailDivergenceBlock")?.insertAdjacentElement("afterend", guidanceEl) ??
+        el("detailTitle").insertAdjacentElement("beforebegin", guidanceEl);
+    }
+    guidanceEl.textContent = guidance;
+    guidanceEl.removeAttribute("hidden");
+  } else if (guidanceEl) {
+    guidanceEl.setAttribute("hidden", "");
   }
 
   // ── what went wrong (fault lines + classified gaps) ──
@@ -614,7 +675,7 @@ async function submitClaimForm(event) {
   }
   closeClaimModal();
   closeSheet();
-  await refreshDashboard();
+  await refreshDashboard(null);
 }
 
 async function deleteCurrentClaim(claimId) {
@@ -625,17 +686,48 @@ async function deleteCurrentClaim(claimId) {
     throw new Error(payload.error ?? "Claim delete failed");
   }
   closeSheet();
-  await refreshDashboard();
+  await refreshDashboard(null);
 }
 
-async function refreshDashboard() {
-  const response = await fetch("/api/read-model");
+async function refreshDashboard(runId) {
+  const url = runId && runId !== "latest" ? \`/api/read-model?run=\${encodeURIComponent(runId)}\` : "/api/read-model";
+  const response = await fetch(url);
   if (!response.ok) {
     currentData = emptyDashboard();
   } else {
     currentData = dashboardFromReadModel(await response.json());
   }
   renderDashboard();
+  renderRunPicker();
+}
+
+async function loadRunList() {
+  try {
+    const res = await fetch("/api/runs");
+    if (res.ok) allRuns = await res.json();
+  } catch {}
+  renderRunPicker();
+}
+
+function renderRunPicker() {
+  const picker = el("runPicker");
+  if (!picker) return;
+  if (allRuns.length <= 1) { picker.hidden = true; return; }
+  const currentRunId = currentData?.run?.id;
+  picker.innerHTML = allRuns.map(r => {
+    const date = r.generatedAt
+      ? new Date(r.generatedAt).toLocaleDateString(undefined, { month:"short", day:"numeric" })
+      : "";
+    const label = [r.runId, date, r.verifiedCount + "/" + r.claimCount + " verified"].filter(Boolean).join(" · ");
+    return \`<option value="\${esc(r.runId)}" \${r.runId === currentRunId ? "selected" : ""}>\${esc(label)}</option>\`;
+  }).join("");
+  picker.hidden = false;
+  if (!picker.dataset.bound) {
+    picker.dataset.bound = "true";
+    picker.addEventListener("change", () => {
+      refreshDashboard(picker.value).catch(err => window.alert(err.message));
+    });
+  }
 }
 
 // ── data ───────────────────────────────────────────────
@@ -643,8 +735,13 @@ function dashboardFromReadModel(readModel) {
   const producer   = readModel.producer ?? {};
   const claims     = readModel.claims ?? [];
   const sourceScope = Array.isArray(producer.sourceScope)
-    ? producer.sourceScope.join(", ")
-    : String(producer.sourceScope ?? "unknown");
+    ? producer.sourceScope.join(" + ")
+    : (producer.sourceScope ? String(producer.sourceScope) : null);
+  const sourceKind = producer.sourceKind ? producer.sourceKind.replace(/-/g, " ") : null;
+  const runDate = producer.timestamp
+    ? new Date(producer.timestamp).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+    : null;
+  const runMeta = [producer.runId, sourceKind, sourceScope, runDate].filter(Boolean).join(" · ");
   const verified  = readModel.summary.statusCounts?.verified ?? 0;
   const attention = claims.filter(c =>
     ["stale","disputed","rejected","unknown"].includes(c.status)
@@ -655,17 +752,13 @@ function dashboardFromReadModel(readModel) {
     project: {
       name: vocab.projectName ?? cfg.theme?.brandName ?? "Surface dashboard",
     },
-    run: {
-      id:     producer.runId     ?? "unknown",
-      source: producer.sourceKind ?? "unknown",
-      scope:  sourceScope,
-    },
+    run: { id: producer.runId ?? "unknown", meta: runMeta },
     narrative: buildNarrative(readModel, attention),
     metrics: [
-      ["Claims",    String(readModel.summary.claimCount), "", producer.runId ?? "unknown", "blue"],
-      ["Verified",  String(verified), "", Math.round((verified / total) * 100) + "%", "good"],
+      ["Claims",    String(readModel.summary.claimCount), "", "", "blue", "all"],
+      ["Verified",  String(verified), "", Math.round((verified / total) * 100) + "%", "good", "verified"],
       ["Attention", String(attention.length), "", readModel.summary.faultLineCount + " faults",
-       attention.length ? "bad" : "good"],
+       attention.length ? "bad" : "good", "attention"],
     ],
     claims,
     surfaceCounts: readModel.summary.surfaceCounts ?? {},
@@ -676,7 +769,7 @@ function dashboardFromReadModel(readModel) {
 function emptyDashboard() {
   return {
     project: { name: vocab.projectName ?? cfg.theme?.brandName ?? "Surface dashboard" },
-    run:     { id: "missing", source: "none", scope: "none" },
+    run:     { id: "missing", meta: "" },
     narrative: "No producer read model found. Run the producer to generate a read model.",
     metrics: [
       ["Claims",    "0", "", "missing", "warn"],
@@ -712,4 +805,5 @@ el("claimModalCancel")?.addEventListener("click", closeClaimModal);
 el("claimForm")?.addEventListener("submit", event => {
   submitClaimForm(event).catch(error => window.alert(error.message));
 });
+loadRunList();
 `;

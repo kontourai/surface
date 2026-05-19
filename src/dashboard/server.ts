@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { readFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { readFile, readdir } from "node:fs/promises";
+import { basename, dirname, resolve } from "node:path";
 import { buildDashboardHtml } from "./shell.js";
 import { DASHBOARD_SCRIPT } from "./script.js";
 import { DASHBOARD_CSS } from "./styles.js";
@@ -45,14 +45,50 @@ export async function startDashboardServer(config: SurfaceDashboardConfig = {}):
       return;
     }
 
-    if (url === "/api/read-model") {
+    if (url === "/api/runs") {
       try {
-        const readModel = await loadReadModel(readModelPath);
+        const dashDir = resolve(dirname(readModelPath));
+        const files = await readdir(dashDir).catch(() => [] as string[]);
+        const runFiles = files.filter(f => f.endsWith(".dashboard.json") && f !== "latest.json");
+        const runs = await Promise.all(runFiles.map(async (f) => {
+          try {
+            const data = JSON.parse(await readFile(resolve(dashDir, f), "utf8")) as Record<string, unknown>;
+            const producer = data["producer"] as Record<string, unknown> | undefined;
+            const summary = data["summary"] as Record<string, unknown> | undefined;
+            const attentionIds = (summary?.["attentionClaimIds"] as unknown[] | undefined) ?? [];
+            return {
+              runId: producer?.["runId"] ?? basename(f, ".dashboard.json"),
+              generatedAt: data["generatedAt"] ?? null,
+              claimCount: summary?.["claimCount"] ?? 0,
+              verifiedCount: (summary?.["statusCounts"] as Record<string,number> | undefined)?.["verified"] ?? 0,
+              attentionCount: attentionIds.length,
+              fileName: f,
+            };
+          } catch { return null; }
+        }));
+        const sorted = (runs.filter(Boolean) as NonNullable<typeof runs[0]>[])
+          .sort((a, b) => new Date(String(b.generatedAt ?? 0)).getTime() - new Date(String(a.generatedAt ?? 0)).getTime());
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify(sorted));
+      } catch {
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify([]));
+      }
+      return;
+    }
+
+    if (url === "/api/read-model") {
+      const runParam = requestUrl.searchParams.get("run");
+      const effectivePath = runParam && runParam !== "latest"
+        ? resolve(dirname(readModelPath), `${runParam}.dashboard.json`)
+        : readModelPath;
+      try {
+        const readModel = await loadReadModel(effectivePath);
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify(readModel));
       } catch {
         res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify({ error: "read model not found", path: readModelPath }));
+        res.end(JSON.stringify({ error: "read model not found", path: effectivePath }));
       }
       return;
     }

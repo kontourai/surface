@@ -179,34 +179,42 @@ button {
   align-items: center;
 }
 
-/* Run info */
-.dash-run {
+/* Run metadata — compact inline line under project name */
+.dash-run-line {
   display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
   flex-wrap: wrap;
-  gap: 0.5rem 1.25rem;
-  margin: 0;
-  padding-top: 0.625rem;
-  border-top: 1px solid var(--line);
 }
 
-.dash-run div { display: flex; gap: 0.4rem; align-items: baseline; }
-.dash-run dt {
-  font-size: 0.65rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+.dash-run-meta {
+  margin: 0.35rem 0 0;
+  font-size: 0.72rem;
   color: var(--muted);
-  font-family: ui-monospace, "Cascadia Code", monospace;
-  white-space: nowrap;
-}
-.dash-run dd {
-  margin: 0;
-  font-size: 0.82rem;
-  font-weight: 600;
+  font-family: ui-monospace, "Cascadia Code", "SF Mono", monospace;
+  line-height: 1.4;
   overflow-wrap: anywhere;
+}
+
+/* Run picker (multi-run selector) */
+.run-picker {
+  margin-top: 0.35rem;
+  appearance: none;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0.2rem 1.6rem 0.2rem 0.6rem;
+  font-size: 0.72rem;
   font-family: ui-monospace, "Cascadia Code", monospace;
   color: var(--ink-2);
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.45rem center;
+  transition: border-color 0.12s ease;
 }
+.run-picker:hover { border-color: var(--blue); }
+.run-picker:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 20%, transparent); }
 
 /* ── 4. Metric Chips ────────────────────────────────────────── */
 .metric-chip {
@@ -217,10 +225,20 @@ button {
   border-radius: 99px;
   border: 1px solid var(--line);
   background: var(--raised);
-  transition: box-shadow 0.15s ease;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, transform 0.1s ease, border-color 0.15s ease;
 }
 
-.metric-chip:hover { box-shadow: var(--shadow); }
+.metric-chip:hover {
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+}
+
+.metric-chip-active {
+  box-shadow: var(--shadow);
+  border-width: 2px;
+  transform: translateY(-1px);
+}
 
 .metric-chip.metric-good {
   border-color: color-mix(in srgb, var(--green) 40%, transparent);
@@ -264,8 +282,16 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
-/* ── 5. Body Container ──────────────────────────────────────── */
+/* ── 5. Layout & Body Container ─────────────────────────────── */
+.dash-layout {
+  display: flex;
+  align-items: stretch;
+  min-height: calc(100svh - 90px);
+}
+
 .dash-body {
+  flex: 1;
+  min-width: 0;
   padding: 1rem 1.25rem 5rem;
   max-width: 820px;
   margin: 0 auto;
@@ -442,7 +468,14 @@ button {
 }
 
 /* ── 9. Claim Cards ─────────────────────────────────────────── */
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 .claim-card {
+  animation: card-in 0.22s ease both;
+  animation-delay: calc(var(--card-i, 0) * 28ms);
   display: grid;
   grid-template-columns: 4px 1fr auto;
   gap: 0 0.85rem;
@@ -828,6 +861,18 @@ button {
   font-family: ui-monospace, "Cascadia Code", monospace;
   overflow-wrap: anywhere;
   line-height: 1.45;
+}
+
+/* Status guidance — "what you need to do" contextual hint */
+.detail-guidance {
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--blue);
+  background: var(--blue-bg);
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--ink);
 }
 
 /* Sheet action buttons */
@@ -1494,76 +1539,81 @@ details[open] > .sheet-raw summary::before,
   background: var(--raised);
 }
 
-/* ── 22. Desktop: 3-column Header + Right Panel Sheet ───────── */
+/* ── 22. Desktop: 2-column Header + Master-Detail Layout ────── */
 @media (min-width: 900px) {
   .dash-header {
-    grid-template-columns: auto 1fr auto;
-    align-items: start;
+    grid-template-columns: 1fr auto;
+    align-items: center;
     gap: 1rem 1.75rem;
     padding: 1rem 1.75rem;
   }
 
-  /* Brand stays left, takes min width */
-  .dash-brand { align-self: center; }
+  .dash-metrics { justify-content: flex-end; }
 
-  /* Metrics center */
-  .dash-metrics {
-    align-self: center;
-    justify-content: center;
+  /* Master-detail: body + inline panel side by side */
+  .dash-layout {
+    align-items: flex-start;
   }
 
-  /* Run info right — vertical stack */
-  .dash-run {
-    border-top: none;
-    padding-top: 0;
-    border-left: 1px solid var(--line);
-    padding-left: 1.5rem;
-    flex-direction: column;
-    gap: 0.3rem;
-    align-self: start;
-    padding-top: 0.1rem;
+  .dash-body {
+    max-width: none;
+    margin: 0;
+    padding: 1rem 1.75rem 5rem;
+    transition: none;
   }
 
-  /* Detail sheet becomes right panel */
+  /* Override [hidden] so the panel stays in flow and can animate width */
+  .detail-sheet[hidden] {
+    display: flex;
+    width: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  /* Inline sticky panel */
   .detail-sheet {
-    left: auto;
-    right: 0;
+    position: sticky;
     top: 0;
-    bottom: 0;
-    width: min(460px, 45vw);
+    align-self: flex-start;
+    height: 100svh;
+    /* reset mobile positioning */
+    left: auto; right: auto; bottom: auto;
     max-height: none;
     border-radius: 0;
-    border-top: none;
-    border-right: none;
-    border-bottom: none;
+    border: none;
     border-left: 1px solid var(--line);
-    box-shadow: -6px 0 48px rgba(0, 0, 0, 0.14);
-    transform: translateX(100%);
-    transition: transform 0.3s var(--ease-out);
+    box-shadow: none;
+    /* animate width instead of transform */
+    width: 0;
+    flex-shrink: 0;
+    overflow: hidden;
+    transform: none !important;
+    transition: width 0.32s var(--ease-out);
   }
 
   .detail-sheet:not([hidden]) {
-    transform: translateX(0);
+    width: min(440px, 42vw);
+    overflow: hidden;
+    transform: none;
+    pointer-events: auto;
+  }
+
+  /* Sheet content has min-width so it doesn't reflow during animation */
+  .detail-sheet .sheet-scroll {
+    min-width: min(440px, 42vw);
   }
 
   .sheet-drag { display: none; }
+  .sheet-backdrop { display: none !important; }
 
-  .sheet-close {
-    top: 0.875rem;
-    right: 0.875rem;
-  }
-
-  body.sheet-open .dash-body {
-    padding-right: calc(min(460px, 45vw) + 1.25rem);
-  }
+  /* Don't lock body scroll on desktop */
+  body.sheet-open { overflow: auto; }
 }
 
-/* ── 23. Large desktop: wider body ──────────────────────────── */
+/* ── 23. Large desktop: wider padding ───────────────────────── */
 @media (min-width: 1200px) {
-  .dash-body {
-    padding-left: 2rem;
-    padding-right: 2rem;
-  }
+  .dash-header { padding-left: 2.5rem; padding-right: 2.5rem; }
+  .dash-body   { padding-left: 2.5rem; padding-right: 2.5rem; }
 }
 
 /* ── 24. Reduced motion ─────────────────────────────────────── */
