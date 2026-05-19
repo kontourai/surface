@@ -9,13 +9,16 @@ import { listExtensions } from "../extension.js";
 import type { SurfaceDashboardConfig } from "./types.js";
 import type { ClaimDefinition, ImpactLevel } from "../types.js";
 
+const SURFACE_RUNS_DEFAULT = ".surface/runs/latest.json";
+const LEGACY_RUNS_PATH = ".veritas/surface-dashboard/latest.json";
+
 async function loadReadModel(indexPath: string): Promise<unknown> {
   const absoluteIndexPath = resolve(indexPath);
   const raw = await readFile(absoluteIndexPath, "utf8");
   const parsed = JSON.parse(raw) as Record<string, unknown>;
   if (parsed["kind"] === "surface-dashboard-index" && typeof parsed["readModelPath"] === "string") {
-    // readModelPath is relative to the repo root, which is 2 levels above latest.json
-    // (.veritas/surface-dashboard/latest.json → repo root)
+    // readModelPath is relative to the repo root; index lives 2 levels deep
+    // (.surface/runs/latest.json or .veritas/surface-dashboard/latest.json → repo root)
     const repoRoot = dirname(dirname(dirname(absoluteIndexPath)));
     const modelPath = resolve(repoRoot, parsed["readModelPath"]);
     const modelRaw = await readFile(modelPath, "utf8");
@@ -24,9 +27,15 @@ async function loadReadModel(indexPath: string): Promise<unknown> {
   return parsed;
 }
 
+async function resolveReadModelPath(configuredPath: string): Promise<string> {
+  if (configuredPath !== SURFACE_RUNS_DEFAULT) return configuredPath;
+  try { await readFile(resolve(configuredPath), "utf8"); return configuredPath; } catch { /* fall through */ }
+  return LEGACY_RUNS_PATH;
+}
+
 export async function startDashboardServer(config: SurfaceDashboardConfig = {}): Promise<void> {
   const port = config.port ?? 4242;
-  const readModelPath = config.readModelPath ?? ".veritas/surface-dashboard/latest.json";
+  const readModelPath = config.readModelPath ?? SURFACE_RUNS_DEFAULT;
   const storePath = config.storePath ?? "veritas.claims.json";
 
   const server = createServer(async (req, res) => {
@@ -47,7 +56,7 @@ export async function startDashboardServer(config: SurfaceDashboardConfig = {}):
 
     if (url === "/api/runs") {
       try {
-        const dashDir = resolve(dirname(readModelPath));
+        const dashDir = resolve(dirname(await resolveReadModelPath(readModelPath)));
         const files = await readdir(dashDir).catch(() => [] as string[]);
         const runFiles = files.filter(f => f.endsWith(".dashboard.json") && f !== "latest.json");
         const runs = await Promise.all(runFiles.map(async (f) => {
@@ -79,9 +88,10 @@ export async function startDashboardServer(config: SurfaceDashboardConfig = {}):
 
     if (url === "/api/read-model") {
       const runParam = requestUrl.searchParams.get("run");
+      const resolvedBase = await resolveReadModelPath(readModelPath);
       const effectivePath = runParam && runParam !== "latest"
-        ? resolve(dirname(readModelPath), `${runParam}.dashboard.json`)
-        : readModelPath;
+        ? resolve(dirname(resolvedBase), `${runParam}.dashboard.json`)
+        : resolvedBase;
       try {
         const readModel = await loadReadModel(effectivePath);
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
@@ -136,7 +146,8 @@ export async function startDashboardServer(config: SurfaceDashboardConfig = {}):
     }
 
     try {
-      const readModel = await loadReadModel(readModelPath);
+      const resolvedPath = await resolveReadModelPath(readModelPath);
+      const readModel = await loadReadModel(resolvedPath);
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
       res.end(buildDashboardHtml({ ...config, storePath, claimTypes: registeredClaimTypes(), readModel }));
     } catch {

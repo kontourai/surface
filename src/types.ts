@@ -194,6 +194,37 @@ export interface TrustInput {
   identityLinks?: IdentityLink[];
 }
 
+/**
+ * Generic summary of a human review of a producer run.
+ * Producers populate this in their read model; the shape is intentionally
+ * producer-agnostic. Producer-specific fields belong in `metadata`.
+ */
+export interface EvalSummary {
+  /** Whether a human has reviewed this run. */
+  reviewed: boolean;
+  /** ISO timestamp of when the review was completed. */
+  reviewedAt?: string;
+  /** How confident the reviewer was in their assessment. */
+  confidence?: "low" | "medium" | "high";
+  /**
+   * What the reviewer concluded:
+   * - `accepted` — no significant issues, run is good as-is
+   * - `accepted-with-changes` — run was accepted but required corrections
+   * - `rejected` — run needs substantial rework before it can be accepted
+   */
+  outcome?: "accepted" | "accepted-with-changes" | "rejected";
+  /** Number of findings the run raised that turned out to be false positives. */
+  falsePositiveCount?: number;
+  /** Number of real issues the run failed to surface. */
+  missedIssueCount?: number;
+  /** Minutes elapsed between the first failing run and reaching a passing state. */
+  timeToResolutionMinutes?: number;
+  /** Free-text reviewer notes. */
+  notes?: string[];
+  /** Producer-specific effectiveness data that doesn't fit the standard fields. */
+  metadata?: Record<string, unknown>;
+}
+
 export interface TrustReportSummary {
   totalClaims: number;
   byStatus: Record<TrustStatus, number>;

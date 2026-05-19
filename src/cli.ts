@@ -421,7 +421,7 @@ function printHelp(): void {
 Usage:
   surface report [--input examples/surface-fixtures.json] [--format json|summary|linked|analytics]
   surface report --adapter <name> --input <file> [--format json|summary|linked|analytics]
-  surface dashboard [--read-model .veritas/surface-dashboard/latest.json] [--store veritas.claims.json] [--port 4242] [--config surface.config.json]
+  surface dashboard [--read-model .surface/runs/latest.json] [--store veritas.claims.json] [--port 4242] [--config surface.config.json]
   surface claim list [--store veritas.claims.json]
   surface claim add --type <claim-type> --surface <surface> --subject-type <type> --subject-id <id> --field <field-or-behavior> [--id <id>] [--impact low|medium|high|critical] [--policy-id <policy-id>] [--metadata '{"key":"value"}'] [--store veritas.claims.json]
   surface claim edit --claim-id <id> [--type <claim-type>] [--surface <surface>] [--subject-type <type>] [--subject-id <id>] [--field <field-or-behavior>] [--impact low|medium|high|critical] [--policy-id <policy-id>] [--metadata '{"key":"value"}'] [--store veritas.claims.json]
