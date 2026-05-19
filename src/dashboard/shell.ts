@@ -12,11 +12,17 @@ export function buildDashboardHtml(config: SurfaceDashboardRuntimeConfig = {}): 
 <body class="dashboard-page">
   <header class="dash-header">
     <div class="dash-brand">
-      <p class="dash-eyebrow">Surface dashboard</p>
+      <p class="dash-eyebrow">Surface</p>
       <h1 id="projectName">Loading…</h1>
       <div class="dash-run-line">
         <p class="dash-run-meta" id="dashRunMeta"></p>
-        <select id="runPicker" class="run-picker" hidden aria-label="Switch to a different run"></select>
+        <div class="run-select" id="runSelect" hidden>
+          <button type="button" class="run-trigger" id="runTrigger" aria-haspopup="listbox" aria-expanded="false">
+            <span class="run-trigger-label" id="runTriggerLabel"></span>
+            <svg class="run-chevron" width="8" height="5" viewBox="0 0 8 5" fill="none" aria-hidden="true"><path d="M1 1l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="run-dropdown" id="runDropdown" role="listbox" aria-label="Select run" hidden></div>
+        </div>
       </div>
     </div>
     <div id="dashboardMetrics" class="dash-metrics"></div>

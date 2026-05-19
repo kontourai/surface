@@ -709,49 +709,121 @@ async function loadRunList() {
   renderRunPicker();
 }
 
+function runOptionDate(r) {
+  return r.generatedAt
+    ? new Date(r.generatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })
+    : "";
+}
+
 function renderRunPicker() {
-  const picker = el("runPicker");
-  if (!picker) return;
-  if (allRuns.length <= 1) { picker.hidden = true; return; }
+  const container = el("runSelect");
+  if (!container) return;
+  if (allRuns.length <= 1) { container.hidden = true; return; }
+
   const currentRunId = currentData?.run?.id;
-  picker.innerHTML = allRuns.map(r => {
-    const date = r.generatedAt
-      ? new Date(r.generatedAt).toLocaleDateString(undefined, { month:"short", day:"numeric" })
-      : "";
-    const label = [r.runId, date, r.verifiedCount + "/" + r.claimCount + " verified"].filter(Boolean).join(" · ");
-    return \`<option value="\${esc(r.runId)}" \${r.runId === currentRunId ? "selected" : ""}>\${esc(label)}</option>\`;
+  const trigger = el("runTrigger");
+  const triggerLabel = el("runTriggerLabel");
+  const dropdown = el("runDropdown");
+
+  const currentRun = allRuns.find(r => r.runId === currentRunId) ?? allRuns[0];
+  if (triggerLabel) {
+    const date = runOptionDate(currentRun);
+    triggerLabel.textContent = date
+      ? date + " — " + currentRun.verifiedCount + "/" + currentRun.claimCount + " verified"
+      : currentRun.runId;
+  }
+
+  dropdown.innerHTML = allRuns.map(r => {
+    const date = runOptionDate(r);
+    const isActive = r.runId === currentRunId;
+    return \`<button type="button" class="run-option\${isActive ? " run-option-active" : ""}"
+      role="option" aria-selected="\${isActive}" data-run-id="\${esc(r.runId)}">
+      <span class="run-opt-id">\${esc(r.runId)}</span>
+      <span class="run-opt-meta">\${esc([date, r.verifiedCount + "/" + r.claimCount + " verified"].filter(Boolean).join(" · "))}</span>
+    </button>\`;
   }).join("");
-  picker.hidden = false;
-  if (!picker.dataset.bound) {
-    picker.dataset.bound = "true";
-    picker.addEventListener("change", () => {
-      refreshDashboard(picker.value).catch(err => window.alert(err.message));
+
+  container.hidden = false;
+
+  if (!trigger.dataset.bound) {
+    trigger.dataset.bound = "true";
+    trigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const isOpen = !dropdown.hidden;
+      dropdown.hidden = isOpen;
+      trigger.setAttribute("aria-expanded", String(!isOpen));
+    });
+    document.addEventListener("click", () => {
+      if (!dropdown.hidden) {
+        dropdown.hidden = true;
+        trigger.setAttribute("aria-expanded", "false");
+      }
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !dropdown.hidden) {
+        dropdown.hidden = true;
+        trigger.setAttribute("aria-expanded", "false");
+        trigger.focus();
+      }
     });
   }
+
+  dropdown.querySelectorAll("[data-run-id]").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      dropdown.hidden = true;
+      trigger.setAttribute("aria-expanded", "false");
+      refreshDashboard(btn.dataset.runId).catch(err => window.alert(err.message));
+    });
+  });
+}
+
+// ── run meta formatting ────────────────────────────────
+function formatSourceSummary(producer) {
+  const kind = producer.sourceKind;
+  const scope = Array.isArray(producer.sourceScope)
+    ? producer.sourceScope
+    : producer.sourceScope ? [producer.sourceScope] : [];
+
+  let kindLabel = null;
+  if (kind === "working-tree")   kindLabel = "Working tree";
+  else if (kind === "branch-diff")    kindLabel = "Branch diff";
+  else if (kind === "explicit-files") kindLabel = "Explicit files";
+  else if (kind)                      kindLabel = kind.replace(/-/g, " ");
+
+  const allLocal = ["staged", "unstaged", "untracked"];
+  let scopeLabel = null;
+  if (scope.length && allLocal.every(s => scope.includes(s)) && scope.length === allLocal.length) {
+    scopeLabel = "all local changes";
+  } else if (scope.length === 1) {
+    scopeLabel = scope[0] + " only";
+  } else if (scope.length) {
+    scopeLabel = scope.join(" + ");
+  }
+
+  if (!kindLabel && !scopeLabel) return null;
+  if (!scopeLabel || scopeLabel === kindLabel) return kindLabel;
+  return kindLabel + " · " + scopeLabel;
 }
 
 // ── data ───────────────────────────────────────────────
 function dashboardFromReadModel(readModel) {
   const producer   = readModel.producer ?? {};
   const claims     = readModel.claims ?? [];
-  const sourceScope = Array.isArray(producer.sourceScope)
-    ? producer.sourceScope.join(" + ")
-    : (producer.sourceScope ? String(producer.sourceScope) : null);
-  const sourceKind = producer.sourceKind ? producer.sourceKind.replace(/-/g, " ") : null;
+  const sourceSummary = formatSourceSummary(producer);
   const runDate = producer.timestamp
     ? new Date(producer.timestamp).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
     : null;
-  const runMeta = [producer.runId, sourceKind, sourceScope, runDate].filter(Boolean).join(" · ");
+  const runMeta = [sourceSummary, runDate].filter(Boolean).join(" · ");
   const verified  = readModel.summary.statusCounts?.verified ?? 0;
   const attention = claims.filter(c =>
     ["stale","disputed","rejected","unknown"].includes(c.status)
   );
   const total = Math.max(readModel.summary.claimCount ?? claims.length, 1);
 
+  const projectName = vocab.projectName ?? cfg.theme?.brandName ?? producer.runId ?? "Dashboard";
   return {
-    project: {
-      name: vocab.projectName ?? cfg.theme?.brandName ?? "Surface dashboard",
-    },
+    project: { name: projectName },
     run: { id: producer.runId ?? "unknown", meta: runMeta },
     narrative: buildNarrative(readModel, attention),
     metrics: [
@@ -768,7 +840,7 @@ function dashboardFromReadModel(readModel) {
 
 function emptyDashboard() {
   return {
-    project: { name: vocab.projectName ?? cfg.theme?.brandName ?? "Surface dashboard" },
+    project: { name: vocab.projectName ?? cfg.theme?.brandName ?? "Dashboard" },
     run:     { id: "missing", meta: "" },
     narrative: "No producer read model found. Run the producer to generate a read model.",
     metrics: [

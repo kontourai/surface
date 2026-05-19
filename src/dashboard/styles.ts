@@ -196,25 +196,108 @@ button {
   overflow-wrap: anywhere;
 }
 
-/* Run picker (multi-run selector) */
-.run-picker {
-  margin-top: 0.35rem;
-  appearance: none;
+/* Run selector — custom dropdown */
+.run-select {
+  position: relative;
+  margin-top: 0.3rem;
+  display: inline-block;
+}
+
+.run-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.22rem 0.65rem;
   background: var(--raised);
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  padding: 0.2rem 1.6rem 0.2rem 0.6rem;
-  font-size: 0.72rem;
-  font-family: ui-monospace, "Cascadia Code", monospace;
+  font-size: 0.7rem;
+  font-family: ui-monospace, "Cascadia Code", "SF Mono", monospace;
   color: var(--ink-2);
   cursor: pointer;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0.45rem center;
-  transition: border-color 0.12s ease;
+  transition: border-color 0.12s ease, background 0.12s ease;
+  white-space: nowrap;
+  max-width: 260px;
 }
-.run-picker:hover { border-color: var(--blue); }
-.run-picker:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 20%, transparent); }
+.run-trigger:hover {
+  border-color: var(--blue);
+  color: var(--ink);
+}
+.run-trigger:focus-visible {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 20%, transparent);
+}
+.run-trigger-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.run-chevron {
+  flex-shrink: 0;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+.run-trigger[aria-expanded="true"] .run-chevron {
+  transform: rotate(180deg);
+}
+
+.run-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 240px;
+  max-width: 340px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+  overflow: hidden;
+  animation: dropdown-in 0.14s var(--ease-out) both;
+}
+
+@keyframes dropdown-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.run-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  width: 100%;
+  padding: 0.55rem 0.85rem;
+  text-align: left;
+  border-bottom: 1px solid var(--soft);
+  transition: background 0.1s ease;
+  cursor: pointer;
+}
+.run-option:last-child { border-bottom: none; }
+.run-option:hover { background: var(--raised); }
+.run-option-active {
+  background: color-mix(in srgb, var(--blue) 8%, var(--surface));
+}
+.run-option-active:hover {
+  background: color-mix(in srgb, var(--blue) 13%, var(--surface));
+}
+
+.run-opt-id {
+  font-size: 0.72rem;
+  font-family: ui-monospace, "Cascadia Code", "SF Mono", monospace;
+  color: var(--ink);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.run-option-active .run-opt-id { color: var(--blue); }
+
+.run-opt-meta {
+  font-size: 0.65rem;
+  font-family: ui-monospace, "Cascadia Code", "SF Mono", monospace;
+  color: var(--muted);
+}
 
 /* ── 4. Metric Chips ────────────────────────────────────────── */
 .metric-chip {
