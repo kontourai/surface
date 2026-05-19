@@ -181,6 +181,188 @@ test("requires evidence methods in schema v2 inputs", () => {
   );
 });
 
+test("accepts optional evidence passing and blocking fields", () => {
+  const input = validateTrustInput({
+    schemaVersion: 3,
+    source: "evidence-eval",
+    claims: [{
+      id: "claim-1",
+      subjectType: "repo",
+      subjectId: "repo-1",
+      surface: "surface",
+      claimType: "software-proof",
+      fieldOrBehavior: "proof",
+      value: true,
+      createdAt: "2026-04-25T00:00:00.000Z",
+      updatedAt: "2026-04-25T00:00:00.000Z",
+    }],
+    evidence: [{
+      id: "evidence-1",
+      claimId: "claim-1",
+      evidenceType: "test_output",
+      method: "validation",
+      sourceRef: "test",
+      excerptOrSummary: "soft failure",
+      observedAt: "2026-04-25T00:00:00.000Z",
+      collectedBy: "tester",
+      passing: false,
+      blocking: false,
+    }],
+    policies: [],
+    events: [],
+  });
+
+  assert.equal(input.evidence[0].passing, false);
+  assert.equal(input.evidence[0].blocking, false);
+});
+
+test("producerStatus is only emitted when derived status diverges", () => {
+  const input = validateTrustInput({
+    schemaVersion: 3,
+    source: "producer-status",
+    claims: [{
+      id: "claim-match",
+      subjectType: "repo",
+      subjectId: "repo-1",
+      surface: "surface",
+      claimType: "software-proof",
+      fieldOrBehavior: "passing proof",
+      value: true,
+      status: "verified",
+      createdAt: "2026-04-25T00:00:00.000Z",
+      updatedAt: "2026-04-25T00:00:00.000Z",
+      verificationPolicyId: "policy-proof",
+    }, {
+      id: "claim-diverged",
+      subjectType: "repo",
+      subjectId: "repo-1",
+      surface: "surface",
+      claimType: "software-proof",
+      fieldOrBehavior: "missing proof",
+      value: true,
+      status: "verified",
+      createdAt: "2026-04-25T00:00:00.000Z",
+      updatedAt: "2026-04-25T00:00:00.000Z",
+      verificationPolicyId: "policy-proof",
+    }],
+    evidence: [{
+      id: "evidence-match",
+      claimId: "claim-match",
+      evidenceType: "test_output",
+      method: "validation",
+      sourceRef: "npm test",
+      excerptOrSummary: "passed",
+      observedAt: "2026-04-25T00:00:00.000Z",
+      collectedBy: "tester",
+      passing: true,
+    }, {
+      id: "evidence-diverged",
+      claimId: "claim-diverged",
+      evidenceType: "policy_rule",
+      method: "validation",
+      sourceRef: "policy",
+      excerptOrSummary: "partial",
+      observedAt: "2026-04-25T00:00:00.000Z",
+      collectedBy: "tester",
+    }],
+    policies: [{
+      id: "policy-proof",
+      claimType: "software-proof",
+      requiredEvidence: ["test_output"],
+      requiredMethods: ["validation"],
+      requiredProof: ["test output"],
+      reviewAuthority: "ci",
+      validityRule: { kind: "manual" },
+      stalenessTriggers: [],
+      conflictRules: [],
+      impactLevel: "high",
+    }],
+    events: [{
+      id: "event-match",
+      claimId: "claim-match",
+      status: "verified",
+      actor: "ci",
+      method: "validation",
+      evidenceIds: ["evidence-match"],
+      createdAt: "2026-04-25T00:00:00.000Z",
+    }, {
+      id: "event-diverged",
+      claimId: "claim-diverged",
+      status: "verified",
+      actor: "ci",
+      method: "validation",
+      evidenceIds: ["evidence-diverged"],
+      createdAt: "2026-04-25T00:00:00.000Z",
+    }],
+  });
+
+  const report = buildTrustReport(input, { id: "producer-status", now: new Date("2026-04-25T00:00:00.000Z") });
+  assert.equal(report.claims.find((item) => item.id === "claim-match")?.producerStatus, undefined);
+  assert.equal(report.claims.find((item) => item.id === "claim-diverged")?.status, "proposed");
+  assert.equal(report.claims.find((item) => item.id === "claim-diverged")?.producerStatus, "verified");
+});
+
+test("non-blocking evidence failures create non-blocking fault lines while preserving verified status", () => {
+  const input = validateTrustInput({
+    schemaVersion: 3,
+    source: "non-blocking-failure",
+    claims: [{
+      id: "claim-soft-fail",
+      subjectType: "repo",
+      subjectId: "repo-1",
+      surface: "surface",
+      claimType: "software-proof",
+      fieldOrBehavior: "proof",
+      value: true,
+      status: "verified",
+      createdAt: "2026-04-25T00:00:00.000Z",
+      updatedAt: "2026-04-25T00:00:00.000Z",
+      verificationPolicyId: "policy-proof",
+    }],
+    evidence: [{
+      id: "evidence-soft-fail",
+      claimId: "claim-soft-fail",
+      evidenceType: "test_output",
+      method: "validation",
+      sourceRef: "npm test",
+      excerptOrSummary: "non-blocking check failed",
+      observedAt: "2026-04-25T00:00:00.000Z",
+      collectedBy: "tester",
+      passing: false,
+      blocking: false,
+    }],
+    policies: [{
+      id: "policy-proof",
+      claimType: "software-proof",
+      requiredEvidence: ["test_output"],
+      requiredMethods: ["validation"],
+      requiredProof: ["test output"],
+      reviewAuthority: "ci",
+      validityRule: { kind: "manual" },
+      stalenessTriggers: [],
+      conflictRules: [],
+      impactLevel: "high",
+    }],
+    events: [{
+      id: "event-soft-fail",
+      claimId: "claim-soft-fail",
+      status: "verified",
+      actor: "ci",
+      method: "validation",
+      evidenceIds: ["evidence-soft-fail"],
+      createdAt: "2026-04-25T00:00:00.000Z",
+    }],
+  });
+
+  const report = buildTrustReport(input, { id: "non-blocking-failure", now: new Date("2026-04-25T00:00:00.000Z") });
+  const claim = report.claims.find((item) => item.id === "claim-soft-fail");
+  const faultLine = report.faultLines.find((item) => item.evidenceIds?.includes("evidence-soft-fail"));
+
+  assert.equal(claim?.status, "verified");
+  assert.equal(claim?.producerStatus, undefined);
+  assert.equal(faultLine?.blocking, false);
+});
+
 test("reputation integrity fixture keeps suspicion distinct from accusation", async () => {
   const raw = await readFile("examples/reputation-integrity-trust-export.json", "utf8");
   const input = validateTrustInput(JSON.parse(raw));

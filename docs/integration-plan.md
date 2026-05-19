@@ -26,7 +26,7 @@ Product repos own their own adapter code and may either emit native `TrustInput`
 
 Use this pattern when a product tracks records whose individual fields are sourced, attested, refreshed, disputed, or proposed.
 
-Surface example: `examples/adapters/field-attested-records.ts`
+Product packages own this adapter shape.
 
 Required primitives:
 
@@ -40,7 +40,7 @@ Required primitives:
 
 Use this pattern when a product extracts facts, chooses among candidates, verifies selected values, and emits a package with citations and review signals.
 
-Surface example: `examples/adapters/fact-resolution.ts`
+Product packages own this adapter shape.
 
 Required primitives:
 
@@ -108,7 +108,7 @@ Adapter rules:
 - Register explicitly; Surface does not discover adapters from `node_modules` or user config.
 - Add adapter tests that build a report and assert status, fault-line, and proof-requirement behavior.
 
-The worked examples are `examples/adapters/field-attested-records.ts`, `examples/adapters/fact-resolution.ts`, and the package-shaped example in `examples/external-adapter/`.
+The package-shaped example in `examples/external-adapter/` shows how adapter code can live outside the Surface kernel package.
 
 ### Phase 4: Runtime Query API
 

@@ -61,8 +61,8 @@ Surface keeps:
 
 - Generic trust primitives.
 - JSON schemas and report derivation.
-- A public adapter SDK with generic built-in examples.
-- Generic examples under `examples/adapters/`.
+- A public adapter SDK for producer-owned adapters.
+- Native Surface input fixtures under `examples/`.
 
 Downstream repos keep:
 

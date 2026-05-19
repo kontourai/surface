@@ -71,3 +71,17 @@ When one claim depends on another (e.g., a proof-family claim depends on proof-l
 ## Coverage
 
 Coverage measures how much of a product surface is supported by current evidence and policy.
+
+## Trust Analytics Projection
+
+`buildTrustAnalyticsProjection(report)` derives evidence intelligence from a `TrustReport`. It groups verification coverage by surface, stale and disputed claims, high-impact unsupported claims, fault lines, evidence gaps, proof requirement gaps, confidence basis, action queues, and attestation validity.
+
+The projection is dashboard-ready and query-ready, but it is still derived from the trust substrate. Surface analytics should mean provenance-aware trust analytics, not arbitrary charts over product data.
+
+## Attestation Validity
+
+An attestation records that an actor approved, observed, or accepted something. It does not automatically prove that the actor was real, authorized, current, or bound to the attested payload.
+
+Surface treats attestation validity as a separate evidence-intelligence layer. A product can emit actor references, identity proof references, authority source references, validity windows, revocation markers, and integrity hashes. Surface can then expose gaps when an attestation is missing identity proof, authority proof, freshness, or integrity.
+
+Surface does not own auth or product permissions. Downstream systems own accounts, roles, and login. Surface owns the portable evidence shape and the derived visibility into whether the attestation can satisfy trust policy.

@@ -15,15 +15,9 @@ You are building a product (Kontour or otherwise) that has any of these jobs:
 
 If you are doing any of that and you do not yet have a vocabulary for claims, evidence, freshness, and conflict — you want Surface as your substrate.
 
-## Reference consumers
+## Reference Inputs
 
-Surface ships fixtures and adapters that demonstrate the shape:
-
-- **Field-Attested Records** — public-data verification through crawl evidence, field attestations, review flags, and freshness.
-- **Fact Resolution** — high-stakes fact verification through extraction, resolution, verified facts, citations, and review signals.
-- **npm-audit** — a minimal example: dependency vulnerabilities as claims about package safety.
-
-These are not products on their own; they are how Surface explains itself.
+Surface ships fixtures that demonstrate the report shape. Domain adapters live with the producers or plugins that own their source artifacts.
 
 ## Real consumers
 

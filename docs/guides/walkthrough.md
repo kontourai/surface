@@ -31,44 +31,20 @@ Each line answers a different question:
 - **Disputed** — claims contradicted by an event or another claim.
 - **Fault lines** — discoverable conflicts and supersede chains across the input.
 
-## 2. Run against a built-in adapter
+## 2. Run against native Surface input
 
-Surface ships three reference adapters: `field-attested-records`, `fact-resolution`, and `npm-audit`. Each shows a different shape of input.
-
-```bash
-npx surface report --adapter field-attested-records --format summary
-```
-
-```text
-Kontour Surface report surface-1778389304425
-Source: field-attested-records:demo
-Claims: 9 (proposed: 1, verified: 3, stale: 2, disputed: 1, rejected: 2)
-Surfaces: field-attested-records.public-data: 2, field-attested-records.attestations: 2, field-attestation.review-flags: 1, field-attested-records.crawls: 2, field-attested-records.proposals: 2
-High-impact unsupported: none
-Stale: field-attested-records.attestation.record-denver-art-1.pricing.attest-stale-1, field-attested-records.crawl.crawl-good-1
-Disputed: field-attested-records.flag.record-denver-art-1.flag-open-1
-Fault lines: 4
-```
-
-Read the lines: of 9 claims, 3 are verified, 2 went stale, 1 is disputed, 2 are rejected. Two specific verifications need refresh, one specific claim is contested. That is the level of detail downstream consumers should be reading from a Surface report.
+Surface ships the `surface` passthrough adapter for already formatted `TrustInput` JSON. It is the default for `surface report`.
 
 ```bash
-npx surface report --adapter npm-audit --format summary
+npx surface report --adapter surface --input examples/surface-fixtures.json --format summary
 ```
 
-```text
-Source: npm-audit
-Claims: 1 (rejected: 1)
-Surfaces: npm-audit.dependencies: 1
-Fault lines: 0
-```
-
-A clean audit run reports its single dependency-set claim as `rejected` (the policy treats any vulnerability as a rejection of the "all dependencies safe" claim). Different fixtures will show different statuses.
+Custom producers can register their own adapters, but Surface no longer ships domain adapters for npm audit, field-attested records, or fact resolution. Producers that use authored claim stores should emit evidence per run or use a Veritas plugin.
 
 ## 3. Switch to JSON when piping to another system
 
 ```bash
-npx surface report --adapter field-attested-records --format json
+npx surface report --input examples/surface-fixtures.json --format json
 ```
 
 The JSON output is the full `TrustReport`: per-claim derived status, per-claim `confidenceBasis`, fault lines, summary, and `proofRequirementsByClaimId`. Consume this when you need the structured shape; consume `summary` when a human is reading.

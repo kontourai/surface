@@ -12,11 +12,13 @@ const pages = [
   ["architecture", "docs/architecture.md", "Architecture"],
   ["surface-foundation", "docs/architecture/surface-foundation.md", "Surface Foundation"],
   ["cli", "docs/cli.md", "CLI"],
+  ["claim-authoring", "docs/claim-authoring.md", "Claim Authoring"],
+  ["extension-api", "docs/extension-api.md", "Extension API"],
+  ["analytics", "docs/analytics.md", "Trust Analytics"],
+  ["adapters", "docs/adapters.md", "Adapters"],
   ["schemas", "docs/schemas.md", "Schemas"],
   ["schema-versioning", "docs/schema-versioning.md", "Schema Versioning"],
   ["fixtures", "docs/fixtures.md", "Fixtures"],
-  ["field-attested-records", "docs/adapters/field-attested-records.md", "Field-Attested Records"],
-  ["fact-resolution", "docs/adapters/fact-resolution.md", "Fact Resolution"],
   ["roadmap", "docs/roadmap.md", "Roadmap"],
   ["linked-data-roadmap", "docs/linked-data-roadmap.md", "Linked-Data Roadmap"],
   ["integration-plan", "docs/integration-plan.md", "Integration Plan"],
@@ -60,6 +62,7 @@ function renderPage({ slug, title, markdown }) {
 </body>
 </html>`;
 }
+
 
 function hero() {
   return `<section class="hero">
@@ -297,10 +300,6 @@ footer {
   padding: 2rem;
   text-align: center;
   color: var(--muted);
-}
-@media (max-width: 720px) {
-  header { align-items: flex-start; flex-direction: column; }
-  main { padding-top: 2rem; }
 }
 `;
 }

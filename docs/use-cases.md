@@ -17,14 +17,14 @@ Portable output:
 
 Surface then validates the emitted `TrustInput` and generates report-only fields such as summaries, fault lines, proof requirements, freshness, and status.
 
-## Field-Attested Records — reference adapter
+## Field-Attested Records
 
-A public-data product can map sourced fields, human attestations, crawl runs, review flags, and proposed changes into Surface claims and evidence. The generic example is `examples/adapters/field-attested-records.ts`.
+A public-data product can map sourced fields, human attestations, crawl runs, review flags, and proposed changes into Surface claims and evidence. That adapter belongs with the product that owns the data shape.
 
-## Fact Resolution — reference adapter
+## Fact Resolution
 
-A fact-resolution product can map extracted facts, selected values, assumptions, comparison gaps, citations, and review signals into the same report contract. The generic example is `examples/adapters/fact-resolution.ts`.
+A fact-resolution product can map extracted facts, selected values, assumptions, comparison gaps, citations, and review signals into the same report contract. That mapping belongs with the producer or package that owns the source artifact.
 
-## Dependency Audit — reference adapter
+## Dependency Audit
 
-A dependency-security workflow can map `npm audit --json` output into package safety claims, audit-run evidence, and rejected verification events when known vulnerabilities affect installed versions. The generic example is `src/adapters/npm-audit.ts`.
+A dependency-security workflow can map `npm audit --json` output into evidence for authored package-safety claims. For Veritas, this is a plugin concern rather than a built-in Surface adapter.

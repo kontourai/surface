@@ -10,11 +10,31 @@ Generate a report from a native Surface trust input:
 surface report --input examples/surface-fixtures.json --format summary
 ```
 
-Generate reports from generic example exports:
+Generate reports from a custom registered adapter:
 
 ```bash
-surface report --adapter field-attested-records --input examples/field-attested-records-export.json --format summary
-surface report --adapter fact-resolution --input examples/fact-resolution-export.json --format summary
+surface report --adapter my-producer --input producer-export.json --format summary
+```
+
+Custom producer packages can register adapters explicitly through the public registry; those registered adapters are available by name with `--adapter`.
+
+Query local trust state from the same report contract:
+
+```bash
+surface stale
+surface missing
+surface get --claim-id claim.field-attested-records.registration-status
+surface policy --claim-id claim.field-attested-records.registration-status
+```
+
+Author claims in a local claim store:
+
+```bash
+surface claim list
+surface claim add --type software-proof --surface veritas.proof-lane --subject-type repository --subject-id my-repo --field "npm test"
+surface claim edit --claim-id my-repo.veritas-proof-lane.npm-test --impact high
+surface claim remove --claim-id my-repo.veritas-proof-lane.npm-test
+surface claim validate
 ```
 
 Output formats:
@@ -22,14 +42,31 @@ Output formats:
 - `json`: full trust report with claims, evidence, policies, events, and derived summary.
 - `summary`: compact human-readable status overview.
 - `linked`: JSON-LD-style linked output for graph-oriented consumers.
+- `analytics`: trust analytics projection with surface coverage, stale/disputed queues, fault-line rollups, proof gaps, confidence basis, and attestation validity signals.
+
+Query commands emit JSON:
+
+- `surface stale`: stale claim queue.
+- `surface missing`: evidence and proof requirement gaps, including weak attestation signals.
+- `surface get`: claim drilldown with evidence, events, policy, proof requirement, and fault lines.
+- `surface policy`: policy drilldown or policy index with related claims and gaps.
+- `surface claim`: read and write `veritas.claims.json` claim stores.
 
 ## Contract
 
 The CLI does not trust incoming status labels by default. A claim is only `verified` when a verification event and required evidence support it. Commit-scoped verification becomes `stale` when the current integrity reference no longer matches the evidence used by the verification event.
 
+## Claim Store Flags
+
+`surface claim` defaults to `./veritas.claims.json`. Use `--store <path>` to write elsewhere.
+
+`surface claim add` requires `--type`, `--surface`, `--subject-type`, `--subject-id`, and `--field`. Optional flags are `--id`, `--impact`, `--policy-id`, and `--metadata` with a JSON object.
+
 ## Near-term additions
 
 - `surface validate` for schema-only checks.
 - `surface diff` for comparing two reports.
-- `surface adapters` for listing registered adapters and their expected input shapes.
+- `surface adapters` for listing registered custom adapters and their expected input shapes.
 - `surface publish` for writing static reports to Pages or artifact storage.
+
+The `analytics` format is the local evidence-intelligence contract that future query commands, MCP resources, and the human console should consume. It is derived from the report; it is not a hosted store or generic BI surface.

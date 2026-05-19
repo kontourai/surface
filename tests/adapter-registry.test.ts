@@ -61,11 +61,19 @@ test("CLI unknown adapter error lists registered adapters", async () => {
       assert.ok(error instanceof Error);
       const stderr = "stderr" in error && typeof error.stderr === "string" ? error.stderr : "";
       assert.match(stderr, /Unknown adapter: unknown/);
-      assert.match(stderr, /fact-resolution/);
-      assert.match(stderr, /field-attested-records/);
       assert.match(stderr, /surface/);
+      assert.doesNotMatch(stderr, /fact-resolution/);
+      assert.doesNotMatch(stderr, /field-attested-records/);
+      assert.doesNotMatch(stderr, /npm-audit/);
       assert.doesNotMatch(stderr, /veritas/);
       return true;
     },
   );
+});
+
+test("surface adapter is the built-in passthrough", () => {
+  const adapter = getAdapter("surface");
+  assert.ok(adapter);
+  const input = minimalInput("surface-passthrough");
+  assert.equal(adapter.adapt(input), input);
 });

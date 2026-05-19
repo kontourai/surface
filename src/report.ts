@@ -42,6 +42,7 @@ export function buildTrustReport(input: TrustInput, options: { now?: Date; id?: 
     const evidence = input.evidence.filter((item) => item.claimId === claim.id);
     const policy = resolvePolicyForClaim(claim, input.policies);
     if (policy) policyByClaimId.set(claim.id, policy);
+    const producerStatus = claim.status;
     const ownStatus = deriveTrustStatus({ claim, evidence, policy, events: input.events, now });
     ownStatusByClaimId.set(claim.id, ownStatus);
     if (policy) {
@@ -54,17 +55,26 @@ export function buildTrustReport(input: TrustInput, options: { now?: Date; id?: 
         type: "provenance_gap",
         severity: claim.impactLevel ?? "medium",
         message: `Claim ${claim.id} has no evidence and no verification policy.`,
+        blocking: true,
         createdAt: now.toISOString(),
       });
     }
-    return { claim, ownStatus };
+    return { claim, ownStatus, producerStatus };
   });
 
   // Pass 2: apply derivedFrom ceilings.
-  const claims = ownStatuses.map(({ claim, ownStatus }) => {
+  const claims = ownStatuses.map(({ claim, ownStatus, producerStatus }) => {
     const outcome = applyDerivation({ claim, ownStatus, ownStatusByClaimId, claimsById, now });
     faultLines.push(...outcome.faultLines);
-    return { ...claim, status: outcome.status };
+    const derived = outcome.status;
+    const output: Claim & { status: TrustStatus; producerStatus?: TrustStatus } = {
+      ...claim,
+      status: derived,
+    };
+    if (producerStatus !== undefined && producerStatus !== derived) {
+      output.producerStatus = producerStatus;
+    }
+    return output;
   });
 
   // Cross-claim incompatibility detection. For each policy, group its claims by
@@ -206,6 +216,7 @@ function deriveFaultLines(input: {
       severity: input.claim.impactLevel ?? input.policy.impactLevel,
       message: `Missing required evidence: ${missingEvidence.join(", ")}.`,
       policyId: input.policy.id,
+      blocking: true,
       createdAt,
     });
   }
@@ -219,6 +230,7 @@ function deriveFaultLines(input: {
       message: `Missing required verification method: ${missingMethods.join(", ")}.`,
       evidenceIds: input.evidence.map((item) => item.id),
       policyId: input.policy.id,
+      blocking: true,
       createdAt,
     });
   }
@@ -232,6 +244,7 @@ function deriveFaultLines(input: {
       message: "Policy requires corroboration from at least two evidence records.",
       evidenceIds: input.evidence.map((item) => item.id),
       policyId: input.policy.id,
+      blocking: true,
       createdAt,
     });
   }
@@ -245,6 +258,21 @@ function deriveFaultLines(input: {
       message: "Claim verification is stale under its verification policy.",
       evidenceIds: input.evidence.map((item) => item.id),
       policyId: input.policy.id,
+      blocking: true,
+      createdAt,
+    });
+  }
+
+  for (const item of input.evidence.filter((evidence) => evidence.passing === false)) {
+    faultLines.push({
+      id: `${input.claim.id}.fault.evidence-${item.id}`,
+      claimId: input.claim.id,
+      type: "policy_violation",
+      severity: input.claim.impactLevel ?? input.policy.impactLevel,
+      message: "Evidence explicitly reported a non-passing result.",
+      evidenceIds: [item.id],
+      policyId: input.policy.id,
+      blocking: item.blocking !== false,
       createdAt,
     });
   }
@@ -270,6 +298,7 @@ function faultLineHintsFromEvidence(evidence: Evidence, policyId: string, create
       message: typeof hint.message === "string" ? hint.message : "Evidence contains a fault-line hint.",
       evidenceIds: [evidence.id],
       policyId,
+      blocking: typeof hint.blocking === "boolean" ? hint.blocking : true,
       createdAt,
       metadata: {
         source: "evidence.metadata.faultLineHints",

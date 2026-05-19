@@ -11,6 +11,7 @@ This backlog turns the Surface roadmap into executable work.
 ## Next
 
 - Add an `npm-audit` reference adapter to demonstrate a third-party, non-Kontour input shape.
+- Stabilize the local trust analytics projection as the Phase 5 evidence-intelligence contract for query commands, MCP resources, and the later console.
 - Add `surface validate`, `surface adapters`, and `surface diff` after the current report CLI stays stable.
 - Finish candidate-value, assumption, comparison, and review-signal primitives so downstream adapters can represent high-stakes workflows without custom semantics.
 

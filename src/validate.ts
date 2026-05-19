@@ -55,6 +55,8 @@ const EVIDENCE_KEYS = new Set([
   "observedAt",
   "collectedBy",
   "integrityRef",
+  "passing",
+  "blocking",
   "metadata",
 ]);
 const POLICY_KEYS = new Set([
@@ -132,6 +134,12 @@ export function validateTrustInput(input: unknown): TrustInput {
     requireDateTime(item, "observedAt");
     if (item.sourceLocator !== undefined) requireString(item, "sourceLocator");
     if (item.integrityRef !== undefined) requireString(item, "integrityRef");
+    if (item.passing !== undefined && typeof item.passing !== "boolean") {
+      throw new Error(`Evidence ${item.id} passing must be a boolean`);
+    }
+    if (item.blocking !== undefined && typeof item.blocking !== "boolean") {
+      throw new Error(`Evidence ${item.id} blocking must be a boolean`);
+    }
     if (item.metadata !== undefined) requireObject(item.metadata, "evidence.metadata");
   }
 

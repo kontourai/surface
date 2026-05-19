@@ -73,6 +73,57 @@ export interface Claim {
   metadata?: Record<string, unknown>;
 }
 
+export interface ClaimDefinition {
+  id: string;
+  surface: string;
+  claimType: string;
+  fieldOrBehavior: string;
+  subjectType: string;
+  subjectId: string;
+  impactLevel?: ImpactLevel;
+  verificationPolicyId?: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ClaimStore {
+  schemaVersion: 1;
+  producer: string;
+  claims: ClaimDefinition[];
+  policies: VerificationPolicy[];
+}
+
+export interface ClaimTypeMetadataField {
+  key: string;
+  label: string;
+  type: "string" | "boolean" | "number";
+  required?: boolean;
+  hint?: string;
+}
+
+export interface ClaimTypeDefinition {
+  id: string;
+  displayName: string;
+  description: string;
+  defaultImpact: ImpactLevel;
+  defaultSurface?: string;
+  policyTemplateId?: string;
+  metadataFields?: ClaimTypeMetadataField[];
+}
+
+export interface SurfaceExtension {
+  name: string;
+  displayName: string;
+  vocab: import("./dashboard/types.js").SurfaceDashboardVocab;
+  theme: import("./dashboard/types.js").SurfaceDashboardTheme;
+  claimTypes?: ClaimTypeDefinition[];
+  policyTemplates?: Array<{
+    id: string;
+    template: Omit<VerificationPolicy, "id">;
+  }>;
+}
+
 export interface Evidence {
   id: string;
   claimId: string;
@@ -84,6 +135,8 @@ export interface Evidence {
   observedAt: string;
   collectedBy: string;
   integrityRef?: string;
+  passing?: boolean;
+  blocking?: boolean;
   metadata?: Record<string, unknown>;
 }
 
@@ -185,6 +238,7 @@ export interface FaultLine {
   evidenceIds?: string[];
   policyId?: string;
   createdAt: string;
+  blocking?: boolean;
   metadata?: Record<string, unknown>;
 }
 
@@ -198,9 +252,111 @@ export interface TrustReport extends TrustInput {
   schemaVersion: SchemaVersion;
   id: string;
   generatedAt: string;
-  claims: Array<Claim & { status: TrustStatus }>;
+  claims: Array<Claim & { status: TrustStatus; producerStatus?: TrustStatus }>;
   proofRequirementsByClaimId: Record<string, ProofRequirement>;
   faultLines: FaultLine[];
   subjectGroups: SubjectGroup[];
   summary: TrustReportSummary;
+}
+
+export interface TrustAnalyticsProjection {
+  reportId: string;
+  generatedAt: string;
+  source: string;
+  totals: {
+    claims: number;
+    evidence: number;
+    policies: number;
+    events: number;
+    faultLines: number;
+  };
+  coverageBySurface: SurfaceTrustCoverage[];
+  staleClaims: ClaimQueueItem[];
+  disputedClaims: ClaimQueueItem[];
+  highImpactUnsupportedClaims: ClaimQueueItem[];
+  faultLines: {
+    byType: Record<FaultLineType, number>;
+    bySeverity: Record<ImpactLevel, number>;
+    items: FaultLineQueueItem[];
+  };
+  evidenceGaps: EvidenceGap[];
+  proofRequirementGaps: EvidenceGap[];
+  confidenceBasis: TrustReportSummary["confidenceBasis"];
+  actionQueues: TrustActionQueues;
+  attestationValidity: AttestationValidityProjection;
+}
+
+export interface SurfaceTrustCoverage {
+  surface: string;
+  totalClaims: number;
+  verifiedClaims: number;
+  staleClaims: number;
+  disputedClaims: number;
+  unsupportedClaims: number;
+  verificationCoverage: number;
+}
+
+export interface ClaimQueueItem {
+  claimId: string;
+  surface: string;
+  status: TrustStatus;
+  impactLevel: ImpactLevel;
+  claimType: string;
+  subject: SubjectRef;
+  policyId?: string;
+}
+
+export interface FaultLineQueueItem {
+  faultLineId: string;
+  claimId: string;
+  type: FaultLineType;
+  severity: ImpactLevel;
+  message: string;
+  policyId?: string;
+  evidenceIds: string[];
+}
+
+export interface EvidenceGap {
+  claimId: string;
+  surface: string;
+  impactLevel: ImpactLevel;
+  gapType: FaultLineType | AttestationGapType;
+  message: string;
+  policyId?: string;
+  evidenceIds: string[];
+}
+
+export interface TrustActionQueues {
+  reviewNow: ClaimQueueItem[];
+  reverifyStale: ClaimQueueItem[];
+  resolveConflicts: FaultLineQueueItem[];
+  strengthenEvidence: EvidenceGap[];
+}
+
+export type AttestationGapType =
+  | "attestation_actor_missing"
+  | "attestation_identity_unverified"
+  | "attestation_authority_unverified"
+  | "attestation_integrity_missing"
+  | "attestation_expired"
+  | "attestation_revoked";
+
+export interface AttestationValidityProjection {
+  totalAttestations: number;
+  validAttestations: number;
+  weakAttestations: number;
+  invalidAttestations: number;
+  items: AttestationValidityItem[];
+}
+
+export interface AttestationValidityItem {
+  evidenceId: string;
+  claimId: string;
+  actorRef?: string;
+  requiredAuthority?: string;
+  status: "valid" | "weak" | "invalid";
+  gaps: AttestationGapType[];
+  validUntil?: string;
+  revokedAt?: string;
+  integrityRef?: string;
 }

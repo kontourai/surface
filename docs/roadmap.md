@@ -39,6 +39,7 @@ These additions are deliberately small. They unlock cross-surface derivations th
 
 ## Phase 5: Agent query surface [planned]
 
+- Trust analytics projection over local reports.
 - `surface get`
 - `surface stale`
 - `surface missing`

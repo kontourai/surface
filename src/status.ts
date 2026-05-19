@@ -20,7 +20,26 @@ export function deriveTrustStatus(input: {
   }
 
   if (latestEvent?.status === "verified") {
-    return isVerifiedEventStale(latestEvent, input.claim, input.evidence, input.policy, now) ? "stale" : "verified";
+    if (isVerifiedEventStale(latestEvent, input.claim, input.evidence, input.policy, now)) {
+      return "stale";
+    }
+
+    if (input.policy) {
+      const evidenceTypes = new Set(input.evidence.map((evidence) => evidence.evidenceType));
+      const evidenceMethods = new Set(input.evidence.map((evidence) => evidence.method));
+      const missingTypes = input.policy.requiredEvidence.filter((type) => !evidenceTypes.has(type));
+      const missingMethods = (input.policy.requiredMethods ?? []).filter((method) => !evidenceMethods.has(method));
+      if (missingTypes.length > 0 || missingMethods.length > 0) {
+        return "proposed";
+      }
+    }
+
+    const hasBlockingFailure = input.evidence.some((evidence) => evidence.passing === false && evidence.blocking !== false);
+    if (hasBlockingFailure) {
+      return "disputed";
+    }
+
+    return "verified";
   }
 
   if (input.claim.status === "proposed") {
