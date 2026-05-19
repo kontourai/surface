@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 const pages = [
-  ["index", "README.md", "Kontour Surface"],
+  ["index", "docs/index.md", "Kontour Surface"],
   ["built-on-surface", "docs/built-on-surface.md", "What Builds on Surface"],
   ["walkthrough", "docs/guides/walkthrough.md", "Walkthrough"],
   ["vision", "docs/vision.md", "Vision"],

@@ -1,63 +1,25 @@
 # Roadmap
 
-## Phase 1: Narrative and static site [shipped]
+## What ships today
 
-- README and docs narrative.
-- GitHub Pages-capable static site.
-- Light/dark styling.
-- Use cases for repo-governance evidence, field-attested records, and fact resolution.
+Surface ships the trust kernel, CLI, local dashboard, and claim authoring.
 
-## Phase 2: Schema-first kernel [shipped]
+**Kernel** — claims, evidence, verification policies, verification events, status derivation, staleness, fault lines, proof requirements, identity links, incompatibility rules, derived claims, and linked-data export.
 
-- JSON schemas.
-- TypeScript types.
-- Status derivation helpers.
-- Fixture tests.
+**CLI** — `surface report`, `surface get`, `surface stale`, `surface missing`, `surface policy`, and `surface claim` (add, edit, remove, list, validate).
 
-## Phase 3: Read-only adapters [shipped]
+**Dashboard** — local server over a producer read model. Coverage, fault lines, evidence drilldowns, claim authoring modal, and producer-branded vocabulary via the extension API.
 
-- Export trust reports from existing product data.
-- Preserve domain evidence instead of flattening everything into generic pass/fail.
+**Extension API** — producers register vocabulary, theme, and claim type definitions. The dashboard adapts to the producer's language without changes to Surface.
 
-## Phase 4: Local report CLI [shipped]
+**Consumer SDK** — fluent helpers for emitting valid `TrustInput`.
 
-- `surface report`.
-- JSON and summary output.
-- Surface/status/freshness aggregation.
+**Analytics projection** — evidence intelligence derived from `TrustReport`: coverage by surface, stale zones, disputed claims, high-impact unsupported claims, fault-line rollups, attestation validity, and action queues.
 
-## Phase 4.5: Kernel reasoning [shipped]
+## What comes next
 
-The first four phases let Surface record claims and report on them. Phase 4.5 lets the kernel reason about claims that span surfaces and product systems without leaving the contract.
+**MCP resources** — `surface stale`, `surface missing`, and `surface policy` as MCP-queryable resources so agents can inspect trust state without shell access.
 
-- Subject aliases on claims and `identityLinks` on trust input, so the same real subject can be tracked across adapters and the kernel can group co-referent claims.
-- Claim-type families on policies (`parentType`), so a policy can apply to a category of claims without enumerating every type.
-- Incompatible-value and incompatible-status rules on policies, so contradictions across the same subject are detected by the kernel rather than declared by adapters.
-- Derived claims (`derivedFrom`), so a claim can represent a roll-up over other claims with status and freshness inherited from its inputs.
-- Linked-data export format, so trust reports can be consumed by external trust, graph, and reasoning stacks without a custom adapter.
+**Hosted sink** — durable storage for longitudinal reports and organization-wide trend analysis, after the local report contract proves stable.
 
-These additions are deliberately small. They unlock cross-surface derivations the kernel could not previously express.
-
-## Phase 5: Agent query surface [planned]
-
-- Trust analytics projection over local reports.
-- `surface get`
-- `surface stale`
-- `surface missing`
-- `surface policy`
-- MCP resources after CLI stabilization.
-
-## Phase 6: Human console [planned]
-
-- Coverage map.
-- Stale zones.
-- Fault lines.
-- Evidence drilldowns.
-- High-impact unsupported claim queue.
-
-## Phase 7: Hosted sink [planned]
-
-Only after the local contract proves useful, add durable hosted storage for longitudinal reports, adapter runs, and organization-wide trend analysis.
-
-## Parallel track: Linked-data and ontology
-
-Surface's JSON-LD export is the seed of a longer-running track that hardens trust reports into a portable, W3C-compatible substrate. See [linked-data-roadmap.md](./linked-data-roadmap.md) for the full plan: publishing a resolvable vocabulary, SHACL shapes, product-layer inheritance, optional Turtle/N-Quads emit, Verifiable Credentials alignment, and on-demand OWL reasoning.
+**Linked data** — a resolvable vocabulary, SHACL shapes for validation without running Surface TypeScript, optional Turtle/N-Quads output, and eventual Verifiable Credentials alignment. See [linked-data-roadmap.md](./linked-data-roadmap.md) for the full sequence.

@@ -1,6 +1,6 @@
-# Integration Plan: Surface Adapters in Real Applications
+# Producers and the Surface Boundary
 
-This plan defines the generic integration path. Surface should stay product-neutral: it owns portable trust primitives and report generation, while product repos own real adapters and product-specific docs. Products can build on Surface; Surface must not depend on product-layer runtimes.
+Surface owns portable trust primitives and report generation. Producers own the domain knowledge, extraction logic, and adapter code for their own systems.
 
 ## Boundary
 
@@ -8,83 +8,38 @@ Surface owns:
 
 - `TrustInput` and report schemas.
 - Claims, evidence, policies, events, freshness, status, identity links, and fault lines.
-- Adapter registration boundaries for product outputs.
-- Generic examples that are grounded in real planned usage but named by pattern.
+- The adapter registry for producers that emit `TrustInput`.
+- Claim store read/write for producers that use authored claim definitions.
+- Extension registration for producer branding and vocabulary.
 
-Downstream repos own:
+Producers own:
 
-- Product-specific extraction from their database or services.
-- Product adapters that emit Surface input.
+- Domain-specific extraction from their databases, services, or tool output.
+- Adapter or evidence collection code that emits `TrustInput`.
 - Product UI and runtime query wiring.
-- Product docs explaining how their users should interpret trust state.
+- Documentation explaining how their users should interpret trust state.
 
-Product repos own their own adapter code and may either emit native `TrustInput` or register an adapter that maps product artifacts to `TrustInput`.
+The dependency direction is one-way. Producers may depend on Surface; Surface must not import producer runtime code.
 
-## Generic Patterns
+## Trust input patterns
 
-### Field-Attested Records
+### Authored claim store
 
-Use this pattern when a product tracks records whose individual fields are sourced, attested, refreshed, disputed, or proposed.
+The recommended pattern for ongoing trust tracking. The producer authors claim definitions in a committed file (`veritas.claims.json` or equivalent). Evidence is collected per run against those stable claim IDs.
 
-Product packages own this adapter shape.
+Claims are stable across runs. A claim with no evidence collected in the current run retains its previous status through the existing staleness model rather than disappearing.
 
-Required primitives:
+### Adapter
 
-- Field-level claim identity.
-- Evidence batch references for crawls or imports.
-- Time-based staleness.
-- Proposed values and review decisions.
-- Review flags as explicit disputed signals.
+The appropriate pattern for one-shot analysis or for producers that own their own claim generation. The adapter receives raw product output and returns a complete `TrustInput` — claims, evidence, policies, and events — in one pass.
 
-### Fact Resolution
-
-Use this pattern when a product extracts facts, chooses among candidates, verifies selected values, and emits a package with citations and review signals.
-
-Product packages own this adapter shape.
-
-Required primitives:
-
-- Candidate values.
-- Selected and verified fact state.
-- Assumption claims.
-- Comparison claims.
-- Review signals.
-- Package-level policy context.
-
-## Phased Delivery
-
-### Phase 1: Keep Surface Generic
-
-**Status:** Shipped. Surface is generic; built-in examples are grounded in reusable trust patterns.
-
-- Remove product-named adapters from `src/`.
-- Rename fixtures and CLI adapters by generic pattern.
-- Keep downstream product names out of Surface-facing docs.
-- Keep tests proving the same statuses and fault lines.
-
-### Phase 2: Strengthen Primitives
-
-**Status:** Partially shipped. Confidence basis and derivation ceilings are shipped. Candidate-value support, assumptions, comparisons, and review signals are planned.
-
-- Add candidate-value support.
-- Add assumption and comparison shapes.
-- Add first-class review signals.
-- Add evidence batch references.
-- Add explicit freshness/recheck rules.
-- Add confidence basis per claim and ceiling through derivedFrom chains.
-
-### Phase 3: Building An Adapter
-
-**Status:** Shipped.
-
-Adapters are plain modules that call `registerAdapter(adapter)`.
+Adapters are registered explicitly:
 
 ```ts
 import { registerAdapter, type Adapter, type TrustInput } from "@kontourai/surface";
 
 const adapter: Adapter<MyExport> = {
   name: "my-product",
-  defaultFixture: "examples/my-export.json",
   adapt(record): TrustInput {
     return {
       schemaVersion: 2,
@@ -100,33 +55,20 @@ const adapter: Adapter<MyExport> = {
 registerAdapter(adapter);
 ```
 
-Adapter rules:
+Surface does not discover adapters from `node_modules` or config. Registration is always explicit.
 
-- Keep product-native parsing in the product repo or package.
-- Emit valid `TrustInput`; call `validateTrustInput` before reporting.
-- Use stable claim ids and policy ids so reports can diff over time.
-- Register explicitly; Surface does not discover adapters from `node_modules` or user config.
-- Add adapter tests that build a report and assert status, fault-line, and proof-requirement behavior.
+See the [external adapter example](../examples/external-adapter/README.md) for a package-shaped reference implementation.
 
-The package-shaped example in `examples/external-adapter/` shows how adapter code can live outside the Surface kernel package.
+## Patterns by domain
 
-### Phase 4: Runtime Query API
+### Field-attested records
 
-**Status:** Planned.
+Use when a product tracks records whose individual fields are sourced, attested, refreshed, disputed, or proposed. Key primitives: field-level claim identity, evidence batch references, time-based staleness, proposed values, review flags.
 
-Add a generic store/query boundary for:
+### Fact resolution
 
-- `getTrustReport(subject)`
-- `getEvidenceTrail(claimId)`
-- `getClaimsNeedingReview()`
-- `getStaleClaims()`
-- `getUnsupportedClaims()`
+Use when a product extracts facts, chooses among candidates, verifies selected values, and emits a package with citations and review signals. Key primitives: candidate values, selected and verified fact state, assumption claims, comparison claims, review signals.
 
-## Completion Criteria
+### Dependency audit
 
-Surface is correctly generic when:
-
-1. No downstream product name appears in executable Surface adapters or fixtures.
-2. Example names describe trust patterns, not products.
-3. Real product repos can emit Surface input without Surface importing their types.
-4. Tests prove field attestation, fact resolution, and an out-of-tree adapter all map into the same trust report contract.
+Use when tool output (npm audit, Snyk, etc.) should evidence security claims. Recommended via the Veritas plugin API rather than a Surface adapter — the tool vendor can ship the evidence importer and the application team authors the claims.
