@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { readFile, readdir } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
+import { cwd } from "node:process";
 import { buildDashboardHtml } from "./shell.js";
 import { DASHBOARD_SCRIPT } from "./script.js";
 import { DASHBOARD_CSS } from "./styles.js";
@@ -66,7 +67,7 @@ export async function startDashboardServer(config: SurfaceDashboardConfig = {}):
             const summary = data["summary"] as Record<string, unknown> | undefined;
             const attentionIds = (summary?.["attentionClaimIds"] as unknown[] | undefined) ?? [];
             return {
-              runId: producer?.["runId"] ?? basename(f, ".dashboard.json"),
+              runId: String(producer?.["runId"] ?? basename(f, ".dashboard.json")),
               generatedAt: data["generatedAt"] ?? null,
               claimCount: summary?.["claimCount"] ?? 0,
               verifiedCount: (summary?.["statusCounts"] as Record<string,number> | undefined)?.["verified"] ?? 0,
@@ -148,11 +149,13 @@ export async function startDashboardServer(config: SurfaceDashboardConfig = {}):
     try {
       const resolvedPath = await resolveReadModelPath(readModelPath);
       const readModel = await loadReadModel(resolvedPath);
+      const folderName = basename(cwd());
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-      res.end(buildDashboardHtml({ ...config, storePath, claimTypes: registeredClaimTypes(), readModel }));
+      res.end(buildDashboardHtml({ ...config, storePath, claimTypes: registeredClaimTypes(), readModel, folderName }));
     } catch {
+      const folderName = basename(cwd());
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-      res.end(buildDashboardHtml({ ...config, storePath, claimTypes: registeredClaimTypes(), readModel: null }));
+      res.end(buildDashboardHtml({ ...config, storePath, claimTypes: registeredClaimTypes(), readModel: null, folderName }));
     }
   });
 

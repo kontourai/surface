@@ -13,7 +13,10 @@ export function buildDashboardHtml(config: SurfaceDashboardRuntimeConfig = {}): 
   <header class="dash-header">
     <div class="dash-brand">
       <p class="dash-eyebrow">Surface</p>
-      <h1 id="projectName">Loading…</h1>
+      <div class="dash-title-row">
+        <h1 id="projectName">Loading…</h1>
+        <span class="run-label" id="runLabel" hidden></span>
+      </div>
       <div class="dash-run-line">
         <p class="dash-run-meta" id="dashRunMeta"></p>
         <div class="run-select" id="runSelect" hidden>
@@ -21,17 +24,26 @@ export function buildDashboardHtml(config: SurfaceDashboardRuntimeConfig = {}): 
             <span class="run-trigger-label" id="runTriggerLabel"></span>
             <svg class="run-chevron" width="8" height="5" viewBox="0 0 8 5" fill="none" aria-hidden="true"><path d="M1 1l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <div class="run-dropdown" id="runDropdown" role="listbox" aria-label="Select run" hidden></div>
+          <div class="run-dropdown" id="runDropdown" role="listbox" aria-label="Select run"></div>
         </div>
       </div>
     </div>
-    <div id="dashboardMetrics" class="dash-metrics"></div>
+    <div class="dash-metrics-row">
+      <canvas id="statusDonut" class="status-donut" width="52" height="52" aria-hidden="true"></canvas>
+      <div id="dashboardMetrics" class="dash-metrics"></div>
+    </div>
   </header>
 
   <div class="dash-layout">
   <div class="dash-body">
     <div class="dash-toolbar">
-      <div id="surfaceChips" class="chip-strip" role="group" aria-label="Filter by surface"></div>
+      <div class="toolbar-top">
+        <div id="surfaceChips" class="chip-strip" role="group" aria-label="Filter by surface"></div>
+        <button class="btn-add-claim" id="addClaimBtn" type="button">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M5 1v8M1 5h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          Claim
+        </button>
+      </div>
       <div class="search-row">
         <input id="claimSearch" type="search" placeholder="Search claims…" autocomplete="off" aria-label="Search claims">
         <select id="statusFilter" aria-label="Filter by status">
@@ -43,9 +55,6 @@ export function buildDashboardHtml(config: SurfaceDashboardRuntimeConfig = {}): 
           <option value="proposed">Proposed</option>
           <option value="unknown">Unknown</option>
         </select>
-      </div>
-      <div class="toolbar-actions">
-        <button class="btn-primary" id="addClaimBtn" type="button">Add claim</button>
       </div>
     </div>
 
@@ -73,6 +82,7 @@ export function buildDashboardHtml(config: SurfaceDashboardRuntimeConfig = {}): 
         <p id="detailDivergenceBanner"></p>
       </div>
       <h2 id="detailTitle" class="sheet-title">Claim detail</h2>
+      <p id="detailDescription" class="sheet-description" hidden></p>
       <p id="detailSubtitle" class="sheet-subtitle"></p>
 
       <div id="detailFaultBlock" class="sheet-section" hidden>
@@ -81,7 +91,7 @@ export function buildDashboardHtml(config: SurfaceDashboardRuntimeConfig = {}): 
       </div>
 
       <div id="detailPolicyGapBlock" class="sheet-section" hidden>
-        <p class="section-label">Verification requirements vs collected evidence ${helpHint("Verification requirements vs collected evidence", "This compares what the verification rule requires with the evidence collected for this claim. Missing rows usually mean the producer or plugin did not emit the evidence Surface needs to evaluate the claim.")}</p>
+        <p class="section-label">Verification gap ${helpHint("Verification gap", "Compares what the policy requires against what was actually collected. Missing rows mean the producer did not emit the evidence Surface needs to evaluate this claim.")}</p>
         <div id="detailPolicyGap" class="gap-table"></div>
       </div>
 
@@ -101,7 +111,7 @@ export function buildDashboardHtml(config: SurfaceDashboardRuntimeConfig = {}): 
       </div>
 
       <div class="sheet-section">
-        <p class="section-label">Evidence ${helpHint("Evidence", "Evidence is the artifact behind this claim. It proves the dashboard is showing an observed result, not a placeholder or guess. Use it to trace where the claim came from, when it was collected, and what source state it applies to.")}</p>
+        <p class="section-label">Evidence summary ${helpHint("Evidence summary", "The excerpt or summary from the evidence artifact for this claim. Use it to understand what the producer observed and whether the evidence is still applicable to the current state.")}</p>
         <p id="detailEvidence">—</p>
         <div id="detailPluginAttribution" class="plugin-attribution" hidden></div>
       </div>
@@ -132,28 +142,28 @@ export function buildDashboardHtml(config: SurfaceDashboardRuntimeConfig = {}): 
       <div class="modal-body">
         <input id="claimIdInput" type="hidden">
         <div class="form-field">
-          <label for="claimTypeSelect">Claim type</label>
+          <label for="claimTypeSelect">Claim type ${helpHint("Claim type", "The category of claim. Different types activate different evidence collection and verification rules. Use 'software-proof' for automated tooling results.")}</label>
           <select id="claimTypeSelect" required></select>
           <p class="field-hint" id="claimTypeHint"></p>
         </div>
         <div class="form-field">
-          <label for="claimSurfaceInput">Surface</label>
+          <label for="claimSurfaceInput">Surface ${helpHint("Surface", "The logical boundary this claim belongs to — usually a repository, service, or product name. Claims are grouped and filtered by surface in the dashboard.")}</label>
           <input id="claimSurfaceInput" type="text" required autocomplete="off">
         </div>
         <div class="form-field">
-          <label for="claimFieldInput">Field or behavior</label>
+          <label for="claimFieldInput">Field or behavior ${helpHint("Field or behavior", "The specific property or behavior being claimed. This becomes the display name in the feed. Be specific — 'unit test coverage ≥ 80%' is better than 'test coverage'.")}</label>
           <input id="claimFieldInput" type="text" required autocomplete="off" placeholder="e.g. unit test coverage">
         </div>
         <div class="form-field">
-          <label for="claimSubjectTypeInput">Subject type</label>
+          <label for="claimSubjectTypeInput">Subject type ${helpHint("Subject type", "The kind of entity being evaluated. Common values: 'repository', 'pull-request', 'service', 'artifact'. Determines how the claim is scoped and reported.")}</label>
           <input id="claimSubjectTypeInput" type="text" required autocomplete="off" placeholder="e.g. repository">
         </div>
         <div class="form-field">
-          <label for="claimSubjectIdInput">Subject ID</label>
+          <label for="claimSubjectIdInput">Subject ID ${helpHint("Subject ID", "The specific identifier for the entity being evaluated — e.g. the repository slug, PR number, or service name. Used to correlate claims with evidence.")}</label>
           <input id="claimSubjectIdInput" type="text" required autocomplete="off">
         </div>
         <div class="form-field">
-          <label for="claimImpactSelect">Impact level</label>
+          <label for="claimImpactSelect">Impact level ${helpHint("Impact level", "How important this claim is to your trust posture. High and critical claims are prioritized in attention reports and may block verification gates.")}</label>
           <select id="claimImpactSelect">
             <option value="low">Low</option>
             <option value="medium" selected>Medium</option>
@@ -162,7 +172,7 @@ export function buildDashboardHtml(config: SurfaceDashboardRuntimeConfig = {}): 
           </select>
         </div>
         <div class="form-field">
-          <label for="claimPolicyInput">Policy ID</label>
+          <label for="claimPolicyInput">Policy ID ${helpHint("Policy ID", "The verification policy governing how this claim is evaluated. Leave blank to use the claim type's default. Policies define required evidence types, methods, and acceptance criteria.")}</label>
           <input id="claimPolicyInput" type="text" autocomplete="off">
         </div>
         <div id="claimMetadataFields"></div>

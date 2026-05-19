@@ -31,4 +31,5 @@ export interface SurfaceDashboardRuntimeConfig extends SurfaceDashboardConfig {
   readModel?: unknown;
   producer?: string;
   claimTypes?: ClaimTypeDefinition[];
+  folderName?: string;
 }

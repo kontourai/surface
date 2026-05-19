@@ -161,6 +161,13 @@ button {
   font-family: ui-monospace, "Cascadia Code", "SF Mono", monospace;
 }
 
+.dash-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
 .dash-brand h1 {
   margin: 0;
   font-size: 1.3rem;
@@ -171,7 +178,37 @@ button {
   color: var(--ink);
 }
 
-/* Metrics row */
+/* Run ID shown inline next to project name — small, muted, monospace badge */
+.run-label {
+  font-size: 0.62rem;
+  font-family: ui-monospace, "Cascadia Code", "SF Mono", monospace;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0.1rem 0.45rem;
+  line-height: 1.6;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+/* Metrics row — wraps donut + chips */
+.dash-metrics-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.status-donut {
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
 .dash-metrics {
   display: flex;
   gap: 0.5rem;
@@ -242,32 +279,35 @@ button {
   transform: rotate(180deg);
 }
 
+/* Fixed dropdown — rendered outside header stacking context */
 .run-dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  min-width: 240px;
-  max-width: 340px;
+  position: fixed;
+  z-index: 9999;
+  display: none;
+  min-width: 260px;
+  max-width: 360px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  box-shadow: var(--shadow-lg);
-  z-index: 100;
+  box-shadow: var(--shadow-xl);
   overflow: hidden;
-  animation: dropdown-in 0.14s var(--ease-out) both;
+}
+.run-dropdown.open {
+  display: block;
+  animation: dropdown-in 0.15s var(--ease-out) both;
 }
 
 @keyframes dropdown-in {
-  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .run-option {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.1rem;
   width: 100%;
-  padding: 0.55rem 0.85rem;
+  padding: 0.6rem 0.85rem;
   text-align: left;
   border-bottom: 1px solid var(--soft);
   transition: background 0.1s ease;
@@ -275,28 +315,31 @@ button {
 }
 .run-option:last-child { border-bottom: none; }
 .run-option:hover { background: var(--raised); }
-.run-option-active {
-  background: color-mix(in srgb, var(--blue) 8%, var(--surface));
+.run-option-active { background: color-mix(in srgb, var(--blue) 9%, var(--surface)); }
+.run-option-active:hover { background: color-mix(in srgb, var(--blue) 14%, var(--surface)); }
+
+.run-opt-date {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink);
+  font-family: ui-monospace, "Cascadia Code", "SF Mono", monospace;
 }
-.run-option-active:hover {
-  background: color-mix(in srgb, var(--blue) 13%, var(--surface));
+.run-option-active .run-opt-date { color: var(--blue); }
+
+.run-opt-stats {
+  font-size: 0.68rem;
+  font-family: ui-monospace, "Cascadia Code", "SF Mono", monospace;
+  color: var(--ink-2);
 }
 
 .run-opt-id {
-  font-size: 0.72rem;
+  font-size: 0.62rem;
   font-family: ui-monospace, "Cascadia Code", "SF Mono", monospace;
-  color: var(--ink);
-  font-weight: 500;
+  color: var(--muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.run-option-active .run-opt-id { color: var(--blue); }
-
-.run-opt-meta {
-  font-size: 0.65rem;
-  font-family: ui-monospace, "Cascadia Code", "SF Mono", monospace;
-  color: var(--muted);
+  margin-top: 0.1rem;
 }
 
 /* ── 4. Metric Chips ────────────────────────────────────────── */
@@ -385,10 +428,52 @@ button {
   margin-bottom: 1rem;
 }
 
-.toolbar-actions {
+/* Chip strip + add button on one row */
+.toolbar-top {
   display: flex;
-  justify-content: flex-end;
-  margin-top: 0.625rem;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  overflow: hidden;
+}
+
+.toolbar-top .chip-strip {
+  flex: 1;
+  min-width: 0;
+  padding-bottom: 0;
+}
+
+.toolbar-top .btn-add-claim {
+  flex-shrink: 0;
+}
+
+/* Ghost "add" button — sits inline with chips/filters, not dominant */
+.btn-add-claim {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.22rem 0.65rem 0.22rem 0.5rem;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-sm);
+  font-size: 0.76rem;
+  color: var(--muted);
+  background: transparent;
+  transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease, border-style 0.12s;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-add-claim:hover {
+  border-style: solid;
+  border-color: var(--blue);
+  color: var(--blue);
+  background: var(--blue-bg);
+}
+.btn-add-claim:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+  border-style: solid;
+  border-color: var(--blue);
+  color: var(--blue);
 }
 
 /* Primary button */
@@ -504,6 +589,13 @@ button {
   border-radius: var(--radius);
   background: var(--orange-bg);
   box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.attention-band:hover {
+  background: color-mix(in srgb, var(--orange) 14%, var(--surface));
+  border-color: color-mix(in srgb, var(--orange) 65%, transparent);
 }
 
 .band-icon {
@@ -532,6 +624,20 @@ button {
   font-size: 0.85rem;
   color: var(--muted);
   line-height: 1.45;
+}
+
+.band-action {
+  margin-left: 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--orange);
+  opacity: 0.65;
+  transition: opacity 0.12s ease;
+  font-family: ui-monospace, "Cascadia Code", monospace;
+}
+
+.attention-band:hover .band-action {
+  opacity: 1;
 }
 
 /* ── 8. Feed Header ─────────────────────────────────────────── */
@@ -637,6 +743,14 @@ button {
 .card-strong::before { background: var(--green) !important; }
 .card-weak::before   { background: var(--amber) !important; }
 .card-weak           { opacity: 0.9; }
+
+/* Selected state — active card when detail is open */
+.claim-card.card-selected {
+  background: color-mix(in srgb, var(--blue) 8%, var(--surface));
+  border-color: color-mix(in srgb, var(--blue) 50%, transparent);
+  box-shadow: inset 3px 0 0 var(--blue);
+}
+.claim-card.card-selected::before { background: var(--blue); }
 
 /* Card body */
 .card-body { min-width: 0; }
@@ -783,6 +897,29 @@ button {
   background: var(--raised);
 }
 
+.empty-state--setup { padding: 3rem 2rem; }
+
+.empty-setup-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 0.5rem;
+  display: block;
+}
+
+.empty-setup-cmd {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  font-size: 0.88rem;
+  color: var(--blue);
+  letter-spacing: 0.01em;
+}
+
 /* ── 10. Sheet Backdrop ─────────────────────────────────────── */
 .sheet-backdrop {
   position: fixed;
@@ -864,10 +1001,12 @@ button {
 .sheet-scroll {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 1rem 1.25rem 3rem;
   overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: var(--line) transparent;
+  word-break: break-word;
 }
 
 /* Sheet top meta row */
@@ -946,7 +1085,14 @@ button {
   line-height: 1.45;
 }
 
-/* Status guidance — "what you need to do" contextual hint */
+.sheet-description {
+  margin: 0.3rem 0 0.85rem;
+  font-size: 0.86rem;
+  color: var(--ink-2);
+  line-height: 1.6;
+}
+
+/* Status guidance — contextual hint with optional actionable command */
 .detail-guidance {
   margin: 0 0 1rem;
   padding: 0.65rem 0.9rem;
@@ -956,6 +1102,88 @@ button {
   font-size: 0.86rem;
   line-height: 1.5;
   color: var(--ink);
+}
+
+.detail-guidance--warn {
+  border-left-color: var(--orange);
+  background: var(--orange-bg);
+}
+
+.detail-guidance--bad {
+  border-left-color: var(--red);
+  background: var(--red-bg);
+}
+
+.guidance-text {
+  margin: 0 0 0.6rem;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.guidance-text:only-child { margin-bottom: 0; }
+
+.guidance-command {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0.3rem 0.4rem 0.3rem 0.65rem;
+  margin-bottom: 0.4rem;
+}
+
+.guidance-cmd-text {
+  flex: 1;
+  min-width: 0;
+  font-family: ui-monospace, "Cascadia Code", "SF Mono", monospace;
+  font-size: 0.8rem;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guidance-copy-btn {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--raised);
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.1s ease, border-color 0.1s ease, background 0.1s ease;
+}
+
+.guidance-copy-btn:hover,
+.guidance-copy-btn:focus-visible {
+  color: var(--blue);
+  border-color: color-mix(in srgb, var(--blue) 40%, transparent);
+  background: var(--blue-bg);
+  outline: none;
+}
+
+.guidance-copy-btn.copied {
+  color: var(--green);
+  border-color: color-mix(in srgb, var(--green) 40%, transparent);
+  background: var(--green-bg);
+}
+
+.guidance-copy-btn .icon-copy { display: block; }
+.guidance-copy-btn .icon-check { display: none; }
+.guidance-copy-btn.copied .icon-copy { display: none; }
+.guidance-copy-btn.copied .icon-check { display: block; }
+
+.guidance-note {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+  line-height: 1.45;
+  font-style: italic;
 }
 
 /* Sheet action buttons */
@@ -989,6 +1217,44 @@ button {
 .sheet-action-btn--danger { color: var(--red); }
 .sheet-action-btn--danger:hover,
 .sheet-action-btn--danger:focus-visible {
+  border-color: var(--red);
+  color: var(--red);
+  background: var(--red-bg);
+}
+
+/* Icon-only buttons in sheet-top (edit / delete) */
+.sheet-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.sheet-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--raised);
+  color: var(--muted);
+  cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease;
+  flex-shrink: 0;
+}
+
+.sheet-icon-btn:hover,
+.sheet-icon-btn:focus-visible {
+  border-color: var(--blue);
+  color: var(--blue);
+  background: var(--blue-bg);
+  outline: none;
+}
+
+.sheet-icon-btn--danger:hover,
+.sheet-icon-btn--danger:focus-visible {
   border-color: var(--red);
   color: var(--red);
   background: var(--red-bg);
@@ -1631,6 +1897,7 @@ details[open] > .sheet-raw summary::before,
     padding: 1rem 1.75rem;
   }
 
+  .dash-metrics-row { justify-content: flex-end; }
   .dash-metrics { justify-content: flex-end; }
 
   /* Master-detail: body + inline panel side by side */
@@ -1681,9 +1948,11 @@ details[open] > .sheet-raw summary::before,
     pointer-events: auto;
   }
 
-  /* Sheet content has min-width so it doesn't reflow during animation */
+  /* Sheet content: fixed width so it doesn't reflow during the width animation */
   .detail-sheet .sheet-scroll {
-    min-width: min(440px, 42vw);
+    width: min(440px, 42vw);
+    flex-shrink: 0;
+    overflow-x: hidden;
   }
 
   .sheet-drag { display: none; }

@@ -5,6 +5,7 @@ const claimTypes = cfg.claimTypes ?? [];
 const filters = { search: "", status: "all", surface: "all" };
 let currentData = null;
 let currentDetailClaim = null;
+let currentRunId = null;
 let allRuns = [];
 
 function el(id) { return document.getElementById(id); }
@@ -79,10 +80,15 @@ function statusColor(status) {
   return m[status] ?? "muted";
 }
 
-function statusLabel(status) {
+function statusLabel(status, evidenceCount) {
+  if (status === "unknown") return evidenceCount === 0 ? "Never run" : "No evidence";
   const m = { verified:"Verified", stale:"Needs refresh", disputed:"Disputed",
-               rejected:"Rejected", unknown:"No evidence", proposed:"Pending" };
+               rejected:"Rejected", proposed:"Pending" };
   return m[status] ?? status;
+}
+
+function claimEvidenceCount(claim) {
+  return claim.evidenceIds?.length ?? 0;
 }
 
 function animateCount(el, target) {
@@ -100,16 +106,41 @@ function animateCount(el, target) {
   requestAnimationFrame(tick);
 }
 
-function statusGuidance(status) {
+function statusGuidance(status, evidenceCount) {
+  if (status === "verified") return null;
+  if (status === "unknown") {
+    return evidenceCount === 0
+      ? "This claim has never been evaluated — no evidence has been collected yet."
+      : "Evidence exists but trust status could not be determined from it.";
+  }
   const m = {
-    verified: null,
-    unknown:  "No evidence has been collected for this claim yet. Run the producer to gather evidence.",
-    proposed: "This claim is awaiting its first evidence collection run.",
-    stale:    "Evidence exists but is outdated. Re-run the producer to refresh it.",
+    proposed: "Awaiting first evidence collection run.",
+    stale:    "Evidence is outdated — collected against a different version of the code. Stale claims are refreshed one run at a time.",
     disputed: "Surface derived a different status than the producer declared. Resolve the fault lines above.",
-    rejected: "Verification failed. Check ‘What went wrong’ above for specific remediation steps.",
+    rejected: "Verification failed. Check the fault lines above for specific remediation steps.",
   };
   return m[status] ?? null;
+}
+
+function suggestCommand(claim, evidence, readModel) {
+  const producer = readModel?.producer ?? {};
+  const needsEvidence = ["unknown", "stale", "proposed", "rejected"].includes(claim.status);
+  if (!needsEvidence) return null;
+
+  if (claim.claimType === "software-proof") {
+    const cmd = claim.metadata?.command ?? claim.fieldOrBehavior;
+    if (cmd) return { command: cmd, note: "Runs the proof lane and captures output as evidence." };
+  }
+
+  const isVeritas = producer.name === "veritas" || (claim.claimType ?? "").startsWith("veritas");
+  if (isVeritas) {
+    if (claim.status === "stale") {
+      return { command: "veritas checkin", note: "Refreshes this claim’s evidence. Run once per stale claim until all are resolved." };
+    }
+    return { command: "veritas checkin", note: "Collects evidence and updates trust status for in-scope surfaces." };
+  }
+
+  return null;
 }
 
 function claimTypeLabel(claimType) {
@@ -216,14 +247,73 @@ function renderRequirementValues(values, emptyLabel) {
     : \`<span class="empty-value">\${esc(emptyLabel)}</span>\`;
 }
 
+// ── status donut chart ─────────────────────────────────
+function renderDonut(d) {
+  const canvas = el("statusDonut");
+  if (!canvas || !canvas.getContext) return;
+  const ctx = canvas.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  const size = 52;
+  canvas.width  = size * dpr;
+  canvas.height = size * dpr;
+  canvas.style.width  = size + "px";
+  canvas.style.height = size + "px";
+  ctx.scale(dpr, dpr);
+
+  const claims = d.claims ?? [];
+  const total  = claims.length || 1;
+  const counts = { verified: 0, stale: 0, disputed: 0, rejected: 0, unknown: 0, proposed: 0 };
+  claims.forEach(c => { if (counts[c.status] !== undefined) counts[c.status]++; });
+
+  const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const palette = isDark
+    ? { verified:"#52c47e", stale:"#f0835a", disputed:"#e06060", rejected:"#e06060", unknown:"#3a4e3c", proposed:"#d4aa3a" }
+    : { verified:"#0c6b4a", stale:"#9b4819", disputed:"#9b2b2b", rejected:"#9b2b2b", unknown:"#dce8d5", proposed:"#886600" };
+
+  const slices = Object.entries(counts).filter(([, v]) => v > 0);
+  const cx = size / 2, cy = size / 2, r = 20, inner = 12;
+  let angle = -Math.PI / 2;
+  ctx.clearRect(0, 0, size, size);
+
+  slices.forEach(([status, count]) => {
+    const sweep = (count / total) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(angle) * r, cy + Math.sin(angle) * r);
+    ctx.arc(cx, cy, r, angle, angle + sweep);
+    ctx.arc(cx, cy, inner, angle + sweep, angle, true);
+    ctx.closePath();
+    ctx.fillStyle = palette[status] ?? "#888";
+    ctx.fill();
+    angle += sweep;
+  });
+
+  // center text: verified count
+  const verified = counts.verified;
+  ctx.fillStyle = isDark ? "#dce8d5" : "#1a2019";
+  ctx.font = \`bold \${verified > 9 ? 9 : 10}px ui-monospace, monospace\`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(String(verified), cx, cy);
+}
+
 // ── main render ────────────────────────────────────────
 function renderDashboard() {
   const d = currentData;
 
   el("projectName").textContent = d.project.name;
+  const runLabelEl = el("runLabel");
+  if (runLabelEl) {
+    if (d.run?.label) {
+      runLabelEl.textContent = d.run.label;
+      runLabelEl.removeAttribute("hidden");
+    } else {
+      runLabelEl.setAttribute("hidden", "");
+    }
+  }
   const runMeta = el("dashRunMeta");
   if (runMeta) runMeta.textContent = d.run?.meta ?? "";
 
+  if (d.claims?.length) renderDonut(d);
   el("dashboardMetrics").innerHTML = d.metrics.map(([label, value,, delta, color, filterVal]) =>
     \`<button type="button" class="metric-chip metric-\${esc(color)}\${filters.status === filterVal ? " metric-chip-active" : ""}"
       data-metric-filter="\${esc(filterVal ?? "all")}" title="Filter to \${esc(label.toLowerCase())}">
@@ -239,7 +329,9 @@ function renderDashboard() {
       el("dashboardMetrics").querySelectorAll("[data-metric-filter]").forEach(c => {
         c.classList.toggle("metric-chip-active", filters.status === c.dataset.metricFilter);
       });
+      el("statusFilter").value = filters.status;
       renderFeed(d);
+      pushUrlState();
     });
   });
   el("dashboardMetrics").querySelectorAll("[data-count]").forEach(span => animateCount(span, span.dataset.count));
@@ -248,10 +340,27 @@ function renderDashboard() {
     ["disputed","stale","rejected","unknown"].includes(c.status)
   );
   if (attention.length) {
-    el("attentionTitle").textContent = attention.length + " claim" +
-      (attention.length !== 1 ? "s" : "") + " need" +
-      (attention.length === 1 ? "s" : "") + " attention";
+    const isAttentionActive = filters.status === "attention";
+    el("attentionTitle").innerHTML =
+      esc(attention.length + " claim" + (attention.length !== 1 ? "s" : "") +
+      " need" + (attention.length === 1 ? "s" : "") + " attention") +
+      \`<span class="band-action">\${isAttentionActive ? "✓ Filtered" : "Show all →"}</span>\`;
     el("priorityNarrative").textContent = d.narrative;
+    const band = el("attentionBand");
+    band.onclick = () => {
+      filters.status = filters.status === "attention" ? "all" : "attention";
+      el("statusFilter").value = filters.status;
+      el("dashboardMetrics")?.querySelectorAll("[data-metric-filter]").forEach(c => {
+        c.classList.toggle("metric-chip-active", filters.status === c.dataset.metricFilter);
+      });
+      renderFeed(d);
+      pushUrlState();
+      const nowActive = filters.status === "attention";
+      el("attentionTitle").innerHTML =
+        esc(attention.length + " claim" + (attention.length !== 1 ? "s" : "") +
+        " need" + (attention.length === 1 ? "s" : "") + " attention") +
+        \`<span class="band-action">\${nowActive ? "✓ Filtered" : "Show all →"}</span>\`;
+    };
     show("attentionBand");
   } else {
     hide("attentionBand");
@@ -264,10 +373,15 @@ function renderDashboard() {
   el("claimSearch").addEventListener("input", e => {
     filters.search = e.target.value;
     renderFeed(d);
+    pushUrlState();
   });
   el("statusFilter").addEventListener("change", e => {
     filters.status = e.target.value;
+    el("dashboardMetrics")?.querySelectorAll("[data-metric-filter]").forEach(c => {
+      c.classList.toggle("metric-chip-active", filters.status === c.dataset.metricFilter);
+    });
     renderFeed(d);
+    pushUrlState();
   });
 }
 
@@ -283,6 +397,7 @@ function renderSurfaceChips(d) {
       filters.surface = btn.dataset.surface;
       renderSurfaceChips(d);
       renderFeed(d);
+      pushUrlState();
     });
   });
 }
@@ -299,11 +414,17 @@ function renderFeed(d) {
     visible.length + " of " + (d.claims?.length ?? 0) + " claims";
   el("claimFeed").innerHTML = visible.length
     ? visible.map((c, i) => claimCard(c, d.claims.indexOf(c), i)).join("")
-    : \`<p class="empty-state">No claims match the current filters.</p>\`;
+    : (d.claims?.length
+        ? \`<p class="empty-state">No claims match the current filters.</p>\`
+        : \`<div class="empty-state empty-state--setup">
+            <p class="empty-setup-title">No run data yet</p>
+            <p>Run the producer to generate a read model, then refresh this dashboard.</p>
+            <code class="empty-setup-cmd">veritas run</code>
+           </div>\`);
   el("claimFeed").querySelectorAll("[data-claim-index]").forEach(card => {
     card.addEventListener("click", () => {
       const idx = Number(card.dataset.claimIndex);
-      showClaimDetail(d.claims[idx], d.readModel);
+      showClaimDetail(d.claims[idx], d.readModel, card);
     });
   });
 }
@@ -338,7 +459,7 @@ function claimCard(claim, index, visibleIndex = 0) {
       <strong class="card-title">\${esc(label)}</strong>
       <span class="card-meta">
         <span class="card-surface">\${esc(surface)}</span>
-        <span class="card-status-text status-\${esc(claim.status)}">\${esc(statusLabel(claim.status))}</span>
+        <span class="card-status-text status-\${esc(claim.status)}">\${esc(statusLabel(claim.status, claimEvidenceCount(claim)))}</span>
         \${claim.producerStatus
           ? \`<span class="card-divergence" title="Producer declared \${esc(claim.producerStatus)}">! was \${esc(claim.producerStatus)}</span>\`
           : ""}
@@ -351,8 +472,10 @@ function claimCard(claim, index, visibleIndex = 0) {
 }
 
 // ── detail sheet ───────────────────────────────────────
-function showClaimDetail(claim, readModel) {
+function showClaimDetail(claim, readModel, cardEl, pushHistory = true) {
   currentDetailClaim = claim;
+  document.querySelectorAll(".claim-card.card-selected").forEach(c => c.classList.remove("card-selected"));
+  if (cardEl) cardEl.classList.add("card-selected");
   const allEvidence   = readModel?.evidence   ?? [];
   const allFaultLines = readModel?.faultLines ?? [];
   const allPolicies   = readModel?.policies   ?? [];
@@ -366,27 +489,43 @@ function showClaimDetail(claim, readModel) {
   const claimGaps = allGaps.filter(g => g.claimId === claim.id);
 
   // header
-  el("detailBadge").textContent = claim.status;
+  el("detailBadge").textContent = statusLabel(claim.status, evidence.length);
   el("detailBadge").className   = "status-badge badge-" + statusColor(claim.status);
   el("detailSurface").textContent = surfaceLabel(claim.surface);
   el("detailTitle").textContent   = claim.fieldOrBehavior || claim.claimType || "—";
   el("detailSubtitle").textContent = claim.id;
+
+  // policy description
+  const descEl = el("detailDescription");
+  if (descEl) {
+    const descText = policy?.explain?.summary ?? policy?.description ?? null;
+    if (descText) {
+      descEl.textContent = descText;
+      descEl.removeAttribute("hidden");
+    } else {
+      descEl.setAttribute("hidden", "");
+    }
+  }
   document.getElementById("detailSheetActions")?.remove();
   const sheetActions = document.createElement("div");
   sheetActions.id = "detailSheetActions";
-  sheetActions.className = "sheet-actions";
+  sheetActions.className = "sheet-top-actions";
   const editBtn = document.createElement("button");
-  editBtn.textContent = "Edit claim";
-  editBtn.className = "sheet-action-btn";
+  editBtn.innerHTML = '<svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true"><path d="M9.5 1.5l2 2-7 7H2.5v-2l7-7z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  editBtn.setAttribute("aria-label", "Edit claim");
+  editBtn.title = "Edit claim";
+  editBtn.className = "sheet-icon-btn";
   editBtn.type = "button";
   editBtn.onclick = () => openClaimModal(claim);
   const deleteBtn = document.createElement("button");
-  deleteBtn.textContent = "Delete claim";
-  deleteBtn.className = "sheet-action-btn sheet-action-btn--danger";
+  deleteBtn.innerHTML = '<svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true"><path d="M2 3.5h9M5 3.5V2h3v1.5M4.5 3.5v6a.5.5 0 00.5.5h3a.5.5 0 00.5-.5v-6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  deleteBtn.setAttribute("aria-label", "Delete claim");
+  deleteBtn.title = "Delete claim";
+  deleteBtn.className = "sheet-icon-btn sheet-icon-btn--danger";
   deleteBtn.type = "button";
   deleteBtn.onclick = () => deleteCurrentClaim(claim.id);
   sheetActions.append(editBtn, deleteBtn);
-  el("detailSubtitle").insertAdjacentElement("afterend", sheetActions);
+  document.querySelector(".sheet-top")?.append(sheetActions);
 
   if (claim.producerStatus) {
     el("detailDivergenceBanner").textContent =
@@ -397,17 +536,28 @@ function showClaimDetail(claim, readModel) {
     hide("detailDivergenceBlock");
   }
 
-  const guidance = statusGuidance(claim.status);
+  const guidance = statusGuidance(claim.status, evidence.length);
+  const suggested = suggestCommand(claim, evidence, readModel);
   let guidanceEl = document.getElementById("detailGuidance");
-  if (guidance) {
+  if (guidance || suggested) {
     if (!guidanceEl) {
-      guidanceEl = document.createElement("p");
+      guidanceEl = document.createElement("div");
       guidanceEl.id = "detailGuidance";
       guidanceEl.className = "detail-guidance";
       el("detailDivergenceBlock")?.insertAdjacentElement("afterend", guidanceEl) ??
         el("detailTitle").insertAdjacentElement("beforebegin", guidanceEl);
     }
-    guidanceEl.textContent = guidance;
+    guidanceEl.className = "detail-guidance detail-guidance--" + (claim.status === "stale" ? "warn" : claim.status === "rejected" || claim.status === "disputed" ? "bad" : "info");
+    guidanceEl.innerHTML =
+      (guidance ? \`<p class="guidance-text">\${esc(guidance)}</p>\` : "") +
+      (suggested ? \`<div class="guidance-command">
+        <code class="guidance-cmd-text">\${esc(suggested.command)}</code>
+        <button type="button" class="guidance-copy-btn" data-cmd="\${esc(suggested.command)}" aria-label="Copy command">
+          <svg class="icon-copy" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><rect x="1" y="3" width="8" height="8" rx="1" stroke="currentColor" stroke-width="1.3"/><path d="M3 3V2a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1h-1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+          <svg class="icon-check" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 6l3 3 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      \${suggested.note ? \`<p class="guidance-note">\${esc(suggested.note)}</p>\` : ""}\` : "");
     guidanceEl.removeAttribute("hidden");
   } else if (guidanceEl) {
     guidanceEl.setAttribute("hidden", "");
@@ -534,6 +684,7 @@ function showClaimDetail(claim, readModel) {
   el("detailMetadata").textContent =
     JSON.stringify({ claim, evidence, faultLines, policy: policy ?? null }, null, 2);
 
+  if (pushHistory) pushUrlState();
   openSheet();
 }
 
@@ -543,16 +694,92 @@ function openSheet() {
   document.body.classList.add("sheet-open");
   requestAnimationFrame(() => el("sheetClose")?.focus());
 }
-function closeSheet() {
+function closeSheet(pushHistory = true) {
   hide("detailSheet");
   hide("sheetBackdrop");
   document.body.classList.remove("sheet-open");
   currentDetailClaim = null;
+  document.querySelectorAll(".claim-card.card-selected").forEach(c => c.classList.remove("card-selected"));
+  if (pushHistory) pushUrlState();
 }
 el("sheetClose")?.addEventListener("click", closeSheet);
 el("sheetBackdrop")?.addEventListener("click", closeSheet);
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
+
+// ── URL routing / history ──────────────────────────────
+function getUrlState() {
+  const p = new URLSearchParams(location.search);
+  return {
+    claimId: p.get("claim"),
+    status:  p.get("status") ?? "all",
+    surface: p.get("surface") ?? "all",
+    search:  p.get("search") ?? "",
+    run:     p.get("run"),
+  };
+}
+
+function pushUrlState(replace) {
+  const p = new URLSearchParams();
+  if (filters.status !== "all")  p.set("status",  filters.status);
+  if (filters.surface !== "all") p.set("surface", filters.surface);
+  if (filters.search)            p.set("search",  filters.search);
+  if (currentDetailClaim)        p.set("claim",   currentDetailClaim.id);
+  if (currentRunId)              p.set("run",     currentRunId);
+  const qs = p.toString();
+  const url = qs ? "?" + qs : location.pathname;
+  if (replace) history.replaceState(null, "", url);
+  else history.pushState(null, "", url);
+}
+
+function applyUrlFilters(state) {
+  filters.status  = state.status;
+  filters.surface = state.surface;
+  filters.search  = state.search;
+  const searchInput = el("claimSearch");
+  if (searchInput) searchInput.value = state.search;
+  const statusSel = el("statusFilter");
+  if (statusSel) statusSel.value = state.status;
+}
+
+window.addEventListener("popstate", () => {
+  const state = getUrlState();
+  applyUrlFilters(state);
+  if (!currentData) return;
+  renderSurfaceChips(currentData);
+  renderFeed(currentData);
+  el("dashboardMetrics")?.querySelectorAll("[data-metric-filter]").forEach(c => {
+    c.classList.toggle("metric-chip-active", filters.status === c.dataset.metricFilter);
+  });
+  if (state.claimId) {
+    const claim = currentData.claims?.find(c => c.id === state.claimId);
+    if (claim) {
+      const idx = currentData.claims.indexOf(claim);
+      const cardEl = document.querySelector(\`[data-claim-index="\${idx}"]\`);
+      showClaimDetail(claim, currentData.readModel, cardEl, false);
+    } else {
+      closeSheet(false);
+    }
+  } else {
+    closeSheet(false);
+  }
+  if (state.run && state.run !== currentRunId) {
+    refreshDashboard(state.run, true).catch(() => {});
+  }
+});
+
 document.addEventListener("click", e => {
+  // Copy command button
+  const copyBtn = e.target.closest?.(".guidance-copy-btn");
+  if (copyBtn) {
+    const cmd = copyBtn.dataset.cmd ?? "";
+    navigator.clipboard?.writeText(cmd).then(() => {
+      copyBtn.classList.add("copied");
+      setTimeout(() => copyBtn.classList.remove("copied"), 2000);
+    }).catch(() => {});
+    return;
+  }
+
+  // Help popover
   const trigger = e.target.closest?.(".help-trigger");
   document.querySelectorAll(".help-wrap.help-open").forEach(wrap => {
     if (!trigger || !wrap.contains(trigger)) {
@@ -689,7 +916,8 @@ async function deleteCurrentClaim(claimId) {
   await refreshDashboard(null);
 }
 
-async function refreshDashboard(runId) {
+async function refreshDashboard(runId, skipHistory = false) {
+  currentRunId = runId ?? null;
   const url = runId && runId !== "latest" ? \`/api/read-model?run=\${encodeURIComponent(runId)}\` : "/api/read-model";
   const response = await fetch(url);
   if (!response.ok) {
@@ -699,6 +927,7 @@ async function refreshDashboard(runId) {
   }
   renderDashboard();
   renderRunPicker();
+  if (!skipHistory) pushUrlState();
 }
 
 async function loadRunList() {
@@ -706,7 +935,12 @@ async function loadRunList() {
     const res = await fetch("/api/runs");
     if (res.ok) allRuns = await res.json();
   } catch {}
-  renderRunPicker();
+  const urlRun = getUrlState().run;
+  if (urlRun && urlRun !== currentRunId) {
+    await refreshDashboard(urlRun, true).catch(() => {});
+  } else {
+    renderRunPicker();
+  }
 }
 
 function runOptionDate(r) {
@@ -715,31 +949,40 @@ function runOptionDate(r) {
     : "";
 }
 
+function closeRunDropdown() {
+  const dropdown = el("runDropdown");
+  const trigger = el("runTrigger");
+  if (dropdown) dropdown.classList.remove("open");
+  if (trigger) trigger.setAttribute("aria-expanded", "false");
+}
+
 function renderRunPicker() {
   const container = el("runSelect");
   if (!container) return;
   if (allRuns.length <= 1) { container.hidden = true; return; }
 
-  const currentRunId = currentData?.run?.id;
+  const activeRunId = currentRunId ?? currentData?.run?.id;
   const trigger = el("runTrigger");
   const triggerLabel = el("runTriggerLabel");
   const dropdown = el("runDropdown");
 
-  const currentRun = allRuns.find(r => r.runId === currentRunId) ?? allRuns[0];
+  const currentRun = allRuns.find(r => r.runId === activeRunId) ?? allRuns[0];
   if (triggerLabel) {
     const date = runOptionDate(currentRun);
-    triggerLabel.textContent = date
-      ? date + " — " + currentRun.verifiedCount + "/" + currentRun.claimCount + " verified"
-      : currentRun.runId;
+    const stats = currentRun.verifiedCount + "/" + currentRun.claimCount + " verified";
+    triggerLabel.textContent = date ? date + " · " + stats : stats;
   }
 
   dropdown.innerHTML = allRuns.map(r => {
-    const date = runOptionDate(r);
-    const isActive = r.runId === currentRunId;
+    const date = r.generatedAt
+      ? new Date(r.generatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+      : "";
+    const isActive = r.runId === activeRunId;
     return \`<button type="button" class="run-option\${isActive ? " run-option-active" : ""}"
       role="option" aria-selected="\${isActive}" data-run-id="\${esc(r.runId)}">
+      <span class="run-opt-date">\${esc(date || r.runId)}</span>
+      <span class="run-opt-stats">\${esc(r.verifiedCount + " verified · " + r.claimCount + " total")}</span>
       <span class="run-opt-id">\${esc(r.runId)}</span>
-      <span class="run-opt-meta">\${esc([date, r.verifiedCount + "/" + r.claimCount + " verified"].filter(Boolean).join(" · "))}</span>
     </button>\`;
   }).join("");
 
@@ -749,20 +992,21 @@ function renderRunPicker() {
     trigger.dataset.bound = "true";
     trigger.addEventListener("click", (e) => {
       e.stopPropagation();
-      const isOpen = !dropdown.hidden;
-      dropdown.hidden = isOpen;
-      trigger.setAttribute("aria-expanded", String(!isOpen));
-    });
-    document.addEventListener("click", () => {
-      if (!dropdown.hidden) {
-        dropdown.hidden = true;
-        trigger.setAttribute("aria-expanded", "false");
+      const isOpen = dropdown.classList.contains("open");
+      if (!isOpen) {
+        const rect = trigger.getBoundingClientRect();
+        dropdown.style.top = (rect.bottom + 4) + "px";
+        dropdown.style.left = rect.left + "px";
+        dropdown.classList.add("open");
+        trigger.setAttribute("aria-expanded", "true");
+      } else {
+        closeRunDropdown();
       }
     });
+    document.addEventListener("click", () => closeRunDropdown());
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && !dropdown.hidden) {
-        dropdown.hidden = true;
-        trigger.setAttribute("aria-expanded", "false");
+      if (e.key === "Escape" && dropdown.classList.contains("open")) {
+        closeRunDropdown();
         trigger.focus();
       }
     });
@@ -771,8 +1015,7 @@ function renderRunPicker() {
   dropdown.querySelectorAll("[data-run-id]").forEach(btn => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
-      dropdown.hidden = true;
-      trigger.setAttribute("aria-expanded", "false");
+      closeRunDropdown();
       refreshDashboard(btn.dataset.runId).catch(err => window.alert(err.message));
     });
   });
@@ -807,6 +1050,18 @@ function formatSourceSummary(producer) {
 }
 
 // ── data ───────────────────────────────────────────────
+function deriveProjectName(claims) {
+  if (!claims?.length) return null;
+  const roots = {};
+  claims.forEach(c => {
+    const raw = (c.subjectId ?? "").split(":")[0].trim();
+    if (raw) roots[raw] = (roots[raw] ?? 0) + 1;
+  });
+  const top = Object.entries(roots).sort((a, b) => b[1] - a[1])[0]?.[0];
+  if (!top) return null;
+  return top.replace(/[-_]+/g, " ").replace(/\b\w/g, ch => ch.toUpperCase());
+}
+
 function dashboardFromReadModel(readModel) {
   const producer   = readModel.producer ?? {};
   const claims     = readModel.claims ?? [];
@@ -821,10 +1076,13 @@ function dashboardFromReadModel(readModel) {
   );
   const total = Math.max(readModel.summary.claimCount ?? claims.length, 1);
 
-  const projectName = vocab.projectName ?? cfg.theme?.brandName ?? producer.runId ?? "Dashboard";
+  const folderName = cfg.folderName
+    ? cfg.folderName.replace(/[-_]+/g, " ").replace(/\b\w/g, ch => ch.toUpperCase())
+    : null;
+  const projectName = vocab.projectName ?? cfg.theme?.brandName ?? deriveProjectName(claims) ?? folderName ?? "Dashboard";
   return {
     project: { name: projectName },
-    run: { id: producer.runId ?? "unknown", meta: runMeta },
+    run: { id: producer.runId ?? "unknown", meta: runMeta, label: producer.runId ?? null },
     narrative: buildNarrative(readModel, attention),
     metrics: [
       ["Claims",    String(readModel.summary.claimCount), "", "", "blue", "all"],
@@ -840,13 +1098,13 @@ function dashboardFromReadModel(readModel) {
 
 function emptyDashboard() {
   return {
-    project: { name: vocab.projectName ?? cfg.theme?.brandName ?? "Dashboard" },
-    run:     { id: "missing", meta: "" },
-    narrative: "No producer read model found. Run the producer to generate a read model.",
+    project: { name: vocab.projectName ?? cfg.theme?.brandName ?? "No data yet" },
+    run:     { id: "", meta: "No runs found — run the producer to generate a read model" },
+    narrative: "",
     metrics: [
-      ["Claims",    "0", "", "missing", "warn"],
-      ["Verified",  "0", "", "0%",      "warn"],
-      ["Attention", "0", "", "0 faults","warn"],
+      ["Claims",    "0", "", "", "blue", "all"],
+      ["Verified",  "0", "", "", "good", "verified"],
+      ["Attention", "0", "", "", "bad",  "attention"],
     ],
     claims:        [],
     surfaceCounts: {},
@@ -868,6 +1126,9 @@ function buildNarrative(readModel, attention) {
 }
 
 // ── boot ───────────────────────────────────────────────
+const _bootUrl = getUrlState();
+applyUrlFilters(_bootUrl);
+currentRunId = _bootUrl.run ?? null;
 currentData = cfg.readModel
   ? dashboardFromReadModel(cfg.readModel)
   : emptyDashboard();
@@ -877,5 +1138,14 @@ el("claimModalCancel")?.addEventListener("click", closeClaimModal);
 el("claimForm")?.addEventListener("submit", event => {
   submitClaimForm(event).catch(error => window.alert(error.message));
 });
+if (_bootUrl.claimId && currentData?.claims?.length) {
+  const _bc = currentData.claims.find(c => c.id === _bootUrl.claimId);
+  if (_bc) {
+    const _bi = currentData.claims.indexOf(_bc);
+    const _bcard = document.querySelector(\`[data-claim-index="\${_bi}"]\`);
+    showClaimDetail(_bc, currentData.readModel, _bcard, false);
+  }
+}
+pushUrlState(true);
 loadRunList();
 `;
