@@ -27,6 +27,7 @@ Status is derived by construction — not summarized by a model, not hidden behi
 
 ## Where to go next
 
+- [Getting Started](getting-started.html) — install Surface, run a fixture report, and emit your first trust input
 - [Vision](vision.html) — why trust infrastructure matters now and what Surface is designed to answer
 - [Concepts](concepts.html) — the full vocabulary: surfaces, claims, evidence, policies, fault lines, status
 - [Use Cases](use-cases.html) — repo governance, field-attested records, fact resolution, dependency audit

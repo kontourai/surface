@@ -24,7 +24,7 @@ test("buildCommitValidityPolicy creates a commit-scoped verification policy", ()
 test("buildHumanAttestationEvidence creates schema-valid attestation evidence", () => {
   const evidence = buildHumanAttestationEvidence({
     subject: { claimId: "claim.policy-pack", sourceRef: "surface:test" },
-    actor: { id: "brian", displayName: "Brian" },
+    actor: { id: "reviewer", displayName: "Example Reviewer" },
     attestedAt: "2026-05-10T00:00:00.000Z",
     validUntil: "2026-08-08T00:00:00.000Z",
     contentHash: "sha256:abc123",

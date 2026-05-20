@@ -12,6 +12,7 @@ Start here when you are working on the Surface repo or building against `@kontou
 
 ## Building With Surface
 
+- [Getting Started](guides/getting-started.md) — install Surface, run a fixture report, and build a first producer
 - [Consumer SDK](guides/consumer-sdk.md) — fluent helpers for emitting valid `TrustInput`
 - [Claim Authoring](claim-authoring.md) — authored claim stores and `surface claim` write commands
 - [Extension API](extension-api.md) — producer branding, vocabulary, claim types, and policy templates

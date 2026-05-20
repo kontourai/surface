@@ -27,18 +27,18 @@ Product layers own:
 
 ## Product Layers Built On Surface
 
-Product layers can build on Surface without moving their workflow language into the kernel. A repo-governance product might keep native terms such as proof lane, proof family, verification budget, shadow run, and policy pack because those terms are useful to coding agents.
+Product layers can build on Surface without moving their workflow language into the kernel. A repo-governance product might keep native terms such as proof command, proof family, verification budget, repo run, and policy pack because those terms are useful to coding agents.
 
 Those terms become portable only through a Surface mapping:
 
 | Product-layer concept | Surface mapping |
 | --- | --- |
 | affected repo node | claim subject |
-| selected proof lane | verification policy, evidence, and event |
+| selected proof command | verification policy, evidence, and event |
 | proof-family result | claim, evidence, event, and metadata |
 | verification budget | budget claim/evidence and report-generating metadata |
 | policy result | claim, evidence, event, and policy-violation hint |
-| shadow run | evidence-producing evaluation run |
+| repo run | evidence-producing evaluation run |
 
 Surface remains responsible for generated report fields such as `id`, `generatedAt`, `summary`, `faultLines`, and `proofRequirementsByClaimId`. Product artifacts may embed `surface.input`, but they should not embed a generated Surface report.
 
@@ -57,4 +57,4 @@ Every product layer built on Surface should make the boundary explicit:
 3. Surface generates report-only fields after validation.
 4. Product-specific lifecycle language should stay outside Surface until it repeats across domains.
 
-For a repo-governance product, proof lanes, proof families, verification budgets, policy packs, and shadow runs remain product-native. Their portable output is `surface.input`, which Surface turns into claims, evidence, policies, events, fault lines, proof requirements, and summaries.
+For a repo-governance product, proof commands, proof families, verification budgets, policy packs, and repo runs remain product-native. Their portable output is `surface.input`, which Surface turns into claims, evidence, policies, events, fault lines, proof requirements, and summaries.

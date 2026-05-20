@@ -57,6 +57,7 @@ The dependency direction is one-way: producers depend on Surface; Surface does n
 
 ## Documentation
 
+- [Getting Started](docs/guides/getting-started.md) — install Surface, run a fixture report, and build a first producer
 - [What builds on Surface](docs/built-on-surface.md) — when to reach for Surface and what consumes it
 - [Walkthrough](docs/guides/walkthrough.md) — real session with native Surface input
 - [Concepts](docs/concepts.md) — trust vocabulary, collections, and status model
