@@ -3,6 +3,7 @@ import type {
   Evidence,
   IdentityLink,
   SchemaVersion,
+  TrustCollection,
   TrustInput,
   VerificationEvent,
   VerificationPolicy,
@@ -47,6 +48,7 @@ export class TrustInputBuilder {
   private readonly policies: VerificationPolicy[] = [];
   private readonly events: VerificationEvent[] = [];
   private readonly identityLinks: IdentityLink[] = [];
+  private readonly collections: TrustCollection[] = [];
 
   constructor(args: TrustInputBuilderArgs) {
     this.source = args.source;
@@ -85,6 +87,11 @@ export class TrustInputBuilder {
     return this;
   }
 
+  addCollection(collection: TrustCollection): this {
+    this.collections.push(collection);
+    return this;
+  }
+
   build(): TrustInput {
     const input: TrustInput = {
       schemaVersion: this.schemaVersion,
@@ -95,6 +102,7 @@ export class TrustInputBuilder {
       events: [...this.events],
     };
     if (this.identityLinks.length > 0) input.identityLinks = [...this.identityLinks];
+    if (this.collections.length > 0) input.collections = [...this.collections];
     return validateTrustInput(input);
   }
 

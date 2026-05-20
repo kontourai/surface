@@ -4,6 +4,7 @@ docs-site/
 *.tsbuildinfo
 
 .omx/
+.agents/
 
 # Surface derived state — regenerated each run, never check in.
 # See SURFACE-PRIVACY.md for the input-vs-derived split.

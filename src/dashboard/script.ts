@@ -7,6 +7,7 @@ let currentData = null;
 let currentDetailClaim = null;
 let currentRunId = null;
 let allRuns = [];
+let pendingDeleteClaimId = null;
 
 function el(id) { return document.getElementById(id); }
 function show(id) { const e = el(id); if (e) e.removeAttribute("hidden"); }
@@ -36,6 +37,17 @@ function firstNonEmpty(...values) {
 
 function observedResultForEvidence(item) {
   if (!item) return null;
+  const hasStructuredResult = Boolean(
+    item.metadata?.observedResult ||
+    item.metadata?.commandOutput ||
+    item.metadata?.stdout ||
+    item.metadata?.stderr ||
+    item.metadata?.output ||
+    item.metadata?.command ||
+    (item.metadata?.exitCode !== undefined) ||
+    typeof item.passing === "boolean"
+  );
+  if (!hasStructuredResult) return null;
   const observed = item.metadata?.observedResult;
   const output = item.metadata?.commandOutput;
   const stdout = firstNonEmpty(output?.stdout, item.metadata?.stdout);
@@ -54,6 +66,78 @@ function observedResultForEvidence(item) {
     : firstNonEmpty(observed?.status, item.metadata?.status);
   if (!summary && !stdout && !stderr && !combined && !command && expected == null && status == null) return null;
   return { summary, expected, status, command, exitCode, stdout, stderr, combined };
+}
+
+function uniqueBy(items, keyFn) {
+  const seen = new Set();
+  return items.filter(item => {
+    const key = keyFn(item);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function collectIntegrityDetails(claim, evidence) {
+  const sourceRefs = uniqueBy([
+    claim.currentIntegrityRef,
+    ...evidence.map(item => item.integrityRef),
+    ...evidence.map(item => item.metadata?.integrity?.sourceRef),
+  ].filter(Boolean), value => value);
+
+  const configRefs = uniqueBy(evidence.flatMap(item => {
+    const refs = item.metadata?.integrity?.configRefs ?? item.metadata?.configIntegrity ?? {};
+    return Object.entries(refs)
+      .filter(([, ref]) => ref?.hash)
+      .map(([kind, ref]) => ({
+        kind,
+        name: ref.name ?? kind,
+        hash: ref.hash,
+        path: ref.path,
+      }));
+  }), item => [item.kind, item.name, item.hash, item.path].filter(Boolean).join(":"));
+
+  const fileRefs = uniqueBy(evidence.flatMap(item => {
+    const refs = item.metadata?.integrity?.fileRefs ?? item.metadata?.fileIntegrity ?? [];
+    return refs.filter(ref => ref?.path).map(ref => ({
+      path: ref.path,
+      hash: ref.hash,
+      status: ref.status,
+      sizeBytes: ref.sizeBytes,
+    }));
+  }), item => [item.path, item.hash, item.status].filter(Boolean).join(":"));
+
+  return { sourceRefs, configRefs, fileRefs };
+}
+
+function shortIntegrityRef(value) {
+  const text = String(value ?? "");
+  if (text.startsWith("sha256:") && text.length > 24) return text.slice(0, 19) + "…" + text.slice(-8);
+  if (text.startsWith("working-tree:") && text.length > 32) return "working-tree:" + text.slice(-12);
+  if (/^[a-f0-9]{40,64}$/i.test(text)) return text.slice(0, 12);
+  return text.length > 44 ? text.slice(0, 32) + "…" + text.slice(-8) : text;
+}
+
+function renderIntegrityScope(details) {
+  const rows = [];
+  if (details.sourceRefs.length) {
+    rows.push("<div class=\\"integrity-group\\"><span>Source anchor</span>" +
+      details.sourceRefs.map(ref => \`<code title="\${esc(ref)}">\${esc(shortIntegrityRef(ref))}</code>\`).join("") +
+      "</div>");
+  }
+  if (details.fileRefs.length) {
+    const shown = details.fileRefs.slice(0, 8);
+    rows.push("<div class=\\"integrity-group\\"><span>File fingerprints</span>" +
+      shown.map(ref => \`<code title="\${esc(ref.hash ?? ref.status ?? "")}">\${esc(ref.path)}\${ref.hash ? " · " + esc(shortIntegrityRef(ref.hash)) : ref.status ? " · " + esc(ref.status) : ""}</code>\`).join("") +
+      (details.fileRefs.length > shown.length ? \`<em>+\${details.fileRefs.length - shown.length} more</em>\` : "") +
+      "</div>");
+  }
+  if (details.configRefs.length) {
+    rows.push("<div class=\\"integrity-group\\"><span>Producer configuration</span>" +
+      details.configRefs.map(ref => \`<code title="\${esc([ref.path, ref.hash].filter(Boolean).join(" · "))}">\${esc(ref.name)} · \${esc(shortIntegrityRef(ref.hash))}</code>\`).join("") +
+      "</div>");
+  }
+  return rows.join("");
 }
 
 function renderObservedResult(result) {
@@ -122,6 +206,12 @@ function statusGuidance(status, evidenceCount) {
   return m[status] ?? null;
 }
 
+function updateDashboardChromeMetrics() {
+  const header = document.querySelector(".dash-header");
+  const height = header ? Math.ceil(header.getBoundingClientRect().height) : 96;
+  document.documentElement.style.setProperty("--dash-header-height", height + "px");
+}
+
 function suggestCommand(claim, evidence, readModel) {
   const producer = readModel?.producer ?? {};
   const needsEvidence = ["unknown", "stale", "proposed", "rejected"].includes(claim.status);
@@ -180,8 +270,8 @@ function classifyGap(gapType, message) {
     if ((message ?? "").includes("Missing required verification method")) {
       return {
         kind: "config",
-        title: "Wrong verification method",
-        hint: "Evidence was collected but used the wrong method. The producer adapter may not be mapping evidence to the method this policy requires. Check the adapter configuration.",
+        title: "Required method not collected",
+        hint: "Surface expected evidence tagged with this verification method. This can happen because no evidence was emitted, or because the producer emitted evidence with a different method. Run evidence collection first; if evidence appears under the wrong method, fix the producer or adapter mapping.",
       };
     }
     return {
@@ -523,7 +613,7 @@ function showClaimDetail(claim, readModel, cardEl, pushHistory = true) {
   deleteBtn.title = "Delete claim";
   deleteBtn.className = "sheet-icon-btn sheet-icon-btn--danger";
   deleteBtn.type = "button";
-  deleteBtn.onclick = () => deleteCurrentClaim(claim.id);
+  deleteBtn.onclick = () => openDeleteConfirm(claim.id);
   sheetActions.append(editBtn, deleteBtn);
   document.querySelector(".sheet-top")?.append(sheetActions);
 
@@ -591,7 +681,11 @@ function showClaimDetail(claim, readModel, cardEl, pushHistory = true) {
   // ── policy gap analysis ──────────────────────────────
   const gap = policyGapAnalysis(claim, policy);
   if (gap) {
+    const gapSummary = gap.hasEvidence.length || gap.hasMethods.length
+      ? "Surface compared the collected evidence against this claim's policy. The rows below show which requirement is still unmet."
+      : "No matching evidence has been collected for this claim yet. Run the suggested evidence command first; if the claim still fails, check the producer configuration.";
     const rows = [
+      \`<div class="gap-explainer">\${esc(gapSummary)}</div>\`,
       gap.missingEvidence.length
         ? \`<div class="gap-row gap-missing"><span class="gap-label">Missing evidence</span>
             <span class="gap-value">\${gap.missingEvidence.map(e => \`<code>\${esc(e)}</code>\`).join(" ")}</span></div>\`
@@ -604,6 +698,9 @@ function showClaimDetail(claim, readModel, cardEl, pushHistory = true) {
           <span class="gap-value">\${renderRequirementValues([...gap.requiredEvidence, ...gap.requiredMethods], "No requirements declared")}</span></div>\`,
       \`<div class="gap-row gap-has"><span class="gap-label">Evidence collected</span>
           <span class="gap-value">\${renderRequirementValues([...gap.hasEvidence, ...gap.hasMethods], "No matching evidence collected")}</span></div>\`,
+      gap.missingMethods.length
+        ? \`<div class="gap-resolution"><strong>How to fix:</strong> collect evidence with method <code>\${esc(gap.missingMethods[0])}</code>. If evidence was collected but listed under a different method, update the producer/adapter mapping so it emits the policy's required method.</div>\`
+        : \`<div class="gap-resolution"><strong>How to fix:</strong> enable the producer check that emits <code>\${esc(gap.missingEvidence[0] ?? "evidence")}</code> for this claim, then rerun evidence collection.</div>\`,
     ].filter(Boolean).join("");
     el("detailPolicyGap").innerHTML = rows;
     show("detailPolicyGapBlock");
@@ -677,6 +774,16 @@ function showClaimDetail(claim, readModel, cardEl, pushHistory = true) {
     hide("detailFilesBlock");
   }
 
+  // ── integrity scope ─────────────────────────────────
+  const integrityDetails = collectIntegrityDetails(claim, evidence);
+  const integrityHtml = renderIntegrityScope(integrityDetails);
+  if (integrityHtml) {
+    el("detailIntegrity").innerHTML = integrityHtml;
+    show("detailIntegrityBlock");
+  } else {
+    hide("detailIntegrityBlock");
+  }
+
   // ── policy ───────────────────────────────────────────
   el("detailPolicy").textContent = claim.verificationPolicyId ?? "—";
 
@@ -692,6 +799,7 @@ function openSheet() {
   show("detailSheet");
   show("sheetBackdrop");
   document.body.classList.add("sheet-open");
+  el("detailSheet")?.querySelector(".sheet-scroll")?.scrollTo({ top: 0 });
   requestAnimationFrame(() => el("sheetClose")?.focus());
 }
 function closeSheet(pushHistory = true) {
@@ -785,6 +893,7 @@ document.addEventListener("click", e => {
     if (!trigger || !wrap.contains(trigger)) {
       wrap.classList.remove("help-open");
       wrap.querySelector(".help-trigger")?.setAttribute("aria-expanded", "false");
+      resetHelpPopover(wrap);
     }
   });
   if (!trigger) return;
@@ -793,7 +902,79 @@ document.addEventListener("click", e => {
   const wrap = trigger.closest(".help-wrap");
   const isOpen = wrap.classList.toggle("help-open");
   trigger.setAttribute("aria-expanded", String(isOpen));
+  if (isOpen) positionHelpPopover(trigger);
+  else resetHelpPopover(wrap);
 });
+
+function positionHelpPopover(trigger) {
+  const wrap = trigger?.closest?.(".help-wrap");
+  const popover = wrap?.querySelector?.(".help-popover");
+  if (!trigger || !popover) return;
+
+  const triggerRect = trigger.getBoundingClientRect();
+  const margin = 12;
+  const maxWidth = Math.min(288, window.innerWidth - margin * 2);
+  popover.style.setProperty("--help-popover-width", maxWidth + "px");
+  popover.dataset.floating = "true";
+
+  const popoverRect = popover.getBoundingClientRect();
+  const width = popoverRect.width || maxWidth;
+  const height = popoverRect.height || 80;
+  const centeredLeft = triggerRect.left + triggerRect.width / 2 - width / 2;
+  const left = Math.max(margin, Math.min(centeredLeft, window.innerWidth - width - margin));
+  const belowTop = triggerRect.bottom + 8;
+  const aboveTop = triggerRect.top - height - 8;
+  const placeAbove = belowTop + height > window.innerHeight - margin && aboveTop >= margin;
+  const top = placeAbove ? aboveTop : Math.min(belowTop, window.innerHeight - height - margin);
+  const arrowLeft = triggerRect.left + triggerRect.width / 2 - left;
+
+  popover.style.left = left + "px";
+  popover.style.top = Math.max(margin, top) + "px";
+  popover.style.setProperty("--help-arrow-left", Math.max(12, Math.min(arrowLeft, width - 12)) + "px");
+  popover.dataset.placement = placeAbove ? "top" : "bottom";
+}
+
+function resetHelpPopover(wrap) {
+  const popover = wrap?.querySelector?.(".help-popover");
+  if (!popover) return;
+  popover.dataset.floating = "false";
+  popover.dataset.placement = "";
+  popover.style.left = "";
+  popover.style.top = "";
+  popover.style.removeProperty("--help-popover-width");
+  popover.style.removeProperty("--help-arrow-left");
+}
+
+document.addEventListener("pointerover", e => {
+  const trigger = e.target.closest?.(".help-trigger");
+  if (trigger) positionHelpPopover(trigger);
+});
+
+document.addEventListener("focusin", e => {
+  const trigger = e.target.closest?.(".help-trigger");
+  if (trigger) positionHelpPopover(trigger);
+});
+
+document.addEventListener("pointerout", e => {
+  const wrap = e.target.closest?.(".help-wrap");
+  if (!wrap || wrap.classList.contains("help-open")) return;
+  if (e.relatedTarget && wrap.contains(e.relatedTarget)) return;
+  resetHelpPopover(wrap);
+});
+
+document.addEventListener("focusout", e => {
+  const wrap = e.target.closest?.(".help-wrap");
+  if (!wrap || wrap.classList.contains("help-open")) return;
+  if (e.relatedTarget && wrap.contains(e.relatedTarget)) return;
+  resetHelpPopover(wrap);
+});
+
+function repositionOpenHelpPopovers() {
+  document.querySelectorAll(".help-wrap.help-open .help-trigger").forEach(positionHelpPopover);
+}
+
+window.addEventListener("resize", repositionOpenHelpPopovers);
+document.addEventListener("scroll", repositionOpenHelpPopovers, true);
 
 // ── claim authoring ───────────────────────────────────
 function buildClaimTypeOptions() {
@@ -914,6 +1095,42 @@ async function deleteCurrentClaim(claimId) {
   }
   closeSheet();
   await refreshDashboard(null);
+}
+
+function openDeleteConfirm(claimId) {
+  if (!claimId) return;
+  pendingDeleteClaimId = claimId;
+  const idEl = el("deleteConfirmClaimId");
+  const errorEl = el("deleteConfirmError");
+  if (idEl) idEl.textContent = claimId;
+  if (errorEl) {
+    errorEl.textContent = "";
+    errorEl.setAttribute("hidden", "");
+  }
+  el("deleteConfirmModal")?.showModal();
+}
+
+function closeDeleteConfirm() {
+  pendingDeleteClaimId = null;
+  el("deleteConfirmModal")?.close();
+}
+
+async function confirmDeleteClaim() {
+  if (!pendingDeleteClaimId) return;
+  const submit = el("deleteConfirmSubmit");
+  const errorEl = el("deleteConfirmError");
+  if (submit) submit.disabled = true;
+  try {
+    await deleteCurrentClaim(pendingDeleteClaimId);
+    closeDeleteConfirm();
+  } catch (error) {
+    if (errorEl) {
+      errorEl.textContent = error?.message ?? "Claim delete failed";
+      errorEl.removeAttribute("hidden");
+    }
+  } finally {
+    if (submit) submit.disabled = false;
+  }
 }
 
 async function refreshDashboard(runId, skipHistory = false) {
@@ -1128,6 +1345,9 @@ function buildNarrative(readModel, attention) {
 // ── boot ───────────────────────────────────────────────
 const _bootUrl = getUrlState();
 applyUrlFilters(_bootUrl);
+updateDashboardChromeMetrics();
+window.addEventListener("resize", updateDashboardChromeMetrics);
+
 currentRunId = _bootUrl.run ?? null;
 currentData = cfg.readModel
   ? dashboardFromReadModel(cfg.readModel)
@@ -1135,6 +1355,8 @@ currentData = cfg.readModel
 renderDashboard();
 el("addClaimBtn")?.addEventListener("click", () => openClaimModal());
 el("claimModalCancel")?.addEventListener("click", closeClaimModal);
+el("deleteConfirmCancel")?.addEventListener("click", closeDeleteConfirm);
+el("deleteConfirmSubmit")?.addEventListener("click", confirmDeleteClaim);
 el("claimForm")?.addEventListener("submit", event => {
   submitClaimForm(event).catch(error => window.alert(error.message));
 });

@@ -121,6 +121,11 @@ export function buildDashboardHtml(config: SurfaceDashboardRuntimeConfig = {}): 
         <div id="detailFiles" class="file-chips"></div>
       </div>
 
+      <div id="detailIntegrityBlock" class="sheet-section" hidden>
+        <p class="section-label">Integrity scope ${helpHint("Integrity scope", "Shows what this claim's evidence is anchored to, such as the source revision, working tree digest, file hashes, or producer configuration hashes. Use it to decide whether verified evidence still applies.")}</p>
+        <div id="detailIntegrity" class="integrity-scope"></div>
+      </div>
+
       <div class="sheet-section">
         <p class="section-label">Verification rule ${helpHint("Verification rule", "This is the Surface rule used to judge the claim. Producers such as Veritas can map this to higher-level concepts like proof lanes, governance gates, or plugin-owned checks.")}</p>
         <code id="detailPolicy">—</code>
@@ -180,6 +185,21 @@ export function buildDashboardHtml(config: SurfaceDashboardRuntimeConfig = {}): 
       <div class="modal-actions">
         <button type="button" id="claimModalCancel">Cancel</button>
         <button type="submit" class="btn-primary" id="claimModalSave">Save claim</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="claim-modal delete-confirm-modal" id="deleteConfirmModal" aria-label="Delete claim confirmation">
+    <form method="dialog">
+      <h2 class="modal-title">Delete claim?</h2>
+      <div class="modal-body">
+        <p class="delete-confirm-copy">This removes the authored claim from the local claim store. Generated run evidence and reports are not deleted.</p>
+        <code id="deleteConfirmClaimId" class="mono-block"></code>
+        <p class="field-hint" id="deleteConfirmError" hidden></p>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="deleteConfirmCancel">Cancel</button>
+        <button type="button" class="btn-danger" id="deleteConfirmSubmit">Delete claim</button>
       </div>
     </form>
   </dialog>

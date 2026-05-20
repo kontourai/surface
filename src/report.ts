@@ -14,6 +14,7 @@ import { deriveTrustStatus } from "./status.js";
 import { buildIdentityIndex } from "./identity.js";
 import { resolvePolicyForClaim } from "./policy-resolver.js";
 import { applyDerivation } from "./derivation.js";
+import { deriveCollectionRollups } from "./collections.js";
 
 const STATUSES: TrustStatus[] = ["unknown", "proposed", "verified", "stale", "disputed", "superseded", "rejected"];
 const FAULT_LINE_TYPES: FaultLineType[] = [
@@ -86,6 +87,8 @@ export function buildTrustReport(input: TrustInput, options: { now?: Date; id?: 
     now,
   }));
 
+  const collectionRollups = deriveCollectionRollups({ collections: input.collections, claims });
+
   return {
     schemaVersion: input.schemaVersion,
     id: options.id ?? `surface-${now.getTime()}`,
@@ -96,9 +99,11 @@ export function buildTrustReport(input: TrustInput, options: { now?: Date; id?: 
     policies: input.policies,
     events: input.events,
     identityLinks: input.identityLinks ?? [],
+    collections: input.collections ?? [],
     proofRequirementsByClaimId,
     faultLines,
     subjectGroups: identityIndex.groups,
+    collectionRollups,
     summary: summarizeClaims(claims, faultLines),
   };
 }
@@ -180,6 +185,7 @@ export function formatTrustReportSummary(report: TrustReport): string {
     `High-impact unsupported: ${report.summary.highImpactUnsupported.join(", ") || "none"}`,
     `Stale: ${report.summary.staleClaims.join(", ") || "none"}`,
     `Disputed: ${report.summary.disputedClaims.join(", ") || "none"}`,
+    `Collections: ${report.collectionRollups.length}`,
     `Fault lines: ${report.faultLines.length}`,
   ].join("\n");
 }

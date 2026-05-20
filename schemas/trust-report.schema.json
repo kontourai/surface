@@ -3,7 +3,7 @@
   "$id": "https://kontour.ai/schemas/surface/trust-report.schema.json",
   "title": "Kontour Surface Trust Report",
   "type": "object",
-  "required": ["schemaVersion", "id", "generatedAt", "source", "claims", "evidence", "policies", "events", "proofRequirementsByClaimId", "faultLines", "subjectGroups", "summary"],
+  "required": ["schemaVersion", "id", "generatedAt", "source", "claims", "evidence", "policies", "events", "proofRequirementsByClaimId", "faultLines", "subjectGroups", "collectionRollups", "summary"],
   "properties": {
     "schemaVersion": { "enum": [2, 3] },
     "id": { "type": "string" },
@@ -13,6 +13,10 @@
     "evidence": { "type": "array", "items": { "$ref": "evidence.schema.json" } },
     "policies": { "type": "array", "items": { "$ref": "verification-policy.schema.json" } },
     "events": { "type": "array", "items": { "$ref": "verification-event.schema.json" } },
+    "collections": {
+      "type": "array",
+      "items": { "$ref": "trust-input.schema.json#/$defs/trustCollection" }
+    },
     "proofRequirementsByClaimId": {
       "type": "object",
       "additionalProperties": {
@@ -97,6 +101,61 @@
             }
           },
           "claimIds": { "type": "array", "items": { "type": "string" } }
+        },
+        "additionalProperties": false
+      }
+    },
+    "collectionRollups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "kind", "status", "claimIds", "controls", "summary"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "kind": { "enum": ["collection", "framework", "control-set"] },
+          "status": { "enum": ["unknown", "proposed", "verified", "stale", "disputed", "superseded", "rejected"] },
+          "description": { "type": "string" },
+          "claimIds": { "type": "array", "items": { "type": "string" } },
+          "controls": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "title", "status", "claimIds", "required", "severity", "verifiedClaims", "staleClaims", "disputedClaims", "unsupportedClaims", "missingClaimIds"],
+              "properties": {
+                "id": { "type": "string" },
+                "title": { "type": "string" },
+                "status": { "enum": ["unknown", "proposed", "verified", "stale", "disputed", "superseded", "rejected"] },
+                "claimIds": { "type": "array", "items": { "type": "string" } },
+                "required": { "type": "boolean" },
+                "severity": { "enum": ["low", "medium", "high", "critical"] },
+                "verifiedClaims": { "type": "array", "items": { "type": "string" } },
+                "staleClaims": { "type": "array", "items": { "type": "string" } },
+                "disputedClaims": { "type": "array", "items": { "type": "string" } },
+                "unsupportedClaims": { "type": "array", "items": { "type": "string" } },
+                "missingClaimIds": { "type": "array", "items": { "type": "string" } },
+                "validationStrategy": { "$ref": "trust-input.schema.json#/$defs/validationStrategy" },
+                "metadata": { "type": "object" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "summary": {
+            "type": "object",
+            "required": ["totalControls", "requiredControls", "verifiedControls", "staleControls", "disputedControls", "unsupportedControls", "missingClaims", "verificationCoverage"],
+            "properties": {
+              "totalControls": { "type": "number" },
+              "requiredControls": { "type": "number" },
+              "verifiedControls": { "type": "number" },
+              "staleControls": { "type": "number" },
+              "disputedControls": { "type": "number" },
+              "unsupportedControls": { "type": "number" },
+              "missingClaims": { "type": "number" },
+              "verificationCoverage": { "type": "number" }
+            },
+            "additionalProperties": false
+          },
+          "metadata": { "type": "object" }
         },
         "additionalProperties": false
       }

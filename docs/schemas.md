@@ -30,13 +30,17 @@ Schema: `schemas/verification-event.schema.json`
 
 ## Trust Input
 
-A trust input packages claims, evidence, policies, and events before Surface generates report-only fields.
+A trust input packages claims, evidence, policies, events, and optional collections before Surface generates report-only fields.
 
 Schema: `schemas/trust-input.schema.json`
 
+## Collections
+
+Collections group related claims into a framework, control set, or producer-defined view. A control references concrete claim IDs and can include a validation strategy that describes what evidence, methods, proof, or authority should support those claims. Surface validates the references and derives collection rollups from claim status; the collection definition is not evidence by itself.
+
 ## Trust Report
 
-A report packages claims, evidence, policies, events, report-derived proof requirements, typed fault lines, and a derived summary.
+A report packages claims, evidence, policies, events, report-derived proof requirements, typed fault lines, collection rollups, and a derived summary.
 
 Schema: `schemas/trust-report.schema.json`
 

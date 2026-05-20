@@ -48,6 +48,72 @@
         },
         "additionalProperties": false
       }
+    },
+    "collections": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/trustCollection" }
+    }
+  },
+  "$defs": {
+    "trustCollection": {
+      "type": "object",
+      "required": ["id", "title", "kind"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "kind": { "enum": ["collection", "framework", "control-set"] },
+        "description": { "type": "string" },
+        "claimIds": { "type": "array", "items": { "type": "string" } },
+        "controls": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/trustControl" }
+        },
+        "rollupPolicy": {
+          "type": "object",
+          "required": ["mode"],
+          "properties": {
+            "mode": { "enum": ["all-required", "any-required"] },
+            "requiredControlIds": { "type": "array", "items": { "type": "string" } },
+            "optionalControlIds": { "type": "array", "items": { "type": "string" } }
+          },
+          "additionalProperties": false
+        },
+        "metadata": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "trustControl": {
+      "type": "object",
+      "required": ["id", "title", "claimIds"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "claimIds": { "type": "array", "items": { "type": "string" } },
+        "required": { "type": "boolean" },
+        "severity": { "enum": ["low", "medium", "high", "critical"] },
+        "validationStrategy": { "$ref": "#/$defs/validationStrategy" },
+        "metadata": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "validationStrategy": {
+      "type": "object",
+      "properties": {
+        "requiredEvidence": {
+          "type": "array",
+          "items": { "enum": ["source_excerpt", "test_output", "human_attestation", "attestation", "calculation_trace", "document_citation", "crawl_observation", "policy_rule"] }
+        },
+        "requiredMethods": {
+          "type": "array",
+          "items": { "enum": ["observation", "extraction", "validation", "corroboration", "attestation", "auditability", "anchoring", "monitoring"] }
+        },
+        "requiresCorroboration": { "type": "boolean" },
+        "requiredProof": { "type": "array", "items": { "type": "string" } },
+        "reviewAuthority": { "type": "string" },
+        "notes": { "type": "string" },
+        "metadata": { "type": "object" }
+      },
+      "additionalProperties": false
     }
   },
   "not": {

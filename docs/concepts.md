@@ -14,6 +14,8 @@ Examples:
 - A resolved fact has `w2.wages = 123456`.
 - A repo surface requires `npm test` before a change is trusted.
 
+`currentIntegrityRef` scopes the claim to the source it currently describes. For developer workflows this is often a commit, working-tree digest, file hash, or configuration hash. A verified claim is only valuable within that integrity scope; when the source anchor changes, consumers can mark the claim stale or ask the producer to collect fresh evidence.
+
 ## Evidence
 
 Evidence explains why a claim deserves trust. It can be a source excerpt, test output, human attestation, calculation trace, document citation, crawl observation, or policy rule.
@@ -44,9 +46,21 @@ A fault line is a conflict between claims, evidence, or policies. Surface should
 
 Fault lines are report annotations in the current contract. They expose provenance gaps, policy violations, freshness breaches, missing corroboration, unsupported inferences, and contradictions without changing trust status by themselves.
 
+## Collections
+
+A collection groups related claims into a framework, control set, or product-defined view. Collections are the portable way to say "these claims together support a broader assertion" without losing drilldown to the concrete evidence.
+
+Controls inside a collection point at one or more claim IDs. A control may include a validation strategy that describes the evidence, methods, proof, or authority expected for that control. Surface does not treat that strategy as proof by itself; report generation rolls controls up from the derived status of the referenced claims.
+
+Examples:
+
+- A repo governance product can project a policy pack as a framework and each policy rule as a control.
+- A compliance product can project a regulatory framework as a collection of controls backed by document, attestation, and monitoring claims.
+- A data quality product can project a publish-readiness checklist as a collection of field-level claims.
+
 ## Trust Report
 
-`buildTrustReport(input, options?)` is the stable public API that turns a validated `TrustInput` into a `TrustReport`. The report preserves the input claims, evidence, policies, and events, then adds derived status, freshness outcomes, proof requirements, fault lines, subject groups, and summary counts.
+`buildTrustReport(input, options?)` is the stable public API that turns a validated `TrustInput` into a `TrustReport`. The report preserves the input claims, evidence, policies, events, and collections, then adds derived status, freshness outcomes, proof requirements, fault lines, subject groups, collection rollups, and summary counts.
 
 Consumers should project product-specific workflow data into `TrustInput`, call `validateTrustInput`, and then call `buildTrustReport`. Product layers may persist a compact report summary, but Surface remains responsible for deriving statuses such as `verified`, `stale`, `disputed`, and `rejected`.
 
@@ -74,7 +88,7 @@ Coverage measures how much of a product surface is supported by current evidence
 
 ## Trust Analytics Projection
 
-`buildTrustAnalyticsProjection(report)` derives evidence intelligence from a `TrustReport`. It groups verification coverage by surface, stale and disputed claims, high-impact unsupported claims, fault lines, evidence gaps, proof requirement gaps, confidence basis, action queues, and attestation validity.
+`buildTrustAnalyticsProjection(report)` derives evidence intelligence from a `TrustReport`. It groups verification coverage by surface, collection rollups, stale and disputed claims, high-impact unsupported claims, fault lines, evidence gaps, proof requirement gaps, confidence basis, action queues, and attestation validity.
 
 The projection is dashboard-ready and query-ready, but it is still derived from the trust substrate. Surface analytics should mean provenance-aware trust analytics, not arbitrary charts over product data.
 

@@ -84,7 +84,9 @@ On viewports wider than 900 px the dashboard uses a sticky side panel instead of
 
 ### Claim detail
 
-The detail panel shows full evidence, events, and policy context for the selected claim. For claims that are not yet verified, the panel shows contextual guidance describing what is needed to reach the verified state.
+The detail panel shows evidence, events, policy context, and integrity scope for the selected claim. The integrity scope is where producers can expose what a verified claim is anchored to: a source revision, working-tree digest, file fingerprints, or producer configuration hashes. For claims that are not yet verified, the panel shows contextual guidance describing what is needed to reach the verified state.
+
+`Evidence summary` is the human-readable producer summary. `Observed result` is reserved for structured runtime output such as a pass/fail result, command, exit code, stdout, or stderr. If a producer only supplies a summary, the dashboard does not duplicate it as an observed result.
 
 ## Eval summary
 

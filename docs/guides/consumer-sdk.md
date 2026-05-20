@@ -61,11 +61,29 @@ builder.addEvent({
   verifiedAt: "2026-05-01T00:00:00.000Z",
 });
 
+builder.addCollection({
+  id: "framework.release-readiness",
+  title: "Release readiness",
+  kind: "framework",
+  controls: [{
+    id: "control.release-policy",
+    title: "Release policy",
+    claimIds: [claimId],
+    validationStrategy: {
+      requiredEvidence: ["test_output"],
+      requiredMethods: ["validation"],
+      requiredProof: ["release check output"],
+    },
+  }],
+});
+
 const input = builder.build();
 const report = buildTrustReport(input);
 ```
 
 `build()` calls `validateTrustInput` before returning, so malformed timestamps, broken references, unsupported enum values, and missing required fields fail before the product stores or publishes the input.
+
+Collections are optional. Use them when your product has a broader domain framework, compliance map, policy pack, checklist, or control set and you want users to start at the broader assertion while still drilling down to the exact claim and evidence.
 
 ## Veritas Mapping
 
@@ -75,6 +93,7 @@ Veritas is the reference consumer. It maps a repo change run into:
 - evidence for each claim using the Veritas run id as `sourceRef`
 - policies that describe what proof is required for each claim type
 - events that verify, dispute, reject, stale, or propose those claims
+- collections that project policy packs into control frameworks
 
 Veritas validates the builder output, calls `buildTrustReport`, and consumes derived `stale` and `disputed` statuses as lint feedback.
 

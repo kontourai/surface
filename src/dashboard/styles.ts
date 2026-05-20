@@ -1015,6 +1015,7 @@ button {
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 0.75rem;
+  padding-right: 2.6rem;
   flex-wrap: wrap;
 }
 
@@ -1346,6 +1347,16 @@ button {
   transition: opacity 0.14s ease, transform 0.14s ease;
 }
 
+.help-popover[data-floating="true"] {
+  position: fixed;
+  z-index: 10000;
+  top: 0;
+  left: 0;
+  width: var(--help-popover-width, min(18rem, calc(100vw - 2rem)));
+  max-width: calc(100vw - 1.5rem);
+  transform: translateY(-0.25rem);
+}
+
 .help-popover::before {
   content: "";
   position: absolute;
@@ -1359,12 +1370,31 @@ button {
   transform: rotate(45deg);
 }
 
+.help-popover[data-floating="true"]::before {
+  left: calc(var(--help-arrow-left, 50%) - 5px);
+}
+
+.help-popover[data-floating="true"][data-placement="top"]::before {
+  top: auto;
+  bottom: -6px;
+  border-left: 0;
+  border-top: 0;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
 .help-wrap:hover .help-popover,
 .help-wrap:focus-within .help-popover,
 .help-wrap.help-open .help-popover {
   opacity: 1;
   pointer-events: auto;
   transform: translateX(-50%) translateY(0);
+}
+
+.help-wrap:hover .help-popover[data-floating="true"],
+.help-wrap:focus-within .help-popover[data-floating="true"],
+.help-wrap.help-open .help-popover[data-floating="true"] {
+  transform: translateY(0);
 }
 
 /* ── 13. Fault Items ─────────────────────────────────────────── */
@@ -1511,6 +1541,25 @@ button {
 /* ── 15. Policy Gap Table ───────────────────────────────────── */
 .gap-table { display: grid; gap: 0.4rem; }
 
+.gap-explainer,
+.gap-resolution {
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--blue-bg);
+  color: var(--ink-2);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.gap-resolution {
+  background: var(--raised);
+}
+
+.gap-resolution strong {
+  color: var(--ink);
+}
+
 .gap-row {
   display: grid;
   grid-template-columns: 110px 1fr;
@@ -1539,6 +1588,10 @@ button {
   color: var(--muted);
   padding-top: 0.15rem;
   font-family: ui-monospace, "Cascadia Code", monospace;
+}
+
+.gap-value {
+  min-width: 0;
 }
 
 .gap-missing .gap-label { color: var(--red); }
@@ -1652,6 +1705,50 @@ button {
   white-space: pre-wrap;
   scrollbar-width: thin;
   scrollbar-color: var(--line) transparent;
+}
+
+/* ── 18a. Integrity Scope ──────────────────────────────────── */
+.integrity-scope {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.integrity-group {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--raised);
+}
+
+.integrity-group > span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: ui-monospace, "Cascadia Code", monospace;
+}
+
+.integrity-group code {
+  display: inline-block;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.12rem 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--soft);
+  color: var(--ink);
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  font-size: 0.76rem;
+  overflow-wrap: anywhere;
+}
+
+.integrity-group em {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-style: normal;
 }
 
 /* ── 18. Action List ────────────────────────────────────────── */
@@ -1888,6 +1985,35 @@ details[open] > .sheet-raw summary::before,
   background: var(--raised);
 }
 
+.btn-danger {
+  min-height: 36px;
+  padding: 0.45rem 0.875rem;
+  border: 1px solid color-mix(in srgb, var(--red) 45%, transparent);
+  border-radius: var(--radius-sm);
+  background: var(--red-bg);
+  color: var(--red);
+  font-weight: 800;
+  font-size: 0.86rem;
+}
+
+.btn-danger:hover,
+.btn-danger:focus-visible {
+  border-color: var(--red);
+  background: color-mix(in srgb, var(--red) 16%, var(--surface));
+  outline: none;
+}
+
+.btn-danger:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.delete-confirm-copy {
+  margin: 0 0 0.75rem;
+  color: var(--ink-2);
+  line-height: 1.6;
+}
+
 /* ── 22. Desktop: 2-column Header + Master-Detail Layout ────── */
 @media (min-width: 900px) {
   .dash-header {
@@ -1903,6 +2029,9 @@ details[open] > .sheet-raw summary::before,
   /* Master-detail: body + inline panel side by side */
   .dash-layout {
     align-items: flex-start;
+    height: calc(100svh - var(--dash-header-height, 96px));
+    min-height: 0;
+    overflow: hidden;
   }
 
   .dash-body {
@@ -1910,6 +2039,8 @@ details[open] > .sheet-raw summary::before,
     margin: 0;
     padding: 1rem 1.75rem 5rem;
     transition: none;
+    height: 100%;
+    overflow-y: auto;
   }
 
   /* Override [hidden] so the panel stays in flow and can animate width */
@@ -1922,10 +2053,10 @@ details[open] > .sheet-raw summary::before,
 
   /* Inline sticky panel */
   .detail-sheet {
-    position: sticky;
-    top: 0;
+    position: relative;
+    top: auto;
     align-self: flex-start;
-    height: 100svh;
+    height: 100%;
     /* reset mobile positioning */
     left: auto; right: auto; bottom: auto;
     max-height: none;
@@ -1952,6 +2083,7 @@ details[open] > .sheet-raw summary::before,
   .detail-sheet .sheet-scroll {
     width: min(440px, 42vw);
     flex-shrink: 0;
+    height: 100%;
     overflow-x: hidden;
   }
 

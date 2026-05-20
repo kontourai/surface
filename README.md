@@ -2,7 +2,7 @@
 
 Surface is a TypeScript library for representing claims, the evidence behind them, and whether they are still trustworthy enough to act on. It is the foundation trust substrate for Kontour AI products.
 
-It is not a promise of perfect truth. It is infrastructure for evidence-backed systems: claims, evidence, verification policies, freshness, conflict state, and inspectable reports.
+It is not a promise of perfect truth. It is infrastructure for evidence-backed systems: claims, evidence, verification policies, collections, freshness, conflict state, and inspectable reports.
 
 ## Quickstart
 
@@ -39,7 +39,7 @@ AI makes plausible output cheap, but decisions still need traceable evidence, fr
 
 Surface is a substrate. Anything that needs to answer "is this information verified, fresh, and uncontested?" can build on it.
 
-**Veritas** — the primary consumer. A repo-local governance tool for AI-assisted code changes. Veritas authors claims in `veritas.claims.json`, collects evidence per run, and projects the result into Surface for trust derivation and dashboard display. See [What builds on Surface](docs/built-on-surface.md).
+**Veritas** — the primary consumer. A repo-local governance tool for AI-assisted code changes. Veritas authors and projects claims, collects evidence per run, and projects policy packs as Surface collections so a reviewer can start from a framework/control view and drill into the exact claim and evidence. See [What builds on Surface](docs/built-on-surface.md).
 
 **Custom producers** — any system that emits `TrustInput` can use Surface for report generation, status derivation, and the dashboard. Product artifacts may embed `surface.input` directly; Surface remains responsible for generated report fields. Start with the [external adapter example](examples/external-adapter/README.md).
 
@@ -59,7 +59,7 @@ The dependency direction is one-way: producers depend on Surface; Surface does n
 
 - [What builds on Surface](docs/built-on-surface.md) — when to reach for Surface and what consumes it
 - [Walkthrough](docs/guides/walkthrough.md) — real session with native Surface input
-- [Concepts](docs/concepts.md) — trust vocabulary and status model
+- [Concepts](docs/concepts.md) — trust vocabulary, collections, and status model
 - [Claim Authoring](docs/claim-authoring.md) — authored claim stores and `surface claim` write commands
 - [Extension API](docs/extension-api.md) — producer branding, vocabulary, and claim type definitions
 - [CLI](docs/cli.md) — shipped report and claim commands
