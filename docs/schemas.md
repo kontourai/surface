@@ -14,11 +14,32 @@ Evidence records the source, locator, summary or excerpt, observed time, collect
 
 The current method vocabulary is `observation`, `extraction`, `validation`, `corroboration`, `attestation`, `auditability`, `anchoring`, and `monitoring`.
 
+The optional `execution` field records provenance for evidence produced by running a command or tool. Producers such as Veritas populate it when a proof ran to generate the evidence. Surface treats it as opaque metadata — it is carried through to reports and consumers but does not affect trust derivation.
+
+```typescript
+execution?: {
+  runner: "bash" | "mcp";       // "bash" for shell commands, "mcp" for stdio MCP tool calls
+  label: string;                 // human-readable identifier: command string or "tool@server"
+  exitCode?: number;             // bash runner: process exit code
+  isError?: boolean;             // mcp runner: tool-level error flag from the server
+  durationMs?: number;           // wall-clock execution time
+  metadata?: Record<string, unknown>; // runner-specific extras
+}
+```
+
 Schema: `schemas/evidence.schema.json`
 
 ## Verification Policy
 
 Policy defines required evidence, required methods, corroboration needs, proof, review authority, validity, staleness triggers, conflict rules, and impact.
+
+The optional `collectWhen` field lists the trust statuses that should trigger proactive evidence collection for the claim this policy covers. When a claim's current status appears in this list, producers treat it as a signal to run the associated proofs automatically rather than waiting for an explicit request. Surface owns this as trust policy; it does not run collection itself — producers such as Veritas read `collectWhen` to decide when to schedule a proof run.
+
+```typescript
+collectWhen?: TrustStatus[];  // e.g. ["unknown", "stale", "disputed"]
+```
+
+Omitting `collectWhen` means the producer applies its own default collection rules. A claim with status `unknown` is distinct from `stale` — unknown means no evidence has ever been recorded, while stale means evidence existed but has since expired.
 
 Schema: `schemas/verification-policy.schema.json`
 
