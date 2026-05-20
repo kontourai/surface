@@ -139,9 +139,12 @@ export interface Evidence {
   blocking?: boolean;
   metadata?: Record<string, unknown>;
   execution?: {
-    command: string;
+    runner: "bash" | "mcp";
+    label: string;
     exitCode?: number;
+    isError?: boolean;
     durationMs?: number;
+    metadata?: Record<string, unknown>;
   };
 }
 
