@@ -138,6 +138,11 @@ export interface Evidence {
   passing?: boolean;
   blocking?: boolean;
   metadata?: Record<string, unknown>;
+  execution?: {
+    command: string;
+    exitCode?: number;
+    durationMs?: number;
+  };
 }
 
 export interface ValidityRule {
@@ -168,8 +173,84 @@ export interface VerificationPolicy {
   stalenessTriggers: string[];
   conflictRules: string[];
   impactLevel: ImpactLevel;
+  collectWhen?: TrustStatus[];
   incompatibleValues?: IncompatibleValuePair[];
   incompatibleStatuses?: IncompatibleStatusPair[];
+}
+
+export interface ValidationStrategy {
+  requiredEvidence?: EvidenceType[];
+  requiredMethods?: EvidenceMethod[];
+  requiresCorroboration?: boolean;
+  requiredProof?: string[];
+  reviewAuthority?: string;
+  notes?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export type TrustCollectionKind = "collection" | "framework" | "control-set";
+export type TrustCollectionRollupMode = "all-required" | "any-required";
+
+export interface TrustControl {
+  id: string;
+  title: string;
+  claimIds: string[];
+  required?: boolean;
+  severity?: ImpactLevel;
+  validationStrategy?: ValidationStrategy;
+  metadata?: Record<string, unknown>;
+}
+
+export interface TrustCollection {
+  id: string;
+  title: string;
+  kind: TrustCollectionKind;
+  description?: string;
+  claimIds?: string[];
+  controls?: TrustControl[];
+  rollupPolicy?: {
+    mode: TrustCollectionRollupMode;
+    requiredControlIds?: string[];
+    optionalControlIds?: string[];
+  };
+  metadata?: Record<string, unknown>;
+}
+
+export interface ControlRollup {
+  id: string;
+  title: string;
+  status: TrustStatus;
+  claimIds: string[];
+  required: boolean;
+  severity: ImpactLevel;
+  verifiedClaims: string[];
+  staleClaims: string[];
+  disputedClaims: string[];
+  unsupportedClaims: string[];
+  missingClaimIds: string[];
+  validationStrategy?: ValidationStrategy;
+  metadata?: Record<string, unknown>;
+}
+
+export interface CollectionRollup {
+  id: string;
+  title: string;
+  kind: TrustCollectionKind;
+  status: TrustStatus;
+  claimIds: string[];
+  controls: ControlRollup[];
+  summary: {
+    totalControls: number;
+    requiredControls: number;
+    verifiedControls: number;
+    staleControls: number;
+    disputedControls: number;
+    unsupportedControls: number;
+    missingClaims: number;
+    verificationCoverage: number;
+  };
+  description?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export interface VerificationEvent {
@@ -192,6 +273,7 @@ export interface TrustInput {
   policies: VerificationPolicy[];
   events: VerificationEvent[];
   identityLinks?: IdentityLink[];
+  collections?: TrustCollection[];
 }
 
 /**
@@ -287,6 +369,7 @@ export interface TrustReport extends TrustInput {
   proofRequirementsByClaimId: Record<string, ProofRequirement>;
   faultLines: FaultLine[];
   subjectGroups: SubjectGroup[];
+  collectionRollups: CollectionRollup[];
   summary: TrustReportSummary;
 }
 
@@ -299,8 +382,10 @@ export interface TrustAnalyticsProjection {
     evidence: number;
     policies: number;
     events: number;
-    faultLines: number;
-  };
+      faultLines: number;
+      collections: number;
+    };
+  collectionRollups: CollectionRollup[];
   coverageBySurface: SurfaceTrustCoverage[];
   staleClaims: ClaimQueueItem[];
   disputedClaims: ClaimQueueItem[];
