@@ -28,6 +28,7 @@ Start here when you are working on the Surface repo or building against `@kontou
 - [Trust Analytics Projection](analytics.md) — evidence intelligence derived from `TrustReport`
 - [Surface Dashboard](dashboards.md) — local dashboard server over producer read models
 - [Walkthrough](guides/walkthrough.md) — real session walkthrough with native Surface input
+- [Releasing](RELEASING.md) — npm publish checklist and trusted publishing setup
 
 ## Direction
 

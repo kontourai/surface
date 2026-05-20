@@ -56,7 +56,7 @@ jobs:
         with:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
-          cache: 'npm'
+          package-manager-cache: false
 
       - name: Install
         run: npm ci --no-fund --no-audit
@@ -91,6 +91,4 @@ jobs:
 
       - name: Publish
         if: steps.published.outputs.published != 'true'
-        run: npm publish --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
