@@ -15,6 +15,12 @@ const pages = [
   ["claim-authoring", "docs/claim-authoring.md", "Claim Authoring"],
   ["extension-api", "docs/extension-api.md", "Extension API"],
   ["analytics", "docs/analytics.md", "Trust Analytics"],
+  ["minimum-trust-panel", "docs/specs/minimum-trust-panel.md", "Minimum Trust Panel"],
+  ["minimum-surface-console", "docs/specs/minimum-surface-console.md", "Minimum Surface Console"],
+  ["open-trust-format", "docs/specs/open-trust-format.md", "Open Trust Format"],
+  ["disclosure-requirements", "docs/specs/disclosure-requirements.md", "Disclosure Requirements"],
+  ["transparency-capabilities", "docs/specs/transparency-capabilities.md", "Transparency Capabilities"],
+  ["producer-extension-limits", "docs/specs/producer-extension-limits.md", "Producer Extension Limits"],
   ["adapters", "docs/adapters.md", "Adapters"],
   ["schemas", "docs/schemas.md", "Schemas"],
   ["schema-versioning", "docs/schema-versioning.md", "Schema Versioning"],
@@ -24,6 +30,7 @@ const pages = [
   ["integration-plan", "docs/integration-plan.md", "Integration Plan"],
   ["grounding-audit", "docs/grounding-audit.md", "Grounding Audit"],
   ["brand-language", "docs/brand-language.md", "Brand Language"],
+  ["adr-0001-vocabulary-migration", "docs/adr/0001-vocabulary-migration.md", "ADR 0001"],
 ];
 
 await mkdir("docs-site", { recursive: true });
@@ -58,7 +65,7 @@ function renderPage({ slug, title, markdown }) {
     ${slug === "index" ? hero() : ""}
     <article>${markdownToHtml(markdown)}</article>
   </main>
-  <footer>Evidence-backed systems for humans and AI agents.</footer>
+  <footer>Product transparency for humans and AI agents.</footer>
 </body>
 </html>`;
 }
@@ -66,11 +73,11 @@ function renderPage({ slug, title, markdown }) {
 
 function hero() {
   return `<section class="hero">
-    <p class="eyebrow">Trust surfaces for AI-era products</p>
-    <h1>Map what your product claims, what proves it, and where trust breaks down.</h1>
-    <p>Kontour Surface turns claims, evidence, freshness, and conflicts into an inspectable layer for humans and agents.</p>
+    <p class="eyebrow">Product transparency for the AI era</p>
+    <h1>Show your work. Earn trust.</h1>
+    <p>Kontour Surface connects evidence provenance to the claims products ask humans and agents to trust.</p>
     <div class="hero-grid">
-      <span>Claims</span><span>Evidence</span><span>Checks</span><span>Drift</span><span>Fault lines</span><span>Coverage</span>
+      <span>Claims</span><span>Evidence Trace</span><span>Freshness</span><span>Conflicts</span><span>Transparency Gaps</span><span>Trust Snapshot</span>
     </div>
   </section>`;
 }

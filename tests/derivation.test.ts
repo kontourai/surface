@@ -6,8 +6,8 @@ import type { Claim, TrustInput } from "../src/index.js";
 const baseClaim: Omit<Claim, "id" | "value" | "fieldOrBehavior"> = {
   subjectType: "repo-governance.repo",
   subjectId: "repo-A",
-  surface: "repo-governance.developer-proof",
-  claimType: "software-proof",
+  surface: "repo-governance.developer-evidence",
+  claimType: "software-evidence",
   createdAt: "2026-04-25T00:00:00.000Z",
   updatedAt: "2026-04-25T00:00:00.000Z",
 };
@@ -95,9 +95,9 @@ test("derived claim inherits stale freshness from inputs", () => {
     policies: [
       {
         id: "policy-stale",
-        claimType: "software-proof",
+        claimType: "software-evidence",
         requiredEvidence: [],
-        requiredProof: [],
+        acceptanceCriteria: [],
         reviewAuthority: "owner",
         validityRule: { kind: "duration", durationDays: 1 },
         stalenessTriggers: [],
@@ -192,10 +192,10 @@ test("derivedFrom cycles are detected and emit unsupported_inference", () => {
   }));
 
   const report = buildTrustReport(input, { id: "report-cycle", now: new Date("2026-04-26T00:00:00.000Z") });
-  const cycleFaults = report.faultLines.filter(
+  const cycleGaps = report.transparencyGaps.filter(
     (fl) => fl.type === "unsupported_inference" && (fl.metadata as Record<string, unknown> | undefined)?.source === "derivation.cycle",
   );
-  assert.ok(cycleFaults.length >= 1, "expected at least one cycle fault line");
+  assert.ok(cycleGaps.length >= 1, "expected at least one cycle transparency gap");
 });
 
 test("validator rejects derivedFrom referencing the claim itself", () => {

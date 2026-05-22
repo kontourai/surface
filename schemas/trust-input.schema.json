@@ -49,32 +49,32 @@
         "additionalProperties": false
       }
     },
-    "collections": {
+    "claimGroups": {
       "type": "array",
-      "items": { "$ref": "#/$defs/trustCollection" }
+      "items": { "$ref": "#/$defs/claimGroup" }
     }
   },
   "$defs": {
-    "trustCollection": {
+    "claimGroup": {
       "type": "object",
       "required": ["id", "title", "kind"],
       "properties": {
         "id": { "type": "string" },
         "title": { "type": "string" },
-        "kind": { "enum": ["collection", "framework", "control-set"] },
+        "kind": { "enum": ["claimGroup", "framework", "requirement-set"] },
         "description": { "type": "string" },
         "claimIds": { "type": "array", "items": { "type": "string" } },
-        "controls": {
+        "requirements": {
           "type": "array",
-          "items": { "$ref": "#/$defs/trustControl" }
+          "items": { "$ref": "#/$defs/claimRequirement" }
         },
         "rollupPolicy": {
           "type": "object",
           "required": ["mode"],
           "properties": {
             "mode": { "enum": ["all-required", "any-required"] },
-            "requiredControlIds": { "type": "array", "items": { "type": "string" } },
-            "optionalControlIds": { "type": "array", "items": { "type": "string" } }
+            "requiredRequirementIds": { "type": "array", "items": { "type": "string" } },
+            "optionalRequirementIds": { "type": "array", "items": { "type": "string" } }
           },
           "additionalProperties": false
         },
@@ -82,7 +82,7 @@
       },
       "additionalProperties": false
     },
-    "trustControl": {
+    "claimRequirement": {
       "type": "object",
       "required": ["id", "title", "claimIds"],
       "properties": {
@@ -108,7 +108,7 @@
           "items": { "enum": ["observation", "extraction", "validation", "corroboration", "attestation", "auditability", "anchoring", "monitoring"] }
         },
         "requiresCorroboration": { "type": "boolean" },
-        "requiredProof": { "type": "array", "items": { "type": "string" } },
+        "acceptanceCriteria": { "type": "array", "items": { "type": "string" } },
         "reviewAuthority": { "type": "string" },
         "notes": { "type": "string" },
         "metadata": { "type": "object" }
@@ -121,8 +121,8 @@
       { "required": ["id"] },
       { "required": ["generatedAt"] },
       { "required": ["summary"] },
-      { "required": ["faultLines"] },
-      { "required": ["proofRequirementsByClaimId"] }
+      { "required": ["transparencyGaps"] },
+      { "required": ["evidenceRequirementsByClaimId"] }
     ]
   }
 }

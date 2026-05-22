@@ -2,7 +2,7 @@
 
 ## Product name
 
-Use `Kontour Surface` for the platform.
+Use `Kontour Surface` for the foundation product and product transparency standard.
 
 Use `Surface` for the command and product shorthand when context is clear.
 
@@ -10,25 +10,32 @@ Use `Surface` for the command and product shorthand when context is clear.
 
 Preferred:
 
-> Kontour Surface maps what your product claims, what proves it, where trust is missing or stale, and what humans or AI agents need to verify next.
+> Kontour Surface maps what your product claims, what evidence supports it, where trust is missing, stale, or disputed, and what Viewers, Operators, Verifiers, agents, or downstream systems need to inspect next.
 
 Avoid:
 
 - "We solve truth."
 - "AI truth engine."
 - "Guaranteed correctness."
+- "Trust substrate."
 
 ## Vocabulary
 
-- Surface: product area where claims are made.
+- Surface: foundation product and transparency standard. As a data field, `surface` is a producer-defined namespace for related claims.
 - Claim: trust-bearing assertion.
-- Trace: evidence chain behind a claim.
-- Check: verification event.
-- Drift: stale or changed trust state.
-- Fault line: conflict or dispute.
-- Coverage: how much of the surface has current support.
+- Evidence: observation, citation, attestation, test result, or traceable artifact that supports or challenges a claim.
+- Evidence Trace: inspectable path showing how evidence was produced.
+- Requirement: policy requirement for evidence, method, authority, or freshness.
+- Freshness: whether a claim remains current under its policy.
+- Changed Since Verified: claim or evidence state changed after verification.
+- Expired Verification: verification is outside the allowed freshness window.
+- Transparency Gap: missing, weak, stale, disputed, private, unavailable, unverifiable, or unmapped trust element.
+- Conflict: competing claims or evidence that cannot both be accepted as current.
+- Claim Group: producer-defined grouping of related claims.
+- Surface Console: Operator experience for managing claims, policies, evidence, owners, materiality, gaps, and review queues.
+- Trust Panel: Viewer experience for inspecting claims, Evidence, Freshness, Conflicts, and Transparency Gaps.
+- Trust Snapshot: portable trust state emitted by Surface. Current APIs may still use `TrustReport`.
 
 ## Tone
 
-Be concrete, evidence-first, and careful. The product should sound like infrastructure for trust, not hype around AI certainty.
-
+Be concrete, evidence-first, and careful. Lead with product transparency, describe trust as the outcome, and explain claims as the mechanism.

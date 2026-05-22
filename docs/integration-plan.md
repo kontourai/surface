@@ -7,7 +7,7 @@ Surface owns portable trust primitives and report generation. Producers own the 
 Surface owns:
 
 - `TrustInput` and report schemas.
-- Claims, evidence, policies, events, freshness, status, identity links, and fault lines.
+- Claims, evidence, policies, events, freshness, status, identity links, and transparency gaps through the current `transparencyGaps` field.
 - The adapter registry for producers that emit `TrustInput`.
 - Claim store read/write for producers that use authored claim definitions.
 - Extension registration for producer branding and vocabulary.

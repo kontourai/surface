@@ -4,16 +4,16 @@ import { buildTrustReport, validateTrustInput } from "../src/index.js";
 
 const now = "2026-04-25T00:00:00.000Z";
 
-test("derives collection rollups from validated claims and controls", () => {
+test("derives claimGroup rollups from validated claims and requirements", () => {
   const input = validateTrustInput({
     schemaVersion: 3,
-    source: "collection-test",
+    source: "claimGroup-test",
     claims: [{
       id: "claim.public-surface",
       subjectType: "repo",
       subjectId: "demo",
       surface: "repo.publication",
-      claimType: "public-surface-control",
+      claimType: "public-surface-requirement",
       fieldOrBehavior: "public files contain no private references",
       value: true,
       createdAt: now,
@@ -25,7 +25,7 @@ test("derives collection rollups from validated claims and controls", () => {
       subjectType: "repo",
       subjectId: "demo",
       surface: "repo.publication",
-      claimType: "public-surface-control",
+      claimType: "public-surface-requirement",
       fieldOrBehavior: "docs are readable",
       value: true,
       createdAt: now,
@@ -38,7 +38,7 @@ test("derives collection rollups from validated claims and controls", () => {
       claimId: "claim.public-surface",
       evidenceType: "policy_rule",
       method: "validation",
-      sourceRef: "veritas policy pack",
+      sourceRef: "veritas repo standards",
       excerptOrSummary: "Policy rule passed.",
       observedAt: now,
       collectedBy: "veritas",
@@ -48,7 +48,7 @@ test("derives collection rollups from validated claims and controls", () => {
       claimId: "claim.docs-readable",
       evidenceType: "policy_rule",
       method: "validation",
-      sourceRef: "veritas policy pack",
+      sourceRef: "veritas repo standards",
       excerptOrSummary: "Policy rule failed.",
       observedAt: now,
       collectedBy: "veritas",
@@ -56,10 +56,10 @@ test("derives collection rollups from validated claims and controls", () => {
     }],
     policies: [{
       id: "policy.public-surface",
-      claimType: "public-surface-control",
+      claimType: "public-surface-requirement",
       requiredEvidence: ["policy_rule"],
       requiredMethods: ["validation"],
-      requiredProof: ["rule evaluation"],
+      acceptanceCriteria: ["rule evaluation"],
       reviewAuthority: "system",
       validityRule: { kind: "manual" },
       stalenessTriggers: [],
@@ -83,58 +83,58 @@ test("derives collection rollups from validated claims and controls", () => {
       evidenceIds: ["evidence.docs-readable"],
       createdAt: now,
     }],
-    collections: [{
+    claimGroups: [{
       id: "framework.public-readiness",
       title: "Public readiness",
       kind: "framework",
-      controls: [{
-        id: "control.public-surface",
+      requirements: [{
+        id: "requirement.public-surface",
         title: "Public surface policy",
         claimIds: ["claim.public-surface"],
         severity: "high",
         validationStrategy: {
           requiredEvidence: ["policy_rule"],
           requiredMethods: ["validation"],
-          requiredProof: ["policy pack evaluation"],
+          acceptanceCriteria: ["repo standards evaluation"],
         },
       }, {
-        id: "control.docs-readable",
+        id: "requirement.docs-readable",
         title: "Documentation readability",
         claimIds: ["claim.docs-readable"],
       }],
     }],
   });
 
-  const report = buildTrustReport(input, { id: "collection-report", now: new Date(now) });
+  const report = buildTrustReport(input, { id: "claimGroup-report", now: new Date(now) });
 
-  assert.equal(report.collectionRollups.length, 1);
-  assert.equal(report.collectionRollups[0].status, "rejected");
-  assert.equal(report.collectionRollups[0].summary.totalControls, 2);
-  assert.equal(report.collectionRollups[0].summary.verifiedControls, 1);
-  assert.equal(report.collectionRollups[0].summary.disputedControls, 1);
-  assert.equal(report.collectionRollups[0].controls[0].validationStrategy?.requiredEvidence?.[0], "policy_rule");
+  assert.equal(report.claimGroupRollups.length, 1);
+  assert.equal(report.claimGroupRollups[0].status, "rejected");
+  assert.equal(report.claimGroupRollups[0].summary.totalRequirements, 2);
+  assert.equal(report.claimGroupRollups[0].summary.verifiedRequirements, 1);
+  assert.equal(report.claimGroupRollups[0].summary.disputedRequirements, 1);
+  assert.equal(report.claimGroupRollups[0].requirements[0].validationStrategy?.requiredEvidence?.[0], "policy_rule");
 });
 
-test("rejects collection references to unknown claims and controls", () => {
+test("rejects claimGroup references to unknown claims and requirements", () => {
   assert.throws(() => validateTrustInput({
     schemaVersion: 3,
-    source: "bad-collection",
+    source: "bad-claimGroup",
     claims: [],
     evidence: [],
     policies: [],
     events: [],
-    collections: [{
+    claimGroups: [{
       id: "framework.bad",
       title: "Bad framework",
       kind: "framework",
-      controls: [{
-        id: "control.missing",
+      requirements: [{
+        id: "requirement.missing",
         title: "Missing",
         claimIds: ["claim.missing"],
       }],
       rollupPolicy: {
         mode: "all-required",
-        requiredControlIds: ["control.other"],
+        requiredRequirementIds: ["requirement.other"],
       },
     }],
   }), /references unknown claim/);

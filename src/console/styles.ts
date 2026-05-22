@@ -1,6 +1,6 @@
-export const DASHBOARD_CSS = `
+export const CONSOLE_CSS = `
 /* ============================================================
-   SURFACE DASHBOARD — Premium Design System
+   SURFACE CONSOLE — Premium Design System
    Dark-first, brand-aligned, developer-tool aesthetic
    ============================================================ */
 
@@ -833,8 +833,8 @@ button {
 .status-verified { color: var(--green); }
 .status-proposed { color: var(--amber); }
 
-/* Fault & divergence badges */
-.card-faults {
+/* Gap & divergence badges */
+.card-gaps {
   display: inline-flex;
   align-items: center;
   font-size: 0.69rem;
@@ -1397,8 +1397,8 @@ button {
   transform: translateY(0);
 }
 
-/* ── 13. Fault Items ─────────────────────────────────────────── */
-.fault-item {
+/* ── 13. Gap Items ─────────────────────────────────────────── */
+.gap-item {
   padding: 0.75rem 0.9rem;
   border-radius: var(--radius-sm);
   border-left: 3px solid var(--red);
@@ -1408,46 +1408,46 @@ button {
   margin-bottom: 0.5rem;
 }
 
-.fault-item:last-child { margin-bottom: 0; }
+.gap-item:last-child { margin-bottom: 0; }
 
-.fault-item.fault-medium,
-.fault-item.fault-low {
+.gap-item.gap-medium,
+.gap-item.gap-low {
   border-left-color: var(--orange);
   border-color: color-mix(in srgb, var(--orange) 22%, transparent);
   border-left: 3px solid var(--orange);
   background: var(--orange-bg);
 }
 
-.fault-item.fault-kind-setup,
-.fault-item.fault-kind-config {
+.gap-item.gap-kind-setup,
+.gap-item.gap-kind-config {
   border-left-color: var(--amber);
   border-color: color-mix(in srgb, var(--amber) 22%, transparent);
   border-left: 3px solid var(--amber);
   background: var(--amber-bg);
 }
 
-.fault-item.fault-kind-workflow {
+.gap-item.gap-kind-workflow {
   border-left-color: var(--blue);
   border-color: color-mix(in srgb, var(--blue) 22%, transparent);
   border-left: 3px solid var(--blue);
   background: var(--blue-bg);
 }
 
-.fault-item.fault-kind-quality {
+.gap-item.gap-kind-quality {
   border-left-color: var(--amber);
   border-color: color-mix(in srgb, var(--amber) 22%, transparent);
   border-left: 3px solid var(--amber);
   background: var(--amber-bg);
 }
 
-.fault-item.fault-kind-policy {
+.gap-item.gap-kind-policy {
   border-left-color: var(--red);
   border-color: color-mix(in srgb, var(--red) 22%, transparent);
   border-left: 3px solid var(--red);
   background: var(--red-bg);
 }
 
-.fault-head {
+.gap-head {
   display: flex;
   align-items: baseline;
   gap: 0.5rem;
@@ -1455,7 +1455,7 @@ button {
   flex-wrap: wrap;
 }
 
-.fault-kind {
+.gap-kind {
   flex-shrink: 0;
   font-size: 0.63rem;
   font-weight: 800;
@@ -1469,28 +1469,28 @@ button {
   font-family: ui-monospace, "Cascadia Code", monospace;
 }
 
-.fault-item.fault-kind-setup .fault-kind,
-.fault-item.fault-kind-config .fault-kind,
-.fault-item.fault-kind-quality .fault-kind {
+.gap-item.gap-kind-setup .gap-kind,
+.gap-item.gap-kind-config .gap-kind,
+.gap-item.gap-kind-quality .gap-kind {
   background: var(--amber-bg);
   color: var(--amber);
   border-color: color-mix(in srgb, var(--amber) 30%, transparent);
 }
 
-.fault-item.fault-kind-workflow .fault-kind {
+.gap-item.gap-kind-workflow .gap-kind {
   background: var(--blue-bg);
   color: var(--blue);
   border-color: color-mix(in srgb, var(--blue) 30%, transparent);
 }
 
-.fault-item.fault-medium .fault-kind,
-.fault-item.fault-low .fault-kind {
+.gap-item.gap-medium .gap-kind,
+.gap-item.gap-low .gap-kind {
   background: var(--orange-bg);
   color: var(--orange);
   border-color: color-mix(in srgb, var(--orange) 30%, transparent);
 }
 
-.fault-type {
+.gap-type {
   margin: 0;
   font-size: 0.87rem;
   font-weight: 700;
@@ -1511,14 +1511,14 @@ button {
   margin-left: 0.25rem;
 }
 
-.fault-msg {
+.gap-msg {
   margin: 0.2rem 0 0;
   font-size: 0.85rem;
   line-height: 1.45;
   color: var(--ink);
 }
 
-.fault-hint {
+.gap-hint {
   margin: 0.45rem 0 0;
   font-size: 0.81rem;
   line-height: 1.5;

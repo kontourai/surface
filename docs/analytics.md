@@ -2,18 +2,18 @@
 
 Surface analytics means evidence intelligence over a trust report. It is not a generic BI layer.
 
-The projection turns an existing `TrustReport` into a stable JSON object for dashboards, agents, and local query commands. It is derived from portable Surface primitives:
+The projection turns an existing `TrustReport` into a stable JSON object for the Surface Console, agents, and local query commands. It is derived from portable Surface primitives:
 
 - claims
 - evidence
 - verification policies
-- proof requirements
+- evidence requirements
 - freshness and status
-- fault lines
+- transparency gaps through the current `transparencyGaps` field
 - confidence basis
 - attestations
 
-Downstream products still own product-specific extraction, workflow vocabulary, domain dashboards, and user account systems.
+Downstream products still own product-specific extraction, workflow vocabulary, domain interfaces, and user account systems.
 
 ## API
 
@@ -26,12 +26,12 @@ const analytics = buildTrustAnalyticsProjection(report);
 
 The projection includes:
 
-- verification coverage by surface
+- verification coverage by producer namespace
 - stale claims
 - disputed claims
 - high-impact unsupported claims
-- fault lines by type and severity
-- evidence and proof requirement gaps
+- transparency gaps by type and severity
+- evidence and requirement gaps
 - confidence basis rollups
 - review/action queues
 - attestation validity signals
@@ -57,7 +57,7 @@ These commands intentionally stay local and report-derived. MCP resources and a 
 
 ## Attestation Validity
 
-Attestations are evidence, but not every attestation is trusted proof.
+Attestations are evidence, but not every attestation is trusted authority.
 
 Surface preserves self-declared attestations as evidence. The analytics projection then marks whether each attestation is:
 
@@ -73,7 +73,7 @@ This prevents a product from bypassing policy by inventing an attestation string
 - `attestation_expired`
 - `attestation_revoked`
 
-Surface does not own auth. Product systems should emit actor references, identity proof references, authority source references, validity windows, revocation markers, and integrity hashes from their own identity providers, directories, signing systems, or audit logs.
+Surface does not own auth. Product systems should emit actor references, identity evidence references, authority source references, validity windows, revocation markers, and integrity hashes from their own identity providers, directories, signing systems, or audit logs.
 
 ## Boundary
 

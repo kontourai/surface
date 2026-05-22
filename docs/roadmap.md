@@ -2,19 +2,19 @@
 
 ## What ships today
 
-Surface ships the trust kernel, CLI, local dashboard, and claim authoring.
+Surface ships the trust kernel, CLI, local Surface Console, and claim authoring.
 
-**Kernel** — claims, evidence, verification policies, verification events, status derivation, staleness, fault lines, proof requirements, identity links, incompatibility rules, derived claims, and linked-data export.
+**Kernel** — claims, evidence, verification policies, verification events, status derivation, freshness, transparency gaps through the current `transparencyGaps` field, evidence requirements, identity links, incompatibility rules, derived claims, and linked-data export.
 
 **CLI** — `surface report`, `surface get`, `surface stale`, `surface missing`, `surface policy`, and `surface claim` (add, edit, remove, list, validate).
 
-**Dashboard** — local server over a producer read model. Coverage, fault lines, evidence drilldowns, claim authoring modal, and producer-branded vocabulary via the extension API.
+**Surface Console** — local server over a producer read model. Coverage, transparency gaps, evidence drilldowns, claim authoring modal, and producer-branded vocabulary via the extension API.
 
-**Extension API** — producers register vocabulary, theme, and claim type definitions. The dashboard adapts to the producer's language without changes to Surface.
+**Extension API** — producers register vocabulary, theme, and claim type definitions. The Console adapts to the producer's language without changes to Surface.
 
-**Consumer SDK** — fluent helpers for emitting valid `TrustInput`.
+**Consumer SDK** — fluent helpers for producers and builders emitting valid `TrustInput`.
 
-**Analytics projection** — evidence intelligence derived from `TrustReport`: coverage by surface, stale zones, disputed claims, high-impact unsupported claims, fault-line rollups, attestation validity, and action queues.
+**Analytics projection** — evidence intelligence derived from `TrustReport`: coverage by producer namespace, stale areas, disputed claims, high-impact unsupported claims, transparency gap rollups, attestation validity, and action queues.
 
 ## What comes next
 

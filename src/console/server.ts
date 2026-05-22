@@ -2,24 +2,22 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { readFile, readdir } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 import { cwd } from "node:process";
-import { buildDashboardHtml } from "./shell.js";
-import { DASHBOARD_SCRIPT } from "./script.js";
-import { DASHBOARD_CSS } from "./styles.js";
+import { buildConsoleHtml } from "./shell.js";
+import { CONSOLE_SCRIPT } from "./script.js";
+import { CONSOLE_CSS } from "./styles.js";
 import { addClaimToStore, loadClaimStore, removeClaimFromStore, saveClaimStore, updateClaimInStore } from "../store.js";
 import { listExtensions } from "../extension.js";
-import type { SurfaceDashboardConfig } from "./types.js";
+import type { SurfaceConsoleConfig } from "./types.js";
 import type { ClaimDefinition, ImpactLevel } from "../types.js";
 
 const SURFACE_RUNS_DEFAULT = ".surface/runs/latest.json";
-const LEGACY_RUNS_PATH = ".veritas/surface-dashboard/latest.json";
 
 async function loadReadModel(indexPath: string): Promise<unknown> {
   const absoluteIndexPath = resolve(indexPath);
   const raw = await readFile(absoluteIndexPath, "utf8");
   const parsed = JSON.parse(raw) as Record<string, unknown>;
-  if (parsed["kind"] === "surface-dashboard-index" && typeof parsed["readModelPath"] === "string") {
-    // readModelPath is relative to the repo root; index lives 2 levels deep
-    // (.surface/runs/latest.json or .veritas/surface-dashboard/latest.json → repo root)
+  if (parsed["kind"] === "surface-console-index" && typeof parsed["readModelPath"] === "string") {
+    // readModelPath is relative to the repo root; index lives under .surface/runs/.
     const repoRoot = dirname(dirname(dirname(absoluteIndexPath)));
     const modelPath = resolve(repoRoot, parsed["readModelPath"]);
     const modelRaw = await readFile(modelPath, "utf8");
@@ -29,12 +27,10 @@ async function loadReadModel(indexPath: string): Promise<unknown> {
 }
 
 async function resolveReadModelPath(configuredPath: string): Promise<string> {
-  if (configuredPath !== SURFACE_RUNS_DEFAULT) return configuredPath;
-  try { await readFile(resolve(configuredPath), "utf8"); return configuredPath; } catch { /* fall through */ }
-  return LEGACY_RUNS_PATH;
+  return configuredPath;
 }
 
-export async function startDashboardServer(config: SurfaceDashboardConfig = {}): Promise<void> {
+export async function startConsoleServer(config: SurfaceConsoleConfig = {}): Promise<void> {
   const port = config.port ?? 4242;
   const readModelPath = config.readModelPath ?? SURFACE_RUNS_DEFAULT;
   const storePath = config.storePath ?? "veritas.claims.json";
@@ -43,15 +39,15 @@ export async function startDashboardServer(config: SurfaceDashboardConfig = {}):
     const requestUrl = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
     const url = requestUrl.pathname;
 
-    if (url === "/dashboard.js") {
+    if (url === "/console.js") {
       res.writeHead(200, { "Content-Type": "application/javascript; charset=utf-8" });
-      res.end(DASHBOARD_SCRIPT);
+      res.end(CONSOLE_SCRIPT);
       return;
     }
 
-    if (url === "/dashboard.css") {
+    if (url === "/console.css") {
       res.writeHead(200, { "Content-Type": "text/css; charset=utf-8" });
-      res.end(DASHBOARD_CSS);
+      res.end(CONSOLE_CSS);
       return;
     }
 
@@ -59,7 +55,7 @@ export async function startDashboardServer(config: SurfaceDashboardConfig = {}):
       try {
         const dashDir = resolve(dirname(await resolveReadModelPath(readModelPath)));
         const files = await readdir(dashDir).catch(() => [] as string[]);
-        const runFiles = files.filter(f => f.endsWith(".dashboard.json") && f !== "latest.json");
+        const runFiles = files.filter(f => f.endsWith(".console.json") && f !== "latest.json");
         const runs = await Promise.all(runFiles.map(async (f) => {
           try {
             const data = JSON.parse(await readFile(resolve(dashDir, f), "utf8")) as Record<string, unknown>;
@@ -67,7 +63,7 @@ export async function startDashboardServer(config: SurfaceDashboardConfig = {}):
             const summary = data["summary"] as Record<string, unknown> | undefined;
             const attentionIds = (summary?.["attentionClaimIds"] as unknown[] | undefined) ?? [];
             return {
-              runId: String(producer?.["runId"] ?? basename(f, ".dashboard.json")),
+              runId: String(producer?.["runId"] ?? basename(f, ".console.json")),
               generatedAt: data["generatedAt"] ?? null,
               claimCount: summary?.["claimCount"] ?? 0,
               verifiedCount: (summary?.["statusCounts"] as Record<string,number> | undefined)?.["verified"] ?? 0,
@@ -91,7 +87,7 @@ export async function startDashboardServer(config: SurfaceDashboardConfig = {}):
       const runParam = requestUrl.searchParams.get("run");
       const resolvedBase = await resolveReadModelPath(readModelPath);
       const effectivePath = runParam && runParam !== "latest"
-        ? resolve(dirname(resolvedBase), `${runParam}.dashboard.json`)
+        ? resolve(dirname(resolvedBase), `${runParam}.console.json`)
         : resolvedBase;
       try {
         const readModel = await loadReadModel(effectivePath);
@@ -151,16 +147,16 @@ export async function startDashboardServer(config: SurfaceDashboardConfig = {}):
       const readModel = await loadReadModel(resolvedPath);
       const folderName = basename(cwd());
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-      res.end(buildDashboardHtml({ ...config, storePath, claimTypes: registeredClaimTypes(), readModel, folderName }));
+      res.end(buildConsoleHtml({ ...config, storePath, claimTypes: registeredClaimTypes(), readModel, folderName }));
     } catch {
       const folderName = basename(cwd());
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-      res.end(buildDashboardHtml({ ...config, storePath, claimTypes: registeredClaimTypes(), readModel: null, folderName }));
+      res.end(buildConsoleHtml({ ...config, storePath, claimTypes: registeredClaimTypes(), readModel: null, folderName }));
     }
   });
 
   await new Promise<void>((resolveListen) => server.listen(port, resolveListen));
-  console.log(`Surface dashboard running at http://localhost:${port}`);
+  console.log(`Surface console running at http://localhost:${port}`);
 }
 
 function registeredClaimTypes() {

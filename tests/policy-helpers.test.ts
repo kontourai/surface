@@ -9,10 +9,10 @@ test("buildCommitValidityPolicy creates a commit-scoped verification policy", ()
     requiredEvidence: ["policy_rule"],
     requiredMethods: ["validation"],
     requiresCorroboration: false,
-    requiredProof: ["example proof"],
+    acceptanceCriteria: ["example evidence"],
     reviewAuthority: "example reviewer",
     stalenessTriggers: ["source changes"],
-    conflictRules: ["failed proof rejects claim"],
+    conflictRules: ["failed evidence rejects claim"],
     impactLevel: "medium",
   });
 
@@ -23,7 +23,7 @@ test("buildCommitValidityPolicy creates a commit-scoped verification policy", ()
 
 test("buildHumanAttestationEvidence creates schema-valid attestation evidence", () => {
   const evidence = buildHumanAttestationEvidence({
-    subject: { claimId: "claim.policy-pack", sourceRef: "surface:test" },
+    subject: { claimId: "claim.repo-standards", sourceRef: "surface:test" },
     actor: { id: "reviewer", displayName: "Example Reviewer" },
     attestedAt: "2026-05-10T00:00:00.000Z",
     validUntil: "2026-08-08T00:00:00.000Z",
@@ -33,12 +33,12 @@ test("buildHumanAttestationEvidence creates schema-valid attestation evidence", 
     schemaVersion: 2,
     source: "surface:test",
     claims: [{
-      id: "claim.policy-pack",
-      subjectType: "policy-pack",
+      id: "claim.repo-standards",
+      subjectType: "repo-standards",
       subjectId: "default",
       surface: "governance",
-      claimType: "human-attested-policy-pack",
-      fieldOrBehavior: "policy-pack",
+      claimType: "human-attested-repo-standards",
+      fieldOrBehavior: "repo-standards",
       value: "approved",
       createdAt: "2026-05-10T00:00:00.000Z",
       updatedAt: "2026-05-10T00:00:00.000Z",

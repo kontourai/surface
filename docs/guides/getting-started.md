@@ -1,13 +1,13 @@
 # Getting Started
 
-Surface is the trust substrate. Use it when a product needs to show:
+Surface is a product transparency standard and foundation product. Use it when a product needs to show:
 
 - what is being claimed
 - what evidence supports the claim
 - what policy decides whether the claim is verified
 - whether the claim is current, stale, disputed, or unsupported
 
-Surface does not collect domain evidence by itself. Your producer, such as Veritas or a custom adapter, emits a `TrustInput`. Surface validates that input and derives a portable `TrustReport`.
+Surface does not collect domain evidence by itself. Your producer, such as Veritas or a custom adapter, emits a `TrustInput`. Surface validates that input and derives a portable `TrustReport`, which product docs may describe as a Trust Snapshot.
 
 ## 1. Install
 
@@ -44,7 +44,7 @@ const input = new TrustInputBuilder({ source: "my-producer:local" })
     id: "claim.api.rate-limit",
     subjectType: "api",
     subjectId: "public-api",
-    claimType: "software-proof",
+    claimType: "software-evidence",
     surface: "api",
     fieldOrBehavior: "rate limit is enforced",
     value: "100 requests/minute",
@@ -72,12 +72,12 @@ const input = new TrustInputBuilder({ source: "my-producer:local" })
 
 The important part is the shape, not this exact domain. Claims, evidence, policies, and events should be concrete enough that a reviewer can see why a status was derived.
 
-## 4. Open A Dashboard
+## 4. Open The Surface Console
 
-If a producer writes a dashboard read model under `.surface/runs/latest.json`, run:
+If a producer writes a Console read model under `.surface/runs/latest.json`, run the current CLI command:
 
 ```bash
-npx surface dashboard
+npx surface console
 ```
 
 Use the detail panel to inspect evidence, policy gaps, files in scope, and integrity scope. The integrity scope shows what a verified claim is anchored to, such as a source ref, file hash, or configuration hash.
@@ -86,5 +86,5 @@ Use the detail panel to inspect evidence, policy gaps, files in scope, and integ
 
 - [Concepts](../concepts.md) for the vocabulary.
 - [Consumer SDK](consumer-sdk.md) for builder APIs.
-- [Dashboard](../dashboards.md) for local review.
+- [Surface Console](../consoles.md) for local review.
 - [External Adapter Example](../../examples/external-adapter/README.md) for a minimal producer.

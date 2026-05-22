@@ -1,15 +1,15 @@
-import type { SurfaceDashboardRuntimeConfig } from "./types.js";
+import type { SurfaceConsoleRuntimeConfig } from "./types.js";
 
-export function buildDashboardHtml(config: SurfaceDashboardRuntimeConfig = {}): string {
+export function buildConsoleHtml(config: SurfaceConsoleRuntimeConfig = {}): string {
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Surface Dashboard</title>
-  <link rel="stylesheet" href="/dashboard.css">
+  <title>Surface Console</title>
+  <link rel="stylesheet" href="/console.css">
 </head>
-<body class="dashboard-page">
+<body class="console-page">
   <header class="dash-header">
     <div class="dash-brand">
       <p class="dash-eyebrow">Surface</p>
@@ -30,7 +30,7 @@ export function buildDashboardHtml(config: SurfaceDashboardRuntimeConfig = {}): 
     </div>
     <div class="dash-metrics-row">
       <canvas id="statusDonut" class="status-donut" width="52" height="52" aria-hidden="true"></canvas>
-      <div id="dashboardMetrics" class="dash-metrics"></div>
+      <div id="consoleMetrics" class="dash-metrics"></div>
     </div>
   </header>
 
@@ -85,9 +85,9 @@ export function buildDashboardHtml(config: SurfaceDashboardRuntimeConfig = {}): 
       <p id="detailDescription" class="sheet-description" hidden></p>
       <p id="detailSubtitle" class="sheet-subtitle"></p>
 
-      <div id="detailFaultBlock" class="sheet-section" hidden>
-        <p class="section-label">What went wrong ${helpHint("What went wrong", "Fault lines are the reasons this claim needs attention. They explain what prevented the claim from being cleanly verified, such as missing provenance, stale proof, a conflict, or an unmet policy requirement.")}</p>
-        <div id="detailFaults"></div>
+      <div id="detailGapBlock" class="sheet-section" hidden>
+        <p class="section-label">What went wrong ${helpHint("What went wrong", "Transparency gaps are the reasons this claim needs attention. They explain what prevented the claim from being cleanly verified, such as missing provenance, stale evidence, a conflict, or an unmet policy requirement.")}</p>
+        <div id="detailGaps"></div>
       </div>
 
       <div id="detailPolicyGapBlock" class="sheet-section" hidden>
@@ -96,12 +96,12 @@ export function buildDashboardHtml(config: SurfaceDashboardRuntimeConfig = {}): 
       </div>
 
       <div id="detailValueBlock" class="sheet-section" hidden>
-        <p class="section-label">Expected value ${helpHint("Expected value", "This is the value being asserted by the claim. For proof lanes, it should describe the desired outcome, not the command used to collect evidence.")}</p>
+        <p class="section-label">Expected value ${helpHint("Expected value", "This is the value being asserted by the claim. For automated evidence checks, it should describe the desired outcome, not the command used to collect evidence.")}</p>
         <code id="detailValue" class="mono-block"></code>
       </div>
 
       <div id="detailObservedBlock" class="sheet-section" hidden>
-        <p class="section-label">Observed result ${helpHint("Observed result", "This is what the evidence collector observed when it ran. For proof lanes, it includes the pass/fail summary and command output when the producer captured it.")}</p>
+        <p class="section-label">Observed result ${helpHint("Observed result", "This is what the evidence collector observed when it ran. For automated evidence checks, it includes the pass/fail summary and command output when the producer captured it.")}</p>
         <div id="detailObserved"></div>
       </div>
 
@@ -127,7 +127,7 @@ export function buildDashboardHtml(config: SurfaceDashboardRuntimeConfig = {}): 
       </div>
 
       <div class="sheet-section">
-        <p class="section-label">Verification rule ${helpHint("Verification rule", "This is the Surface rule used to judge the claim. Producers such as Veritas can map this to higher-level concepts like proof lanes, governance gates, or plugin-owned checks.")}</p>
+        <p class="section-label">Verification rule ${helpHint("Verification rule", "This is the Surface rule used to judge the claim. Producers such as Veritas can map this to higher-level concepts like Evidence Checks, governance gates, or plugin-owned checks.")}</p>
         <code id="detailPolicy">—</code>
       </div>
 
@@ -147,12 +147,12 @@ export function buildDashboardHtml(config: SurfaceDashboardRuntimeConfig = {}): 
       <div class="modal-body">
         <input id="claimIdInput" type="hidden">
         <div class="form-field">
-          <label for="claimTypeSelect">Claim type ${helpHint("Claim type", "The category of claim. Different types activate different evidence collection and verification rules. Use 'software-proof' for automated tooling results.")}</label>
+          <label for="claimTypeSelect">Claim type ${helpHint("Claim type", "The category of claim. Different types activate different evidence collection and verification rules. Use a producer-specific claim type for automated tooling results.")}</label>
           <select id="claimTypeSelect" required></select>
           <p class="field-hint" id="claimTypeHint"></p>
         </div>
         <div class="form-field">
-          <label for="claimSurfaceInput">Surface ${helpHint("Surface", "The logical boundary this claim belongs to — usually a repository, service, or product name. Claims are grouped and filtered by surface in the dashboard.")}</label>
+          <label for="claimSurfaceInput">Surface ${helpHint("Surface", "The logical boundary this claim belongs to — usually a repository, service, or product name. Claims are grouped and filtered by surface in the console.")}</label>
           <input id="claimSurfaceInput" type="text" required autocomplete="off">
         </div>
         <div class="form-field">
@@ -205,7 +205,7 @@ export function buildDashboardHtml(config: SurfaceDashboardRuntimeConfig = {}): 
   </dialog>
 
   <script>window.__SURFACE_CONFIG__ = ${JSON.stringify(config).replace(/</g, "\\u003c")};</script>
-  <script src="/dashboard.js"></script>
+  <script src="/console.js"></script>
 </body>
 </html>`;
 }

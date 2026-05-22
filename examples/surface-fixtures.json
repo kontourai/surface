@@ -15,22 +15,22 @@
       "id": "claim.repo-governance.api-proof",
       "subjectType": "repo-surface",
       "subjectId": "example/repo:src/api",
-      "surface": "repo-governance.developer-proof",
-      "claimType": "software-proof",
-      "fieldOrBehavior": "requiredProofLane",
+      "surface": "repo-governance.developer-evidence",
+      "claimType": "software-evidence",
+      "fieldOrBehavior": "acceptanceCriteriaLane",
       "value": "npm test passed for API surface change",
       "createdAt": "2026-04-25T00:00:00.000Z",
       "updatedAt": "2026-04-25T00:05:00.000Z",
       "impactLevel": "high",
       "currentIntegrityRef": "commit-or-run-id-placeholder",
-      "verificationPolicyId": "policy.software-proof.commit",
+      "verificationPolicyId": "policy.software-evidence.commit",
       "subjectAliases": [
         { "subjectType": "release-channel", "subjectId": "repo-governance:api" }
       ],
       "confidenceBasis": {
         "sourceQuality": "strong",
         "reviewerAuthority": "system",
-        "proofStrength": "strong",
+        "evidenceStrength": "strong",
         "impactLevel": "high"
       }
     },
@@ -51,7 +51,7 @@
         "extractionConfidence": 0.92,
         "corroborationCount": 1,
         "reviewerAuthority": "operator",
-        "proofStrength": "moderate",
+        "evidenceStrength": "moderate",
         "impactLevel": "high"
       }
     },
@@ -71,14 +71,14 @@
         "sourceQuality": "strong",
         "corroborationCount": 2,
         "reviewerAuthority": "domain_expert",
-        "proofStrength": "strong",
+        "evidenceStrength": "strong",
         "impactLevel": "critical"
       }
     },
     {
-      "id": "claim.surface.future-dashboard",
+      "id": "claim.surface.future-console",
       "subjectType": "roadmap-item",
-      "subjectId": "kontour-surface:hosted-dashboard",
+      "subjectId": "kontour-surface:hosted-console",
       "surface": "surface.roadmap",
       "claimType": "roadmap-capability",
       "fieldOrBehavior": "implementationStatus",
@@ -95,7 +95,7 @@
       "claimId": "claim.repo-governance.api-proof",
       "evidenceType": "test_output",
       "method": "validation",
-      "sourceRef": "repo governance proof lane",
+      "sourceRef": "repo governance evidence check",
       "sourceLocator": "npm test",
       "excerptOrSummary": "84 tests passed for the verified repo state.",
       "observedAt": "2026-04-25T00:05:00.000Z",
@@ -150,17 +150,17 @@
   ],
   "policies": [
     {
-      "id": "policy.software-proof.commit",
-      "claimType": "software-proof",
+      "id": "policy.software-evidence.commit",
+      "claimType": "software-evidence",
       "parentType": "developer-claim",
       "requiredEvidence": ["test_output"],
       "requiredMethods": ["validation"],
       "requiresCorroboration": false,
-      "requiredProof": ["proof lane passes for the affected commit or diff"],
+      "acceptanceCriteria": ["evidence check passes for the affected commit or diff"],
       "reviewAuthority": "repo policy",
       "validityRule": { "kind": "commit" },
-      "stalenessTriggers": ["new commit touches the same surface", "proof lane changes"],
-      "conflictRules": ["failed proof supersedes prior passing proof"],
+      "stalenessTriggers": ["new commit touches the same surface", "evidence check changes"],
+      "conflictRules": ["failed evidence check supersedes prior passing evidence"],
       "impactLevel": "high",
       "incompatibleStatuses": [
         {
@@ -175,7 +175,7 @@
       "requiredEvidence": ["source_excerpt", "human_attestation"],
       "requiredMethods": ["observation", "attestation"],
       "requiresCorroboration": true,
-      "requiredProof": ["field-level review or crawl approval"],
+      "acceptanceCriteria": ["field-level review or crawl approval"],
       "reviewAuthority": "operator",
       "validityRule": { "kind": "duration", "durationDays": 14 },
       "stalenessTriggers": ["source page changes", "validity window expires", "user report conflicts"],
@@ -188,7 +188,7 @@
       "requiredEvidence": ["document_citation", "calculation_trace"],
       "requiredMethods": ["corroboration", "validation"],
       "requiresCorroboration": true,
-      "requiredProof": ["resolved fact promoted to verified fact"],
+      "acceptanceCriteria": ["resolved fact promoted to verified fact"],
       "reviewAuthority": "domain expert",
       "validityRule": { "kind": "historical" },
       "stalenessTriggers": ["new source document imported", "conflicting candidate appears"],
@@ -201,7 +201,7 @@
       "requiredEvidence": ["human_attestation"],
       "requiredMethods": ["attestation"],
       "requiresCorroboration": false,
-      "requiredProof": ["explicit roadmap acceptance"],
+      "acceptanceCriteria": ["explicit roadmap acceptance"],
       "reviewAuthority": "product owner",
       "validityRule": { "kind": "manual" },
       "stalenessTriggers": ["roadmap changed"],
@@ -215,7 +215,7 @@
       "claimId": "claim.repo-governance.api-proof",
       "status": "verified",
       "actor": "repo-governance",
-      "method": "proof-lane",
+      "method": "evidence-check",
       "evidenceIds": ["evidence.repo-governance.test-output"],
       "createdAt": "2026-04-25T00:05:00.000Z",
       "verifiedAt": "2026-04-25T00:05:00.000Z"

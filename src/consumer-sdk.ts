@@ -3,7 +3,7 @@ import type {
   Evidence,
   IdentityLink,
   SchemaVersion,
-  TrustCollection,
+  ClaimGroup,
   TrustInput,
   VerificationEvent,
   VerificationPolicy,
@@ -48,7 +48,7 @@ export class TrustInputBuilder {
   private readonly policies: VerificationPolicy[] = [];
   private readonly events: VerificationEvent[] = [];
   private readonly identityLinks: IdentityLink[] = [];
-  private readonly collections: TrustCollection[] = [];
+  private readonly claimGroups: ClaimGroup[] = [];
 
   constructor(args: TrustInputBuilderArgs) {
     this.source = args.source;
@@ -87,8 +87,8 @@ export class TrustInputBuilder {
     return this;
   }
 
-  addCollection(collection: TrustCollection): this {
-    this.collections.push(collection);
+  addClaimGroup(claimGroup: ClaimGroup): this {
+    this.claimGroups.push(claimGroup);
     return this;
   }
 
@@ -102,7 +102,7 @@ export class TrustInputBuilder {
       events: [...this.events],
     };
     if (this.identityLinks.length > 0) input.identityLinks = [...this.identityLinks];
-    if (this.collections.length > 0) input.collections = [...this.collections];
+    if (this.claimGroups.length > 0) input.claimGroups = [...this.claimGroups];
     return validateTrustInput(input);
   }
 

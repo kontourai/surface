@@ -14,7 +14,7 @@ Evidence records the source, locator, summary or excerpt, observed time, collect
 
 The current method vocabulary is `observation`, `extraction`, `validation`, `corroboration`, `attestation`, `auditability`, `anchoring`, and `monitoring`.
 
-The optional `execution` field records provenance for evidence produced by running a command or tool. Producers such as Veritas populate it when a proof ran to generate the evidence. Surface treats it as opaque metadata — it is carried through to reports and consumers but does not affect trust derivation.
+The optional `execution` field records provenance for evidence produced by running a command or tool. Producers such as Veritas populate it when an Evidence Check generated the evidence. Surface treats it as opaque metadata — it is carried through to reports and consumers but does not affect trust derivation.
 
 ```typescript
 execution?: {
@@ -31,15 +31,15 @@ Schema: `schemas/evidence.schema.json`
 
 ## Verification Policy
 
-Policy defines required evidence, required methods, corroboration needs, proof, review authority, validity, staleness triggers, conflict rules, and impact.
+Policy defines required evidence, required methods, corroboration needs, acceptance criteria, review authority, validity, staleness triggers, conflict rules, and impact.
 
-The optional `collectWhen` field lists the trust statuses that should trigger proactive evidence collection for the claim this policy covers. When a claim's current status appears in this list, producers treat it as a signal to run the associated proofs automatically rather than waiting for an explicit request. Surface owns this as trust policy; it does not run collection itself — producers such as Veritas read `collectWhen` to decide when to schedule a proof run.
+The optional `collectWhen` field lists the trust statuses that should trigger proactive evidence collection for the claim this policy covers. When a claim's current status appears in this list, producers treat it as a signal to run the associated Evidence Checks automatically rather than waiting for an explicit request. Surface owns this as trust policy; it does not collect evidence itself — producers such as Veritas read `collectWhen` to decide when to schedule evidence collection.
 
 ```typescript
 collectWhen?: TrustStatus[];  // e.g. ["unknown", "stale", "disputed"]
 ```
 
-Omitting `collectWhen` means the producer applies its own default collection rules. A claim with status `unknown` is distinct from `stale` — unknown means no evidence has ever been recorded, while stale means evidence existed but has since expired.
+Omitting `collectWhen` means the producer applies its own default evidence collection rules. A claim with status `unknown` is distinct from `stale` — unknown means no evidence has ever been recorded, while stale means evidence existed but has since expired.
 
 Schema: `schemas/verification-policy.schema.json`
 
@@ -51,23 +51,23 @@ Schema: `schemas/verification-event.schema.json`
 
 ## Trust Input
 
-A trust input packages claims, evidence, policies, events, and optional collections before Surface generates report-only fields.
+A trust input packages claims, evidence, policies, events, and optional claimGroups before Surface generates report-only fields.
 
 Schema: `schemas/trust-input.schema.json`
 
-## Collections
+## Claim Groups
 
-Collections group related claims into a framework, control set, or producer-defined view. A control references concrete claim IDs and can include a validation strategy that describes what evidence, methods, proof, or authority should support those claims. Surface validates the references and derives collection rollups from claim status; the collection definition is not evidence by itself.
+Claim groups collect related claims into a framework, requirement set, or producer-defined view. The current schema field is `claimGroups`, and the nested field name is `requirements`. A requirement references concrete claim IDs and can include a validation strategy that describes what evidence, methods, or authority should support those claims. Surface validates the references and derives claim group rollups from claim status; the claim group definition is not evidence by itself.
 
 ## Trust Report
 
-A report packages claims, evidence, policies, events, report-derived proof requirements, typed fault lines, collection rollups, and a derived summary.
+A report packages claims, evidence, policies, events, report-derived evidence requirement fields, typed `transparencyGaps` annotations, claim group rollups, and a derived summary.
 
 Schema: `schemas/trust-report.schema.json`
 
 ## Eval Summary
 
-`EvalSummary` is a producer-agnostic record for post-hoc evaluation of a run. Producers such as Veritas write it into the run snapshot after a human reviews a completed run. The dashboard displays it alongside live trust state.
+`EvalSummary` is a producer-agnostic record for post-hoc evaluation of a run. Producers such as Veritas write it into the run snapshot after a human reviews a completed run. The console displays it alongside live trust state.
 
 ```typescript
 interface EvalSummary {
@@ -91,4 +91,4 @@ Adapter inputs are intentionally separate from the core Surface schema. Product 
 
 ## Confidence basis
 
-Surface should avoid a single opaque confidence score. The API should preserve the reasons confidence exists or does not exist: source quality, extraction confidence, corroboration, reviewer authority, freshness, conflict count, proof strength, and impact.
+Surface should avoid a single opaque confidence score. The API should preserve the reasons confidence exists or does not exist: source quality, extraction confidence, corroboration, reviewer authority, freshness, conflict count, evidence strength, and impact.

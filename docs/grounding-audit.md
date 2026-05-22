@@ -68,7 +68,7 @@ Downstream repos keep:
 
 - Real product adapters.
 - Product-specific docs and UI language.
-- Product storage, access control, and runtime query wiring.
+- Product storage, access requirement, and runtime query wiring.
 
 ## Decisions
 

@@ -3,7 +3,7 @@
   "$id": "https://kontour.ai/schemas/surface/trust-report.schema.json",
   "title": "Kontour Surface Trust Report",
   "type": "object",
-  "required": ["schemaVersion", "id", "generatedAt", "source", "claims", "evidence", "policies", "events", "proofRequirementsByClaimId", "faultLines", "subjectGroups", "collectionRollups", "summary"],
+  "required": ["schemaVersion", "id", "generatedAt", "source", "claims", "evidence", "policies", "events", "evidenceRequirementsByClaimId", "transparencyGaps", "subjectGroups", "claimGroupRollups", "summary"],
   "properties": {
     "schemaVersion": { "enum": [2, 3] },
     "id": { "type": "string" },
@@ -13,11 +13,11 @@
     "evidence": { "type": "array", "items": { "$ref": "evidence.schema.json" } },
     "policies": { "type": "array", "items": { "$ref": "verification-policy.schema.json" } },
     "events": { "type": "array", "items": { "$ref": "verification-event.schema.json" } },
-    "collections": {
+    "claimGroups": {
       "type": "array",
-      "items": { "$ref": "trust-input.schema.json#/$defs/trustCollection" }
+      "items": { "$ref": "trust-input.schema.json#/$defs/claimGroup" }
     },
-    "proofRequirementsByClaimId": {
+    "evidenceRequirementsByClaimId": {
       "type": "object",
       "additionalProperties": {
         "type": "object",
@@ -37,7 +37,7 @@
         "additionalProperties": false
       }
     },
-    "faultLines": {
+    "transparencyGaps": {
       "type": "array",
       "items": {
         "type": "object",
@@ -105,19 +105,19 @@
         "additionalProperties": false
       }
     },
-    "collectionRollups": {
+    "claimGroupRollups": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "title", "kind", "status", "claimIds", "controls", "summary"],
+        "required": ["id", "title", "kind", "status", "claimIds", "requirements", "summary"],
         "properties": {
           "id": { "type": "string" },
           "title": { "type": "string" },
-          "kind": { "enum": ["collection", "framework", "control-set"] },
+          "kind": { "enum": ["claimGroup", "framework", "requirement-set"] },
           "status": { "enum": ["unknown", "proposed", "verified", "stale", "disputed", "superseded", "rejected"] },
           "description": { "type": "string" },
           "claimIds": { "type": "array", "items": { "type": "string" } },
-          "controls": {
+          "requirements": {
             "type": "array",
             "items": {
               "type": "object",
@@ -142,14 +142,14 @@
           },
           "summary": {
             "type": "object",
-            "required": ["totalControls", "requiredControls", "verifiedControls", "staleControls", "disputedControls", "unsupportedControls", "missingClaims", "verificationCoverage"],
+            "required": ["totalRequirements", "requiredRequirements", "verifiedRequirements", "staleRequirements", "disputedRequirements", "unsupportedRequirements", "missingClaims", "verificationCoverage"],
             "properties": {
-              "totalControls": { "type": "number" },
-              "requiredControls": { "type": "number" },
-              "verifiedControls": { "type": "number" },
-              "staleControls": { "type": "number" },
-              "disputedControls": { "type": "number" },
-              "unsupportedControls": { "type": "number" },
+              "totalRequirements": { "type": "number" },
+              "requiredRequirements": { "type": "number" },
+              "verifiedRequirements": { "type": "number" },
+              "staleRequirements": { "type": "number" },
+              "disputedRequirements": { "type": "number" },
+              "unsupportedRequirements": { "type": "number" },
               "missingClaims": { "type": "number" },
               "verificationCoverage": { "type": "number" }
             },
@@ -162,12 +162,12 @@
     },
     "summary": {
       "type": "object",
-      "required": ["totalClaims", "byStatus", "bySurface", "faultLinesByType", "highImpactUnsupported", "staleClaims", "disputedClaims"],
+      "required": ["totalClaims", "byStatus", "bySurface", "transparencyGapsByType", "highImpactUnsupported", "staleClaims", "disputedClaims"],
       "properties": {
         "totalClaims": { "type": "number" },
         "byStatus": { "type": "object" },
         "bySurface": { "type": "object" },
-        "faultLinesByType": { "type": "object" },
+        "transparencyGapsByType": { "type": "object" },
         "highImpactUnsupported": { "type": "array", "items": { "type": "string" } },
         "staleClaims": { "type": "array", "items": { "type": "string" } },
         "disputedClaims": { "type": "array", "items": { "type": "string" } }

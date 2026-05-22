@@ -54,7 +54,7 @@ const ticketAdapter: Adapter<TicketRecord> = {
       requiredEvidence: ["source_excerpt"],
       requiredMethods: ["observation"],
       requiresCorroboration: false,
-      requiredProof: ["ticket export row"],
+      acceptanceCriteria: ["ticket export row"],
       reviewAuthority: "ticket system",
       validityRule: { kind: "manual" },
       stalenessTriggers: ["ticket status changes"],

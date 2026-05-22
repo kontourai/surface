@@ -67,7 +67,7 @@
       "observedAt": "2026-04-25T00:05:00.000Z",
       "collectedBy": "reputation-integrity-fixture",
       "metadata": {
-        "faultLineHints": [
+        "transparencyGapHints": [
           {
             "type": "unsupported_inference",
             "severity": "critical",
@@ -84,7 +84,7 @@
       "requiredEvidence": ["crawl_observation"],
       "requiredMethods": ["observation"],
       "requiresCorroboration": false,
-      "requiredProof": ["fresh source snapshot"],
+      "acceptanceCriteria": ["fresh source snapshot"],
       "reviewAuthority": "reputation workflow",
       "validityRule": { "kind": "duration", "durationDays": 7 },
       "stalenessTriggers": ["new star snapshot", "source API changes"],
@@ -97,7 +97,7 @@
       "requiredEvidence": ["calculation_trace", "crawl_observation"],
       "requiredMethods": ["validation", "corroboration"],
       "requiresCorroboration": true,
-      "requiredProof": ["heuristic plus independent corroboration"],
+      "acceptanceCriteria": ["heuristic plus independent corroboration"],
       "reviewAuthority": "reputation analyst",
       "validityRule": { "kind": "duration", "durationDays": 7 },
       "stalenessTriggers": ["new star snapshot", "new corroborating source"],
@@ -110,7 +110,7 @@
       "requiredEvidence": ["document_citation", "human_attestation"],
       "requiredMethods": ["corroboration", "attestation"],
       "requiresCorroboration": true,
-      "requiredProof": ["direct corroborated evidence of intent"],
+      "acceptanceCriteria": ["direct corroborated evidence of intent"],
       "reviewAuthority": "domain expert",
       "validityRule": { "kind": "manual" },
       "stalenessTriggers": ["new direct evidence", "owner response"],

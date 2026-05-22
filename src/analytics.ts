@@ -6,9 +6,9 @@ import type {
   ClaimQueueItem,
   Evidence,
   EvidenceGap,
-  FaultLine,
-  FaultLineQueueItem,
-  FaultLineType,
+  TransparencyGap,
+  TransparencyGapQueueItem,
+  TransparencyGapType,
   ImpactLevel,
   SurfaceTrustCoverage,
   TrustActionQueues,
@@ -20,7 +20,7 @@ import type {
 } from "./types.js";
 
 const IMPACT_LEVELS: ImpactLevel[] = ["low", "medium", "high", "critical"];
-const GAP_FAULT_LINE_TYPES: FaultLineType[] = [
+const GAP_TRANSPARENCY_GAP_TYPES: TransparencyGapType[] = [
   "provenance_gap",
   "policy_violation",
   "corroboration_absent",
@@ -32,12 +32,12 @@ export function buildTrustAnalyticsProjection(report: TrustReport): TrustAnalyti
   const policiesById = new Map(report.policies.map((policy) => [policy.id, policy]));
   const claimsById = new Map(report.claims.map((claim) => [claim.id, claim]));
   const claimItems = report.claims.map((claim) => claimQueueItem(claim));
-  const faultLineItems = report.faultLines.map((faultLine) => faultLineQueueItem(faultLine));
+  const transparencyGapItems = report.transparencyGaps.map((transparencyGap) => transparencyGapQueueItem(transparencyGap));
   const evidenceGaps = buildEvidenceGaps(report, claimsById);
   const attestationValidity = buildAttestationValidityProjection(report, claimsById, policiesById);
   const attestationGaps = buildAttestationGaps(attestationValidity, claimsById);
-  const proofRequirementGaps = sortGaps([...evidenceGaps, ...attestationGaps]);
-  const resolveConflicts = faultLineItems.filter((item) => item.type === "contradiction");
+  const evidenceRequirementGaps = sortGaps([...evidenceGaps, ...attestationGaps]);
+  const resolveConflicts = transparencyGapItems.filter((item) => item.type === "contradiction");
 
   return {
     reportId: report.id,
@@ -48,10 +48,10 @@ export function buildTrustAnalyticsProjection(report: TrustReport): TrustAnalyti
       evidence: report.evidence.length,
       policies: report.policies.length,
       events: report.events.length,
-      faultLines: report.faultLines.length,
-      collections: report.collectionRollups.length,
+      transparencyGaps: report.transparencyGaps.length,
+      claimGroups: report.claimGroupRollups.length,
     },
-    collectionRollups: report.collectionRollups,
+    claimGroupRollups: report.claimGroupRollups,
     coverageBySurface: buildCoverageBySurface(report.claims),
     staleClaims: claimItems.filter((item) => item.status === "stale"),
     disputedClaims: claimItems.filter((item) => item.status === "disputed"),
@@ -59,18 +59,18 @@ export function buildTrustAnalyticsProjection(report: TrustReport): TrustAnalyti
       return (item.impactLevel === "high" || item.impactLevel === "critical") &&
         (item.status === "unknown" || item.status === "proposed");
     }),
-    faultLines: {
-      byType: report.summary.faultLinesByType,
-      bySeverity: countFaultLinesBySeverity(report.faultLines),
-      items: faultLineItems,
+    transparencyGaps: {
+      byType: report.summary.transparencyGapsByType,
+      bySeverity: countTransparencyGapsBySeverity(report.transparencyGaps),
+      items: transparencyGapItems,
     },
     evidenceGaps,
-    proofRequirementGaps,
+    evidenceRequirementGaps,
     confidenceBasis: report.summary.confidenceBasis,
     actionQueues: buildActionQueues({
       claimItems,
-      faultLineItems,
-      proofRequirementGaps,
+      transparencyGapItems,
+      evidenceRequirementGaps,
       resolveConflicts,
     }),
     attestationValidity,
@@ -122,39 +122,39 @@ function claimQueueItem(claim: Claim & { status: TrustStatus }): ClaimQueueItem 
   return item;
 }
 
-function faultLineQueueItem(faultLine: FaultLine): FaultLineQueueItem {
-  const item: FaultLineQueueItem = {
-    faultLineId: faultLine.id,
-    claimId: faultLine.claimId,
-    type: faultLine.type,
-    severity: faultLine.severity,
-    message: faultLine.message,
-    evidenceIds: faultLine.evidenceIds ?? [],
+function transparencyGapQueueItem(transparencyGap: TransparencyGap): TransparencyGapQueueItem {
+  const item: TransparencyGapQueueItem = {
+    transparencyGapId: transparencyGap.id,
+    claimId: transparencyGap.claimId,
+    type: transparencyGap.type,
+    severity: transparencyGap.severity,
+    message: transparencyGap.message,
+    evidenceIds: transparencyGap.evidenceIds ?? [],
   };
-  if (faultLine.policyId) item.policyId = faultLine.policyId;
+  if (transparencyGap.policyId) item.policyId = transparencyGap.policyId;
   return item;
 }
 
-function countFaultLinesBySeverity(faultLines: FaultLine[]): Record<ImpactLevel, number> {
+function countTransparencyGapsBySeverity(transparencyGaps: TransparencyGap[]): Record<ImpactLevel, number> {
   const counts = Object.fromEntries(IMPACT_LEVELS.map((level) => [level, 0])) as Record<ImpactLevel, number>;
-  for (const faultLine of faultLines) counts[faultLine.severity] += 1;
+  for (const transparencyGap of transparencyGaps) counts[transparencyGap.severity] += 1;
   return counts;
 }
 
 function buildEvidenceGaps(report: TrustReport, claimsById: Map<string, Claim>): EvidenceGap[] {
-  const gaps = report.faultLines
-    .filter((faultLine) => GAP_FAULT_LINE_TYPES.includes(faultLine.type))
-    .map((faultLine) => {
-      const claim = claimsById.get(faultLine.claimId);
+  const gaps = report.transparencyGaps
+    .filter((transparencyGap) => GAP_TRANSPARENCY_GAP_TYPES.includes(transparencyGap.type))
+    .map((transparencyGap) => {
+      const claim = claimsById.get(transparencyGap.claimId);
       const gap: EvidenceGap = {
-        claimId: faultLine.claimId,
+        claimId: transparencyGap.claimId,
         surface: claim?.surface ?? "unknown",
-        impactLevel: claim?.impactLevel ?? faultLine.severity,
-        gapType: faultLine.type,
-        message: faultLine.message,
-        evidenceIds: faultLine.evidenceIds ?? [],
+        impactLevel: claim?.impactLevel ?? transparencyGap.severity,
+        gapType: transparencyGap.type,
+        message: transparencyGap.message,
+        evidenceIds: transparencyGap.evidenceIds ?? [],
       };
-      if (faultLine.policyId) gap.policyId = faultLine.policyId;
+      if (transparencyGap.policyId) gap.policyId = transparencyGap.policyId;
       return gap;
     });
   return sortGaps(gaps);
@@ -249,9 +249,9 @@ function buildAttestationGaps(
 
 function buildActionQueues(input: {
   claimItems: ClaimQueueItem[];
-  faultLineItems: FaultLineQueueItem[];
-  proofRequirementGaps: EvidenceGap[];
-  resolveConflicts: FaultLineQueueItem[];
+  transparencyGapItems: TransparencyGapQueueItem[];
+  evidenceRequirementGaps: EvidenceGap[];
+  resolveConflicts: TransparencyGapQueueItem[];
 }): TrustActionQueues {
   const reviewClaimIds = new Set<string>();
   for (const item of input.claimItems) {
@@ -260,15 +260,15 @@ function buildActionQueues(input: {
       reviewClaimIds.add(item.claimId);
     }
   }
-  for (const faultLine of input.faultLineItems) {
-    if (faultLine.severity === "high" || faultLine.severity === "critical") reviewClaimIds.add(faultLine.claimId);
+  for (const transparencyGap of input.transparencyGapItems) {
+    if (transparencyGap.severity === "high" || transparencyGap.severity === "critical") reviewClaimIds.add(transparencyGap.claimId);
   }
 
   return {
     reviewNow: input.claimItems.filter((item) => reviewClaimIds.has(item.claimId)),
     reverifyStale: input.claimItems.filter((item) => item.status === "stale"),
     resolveConflicts: input.resolveConflicts,
-    strengthenEvidence: input.proofRequirementGaps,
+    strengthenEvidence: input.evidenceRequirementGaps,
   };
 }
 
@@ -325,7 +325,7 @@ function attestationGapMessage(type: AttestationGapType, item: AttestationValidi
     case "attestation_actor_missing":
       return `Attestation ${item.evidenceId} has no actor reference.`;
     case "attestation_identity_unverified":
-      return `Attestation ${item.evidenceId} has no identity proof for actor ${item.actorRef ?? "unknown"}.`;
+      return `Attestation ${item.evidenceId} has no identity evidence for actor ${item.actorRef ?? "unknown"}.`;
     case "attestation_authority_unverified":
       return `Attestation ${item.evidenceId} has no authority source satisfying ${item.requiredAuthority ?? "the policy"}.`;
     case "attestation_integrity_missing":

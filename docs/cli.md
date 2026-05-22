@@ -31,9 +31,9 @@ Author claims in a local claim store:
 
 ```bash
 surface claim list
-surface claim add --type software-proof --surface veritas.proof-lane --subject-type repository --subject-id my-repo --field "npm test"
-surface claim edit --claim-id my-repo.veritas-proof-lane.npm-test --impact high
-surface claim remove --claim-id my-repo.veritas-proof-lane.npm-test
+surface claim add --type software-evidence --surface veritas.evidence-check --subject-type repository --subject-id my-repo --field "npm test"
+surface claim edit --claim-id my-repo.veritas-evidence-check.npm-test --impact high
+surface claim remove --claim-id my-repo.veritas-evidence-check.npm-test
 surface claim validate
 ```
 
@@ -42,13 +42,13 @@ Output formats:
 - `json`: full trust report with claims, evidence, policies, events, and derived summary.
 - `summary`: compact human-readable status overview.
 - `linked`: JSON-LD-style linked output for graph-oriented consumers.
-- `analytics`: trust analytics projection with surface coverage, stale/disputed queues, fault-line rollups, proof gaps, confidence basis, and attestation validity signals.
+- `analytics`: trust analytics projection with producer-namespace coverage, stale/disputed queues, transparency gap rollups through the current `transparencyGaps` field, requirement gaps, confidence basis, and attestation validity signals.
 
 Query commands emit JSON:
 
 - `surface stale`: stale claim queue.
-- `surface missing`: evidence and proof requirement gaps, including weak attestation signals.
-- `surface get`: claim drilldown with evidence, events, policy, proof requirement, and fault lines.
+- `surface missing`: evidence and requirement gaps, including weak attestation signals.
+- `surface get`: claim drilldown with evidence, events, policy, requirement gaps, and current `transparencyGaps` annotations.
 - `surface policy`: policy drilldown or policy index with related claims and gaps.
 - `surface claim`: read and write `veritas.claims.json` claim stores.
 

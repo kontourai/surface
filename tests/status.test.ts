@@ -44,7 +44,7 @@ const policy: VerificationPolicy = {
   requiredEvidence: ["source_excerpt", "human_attestation"],
   requiredMethods: ["observation", "attestation"],
   requiresCorroboration: true,
-  requiredProof: ["field review"],
+  acceptanceCriteria: ["field review"],
   reviewAuthority: "operator",
   validityRule: { kind: "duration", durationDays: 14 },
   stalenessTriggers: ["source changes"],
@@ -253,26 +253,26 @@ test("method and corroboration gaps do not change proposed status", () => {
 test("derives stale for commit-scoped verification when current integrity ref drifts", () => {
   const commitPolicy: VerificationPolicy = {
     id: "policy-commit",
-    claimType: "software-proof",
+    claimType: "software-evidence",
     requiredEvidence: ["test_output"],
     requiredMethods: ["validation"],
     requiresCorroboration: false,
-    requiredProof: ["proof lane"],
+    acceptanceCriteria: ["evidence check"],
     reviewAuthority: "repo policy",
     validityRule: { kind: "commit" },
     stalenessTriggers: ["new commit touches the same surface"],
-    conflictRules: ["failed proof supersedes passing proof"],
+    conflictRules: ["failed evidence supersedes passing proof"],
     impactLevel: "high",
   };
   const proofClaim: Claim = {
     ...claim,
-    id: "claim-proof",
-    claimType: "software-proof",
+    id: "claim-evidence",
+    claimType: "software-evidence",
     currentIntegrityRef: "current-commit",
   };
   const proofEvidence: Evidence[] = [{
-    id: "proof-output",
-    claimId: "claim-proof",
+    id: "evidence-output",
+    claimId: "claim-evidence",
     evidenceType: "test_output",
     method: "validation",
     sourceRef: "npm test",
@@ -282,12 +282,12 @@ test("derives stale for commit-scoped verification when current integrity ref dr
     integrityRef: "old-commit",
   }];
   const events: VerificationEvent[] = [{
-    id: "event-proof",
-    claimId: "claim-proof",
+    id: "event-evidence",
+    claimId: "claim-evidence",
     status: "verified",
     actor: "repo-governance",
-    method: "proof lane",
-    evidenceIds: ["proof-output"],
+    method: "evidence check",
+    evidenceIds: ["evidence-output"],
     createdAt: "2026-04-25T00:00:00.000Z",
     verifiedAt: "2026-04-25T00:00:00.000Z",
   }];

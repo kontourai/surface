@@ -1,6 +1,6 @@
-# Extension API
+# Producer Extension API
 
-Surface extensions let a producer brand the dashboard, define producer vocabulary, and describe claim types for authoring tools.
+Producer Extensions let a producer brand the Surface Console, define producer vocabulary, and describe claim types for authoring tools.
 
 ## Registering
 
@@ -25,10 +25,12 @@ An extension has:
 
 - `name`: stable producer key, matching claim store `producer`.
 - `displayName`: human-readable producer name.
-- `vocab`: dashboard labels for project kind, surfaces, claim types, statuses, and actions.
-- `theme`: dashboard brand name and primary color.
+- `vocab`: Surface Console labels for project kind, producer-defined `surface` namespaces, claim types, statuses, and actions.
+- `theme`: Surface Console brand name and primary color.
 - `claimTypes`: optional claim type definitions for authoring UIs.
 - `policyTemplates`: optional reusable policy templates keyed by ID.
+
+Extensions may make Surface feel native to a product, but they must not redefine core statuses, Evidence semantics, Freshness semantics, Conflicts, Transparency Gaps, or trust derivation.
 
 ## Claim Types
 
@@ -42,7 +44,7 @@ An extension has:
 - `policyTemplateId`
 - `metadataFields`
 
-Metadata fields support `string`, `boolean`, and `number` inputs. The dashboard uses these definitions to render the add/edit claim modal.
+Metadata fields support `string`, `boolean`, and `number` inputs. The Surface Console uses these definitions to render the add/edit claim modal.
 
 ## Registry Helpers
 
@@ -55,4 +57,4 @@ Surface exports:
 - `resolveExtensionVocab(producerName)`
 - `resolveExtensionTheme(producerName)`
 
-The dashboard includes registered claim type definitions in its runtime config so local producer dashboards can expose first-class authoring without hardcoding producer-specific fields in Surface.
+The Surface Console includes registered claim type definitions in its runtime config so local producer Console instances can expose first-class authoring without hardcoding producer-specific fields in Surface.

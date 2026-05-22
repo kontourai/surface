@@ -36,7 +36,7 @@ export interface ConfidenceBasis {
   reviewerAuthority?: "none" | "operator" | "domain_expert" | "system";
   freshnessRemainingDays?: number;
   conflictCount?: number;
-  proofStrength?: "none" | "weak" | "moderate" | "strong";
+  evidenceStrength?: "none" | "weak" | "moderate" | "strong";
   impactLevel?: ImpactLevel;
 }
 
@@ -115,8 +115,8 @@ export interface ClaimTypeDefinition {
 export interface SurfaceExtension {
   name: string;
   displayName: string;
-  vocab: import("./dashboard/types.js").SurfaceDashboardVocab;
-  theme: import("./dashboard/types.js").SurfaceDashboardTheme;
+  vocab: import("./console/types.js").SurfaceConsoleVocab;
+  theme: import("./console/types.js").SurfaceConsoleTheme;
   claimTypes?: ClaimTypeDefinition[];
   policyTemplates?: Array<{
     id: string;
@@ -170,7 +170,7 @@ export interface VerificationPolicy {
   requiredEvidence: EvidenceType[];
   requiredMethods?: EvidenceMethod[];
   requiresCorroboration?: boolean;
-  requiredProof: string[];
+  acceptanceCriteria: string[];
   reviewAuthority: string;
   validityRule: ValidityRule;
   stalenessTriggers: string[];
@@ -185,16 +185,16 @@ export interface ValidationStrategy {
   requiredEvidence?: EvidenceType[];
   requiredMethods?: EvidenceMethod[];
   requiresCorroboration?: boolean;
-  requiredProof?: string[];
+  acceptanceCriteria?: string[];
   reviewAuthority?: string;
   notes?: string;
   metadata?: Record<string, unknown>;
 }
 
-export type TrustCollectionKind = "collection" | "framework" | "control-set";
-export type TrustCollectionRollupMode = "all-required" | "any-required";
+export type ClaimGroupKind = "claimGroup" | "framework" | "requirement-set";
+export type ClaimGroupRollupMode = "all-required" | "any-required";
 
-export interface TrustControl {
+export interface ClaimRequirement {
   id: string;
   title: string;
   claimIds: string[];
@@ -204,22 +204,22 @@ export interface TrustControl {
   metadata?: Record<string, unknown>;
 }
 
-export interface TrustCollection {
+export interface ClaimGroup {
   id: string;
   title: string;
-  kind: TrustCollectionKind;
+  kind: ClaimGroupKind;
   description?: string;
   claimIds?: string[];
-  controls?: TrustControl[];
+  requirements?: ClaimRequirement[];
   rollupPolicy?: {
-    mode: TrustCollectionRollupMode;
-    requiredControlIds?: string[];
-    optionalControlIds?: string[];
+    mode: ClaimGroupRollupMode;
+    requiredRequirementIds?: string[];
+    optionalRequirementIds?: string[];
   };
   metadata?: Record<string, unknown>;
 }
 
-export interface ControlRollup {
+export interface RequirementRollup {
   id: string;
   title: string;
   status: TrustStatus;
@@ -235,20 +235,20 @@ export interface ControlRollup {
   metadata?: Record<string, unknown>;
 }
 
-export interface CollectionRollup {
+export interface ClaimGroupRollup {
   id: string;
   title: string;
-  kind: TrustCollectionKind;
+  kind: ClaimGroupKind;
   status: TrustStatus;
   claimIds: string[];
-  controls: ControlRollup[];
+  requirements: RequirementRollup[];
   summary: {
-    totalControls: number;
-    requiredControls: number;
-    verifiedControls: number;
-    staleControls: number;
-    disputedControls: number;
-    unsupportedControls: number;
+    totalRequirements: number;
+    requiredRequirements: number;
+    verifiedRequirements: number;
+    staleRequirements: number;
+    disputedRequirements: number;
+    unsupportedRequirements: number;
     missingClaims: number;
     verificationCoverage: number;
   };
@@ -276,7 +276,7 @@ export interface TrustInput {
   policies: VerificationPolicy[];
   events: VerificationEvent[];
   identityLinks?: IdentityLink[];
-  collections?: TrustCollection[];
+  claimGroups?: ClaimGroup[];
 }
 
 /**
@@ -317,19 +317,19 @@ export interface TrustReportSummary {
   confidenceBasis: {
     sourceQuality: Record<string, number>;
     reviewerAuthority: Record<string, number>;
-    proofStrength: Record<string, number>;
+    evidenceStrength: Record<string, number>;
     corroboratedClaims: number;
     averageExtractionConfidence: number | null;
     freshnessAtRisk: string[];
     conflictedClaims: string[];
   };
-  faultLinesByType: Record<FaultLineType, number>;
+  transparencyGapsByType: Record<TransparencyGapType, number>;
   highImpactUnsupported: string[];
   staleClaims: string[];
   disputedClaims: string[];
 }
 
-export interface ProofRequirement {
+export interface EvidenceRequirement {
   requiredEvidenceTypes?: EvidenceType[];
   requiredMethods?: EvidenceMethod[];
   requiresCorroboration?: boolean;
@@ -337,7 +337,7 @@ export interface ProofRequirement {
   notes?: string;
 }
 
-export type FaultLineType =
+export type TransparencyGapType =
   | "contradiction"
   | "provenance_gap"
   | "policy_violation"
@@ -345,10 +345,10 @@ export type FaultLineType =
   | "corroboration_absent"
   | "unsupported_inference";
 
-export interface FaultLine {
+export interface TransparencyGap {
   id: string;
   claimId: string;
-  type: FaultLineType;
+  type: TransparencyGapType;
   severity: ImpactLevel;
   message: string;
   evidenceIds?: string[];
@@ -369,10 +369,10 @@ export interface TrustReport extends TrustInput {
   id: string;
   generatedAt: string;
   claims: Array<Claim & { status: TrustStatus; producerStatus?: TrustStatus }>;
-  proofRequirementsByClaimId: Record<string, ProofRequirement>;
-  faultLines: FaultLine[];
+  evidenceRequirementsByClaimId: Record<string, EvidenceRequirement>;
+  transparencyGaps: TransparencyGap[];
   subjectGroups: SubjectGroup[];
-  collectionRollups: CollectionRollup[];
+  claimGroupRollups: ClaimGroupRollup[];
   summary: TrustReportSummary;
 }
 
@@ -385,21 +385,21 @@ export interface TrustAnalyticsProjection {
     evidence: number;
     policies: number;
     events: number;
-      faultLines: number;
-      collections: number;
+      transparencyGaps: number;
+      claimGroups: number;
     };
-  collectionRollups: CollectionRollup[];
+  claimGroupRollups: ClaimGroupRollup[];
   coverageBySurface: SurfaceTrustCoverage[];
   staleClaims: ClaimQueueItem[];
   disputedClaims: ClaimQueueItem[];
   highImpactUnsupportedClaims: ClaimQueueItem[];
-  faultLines: {
-    byType: Record<FaultLineType, number>;
+  transparencyGaps: {
+    byType: Record<TransparencyGapType, number>;
     bySeverity: Record<ImpactLevel, number>;
-    items: FaultLineQueueItem[];
+    items: TransparencyGapQueueItem[];
   };
   evidenceGaps: EvidenceGap[];
-  proofRequirementGaps: EvidenceGap[];
+  evidenceRequirementGaps: EvidenceGap[];
   confidenceBasis: TrustReportSummary["confidenceBasis"];
   actionQueues: TrustActionQueues;
   attestationValidity: AttestationValidityProjection;
@@ -425,10 +425,10 @@ export interface ClaimQueueItem {
   policyId?: string;
 }
 
-export interface FaultLineQueueItem {
-  faultLineId: string;
+export interface TransparencyGapQueueItem {
+  transparencyGapId: string;
   claimId: string;
-  type: FaultLineType;
+  type: TransparencyGapType;
   severity: ImpactLevel;
   message: string;
   policyId?: string;
@@ -439,7 +439,7 @@ export interface EvidenceGap {
   claimId: string;
   surface: string;
   impactLevel: ImpactLevel;
-  gapType: FaultLineType | AttestationGapType;
+  gapType: TransparencyGapType | AttestationGapType;
   message: string;
   policyId?: string;
   evidenceIds: string[];
@@ -448,7 +448,7 @@ export interface EvidenceGap {
 export interface TrustActionQueues {
   reviewNow: ClaimQueueItem[];
   reverifyStale: ClaimQueueItem[];
-  resolveConflicts: FaultLineQueueItem[];
+  resolveConflicts: TransparencyGapQueueItem[];
   strengthenEvidence: EvidenceGap[];
 }
 

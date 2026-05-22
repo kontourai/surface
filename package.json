@@ -1,6 +1,6 @@
 {
   "name": "@kontourai/surface",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Evidence-backed trust surface for products built with humans and AI agents.",
   "license": "Apache-2.0",
   "type": "module",
@@ -33,7 +33,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "rm -rf dist && tsc",
     "typecheck": "tsc --noEmit",
     "test": "npm run build && node --test dist/tests/*.test.js",
     "test:coverage": "npm run build && node --test --experimental-test-coverage dist/tests/*.test.js",

@@ -3,7 +3,7 @@
   "$id": "https://kontour.ai/schemas/surface/verification-policy.schema.json",
   "title": "Kontour Surface Verification Policy",
   "type": "object",
-  "required": ["id", "claimType", "requiredEvidence", "requiredProof", "reviewAuthority", "validityRule", "stalenessTriggers", "conflictRules", "impactLevel"],
+  "required": ["id", "claimType", "requiredEvidence", "acceptanceCriteria", "reviewAuthority", "validityRule", "stalenessTriggers", "conflictRules", "impactLevel"],
   "properties": {
     "id": { "type": "string" },
     "claimType": { "type": "string" },
@@ -17,7 +17,7 @@
       "items": { "enum": ["observation", "extraction", "validation", "corroboration", "attestation", "auditability", "anchoring", "monitoring"] }
     },
     "requiresCorroboration": { "type": "boolean" },
-    "requiredProof": { "type": "array", "items": { "type": "string" } },
+    "acceptanceCriteria": { "type": "array", "items": { "type": "string" } },
     "reviewAuthority": { "type": "string" },
     "validityRule": {
       "type": "object",

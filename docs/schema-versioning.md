@@ -16,23 +16,23 @@ Version 3 covers everything v2 covers plus:
 - `derivedFrom` on a claim, which bounds derived-claim status by the weakest input
 - a linked-data export envelope with a stable `@context`
 
-## Compatibility rules
+## Versioning Rules
 
 - Additive optional fields can ship in minor releases.
 - Required fields need a major schema version or a migration helper.
-- Enum additions are compatibility-sensitive because old validators may reject them.
+- Enum additions are version-sensitive because older validators may reject them.
 - Removed fields require a documented replacement and fixture coverage.
 - Adapter-specific records should stay outside the core schema unless the concept is portable across products.
 
 ## v1 to v2 migration
 
-Version 2 intentionally chooses a clean contract over silent compatibility:
+Version 2 intentionally chooses a clean contract over silent acceptance:
 
 - add top-level `"schemaVersion": 2` to Surface trust inputs and reports
 - add `method` to every evidence record
 - add `requiredMethods` and `requiresCorroboration` to verification policies when method depth matters
-- read proof requirements from report-level `proofRequirementsByClaimId`, not duplicated claim fields
-- read typed report gaps from `faultLines` and `summary.faultLinesByType`
+- read requirement data from report-level `evidenceRequirementsByClaimId`, not duplicated claim fields
+- read typed report gaps from `transparencyGaps` and `summary.transparencyGapsByType`
 
 Before:
 

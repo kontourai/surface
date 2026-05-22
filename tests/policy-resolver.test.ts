@@ -7,8 +7,8 @@ const baseClaim: Claim = {
   id: "claim-1",
   subjectType: "repo-governance.repo",
   subjectId: "repo-A",
-  surface: "repo-governance.developer-proof",
-  claimType: "software-proof",
+  surface: "repo-governance.developer-evidence",
+  claimType: "software-evidence",
   fieldOrBehavior: "passes",
   value: true,
   createdAt: "2026-04-25T00:00:00.000Z",
@@ -17,7 +17,7 @@ const baseClaim: Claim = {
 
 const basePolicy: Omit<VerificationPolicy, "id" | "claimType"> = {
   requiredEvidence: ["test_output"],
-  requiredProof: [],
+  acceptanceCriteria: [],
   reviewAuthority: "owner",
   validityRule: { kind: "manual" },
   stalenessTriggers: [],

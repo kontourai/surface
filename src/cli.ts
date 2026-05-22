@@ -15,7 +15,7 @@ import {
   validateClaimStore,
 } from "./store.js";
 import type { ClaimDefinition, ImpactLevel, TrustReport } from "./types.js";
-import type { SurfaceDashboardConfig } from "./dashboard/types.js";
+import type { SurfaceConsoleConfig } from "./console/types.js";
 
 export async function runCli(args: string[]): Promise<void> {
   const [command, ...rest] = args;
@@ -26,14 +26,14 @@ export async function runCli(args: string[]): Promise<void> {
 
   if (command === "report") {
     await runReport(rest);
-  } else if (command === "dashboard") {
-    await runDashboard(rest);
+  } else if (command === "console") {
+    await runConsole(rest);
   } else if (command === "stale") {
     const report = await loadReport(parseQueryArgs(rest));
     console.log(JSON.stringify(buildTrustAnalyticsProjection(report).staleClaims, null, 2));
   } else if (command === "missing") {
     const report = await loadReport(parseQueryArgs(rest));
-    console.log(JSON.stringify(buildTrustAnalyticsProjection(report).proofRequirementGaps, null, 2));
+    console.log(JSON.stringify(buildTrustAnalyticsProjection(report).evidenceRequirementGaps, null, 2));
   } else if (command === "policy") {
     const options = parseQueryArgs(rest);
     const report = await loadReport(options);
@@ -50,7 +50,7 @@ export async function runCli(args: string[]): Promise<void> {
   }
 }
 
-async function runDashboard(args: string[]): Promise<void> {
+async function runConsole(args: string[]): Promise<void> {
   let configPath: string | undefined;
   let port: number | undefined;
   let readModelPath: string | undefined;
@@ -69,20 +69,20 @@ async function runDashboard(args: string[]): Promise<void> {
     } else if (arg === "--store") {
       storePath = requireValue(args, ++index, "--store");
     } else {
-      throw new Error(`Unknown dashboard argument: ${arg}`);
+      throw new Error(`Unknown console argument: ${arg}`);
     }
   }
 
-  let config: SurfaceDashboardConfig = {};
+  let config: SurfaceConsoleConfig = {};
   if (configPath) {
-    config = JSON.parse(await readFile(resolve(configPath), "utf8")) as SurfaceDashboardConfig;
+    config = JSON.parse(await readFile(resolve(configPath), "utf8")) as SurfaceConsoleConfig;
   }
   if (port !== undefined) config = { ...config, port };
   if (readModelPath) config = { ...config, readModelPath };
   if (storePath) config = { ...config, storePath };
 
-  const { startDashboardServer } = await import("./dashboard/server.js");
-  await startDashboardServer(config);
+  const { startConsoleServer } = await import("./console/server.js");
+  await startConsoleServer(config);
   await new Promise(() => {});
 }
 
@@ -293,8 +293,8 @@ function projectClaimQuery(report: TrustReport, claimId: string): unknown {
     evidence: report.evidence.filter((item) => item.claimId === claimId),
     events: report.events.filter((item) => item.claimId === claimId),
     policy,
-    proofRequirement: report.proofRequirementsByClaimId[claimId],
-    faultLines: report.faultLines.filter((item) => item.claimId === claimId),
+    evidenceRequirement: report.evidenceRequirementsByClaimId[claimId],
+    transparencyGaps: report.transparencyGaps.filter((item) => item.claimId === claimId),
   };
 }
 
@@ -308,16 +308,16 @@ function projectPolicyQuery(report: TrustReport, options: QueryOptions): unknown
     return {
       policy,
       claims,
-      gaps: projection.proofRequirementGaps.filter((item) => item.policyId === policyId),
-      faultLines: report.faultLines.filter((item) => item.policyId === policyId),
+      gaps: projection.evidenceRequirementGaps.filter((item) => item.policyId === policyId),
+      transparencyGaps: report.transparencyGaps.filter((item) => item.policyId === policyId),
     };
   }
 
   return report.policies.map((policy) => ({
     policy,
     claimIds: report.claims.filter((claim) => claim.verificationPolicyId === policy.id).map((claim) => claim.id),
-    gapCount: projection.proofRequirementGaps.filter((gap) => gap.policyId === policy.id).length,
-    faultLineCount: report.faultLines.filter((faultLine) => faultLine.policyId === policy.id).length,
+    gapCount: projection.evidenceRequirementGaps.filter((gap) => gap.policyId === policy.id).length,
+    transparencyGapCount: report.transparencyGaps.filter((transparencyGap) => transparencyGap.policyId === policy.id).length,
   }));
 }
 
@@ -421,7 +421,7 @@ function printHelp(): void {
 Usage:
   surface report [--input examples/surface-fixtures.json] [--format json|summary|linked|analytics]
   surface report --adapter <name> --input <file> [--format json|summary|linked|analytics]
-  surface dashboard [--read-model .surface/runs/latest.json] [--store veritas.claims.json] [--port 4242] [--config surface.config.json]
+  surface console [--read-model .surface/runs/latest.json] [--store veritas.claims.json] [--port 4242] [--config surface.config.json]
   surface claim list [--store veritas.claims.json]
   surface claim add --type <claim-type> --surface <surface> --subject-type <type> --subject-id <id> --field <field-or-behavior> [--id <id>] [--impact low|medium|high|critical] [--policy-id <policy-id>] [--metadata '{"key":"value"}'] [--store veritas.claims.json]
   surface claim edit --claim-id <id> [--type <claim-type>] [--surface <surface>] [--subject-type <type>] [--subject-id <id>] [--field <field-or-behavior>] [--impact low|medium|high|critical] [--policy-id <policy-id>] [--metadata '{"key":"value"}'] [--store veritas.claims.json]

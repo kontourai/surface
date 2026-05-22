@@ -1,9 +1,9 @@
 import type {
   Claim,
   Evidence,
-  FaultLine,
-  FaultLineType,
-  ProofRequirement,
+  TransparencyGap,
+  TransparencyGapType,
+  EvidenceRequirement,
   TrustInput,
   TrustReport,
   TrustReportSummary,
@@ -14,10 +14,10 @@ import { deriveTrustStatus } from "./status.js";
 import { buildIdentityIndex } from "./identity.js";
 import { resolvePolicyForClaim } from "./policy-resolver.js";
 import { applyDerivation } from "./derivation.js";
-import { deriveCollectionRollups } from "./collections.js";
+import { deriveClaimGroupRollups } from "./claim-groups.js";
 
 const STATUSES: TrustStatus[] = ["unknown", "proposed", "verified", "stale", "disputed", "superseded", "rejected"];
-const FAULT_LINE_TYPES: FaultLineType[] = [
+const TRANSPARENCY_GAP_TYPES: TransparencyGapType[] = [
   "contradiction",
   "provenance_gap",
   "policy_violation",
@@ -28,13 +28,13 @@ const FAULT_LINE_TYPES: FaultLineType[] = [
 
 export function buildTrustReport(input: TrustInput, options: { now?: Date; id?: string } = {}): TrustReport {
   const now = options.now ?? new Date();
-  const proofRequirementsByClaimId: Record<string, ProofRequirement> = {};
-  const faultLines: FaultLine[] = [];
+  const evidenceRequirementsByClaimId: Record<string, EvidenceRequirement> = {};
+  const transparencyGaps: TransparencyGap[] = [];
   const identityIndex = buildIdentityIndex(input);
   const policyByClaimId = new Map<string, VerificationPolicy>();
 
   // Pass 1: compute each claim's own status (pre-derivation) and per-claim
-  // policy fault lines. Derivation needs the full set of own-statuses, so we
+  // policy transparency gaps. Derivation needs the full set of own-statuses, so we
   // capture them here and apply the derivation ceiling in pass 2.
   const ownStatusByClaimId = new Map<string, TrustStatus>();
   const claimsById = new Map<string, Claim>();
@@ -47,11 +47,11 @@ export function buildTrustReport(input: TrustInput, options: { now?: Date; id?: 
     const ownStatus = deriveTrustStatus({ claim, evidence, policy, events: input.events, now });
     ownStatusByClaimId.set(claim.id, ownStatus);
     if (policy) {
-      proofRequirementsByClaimId[claim.id] = proofRequirementFromPolicy(policy);
-      faultLines.push(...deriveFaultLines({ claim, evidence, policy, status: ownStatus, now }));
+      evidenceRequirementsByClaimId[claim.id] = evidenceRequirementFromPolicy(policy);
+      transparencyGaps.push(...deriveTransparencyGaps({ claim, evidence, policy, status: ownStatus, now }));
     } else if (evidence.length === 0) {
-      faultLines.push({
-        id: `${claim.id}.fault.provenance-gap`,
+      transparencyGaps.push({
+        id: `${claim.id}.gap.provenance-gap`,
         claimId: claim.id,
         type: "provenance_gap",
         severity: claim.impactLevel ?? "medium",
@@ -66,7 +66,7 @@ export function buildTrustReport(input: TrustInput, options: { now?: Date; id?: 
   // Pass 2: apply derivedFrom ceilings.
   const claims = ownStatuses.map(({ claim, ownStatus, producerStatus }) => {
     const outcome = applyDerivation({ claim, ownStatus, ownStatusByClaimId, claimsById, now });
-    faultLines.push(...outcome.faultLines);
+    transparencyGaps.push(...outcome.transparencyGaps);
     const derived = outcome.status;
     const output: Claim & { status: TrustStatus; producerStatus?: TrustStatus } = {
       ...claim,
@@ -80,14 +80,14 @@ export function buildTrustReport(input: TrustInput, options: { now?: Date; id?: 
 
   // Cross-claim incompatibility detection. For each policy, group its claims by
   // canonical subject, then check declared incompatible value/status pairs.
-  faultLines.push(...deriveIncompatibilityFaultLines({
+  transparencyGaps.push(...deriveIncompatibilityTransparencyGaps({
     claims,
     policyByClaimId,
     canonicalKeyForClaim: (claim) => identityIndex.canonicalKeyForClaim(claim),
     now,
   }));
 
-  const collectionRollups = deriveCollectionRollups({ collections: input.collections, claims });
+  const claimGroupRollups = deriveClaimGroupRollups({ claimGroups: input.claimGroups, claims });
 
   return {
     schemaVersion: input.schemaVersion,
@@ -99,26 +99,26 @@ export function buildTrustReport(input: TrustInput, options: { now?: Date; id?: 
     policies: input.policies,
     events: input.events,
     identityLinks: input.identityLinks ?? [],
-    collections: input.collections ?? [],
-    proofRequirementsByClaimId,
-    faultLines,
+    claimGroups: input.claimGroups ?? [],
+    evidenceRequirementsByClaimId,
+    transparencyGaps,
     subjectGroups: identityIndex.groups,
-    collectionRollups,
-    summary: summarizeClaims(claims, faultLines),
+    claimGroupRollups,
+    summary: summarizeClaims(claims, transparencyGaps),
   };
 }
 
-export function summarizeClaims(claims: Array<Claim & { status: TrustStatus }>, faultLines: FaultLine[] = []): TrustReportSummary {
+export function summarizeClaims(claims: Array<Claim & { status: TrustStatus }>, transparencyGaps: TransparencyGap[] = []): TrustReportSummary {
   const byStatus = Object.fromEntries(STATUSES.map((status) => [status, 0])) as Record<TrustStatus, number>;
   const bySurface: Record<string, number> = {};
   const sourceQuality: Record<string, number> = {};
   const reviewerAuthority: Record<string, number> = {};
-  const proofStrength: Record<string, number> = {};
+  const evidenceStrength: Record<string, number> = {};
   const extractionConfidences: number[] = [];
   const freshnessAtRisk: string[] = [];
   const conflictedClaims: string[] = [];
   let corroboratedClaims = 0;
-  const faultLinesByType = Object.fromEntries(FAULT_LINE_TYPES.map((type) => [type, 0])) as Record<FaultLineType, number>;
+  const transparencyGapsByType = Object.fromEntries(TRANSPARENCY_GAP_TYPES.map((type) => [type, 0])) as Record<TransparencyGapType, number>;
   const highImpactUnsupported: string[] = [];
   const staleClaims: string[] = [];
   const disputedClaims: string[] = [];
@@ -129,7 +129,7 @@ export function summarizeClaims(claims: Array<Claim & { status: TrustStatus }>, 
     const basis = claim.confidenceBasis;
     if (basis?.sourceQuality) sourceQuality[basis.sourceQuality] = (sourceQuality[basis.sourceQuality] ?? 0) + 1;
     if (basis?.reviewerAuthority) reviewerAuthority[basis.reviewerAuthority] = (reviewerAuthority[basis.reviewerAuthority] ?? 0) + 1;
-    if (basis?.proofStrength) proofStrength[basis.proofStrength] = (proofStrength[basis.proofStrength] ?? 0) + 1;
+    if (basis?.evidenceStrength) evidenceStrength[basis.evidenceStrength] = (evidenceStrength[basis.evidenceStrength] ?? 0) + 1;
     if (typeof basis?.extractionConfidence === "number") extractionConfidences.push(basis.extractionConfidence);
     if ((basis?.corroborationCount ?? 0) > 0) corroboratedClaims += 1;
     if ((basis?.freshnessRemainingDays ?? 1) <= 0) freshnessAtRisk.push(claim.id);
@@ -142,8 +142,8 @@ export function summarizeClaims(claims: Array<Claim & { status: TrustStatus }>, 
     if (claim.status === "disputed") disputedClaims.push(claim.id);
   }
 
-  for (const faultLine of faultLines) {
-    faultLinesByType[faultLine.type] += 1;
+  for (const transparencyGap of transparencyGaps) {
+    transparencyGapsByType[transparencyGap.type] += 1;
   }
 
   return {
@@ -153,7 +153,7 @@ export function summarizeClaims(claims: Array<Claim & { status: TrustStatus }>, 
     confidenceBasis: {
       sourceQuality,
       reviewerAuthority,
-      proofStrength,
+      evidenceStrength,
       corroboratedClaims,
       averageExtractionConfidence: extractionConfidences.length > 0
         ? extractionConfidences.reduce((total, value) => total + value, 0) / extractionConfidences.length
@@ -161,7 +161,7 @@ export function summarizeClaims(claims: Array<Claim & { status: TrustStatus }>, 
       freshnessAtRisk,
       conflictedClaims,
     },
-    faultLinesByType,
+    transparencyGapsByType,
     highImpactUnsupported,
     staleClaims,
     disputedClaims,
@@ -185,29 +185,29 @@ export function formatTrustReportSummary(report: TrustReport): string {
     `High-impact unsupported: ${report.summary.highImpactUnsupported.join(", ") || "none"}`,
     `Stale: ${report.summary.staleClaims.join(", ") || "none"}`,
     `Disputed: ${report.summary.disputedClaims.join(", ") || "none"}`,
-    `Collections: ${report.collectionRollups.length}`,
-    `Fault lines: ${report.faultLines.length}`,
+    `Claim groups: ${report.claimGroupRollups.length}`,
+    `Transparency gaps: ${report.transparencyGaps.length}`,
   ].join("\n");
 }
 
-function proofRequirementFromPolicy(policy: VerificationPolicy): ProofRequirement {
+function evidenceRequirementFromPolicy(policy: VerificationPolicy): EvidenceRequirement {
   return {
     requiredEvidenceTypes: policy.requiredEvidence,
     requiredMethods: policy.requiredMethods,
     requiresCorroboration: policy.requiresCorroboration,
     requiredAuthority: policy.reviewAuthority,
-    notes: policy.requiredProof.join("; "),
+    notes: policy.acceptanceCriteria.join("; "),
   };
 }
 
-function deriveFaultLines(input: {
+function deriveTransparencyGaps(input: {
   claim: Claim;
   evidence: Evidence[];
   policy: VerificationPolicy;
   status: TrustStatus;
   now: Date;
-}): FaultLine[] {
-  const faultLines: FaultLine[] = [];
+}): TransparencyGap[] {
+  const transparencyGaps: TransparencyGap[] = [];
   const createdAt = input.now.toISOString();
   const evidenceTypes = new Set(input.evidence.map((item) => item.evidenceType));
   const evidenceMethods = new Set(input.evidence.map((item) => item.method));
@@ -215,8 +215,8 @@ function deriveFaultLines(input: {
   const missingMethods = (input.policy.requiredMethods ?? []).filter((method) => !evidenceMethods.has(method));
 
   if (missingEvidence.length > 0) {
-    faultLines.push({
-      id: `${input.claim.id}.fault.provenance-gap`,
+    transparencyGaps.push({
+      id: `${input.claim.id}.gap.provenance-gap`,
       claimId: input.claim.id,
       type: "provenance_gap",
       severity: input.claim.impactLevel ?? input.policy.impactLevel,
@@ -228,8 +228,8 @@ function deriveFaultLines(input: {
   }
 
   if (missingMethods.length > 0) {
-    faultLines.push({
-      id: `${input.claim.id}.fault.policy-violation`,
+    transparencyGaps.push({
+      id: `${input.claim.id}.gap.policy-violation`,
       claimId: input.claim.id,
       type: "policy_violation",
       severity: input.claim.impactLevel ?? input.policy.impactLevel,
@@ -242,8 +242,8 @@ function deriveFaultLines(input: {
   }
 
   if (input.policy.requiresCorroboration && input.evidence.length < 2) {
-    faultLines.push({
-      id: `${input.claim.id}.fault.corroboration-absent`,
+    transparencyGaps.push({
+      id: `${input.claim.id}.gap.corroboration-absent`,
       claimId: input.claim.id,
       type: "corroboration_absent",
       severity: input.claim.impactLevel ?? input.policy.impactLevel,
@@ -256,8 +256,8 @@ function deriveFaultLines(input: {
   }
 
   if (input.status === "stale") {
-    faultLines.push({
-      id: `${input.claim.id}.fault.freshness-breach`,
+    transparencyGaps.push({
+      id: `${input.claim.id}.gap.freshness-breach`,
       claimId: input.claim.id,
       type: "freshness_breach",
       severity: input.claim.impactLevel ?? input.policy.impactLevel,
@@ -270,8 +270,8 @@ function deriveFaultLines(input: {
   }
 
   for (const item of input.evidence.filter((evidence) => evidence.passing === false)) {
-    faultLines.push({
-      id: `${input.claim.id}.fault.evidence-${item.id}`,
+    transparencyGaps.push({
+      id: `${input.claim.id}.gap.evidence-${item.id}`,
       claimId: input.claim.id,
       type: "policy_violation",
       severity: input.claim.impactLevel ?? input.policy.impactLevel,
@@ -283,50 +283,50 @@ function deriveFaultLines(input: {
     });
   }
 
-  for (const hint of input.evidence.flatMap((item) => faultLineHintsFromEvidence(item, input.policy.id, createdAt))) {
-    faultLines.push(hint);
+  for (const hint of input.evidence.flatMap((item) => transparencyGapHintsFromEvidence(item, input.policy.id, createdAt))) {
+    transparencyGaps.push(hint);
   }
 
-  return faultLines;
+  return transparencyGaps;
 }
 
-function faultLineHintsFromEvidence(evidence: Evidence, policyId: string, createdAt: string): FaultLine[] {
-  const hints = evidence.metadata?.faultLineHints;
+function transparencyGapHintsFromEvidence(evidence: Evidence, policyId: string, createdAt: string): TransparencyGap[] {
+  const hints = evidence.metadata?.transparencyGapHints;
   if (!Array.isArray(hints)) return [];
 
   return hints
     .filter((hint): hint is Record<string, unknown> => typeof hint === "object" && hint !== null)
     .map((hint, index) => ({
-      id: typeof hint.id === "string" ? hint.id : `${evidence.claimId}.fault.hint-${index + 1}`,
+      id: typeof hint.id === "string" ? hint.id : `${evidence.claimId}.gap.hint-${index + 1}`,
       claimId: evidence.claimId,
-      type: isFaultLineType(hint.type) ? hint.type : "unsupported_inference",
+      type: isTransparencyGapType(hint.type) ? hint.type : "unsupported_inference",
       severity: isImpactLevel(hint.severity) ? hint.severity : "medium",
-      message: typeof hint.message === "string" ? hint.message : "Evidence contains a fault-line hint.",
+      message: typeof hint.message === "string" ? hint.message : "Evidence contains a transparency-gap hint.",
       evidenceIds: [evidence.id],
       policyId,
       blocking: typeof hint.blocking === "boolean" ? hint.blocking : true,
       createdAt,
       metadata: {
-        source: "evidence.metadata.faultLineHints",
+        source: "evidence.metadata.transparencyGapHints",
       },
     }));
 }
 
-function isFaultLineType(value: unknown): value is FaultLineType {
-  return typeof value === "string" && FAULT_LINE_TYPES.includes(value as FaultLineType);
+function isTransparencyGapType(value: unknown): value is TransparencyGapType {
+  return typeof value === "string" && TRANSPARENCY_GAP_TYPES.includes(value as TransparencyGapType);
 }
 
-function isImpactLevel(value: unknown): value is FaultLine["severity"] {
+function isImpactLevel(value: unknown): value is TransparencyGap["severity"] {
   return value === "low" || value === "medium" || value === "high" || value === "critical";
 }
 
-function deriveIncompatibilityFaultLines(input: {
+function deriveIncompatibilityTransparencyGaps(input: {
   claims: Array<Claim & { status: TrustStatus }>;
   policyByClaimId: Map<string, VerificationPolicy>;
   canonicalKeyForClaim: (claim: Claim) => string;
   now: Date;
-}): FaultLine[] {
-  const faultLines: FaultLine[] = [];
+}): TransparencyGap[] {
+  const transparencyGaps: TransparencyGap[] = [];
   const createdAt = input.now.toISOString();
 
   // Group claims by (policy.id, canonicalSubjectKey).
@@ -352,8 +352,8 @@ function deriveIncompatibilityFaultLines(input: {
 
         for (const pair of group.policy.incompatibleValues ?? []) {
           if (matchValuePair(a.value, b.value, pair.values)) {
-            faultLines.push({
-              id: `${a.id}.${b.id}.fault.contradiction-values`,
+            transparencyGaps.push({
+              id: `${a.id}.${b.id}.gap.contradiction-values`,
               claimId: a.id,
               type: "contradiction",
               severity: a.impactLevel ?? b.impactLevel ?? group.policy.impactLevel,
@@ -369,8 +369,8 @@ function deriveIncompatibilityFaultLines(input: {
 
         for (const pair of group.policy.incompatibleStatuses ?? []) {
           if (matchStatusPair(a.status, b.status, pair.statuses)) {
-            faultLines.push({
-              id: `${a.id}.${b.id}.fault.contradiction-statuses`,
+            transparencyGaps.push({
+              id: `${a.id}.${b.id}.gap.contradiction-statuses`,
               claimId: a.id,
               type: "contradiction",
               severity: a.impactLevel ?? b.impactLevel ?? group.policy.impactLevel,
@@ -387,7 +387,7 @@ function deriveIncompatibilityFaultLines(input: {
     }
   }
 
-  return faultLines;
+  return transparencyGaps;
 }
 
 function hasIncompatibilityRules(policy: VerificationPolicy): boolean {

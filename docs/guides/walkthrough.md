@@ -19,7 +19,7 @@ Surfaces: ...
 High-impact unsupported: ...
 Stale: ...
 Disputed: ...
-Fault lines: ...
+Transparency gaps: ...
 ```
 
 Each line answers a different question:
@@ -29,7 +29,7 @@ Each line answers a different question:
 - **High-impact unsupported** — claims where impact is high but evidence is missing or weak. The first thing to look at.
 - **Stale** — claims whose verification has expired against their policy. Need re-verification before acting on them.
 - **Disputed** — claims contradicted by an event or another claim.
-- **Fault lines** — discoverable conflicts and supersede chains across the input.
+- **Transparency gaps** — discoverable conflicts, missing support, and supersede chains across the input. The current API field is `transparencyGaps`.
 
 ## 2. Run against native Surface input
 
@@ -47,7 +47,7 @@ Custom producers can register their own adapters, but Surface no longer ships do
 npx surface report --input examples/surface-fixtures.json --format json
 ```
 
-The JSON output is the full `TrustReport`: per-claim derived status, per-claim `confidenceBasis`, fault lines, summary, and `proofRequirementsByClaimId`. Consume this when you need the structured shape; consume `summary` when a human is reading.
+The JSON output is the full `TrustReport`: per-claim derived status, per-claim `confidenceBasis`, current `transparencyGaps` annotations, summary, and `evidenceRequirementsByClaimId`. Consume this when you need the structured shape; consume `summary` when a human is reading.
 
 ## 4. Build your own input
 
@@ -63,6 +63,6 @@ For the schema, see [Schemas](../schemas.md). For the minimal adapter shape, see
 
 - Surface does not gather evidence. You bring the input.
 - Surface does not run policies against external systems. Policies declare what makes a claim valid; events record what was observed.
-- Surface does not write back. Reports are the output; consumers decide what to do with them.
+- Surface does not write back. Reports are the output; producers, products, and downstream systems decide what to do with them.
 
 If you want to *produce* `surface.input` from AI-assisted code-change runs, see [Veritas](https://github.com/kontourai/veritas).

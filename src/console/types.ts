@@ -1,6 +1,6 @@
 import type { ClaimTypeDefinition, TrustStatus } from "../types.js";
 
-export interface SurfaceDashboardVocab {
+export interface SurfaceConsoleVocab {
   projectName?: string;
   projectKind?: string;
   surfaceLabels?: Record<string, string>;
@@ -14,20 +14,20 @@ export interface SurfaceDashboardVocab {
   };
 }
 
-export interface SurfaceDashboardTheme {
+export interface SurfaceConsoleTheme {
   primaryColor?: string;
   brandName?: string;
 }
 
-export interface SurfaceDashboardConfig {
+export interface SurfaceConsoleConfig {
   port?: number;
   readModelPath?: string;
   storePath?: string;
-  vocab?: SurfaceDashboardVocab;
-  theme?: SurfaceDashboardTheme;
+  vocab?: SurfaceConsoleVocab;
+  theme?: SurfaceConsoleTheme;
 }
 
-export interface SurfaceDashboardRuntimeConfig extends SurfaceDashboardConfig {
+export interface SurfaceConsoleRuntimeConfig extends SurfaceConsoleConfig {
   readModel?: unknown;
   producer?: string;
   claimTypes?: ClaimTypeDefinition[];

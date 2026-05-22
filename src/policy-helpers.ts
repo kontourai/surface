@@ -12,7 +12,7 @@ export interface CommitValidityPolicyArgs {
   requiredEvidence: EvidenceType[];
   requiredMethods?: EvidenceMethod[];
   requiresCorroboration?: boolean;
-  requiredProof: string[];
+  acceptanceCriteria: string[];
   reviewAuthority: string;
   stalenessTriggers: string[];
   conflictRules: string[];
@@ -26,7 +26,7 @@ export function buildCommitValidityPolicy(args: CommitValidityPolicyArgs): Verif
     requiredEvidence: args.requiredEvidence,
     requiredMethods: args.requiredMethods,
     requiresCorroboration: args.requiresCorroboration,
-    requiredProof: args.requiredProof,
+    acceptanceCriteria: args.acceptanceCriteria,
     reviewAuthority: args.reviewAuthority,
     validityRule: { kind: "commit" },
     stalenessTriggers: args.stalenessTriggers,

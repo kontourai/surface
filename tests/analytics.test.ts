@@ -28,14 +28,14 @@ test("builds a deterministic trust analytics projection from a report", async ()
   assert.equal(projection.coverageBySurface.map((item) => item.surface).join(","), [
     "fact-resolution.financial-facts",
     "field-attested-records.public-data",
-    "repo-governance.developer-proof",
+    "repo-governance.developer-evidence",
     "surface.roadmap",
   ].join(","));
   assert.deepEqual(
     projection.staleClaims.map((item) => item.claimId),
     ["claim.field-attested-records.registration-status"],
   );
-  assert.equal(projection.faultLines.bySeverity.high, 1);
+  assert.equal(projection.transparencyGaps.bySeverity.high, 1);
   assert.equal(projection.evidenceGaps.some((gap) => gap.gapType === "freshness_breach"), true);
   assert.equal(projection.actionQueues.reverifyStale[0].claimId, "claim.field-attested-records.registration-status");
 });
@@ -62,7 +62,7 @@ test("surfaces weak attestations without changing trust report status", async ()
     "attestation_authority_unverified",
     "attestation_integrity_missing",
   ]);
-  assert.equal(projection.proofRequirementGaps.some((gap) => gap.gapType === "attestation_identity_unverified"), true);
+  assert.equal(projection.evidenceRequirementGaps.some((gap) => gap.gapType === "attestation_identity_unverified"), true);
 });
 
 test("recognizes actor-backed attestations with identity, authority, freshness, and integrity", () => {
@@ -108,7 +108,7 @@ test("recognizes actor-backed attestations with identity, authority, freshness, 
       requiredEvidence: ["attestation"],
       requiredMethods: ["attestation"],
       requiresCorroboration: false,
-      requiredProof: ["domain expert attestation"],
+      acceptanceCriteria: ["domain expert attestation"],
       reviewAuthority: "domain expert",
       validityRule: { kind: "manual" },
       stalenessTriggers: ["source changes"],

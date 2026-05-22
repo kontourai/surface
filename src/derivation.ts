@@ -1,4 +1,4 @@
-import type { Claim, FaultLine, TrustStatus } from "./types.js";
+import type { Claim, TransparencyGap, TrustStatus } from "./types.js";
 
 /**
  * A derived claim cannot be more confident than the weakest claim it is built
@@ -10,7 +10,7 @@ import type { Claim, FaultLine, TrustStatus } from "./types.js";
  * carries a stale input cannot itself be considered fresh, and so on.
  *
  * Cycles in derivedFrom are not fatal — the kernel breaks them on the second
- * visit and emits an `unsupported_inference` fault line so the cycle is visible
+ * visit and emits an `unsupported_inference` transparency gap so the cycle is visible
  * in the report.
  */
 
@@ -35,8 +35,8 @@ export function weakerStatus(a: TrustStatus, b: TrustStatus): TrustStatus {
 export interface DerivationOutcome {
   /** The status after applying the derivation ceiling. */
   status: TrustStatus;
-  /** Fault lines emitted by the derivation pass (cycle detection, missing inputs). */
-  faultLines: FaultLine[];
+  /** Transparency gaps emitted by the derivation pass (cycle detection, missing inputs). */
+  transparencyGaps: TransparencyGap[];
 }
 
 interface DerivationInputs {
@@ -56,10 +56,10 @@ interface DerivationInputs {
 export function applyDerivation(input: DerivationInputs): DerivationOutcome {
   const { claim, ownStatus, ownStatusByClaimId, claimsById, now } = input;
   if (!claim.derivedFrom || claim.derivedFrom.length === 0) {
-    return { status: ownStatus, faultLines: [] };
+    return { status: ownStatus, transparencyGaps: [] };
   }
 
-  const faultLines: FaultLine[] = [];
+  const transparencyGaps: TransparencyGap[] = [];
   const createdAt = now.toISOString();
   const visited = new Set<string>([claim.id]);
   let ceiling: TrustStatus = "verified";
@@ -96,8 +96,8 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
   }
 
   if (cycleDetected) {
-    faultLines.push({
-      id: `${claim.id}.fault.derived-cycle`,
+    transparencyGaps.push({
+      id: `${claim.id}.gap.derived-cycle`,
       claimId: claim.id,
       type: "unsupported_inference",
       severity: claim.impactLevel ?? "medium",
@@ -108,8 +108,8 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
   }
 
   if (missingInputs.length > 0) {
-    faultLines.push({
-      id: `${claim.id}.fault.derived-missing`,
+    transparencyGaps.push({
+      id: `${claim.id}.gap.derived-missing`,
       claimId: claim.id,
       type: "unsupported_inference",
       severity: claim.impactLevel ?? "medium",
@@ -120,5 +120,5 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
   }
 
   const finalStatus = weakerStatus(ownStatus, ceiling);
-  return { status: finalStatus, faultLines };
+  return { status: finalStatus, transparencyGaps };
 }

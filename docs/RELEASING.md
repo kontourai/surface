@@ -13,7 +13,7 @@ This document is the operator checklist for cutting a release of `@kontourai/sur
 
 1. Update `package.json` version.
 2. Merge the release commit to `main`.
-3. Create and push a tag matching the package version, for example `v0.3.0`.
+3. Create and push a tag matching the package version, for example `v0.4.0`.
 4. Let `.github/workflows/publish-npm.yml` publish the package.
 5. Confirm the published tarball contents and README rendering on npm.
 

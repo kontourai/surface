@@ -6,7 +6,7 @@ import type { Claim, TrustInput, VerificationPolicy } from "../src/index.js";
 const baseClaim: Omit<Claim, "id" | "value" | "fieldOrBehavior"> = {
   subjectType: "repo-governance.repo",
   subjectId: "repo-A",
-  surface: "repo-governance.developer-proof",
+  surface: "repo-governance.developer-evidence",
   claimType: "release-status",
   createdAt: "2026-04-25T00:00:00.000Z",
   updatedAt: "2026-04-25T00:00:00.000Z",
@@ -14,7 +14,7 @@ const baseClaim: Omit<Claim, "id" | "value" | "fieldOrBehavior"> = {
 
 const basePolicy: Omit<VerificationPolicy, "id" | "claimType"> = {
   requiredEvidence: [],
-  requiredProof: [],
+  acceptanceCriteria: [],
   reviewAuthority: "owner",
   validityRule: { kind: "manual" },
   stalenessTriggers: [],
@@ -53,7 +53,7 @@ test("incompatibleValues fires a contradiction for same-subject claim pair", () 
   }));
 
   const report = buildTrustReport(input, { id: "report-1", now: new Date("2026-04-26T00:00:00.000Z") });
-  const contradictions = report.faultLines.filter((fl) => fl.type === "contradiction");
+  const contradictions = report.transparencyGaps.filter((fl) => fl.type === "contradiction");
   assert.equal(contradictions.length, 1);
   assert.equal(contradictions[0].policyId, "policy-release");
   assert.match(contradictions[0].message, /GA and withdrawn/);
@@ -99,7 +99,7 @@ test("incompatibleStatuses fires a contradiction across same-subject claim pair"
   }));
 
   const report = buildTrustReport(input, { id: "report-2", now: new Date("2026-04-26T00:00:00.000Z") });
-  const contradictions = report.faultLines.filter((fl) => fl.type === "contradiction");
+  const contradictions = report.transparencyGaps.filter((fl) => fl.type === "contradiction");
   assert.equal(contradictions.length, 1);
   assert.equal((contradictions[0].metadata as Record<string, unknown>).source, "policy.incompatibleStatuses");
   assert.equal(contradictions[0].policyId, "policy-release");
@@ -144,7 +144,7 @@ test("incompatibleValues fires across canonical subjects linked via identityLink
   }));
 
   const report = buildTrustReport(input, { id: "report-3", now: new Date("2026-04-26T00:00:00.000Z") });
-  const contradictions = report.faultLines.filter((fl) => fl.type === "contradiction");
+  const contradictions = report.transparencyGaps.filter((fl) => fl.type === "contradiction");
   assert.equal(contradictions.length, 1, "linked subjects should be treated as one canonical group");
   const meta = contradictions[0].metadata as Record<string, unknown>;
   assert.equal(meta.peerClaimId, "claim-b");
@@ -180,7 +180,7 @@ test("incompatibleValues does not fire when subjects are unrelated", () => {
   }));
 
   const report = buildTrustReport(input, { id: "report-4", now: new Date("2026-04-26T00:00:00.000Z") });
-  const contradictions = report.faultLines.filter((fl) => fl.type === "contradiction");
+  const contradictions = report.transparencyGaps.filter((fl) => fl.type === "contradiction");
   assert.equal(contradictions.length, 0);
 });
 

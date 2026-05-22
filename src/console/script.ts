@@ -1,4 +1,4 @@
-export const DASHBOARD_SCRIPT = `
+export const CONSOLE_SCRIPT = `
 const cfg = window.__SURFACE_CONFIG__ ?? {};
 const vocab = cfg.vocab ?? {};
 const claimTypes = cfg.claimTypes ?? [];
@@ -200,13 +200,13 @@ function statusGuidance(status, evidenceCount) {
   const m = {
     proposed: "Awaiting first evidence collection run.",
     stale:    "Evidence is outdated — collected against a different version of the code. Stale claims are refreshed one run at a time.",
-    disputed: "Surface derived a different status than the producer declared. Resolve the fault lines above.",
-    rejected: "Verification failed. Check the fault lines above for specific remediation steps.",
+    disputed: "Surface derived a different status than the producer declared. Resolve the transparency gaps above.",
+    rejected: "Verification failed. Check the transparency gaps above for specific remediation steps.",
   };
   return m[status] ?? null;
 }
 
-function updateDashboardChromeMetrics() {
+function updateConsoleChromeMetrics() {
   const header = document.querySelector(".dash-header");
   const height = header ? Math.ceil(header.getBoundingClientRect().height) : 96;
   document.documentElement.style.setProperty("--dash-header-height", height + "px");
@@ -217,9 +217,8 @@ function suggestCommand(claim, evidence, readModel) {
   const needsEvidence = ["unknown", "stale", "proposed", "rejected"].includes(claim.status);
   if (!needsEvidence) return null;
 
-  if (claim.claimType === "software-proof") {
-    const cmd = claim.metadata?.command ?? claim.fieldOrBehavior;
-    if (cmd) return { command: cmd, note: "Runs the proof lane and captures output as evidence." };
+  if (claim.metadata?.command) {
+    return { command: claim.metadata.command, note: "Runs the evidence check and captures output as evidence." };
   }
 
   const isVeritas = producer.name === "veritas" || (claim.claimType ?? "").startsWith("veritas");
@@ -241,15 +240,15 @@ function claimTypeLabel(claimType) {
 
 function confidenceTier(claim) {
   if (claim.status !== "verified") return "";
-  const hasFaults = (claim.faultLineIds?.length ?? 0) > 0;
-  const strength = claim.confidenceBasis?.proofStrength;
-  if (!hasFaults && strength === "strong") return " card-strong";
-  if (hasFaults || strength === "weak") return " card-weak";
+  const hasGaps = (claim.transparencyGapIds?.length ?? 0) > 0;
+  const strength = claim.confidenceBasis?.evidenceStrength;
+  if (!hasGaps && strength === "strong") return " card-strong";
+  if (hasGaps || strength === "weak") return " card-weak";
   return "";
 }
 
 // ── gap classification ─────────────────────────────────
-// Maps fault/gap types to a root-cause category and prescriptive hint.
+// Maps gap/gap types to a root-cause category and prescriptive hint.
 // Returns { kind, title, hint } where kind is: setup | config | workflow | quality | policy
 function classifyGap(gapType, message) {
   if (gapType === "provenance_gap") {
@@ -263,7 +262,7 @@ function classifyGap(gapType, message) {
     return {
       kind: "setup",
       title: "Provenance gap",
-      hint: "The proof chain for this claim is incomplete. Check that all producer steps ran and emitted evidence.",
+      hint: "The evidence trace for this claim is incomplete. Check that all producer steps ran and emitted evidence.",
     };
   }
   if (gapType === "policy_violation") {
@@ -298,7 +297,7 @@ function classifyGap(gapType, message) {
     return {
       kind: "workflow",
       title: "Human review incomplete — identity not verified",
-      hint: "A review record exists but the reviewer's identity has not been verified. Ensure the attestation includes a valid identity proof reference.",
+      hint: "A review record exists but the reviewer's identity has not been verified. Ensure the attestation includes a valid identity evidence reference.",
     };
   }
   // default: tool/quality failure
@@ -387,7 +386,7 @@ function renderDonut(d) {
 }
 
 // ── main render ────────────────────────────────────────
-function renderDashboard() {
+function renderConsole() {
   const d = currentData;
 
   el("projectName").textContent = d.project.name;
@@ -404,7 +403,7 @@ function renderDashboard() {
   if (runMeta) runMeta.textContent = d.run?.meta ?? "";
 
   if (d.claims?.length) renderDonut(d);
-  el("dashboardMetrics").innerHTML = d.metrics.map(([label, value,, delta, color, filterVal]) =>
+  el("consoleMetrics").innerHTML = d.metrics.map(([label, value,, delta, color, filterVal]) =>
     \`<button type="button" class="metric-chip metric-\${esc(color)}\${filters.status === filterVal ? " metric-chip-active" : ""}"
       data-metric-filter="\${esc(filterVal ?? "all")}" title="Filter to \${esc(label.toLowerCase())}">
       <span class="mc-value" data-count="\${esc(value)}">\${esc(value)}</span>
@@ -412,11 +411,11 @@ function renderDashboard() {
       \${delta ? \`<span class="mc-delta">\${esc(delta)}</span>\` : ""}
     </button>\`
   ).join("");
-  el("dashboardMetrics").querySelectorAll("[data-metric-filter]").forEach(chip => {
+  el("consoleMetrics").querySelectorAll("[data-metric-filter]").forEach(chip => {
     chip.addEventListener("click", () => {
       const f = chip.dataset.metricFilter;
       filters.status = filters.status === f ? "all" : f;
-      el("dashboardMetrics").querySelectorAll("[data-metric-filter]").forEach(c => {
+      el("consoleMetrics").querySelectorAll("[data-metric-filter]").forEach(c => {
         c.classList.toggle("metric-chip-active", filters.status === c.dataset.metricFilter);
       });
       el("statusFilter").value = filters.status;
@@ -424,7 +423,7 @@ function renderDashboard() {
       pushUrlState();
     });
   });
-  el("dashboardMetrics").querySelectorAll("[data-count]").forEach(span => animateCount(span, span.dataset.count));
+  el("consoleMetrics").querySelectorAll("[data-count]").forEach(span => animateCount(span, span.dataset.count));
 
   const attention = (d.claims ?? []).filter(c =>
     ["disputed","stale","rejected","unknown"].includes(c.status)
@@ -440,7 +439,7 @@ function renderDashboard() {
     band.onclick = () => {
       filters.status = filters.status === "attention" ? "all" : "attention";
       el("statusFilter").value = filters.status;
-      el("dashboardMetrics")?.querySelectorAll("[data-metric-filter]").forEach(c => {
+      el("consoleMetrics")?.querySelectorAll("[data-metric-filter]").forEach(c => {
         c.classList.toggle("metric-chip-active", filters.status === c.dataset.metricFilter);
       });
       renderFeed(d);
@@ -467,7 +466,7 @@ function renderDashboard() {
   });
   el("statusFilter").addEventListener("change", e => {
     filters.status = e.target.value;
-    el("dashboardMetrics")?.querySelectorAll("[data-metric-filter]").forEach(c => {
+    el("consoleMetrics")?.querySelectorAll("[data-metric-filter]").forEach(c => {
       c.classList.toggle("metric-chip-active", filters.status === c.dataset.metricFilter);
     });
     renderFeed(d);
@@ -508,8 +507,8 @@ function renderFeed(d) {
         ? \`<p class="empty-state">No claims match the current filters.</p>\`
         : \`<div class="empty-state empty-state--setup">
             <p class="empty-setup-title">No run data yet</p>
-            <p>Run the producer to generate a read model, then refresh this dashboard.</p>
-            <code class="empty-setup-cmd">veritas run</code>
+            <p>Run the producer to generate a read model, then refresh this console.</p>
+            <code class="empty-setup-cmd">veritas readiness --working-tree</code>
            </div>\`);
   el("claimFeed").querySelectorAll("[data-claim-index]").forEach(card => {
     card.addEventListener("click", () => {
@@ -539,7 +538,7 @@ function claimCard(claim, index, visibleIndex = 0) {
   const label  = claim.fieldOrBehavior || claim.claimType || claim.id;
   const val    = formatValue(claim.value);
   const surface = surfaceLabel(claim.surface);
-  const faults = claim.faultLineIds?.length ?? 0;
+  const gaps = claim.transparencyGapIds?.length ?? 0;
   const color  = statusColor(claim.status);
 
   return \`<button type="button" class="claim-card\${confidenceTier(claim)}\${isAttention ? " card-attention" : ""}"
@@ -553,7 +552,7 @@ function claimCard(claim, index, visibleIndex = 0) {
         \${claim.producerStatus
           ? \`<span class="card-divergence" title="Producer declared \${esc(claim.producerStatus)}">! was \${esc(claim.producerStatus)}</span>\`
           : ""}
-        \${faults ? \`<span class="card-faults">\${faults} fault\${faults !== 1 ? "s" : ""}</span>\` : ""}
+        \${gaps ? \`<span class="card-gaps">\${gaps} gap\${gaps !== 1 ? "s" : ""}</span>\` : ""}
       </span>
       \${val ? \`<span class="card-value">\${esc(val.length > 70 ? val.slice(0,67) + "\\u2026" : val)}</span>\` : ""}
     </span>
@@ -567,13 +566,13 @@ function showClaimDetail(claim, readModel, cardEl, pushHistory = true) {
   document.querySelectorAll(".claim-card.card-selected").forEach(c => c.classList.remove("card-selected"));
   if (cardEl) cardEl.classList.add("card-selected");
   const allEvidence   = readModel?.evidence   ?? [];
-  const allFaultLines = readModel?.faultLines ?? [];
+  const allTransparencyGaps = readModel?.transparencyGaps ?? [];
   const allPolicies   = readModel?.policies   ?? [];
-  const allGaps       = readModel?.analytics?.proofRequirementGaps ?? [];
+  const allGaps       = readModel?.analytics?.evidenceRequirementGaps ?? [];
 
   const evidence   = allEvidence.filter(e => claim.evidenceIds?.includes(e.id));
-  const faultLines = allFaultLines.filter(fl =>
-    claim.faultLineIds?.includes(fl.id) || fl.claimId === claim.id
+  const transparencyGaps = allTransparencyGaps.filter(fl =>
+    claim.transparencyGapIds?.includes(fl.id) || fl.claimId === claim.id
   );
   const policy = allPolicies.find(p => p.id === claim.verificationPolicyId);
   const claimGaps = allGaps.filter(g => g.claimId === claim.id);
@@ -653,29 +652,29 @@ function showClaimDetail(claim, readModel, cardEl, pushHistory = true) {
     guidanceEl.setAttribute("hidden", "");
   }
 
-  // ── what went wrong (fault lines + classified gaps) ──
-  const allFaultItems = [
-    ...faultLines.map(fl => ({ ...fl })),
-    ...claimGaps.filter(g => !faultLines.some(fl => fl.type === g.gapType))
+  // ── what went wrong (transparency gaps + classified gaps) ──
+  const allGapItems = [
+    ...transparencyGaps.map(fl => ({ ...fl })),
+    ...claimGaps.filter(g => !transparencyGaps.some(fl => fl.type === g.gapType))
   ];
 
-  if (allFaultItems.length) {
-    el("detailFaults").innerHTML = allFaultItems.map(item => {
+  if (allGapItems.length) {
+    el("detailGaps").innerHTML = allGapItems.map(item => {
       const classified = classifyGap(item.type ?? item.gapType, item.message);
       const kindLabel  = gapKindLabel[classified.kind] ?? classified.kind;
-      return \`<div class="fault-item fault-\${esc(item.severity ?? "medium")} fault-kind-\${esc(classified.kind)}">
-        <div class="fault-head">
-          <span class="fault-kind">\${esc(kindLabel)}</span>
-          <span class="fault-type">\${esc(classified.title)}</span>
+      return \`<div class="gap-item gap-\${esc(item.severity ?? "medium")} gap-kind-\${esc(classified.kind)}">
+        <div class="gap-head">
+          <span class="gap-kind">\${esc(kindLabel)}</span>
+          <span class="gap-type">\${esc(classified.title)}</span>
           \${item.blocking === false ? \`<span class="nonblocking-pill">non-blocking</span>\` : ""}
         </div>
-        <p class="fault-msg">\${esc(item.message ?? "")}</p>
-        \${classified.hint ? \`<p class="fault-hint">\${esc(classified.hint)}</p>\` : ""}
+        <p class="gap-msg">\${esc(item.message ?? "")}</p>
+        \${classified.hint ? \`<p class="gap-hint">\${esc(classified.hint)}</p>\` : ""}
       </div>\`;
     }).join("");
-    show("detailFaultBlock");
+    show("detailGapBlock");
   } else {
-    hide("detailFaultBlock");
+    hide("detailGapBlock");
   }
 
   // ── policy gap analysis ──────────────────────────────
@@ -789,7 +788,7 @@ function showClaimDetail(claim, readModel, cardEl, pushHistory = true) {
 
   // ── raw metadata ─────────────────────────────────────
   el("detailMetadata").textContent =
-    JSON.stringify({ claim, evidence, faultLines, policy: policy ?? null }, null, 2);
+    JSON.stringify({ claim, evidence, transparencyGaps, policy: policy ?? null }, null, 2);
 
   if (pushHistory) pushUrlState();
   openSheet();
@@ -855,7 +854,7 @@ window.addEventListener("popstate", () => {
   if (!currentData) return;
   renderSurfaceChips(currentData);
   renderFeed(currentData);
-  el("dashboardMetrics")?.querySelectorAll("[data-metric-filter]").forEach(c => {
+  el("consoleMetrics")?.querySelectorAll("[data-metric-filter]").forEach(c => {
     c.classList.toggle("metric-chip-active", filters.status === c.dataset.metricFilter);
   });
   if (state.claimId) {
@@ -871,7 +870,7 @@ window.addEventListener("popstate", () => {
     closeSheet(false);
   }
   if (state.run && state.run !== currentRunId) {
-    refreshDashboard(state.run, true).catch(() => {});
+    refreshConsole(state.run, true).catch(() => {});
   }
 });
 
@@ -983,9 +982,9 @@ function buildClaimTypeOptions() {
   if (select.dataset.ready === "true") return;
   const options = claimTypes.length
     ? claimTypes.map(t => \`<option value="\${esc(t.id)}">\${esc(t.displayName ?? t.id)}</option>\`).join("")
-    : \`<option value="software-proof">Software proof</option>
-       <option value="veritas-governance-artifact">Governance artifact</option>
-       <option value="veritas-external-tool-result">External tool result</option>\`;
+    : \`<option value="automation-evidence">Automation evidence</option>
+       <option value="governance-artifact">Governance artifact</option>
+       <option value="external-observation">External observation</option>\`;
   select.innerHTML = options;
   select.dataset.ready = "true";
   select.addEventListener("change", syncClaimTypeFields);
@@ -1083,7 +1082,7 @@ async function submitClaimForm(event) {
   }
   closeClaimModal();
   closeSheet();
-  await refreshDashboard(null);
+  await refreshConsole(null);
 }
 
 async function deleteCurrentClaim(claimId) {
@@ -1094,7 +1093,7 @@ async function deleteCurrentClaim(claimId) {
     throw new Error(payload.error ?? "Claim delete failed");
   }
   closeSheet();
-  await refreshDashboard(null);
+  await refreshConsole(null);
 }
 
 function openDeleteConfirm(claimId) {
@@ -1133,16 +1132,16 @@ async function confirmDeleteClaim() {
   }
 }
 
-async function refreshDashboard(runId, skipHistory = false) {
+async function refreshConsole(runId, skipHistory = false) {
   currentRunId = runId ?? null;
   const url = runId && runId !== "latest" ? \`/api/read-model?run=\${encodeURIComponent(runId)}\` : "/api/read-model";
   const response = await fetch(url);
   if (!response.ok) {
-    currentData = emptyDashboard();
+    currentData = emptyConsole();
   } else {
-    currentData = dashboardFromReadModel(await response.json());
+    currentData = consoleFromReadModel(await response.json());
   }
-  renderDashboard();
+  renderConsole();
   renderRunPicker();
   if (!skipHistory) pushUrlState();
 }
@@ -1154,7 +1153,7 @@ async function loadRunList() {
   } catch {}
   const urlRun = getUrlState().run;
   if (urlRun && urlRun !== currentRunId) {
-    await refreshDashboard(urlRun, true).catch(() => {});
+    await refreshConsole(urlRun, true).catch(() => {});
   } else {
     renderRunPicker();
   }
@@ -1233,7 +1232,7 @@ function renderRunPicker() {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
       closeRunDropdown();
-      refreshDashboard(btn.dataset.runId).catch(err => window.alert(err.message));
+      refreshConsole(btn.dataset.runId).catch(err => window.alert(err.message));
     });
   });
 }
@@ -1279,7 +1278,7 @@ function deriveProjectName(claims) {
   return top.replace(/[-_]+/g, " ").replace(/\b\w/g, ch => ch.toUpperCase());
 }
 
-function dashboardFromReadModel(readModel) {
+function consoleFromReadModel(readModel) {
   const producer   = readModel.producer ?? {};
   const claims     = readModel.claims ?? [];
   const sourceSummary = formatSourceSummary(producer);
@@ -1296,7 +1295,7 @@ function dashboardFromReadModel(readModel) {
   const folderName = cfg.folderName
     ? cfg.folderName.replace(/[-_]+/g, " ").replace(/\b\w/g, ch => ch.toUpperCase())
     : null;
-  const projectName = vocab.projectName ?? cfg.theme?.brandName ?? deriveProjectName(claims) ?? folderName ?? "Dashboard";
+  const projectName = vocab.projectName ?? cfg.theme?.brandName ?? deriveProjectName(claims) ?? folderName ?? "Console";
   return {
     project: { name: projectName },
     run: { id: producer.runId ?? "unknown", meta: runMeta, label: producer.runId ?? null },
@@ -1304,7 +1303,7 @@ function dashboardFromReadModel(readModel) {
     metrics: [
       ["Claims",    String(readModel.summary.claimCount), "", "", "blue", "all"],
       ["Verified",  String(verified), "", Math.round((verified / total) * 100) + "%", "good", "verified"],
-      ["Attention", String(attention.length), "", readModel.summary.faultLineCount + " faults",
+      ["Attention", String(attention.length), "", readModel.summary.transparencyGapCount + " gaps",
        attention.length ? "bad" : "good", "attention"],
     ],
     claims,
@@ -1313,7 +1312,7 @@ function dashboardFromReadModel(readModel) {
   };
 }
 
-function emptyDashboard() {
+function emptyConsole() {
   return {
     project: { name: vocab.projectName ?? cfg.theme?.brandName ?? "No data yet" },
     run:     { id: "", meta: "No runs found — run the producer to generate a read model" },
@@ -1345,14 +1344,14 @@ function buildNarrative(readModel, attention) {
 // ── boot ───────────────────────────────────────────────
 const _bootUrl = getUrlState();
 applyUrlFilters(_bootUrl);
-updateDashboardChromeMetrics();
-window.addEventListener("resize", updateDashboardChromeMetrics);
+updateConsoleChromeMetrics();
+window.addEventListener("resize", updateConsoleChromeMetrics);
 
 currentRunId = _bootUrl.run ?? null;
 currentData = cfg.readModel
-  ? dashboardFromReadModel(cfg.readModel)
-  : emptyDashboard();
-renderDashboard();
+  ? consoleFromReadModel(cfg.readModel)
+  : emptyConsole();
+renderConsole();
 el("addClaimBtn")?.addEventListener("click", () => openClaimModal());
 el("claimModalCancel")?.addEventListener("click", closeClaimModal);
 el("deleteConfirmCancel")?.addEventListener("click", closeDeleteConfirm);

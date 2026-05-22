@@ -16,8 +16,8 @@ import {
 
 const claim: ClaimDefinition = {
   id: "repo.proof.npm-test",
-  surface: "veritas.proof-lane",
-  claimType: "software-proof",
+  surface: "veritas.evidence-check",
+  claimType: "software-evidence",
   fieldOrBehavior: "npm test",
   subjectType: "repository",
   subjectId: "repo",

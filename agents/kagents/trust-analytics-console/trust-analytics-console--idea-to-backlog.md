@@ -1,8 +1,8 @@
-# Idea To Backlog: Portable Trust Analytics And Dashboard Layer
+# Idea To Backlog: Portable Trust Analytics And Console Layer
 
-- **Artifact:** `trust-analytics-dashboard--idea-to-backlog.md`
-- **Requested artifact path:** `.agents/kagents/trust-analytics-dashboard/trust-analytics-dashboard--idea-to-backlog.md`
-- **Actual artifact path:** `agents/kagents/trust-analytics-dashboard/trust-analytics-dashboard--idea-to-backlog.md`
+- **Artifact:** `trust-analytics-console--idea-to-backlog.md`
+- **Requested artifact path:** `.agents/kagents/trust-analytics-console/trust-analytics-console--idea-to-backlog.md`
+- **Actual artifact path:** `agents/kagents/trust-analytics-console/trust-analytics-console--idea-to-backlog.md`
 - **Date:** 2026-05-11
 - **Phase:** shape
 - **Decision state:** shaped, not implemented
@@ -11,14 +11,14 @@
 
 Raw input:
 
-> Surface should add a mature dashboard / analytics layer that makes the trust substrate more valuable as more systems integrate. Shape this into executable backlog slices. Keep Surface product-neutral: downstream products own product-specific adapters and workflow vocabulary, while Surface owns portable trust primitives, reports, query surfaces, and derived trust analytics. Push back on accidental bundling; identify the thinnest meaningful slice; map dependencies; relate it to the current roadmap phases for agent query surface, human console, and hosted sink. Produce the expected .agents/kagents artifact and stop before implementation.
+> Surface should add a mature console / analytics layer that makes the trust substrate more valuable as more systems integrate. Shape this into executable backlog slices. Keep Surface product-neutral: downstream products own product-specific adapters and workflow vocabulary, while Surface owns portable trust primitives, reports, query surfaces, and derived trust analytics. Push back on accidental bundling; identify the thinnest meaningful slice; map dependencies; relate it to the current roadmap phases for agent query surface, human console, and hosted sink. Produce the expected .agents/kagents artifact and stop before implementation.
 
 Related repo context:
 
 - `docs/roadmap.md`: Phase 5 is agent query surface; Phase 6 is human console; Phase 7 is hosted sink.
 - `docs/integration-plan.md`: Surface owns portable trust primitives and report generation; product repos own product-specific adapters, UI, runtime query wiring, and workflow language.
-- `docs/concepts.md`: trust reports currently expose claims, evidence, freshness, status, fault lines, subject groups, coverage, confidence basis, and summary.
-- `src/report.ts`: current `TrustReportSummary` is useful but not yet a dashboard-grade analytics/query contract.
+- `docs/concepts.md`: trust reports currently expose claims, evidence, freshness, status, transparency gaps, subject groups, coverage, confidence basis, and summary.
+- `src/report.ts`: current `TrustReportSummary` is useful but not yet a console-grade analytics/query contract.
 
 Dedupe decision:
 
@@ -30,11 +30,11 @@ Dedupe decision:
 
 | ID | Idea | Classification | Outcome | Reason |
 | --- | --- | --- | --- | --- |
-| I1 | Portable trust analytics projection over one `TrustReport` | feature | commit | Smallest independently valuable layer: transforms existing report data into dashboard/query-ready, product-neutral views. |
-| I2 | Agent query surface for stale, missing, policy-bound, unsupported, disputed, and fault-line queries | feature | commit | Already roadmap Phase 5; analytics projection should expose stable query surfaces before human console work. |
-| I3 | Human console dashboard for coverage map, stale zones, fault lines, evidence drilldowns, unsupported queue | feature / prototype | shape | Roadmap Phase 6; should consume I1/I2 rather than define product vocabulary itself. |
+| I1 | Portable trust analytics projection over one `TrustReport` | feature | commit | Smallest independently valuable layer: transforms existing report data into console/query-ready, product-neutral views. |
+| I2 | Agent query surface for stale, missing, policy-bound, unsupported, disputed, and transparency-gap queries | feature | commit | Already roadmap Phase 5; analytics projection should expose stable query surfaces before human console work. |
+| I3 | Human console for coverage map, stale areas, transparency gaps, evidence drilldowns, unsupported queue | feature / prototype | shape | Roadmap Phase 6; should consume I1/I2 rather than define product vocabulary itself. |
 | I4 | Hosted sink for longitudinal reports, adapter runs, organization-wide trend analysis | feature / spike | research | Roadmap Phase 7; depends on local analytics/query contract and storage model. |
-| I5 | Product-specific workflow dashboards, adapters, labels, and operational queues | parked / downstream-owned | park | Surface must remain product-neutral. Downstream products can build adapters and workflow vocabulary on top of Surface outputs. |
+| I5 | Product-specific workflow consoles, adapters, labels, and operational queues | parked / downstream-owned | park | Surface must remain product-neutral. Downstream products can build adapters and workflow vocabulary on top of Surface outputs. |
 | I6 | Derived trust trend analytics across multiple report runs | feature | shape | Valuable but should not be bundled with first local slice; depends on a stable per-report analytics projection and hosted/local run history. |
 
 ## slice_candidates
@@ -44,7 +44,7 @@ Dedupe decision:
 - **Idea:** I1
 - **Thinnest meaningful slice:** Add a product-neutral analytics projection derived from a single trust report, available as a library API and CLI JSON output.
 - **Why this is the thinnest slice:** It makes the substrate more valuable immediately without requiring a console, hosted sink, product adapter, or longitudinal storage.
-- **Success signal:** Given existing example reports, Surface can emit stable analytics JSON containing coverage, stale zones, fault-line hotspots, high-impact unsupported claims, evidence depth, confidence distribution, and drilldown references back to claim/evidence/policy ids.
+- **Success signal:** Given existing example reports, Surface can emit stable analytics JSON containing coverage, stale areas, transparency-gap hotspots, high-impact unsupported claims, evidence depth, confidence distribution, and drilldown references back to claim/evidence/policy ids.
 - **Non-goals:**
   - No React app or hosted UI.
   - No product-specific nouns such as case, facility, tax return, PR, customer, or workflow stage.
@@ -67,7 +67,7 @@ Dedupe decision:
 ### S3: Missing/Unsupported Claim Queue
 
 - **Idea:** I2 / I3 bridge
-- **Thinnest meaningful slice:** Define a portable queue projection for high-impact unsupported claims and missing proof requirements.
+- **Thinnest meaningful slice:** Define a portable queue projection for high-impact unsupported claims and missing evidence requirements.
 - **Success signal:** Both CLI and future console can show what needs review without inventing product workflow language.
 - **Non-goals:**
   - No assignment system.
@@ -78,7 +78,7 @@ Dedupe decision:
 ### S4: Static Local Human Console Prototype
 
 - **Idea:** I3
-- **Thinnest meaningful slice:** A local/static console that reads exported analytics JSON and renders coverage map, stale zones, fault lines, evidence drilldowns, and unsupported queue.
+- **Thinnest meaningful slice:** A local/static console that reads exported analytics JSON and renders coverage map, stale areas, transparency gaps, evidence drilldowns, and unsupported queue.
 - **Success signal:** A human can inspect one report artifact faster than reading raw JSON, while every visual links back to claim/evidence/policy ids.
 - **Non-goals:**
   - No hosted sink.
@@ -115,7 +115,7 @@ Decision: split the work into separate slices.
 
 Rationale:
 
-- A mature dashboard is an outcome, not a single implementation slice.
+- A mature console is an outcome, not a single implementation slice.
 - Agent queries, human console, and hosted sink have different delivery risks and roadmap phases.
 - Product-specific adapters and workflow vocabulary are explicitly downstream-owned and must not be bundled into Surface.
 - The first slice must strengthen the portable trust substrate; UI and hosted features should consume that substrate rather than define it.
@@ -132,13 +132,13 @@ Rejected bundle:
 
 | Slice | Blocks | Blocked by | Relationship |
 | --- | --- | --- | --- |
-| S1 Portable Report Analytics Projection V0 | S2, S3, S4, S5, S6 | Existing `TrustReport` contract | Hard dependency for dashboard-grade analytics. |
+| S1 Portable Report Analytics Projection V0 | S2, S3, S4, S5, S6 | Existing `TrustReport` contract | Hard dependency for console-grade analytics. |
 | S2 Agent Query Commands | MCP resources, agent integrations | S1 recommended; existing report contract minimally sufficient | Roadmap Phase 5. |
 | S3 Missing/Unsupported Claim Queue | Human console unsupported queue | S1, part of S2 | Bridge between query surface and console. |
 | S4 Static Local Human Console | Hosted console UX, product-specific downstream consoles | S1, S2, S3 | Roadmap Phase 6. |
 | S5 Longitudinal Run Summary Contract | S6 hosted sink trend analytics | S1; maybe `surface diff` | Pre-Phase 7 contract hardening. |
 | S6 Hosted Sink Trend Analytics Spike | Hosted sink implementation | S1, S5, local contract adoption evidence | Roadmap Phase 7 research. |
-| I5 Product-specific workflow dashboards/adapters | none in Surface | Downstream product repos | Related-only; not Surface backlog. |
+| I5 Product-specific workflow consoles/adapters | none in Surface | Downstream product repos | Related-only; not Surface backlog. |
 
 Roadmap mapping:
 
@@ -152,14 +152,14 @@ Roadmap mapping:
 | --- | --- | --- | --- |
 | Split analytics substrate, query commands, console, and hosted sink into separate backlog slices. | They have different risk profiles and roadmap phases; bundling would obscure the thinnest valuable Surface-owned work. | Codex shaping recommendation for Brian review | 2026-05-11 |
 | Keep product-specific adapters and workflow vocabulary out of Surface scope. | Existing integration plan says downstream products own product extraction, product docs, runtime query wiring, and product UI. | Codex applying repo boundary | 2026-05-11 |
-| Recommend S1 as the thinnest meaningful slice. | It creates portable value for agents and future dashboards without requiring UI or hosting. | Codex shaping recommendation for Brian review | 2026-05-11 |
+| Recommend S1 as the thinnest meaningful slice. | It creates portable value for agents and future consoles without requiring UI or hosting. | Codex shaping recommendation for Brian review | 2026-05-11 |
 | Do not create GitHub issues yet. | The user asked for `.agents/kagents` artifact and to stop before implementation; issue creation needs explicit commitment/priority decision. | Codex | 2026-05-11 |
 
 ## opportunity_briefs
 
 ### O1: Portable Trust Analytics
 
-- **Problem:** Raw trust reports are inspectable but not yet organized into dashboard-grade views that help humans or agents identify coverage gaps, stale zones, fault lines, and unsupported high-impact claims quickly.
+- **Problem:** Raw trust reports are inspectable but not yet organized into console-grade views that help humans or agents identify coverage gaps, stale areas, transparency gaps, and unsupported high-impact claims quickly.
 - **Stakeholder:** Surface consumers, agent integrations, future console users, downstream products that need product-neutral trust telemetry.
 - **Outcome:** A stable analytics projection makes each new adapter/system integration increase Surface value without adding product-specific code to Surface.
 - **Confidence:** high.
@@ -200,7 +200,7 @@ Roadmap mapping:
 - **Status:** ready for planning after human approval.
 - **Scope:**
   - Define a product-neutral analytics output derived from `TrustReport`.
-  - Include coverage by surface and status, stale zones, fault-line hotspots, high-impact unsupported claims, confidence/evidence depth distribution, subject-group conflict indicators, and drilldown ids.
+  - Include coverage by surface and status, stale areas, transparency-gap hotspots, high-impact unsupported claims, confidence/evidence depth distribution, subject-group conflict indicators, and drilldown ids.
   - Expose through public API and a CLI command or `surface report --format analytics` decision.
   - Document the analytics vocabulary as portable Surface terms.
 - **Non-goals:**
@@ -210,13 +210,13 @@ Roadmap mapping:
   - No product-specific adapters or workflow names.
 - **Requirements:**
   - Output must be deterministic for a fixed report.
-  - Every aggregate must link back to claim, evidence, policy, fault-line, or subject-group ids.
-  - Analytics must preserve the difference between stale, disputed, unsupported, missing proof, provenance gaps, policy violations, and contradictions.
+  - Every aggregate must link back to claim, evidence, policy, transparency-gap, or subject-group ids.
+  - Analytics must preserve the difference between stale, disputed, unsupported, missing evidence, provenance gaps, policy violations, and contradictions.
   - The contract must be stable enough for agents and future console code to consume.
   - Existing report JSON and summary behavior must remain compatible.
 - **Acceptance criteria:**
   - Example fixtures produce analytics JSON snapshots in tests.
-  - Tests cover at least one stale zone, one high-impact unsupported claim, one fault-line hotspot, and one evidence-depth/confidence aggregate.
+  - Tests cover at least one stale area, one high-impact unsupported claim, one transparency-gap hotspot, and one evidence-depth/confidence aggregate.
   - Documentation explains the analytics terms without product-specific nouns.
   - CLI output can be consumed by scripts without scraping human text.
 - **Verification expectation:** unit tests for analytics derivation, CLI tests for output format, docs test if existing docs test pattern applies.
@@ -246,8 +246,8 @@ Roadmap mapping:
 
 - **Status:** shaped, not first.
 - **Scope:**
-  - Define queue entries for high-impact unsupported claims and missing proof requirements.
-  - Include severity, surface, subject, claim id, policy id, required proof, current evidence, and reason codes.
+  - Define queue entries for high-impact unsupported claims and missing evidence requirements.
+  - Include severity, surface, subject, claim id, policy id, required evidence, current evidence, and reason codes.
   - Expose as analytics section and query output.
 - **Non-goals:**
   - No assignment, comments, review workflow, or downstream status vocabulary.
@@ -263,7 +263,7 @@ Roadmap mapping:
 
 - **Status:** defer until Phase 6.
 - **Scope:**
-  - Render exported analytics JSON as coverage map, stale zones, fault-line list, evidence drilldowns, and unsupported queue.
+  - Render exported analytics JSON as coverage map, stale areas, transparency-gap list, evidence drilldowns, and unsupported queue.
   - Keep console local/static first.
 - **Non-goals:**
   - No hosted login, database, organization settings, or product adapters.
@@ -341,9 +341,9 @@ Suggested issue drafts after approval:
 
 | Item | Decision | Reason | Revisit trigger |
 | --- | --- | --- | --- |
-| Product-specific dashboard vocabulary | Park downstream | Surface must remain product-neutral; downstream products own adapters, workflow nouns, and product UI interpretation. | A downstream product defines its own adapter/console and needs a missing portable primitive. |
+| Product-specific console vocabulary | Park downstream | Surface must remain product-neutral; downstream products own adapters, workflow nouns, and product UI interpretation. | A downstream product defines its own adapter/console and needs a missing portable primitive. |
 | Hosted sink implementation now | Park | Local analytics/query contract is not stable yet; hosting adds privacy and operational scope. | S1/S2 are stable and at least two systems produce useful report histories. |
-| Full mature dashboard as first slice | Reject as bundle | Too broad; combines analytics contract, agent queries, UI, persistence, and product interpretation. | Only reconsider after Phase 5 primitives prove too fragmented to deliver the intended outcome. |
+| Full mature console as first slice | Reject as bundle | Too broad; combines analytics contract, agent queries, UI, persistence, and product interpretation. | Only reconsider after Phase 5 primitives prove too fragmented to deliver the intended outcome. |
 | Single trust score | Reject | Would hide evidence, freshness, and conflict state; conflicts with Surface vision. | Revisit only as a secondary sort/risk indicator with transparent components, not as the main trust state. |
 
 ## open_questions

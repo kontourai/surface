@@ -31,7 +31,7 @@ test("TrustInputBuilder creates validated input and links evidence fluently", ()
       requiredEvidence: ["source_excerpt"],
       requiredMethods: ["observation"],
       requiresCorroboration: false,
-      requiredProof: ["ticket export row"],
+      acceptanceCriteria: ["ticket export row"],
       reviewAuthority: "ticket system",
       validityRule: { kind: "manual" },
       stalenessTriggers: ["ticket status changes"],

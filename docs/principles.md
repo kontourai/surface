@@ -4,7 +4,7 @@ Kontour Surface is small on purpose. The kernel only earns its place if it behav
 
 ## Unverified is not denied
 
-A claim with no supporting evidence is `unknown`, not `false`. A claim whose policy required evidence that was not provided produces a `provenance_gap` fault line, not a silent exclusion. The contract separates three states that other systems often collapse into one:
+A claim with no supporting evidence is `unknown`, not `false`. A claim whose policy required evidence that was not provided produces a `provenance_gap` transparency gap through the current `transparencyGaps` API field, not a silent exclusion. The contract separates three states that other systems often collapse into one:
 
 - **Unknown** — we have no evidence.
 - **Unsupported** — we have evidence, but not enough under the policy.
@@ -14,9 +14,9 @@ Closing-world shortcuts (no row in a table → not a customer, null field → no
 
 ## Deterministic by default
 
-Status, freshness, fault lines, and proof requirements are derived from the inputs by code. They are not produced by a model at query time, and they are not negotiated between the consumer and the producer. The same `TrustInput` produces the same `TrustReport` every time, on any machine, including in CI.
+Status, freshness, transparency gaps, and evidence requirements are derived from the inputs by code. They are not produced by a model at query time, and they are not negotiated between the Viewer and the producer. The same `TrustInput` produces the same `TrustReport` every time, on any machine, including in CI.
 
-Models are welcome at the evidence edge — they can extract, summarize, observe, and attest. They are not welcome inside the trust derivation. Reasoning about what counts as verified happens once, in the kernel, and every consumer reads the same answer.
+Models are welcome at the evidence edge — they can extract, summarize, observe, and attest. They are not welcome inside the trust derivation. Reasoning about what counts as verified happens once, in the kernel, and every downstream system reads the same answer.
 
 This is also a cost principle. An agent that reads a Surface report does not spend tokens to decide whether something is verified. The kernel already decided.
 
@@ -40,10 +40,10 @@ Imports are read-only at the edge. Surface does not write back into product syst
 
 ## No single confidence score
 
-Surface intentionally does not collapse trust into one number. A `ConfidenceBasis` records the reasons confidence does or does not exist — source quality, extraction confidence, corroboration, reviewer authority, freshness remaining, conflict count, proof strength, impact. A consumer that wants a single score can compute one; the kernel will not pretend the inputs are reducible.
+Surface intentionally does not collapse trust into one number. A `ConfidenceBasis` records the reasons confidence does or does not exist — source quality, extraction confidence, corroboration, reviewer authority, freshness remaining, conflict count, evidence strength, impact. A downstream product that wants a single score can compute one; the kernel will not pretend the inputs are reducible.
 
-A status like `verified` plus a fault line like `freshness_breach` carries more information than any score. Keep both.
+A status like `verified` plus a transparency gap like `freshness_breach` carries more information than any score. Keep both.
 
 ## Adapters project, they do not flatten
 
-An adapter translates a product artifact into the kernel's claim, evidence, policy, and event records. It does not flatten domain detail into a generic pass/fail. Surface deliberately preserves enough of the product's native structure (proof lanes, crawl runs, document citations) inside metadata so a reviewer can trace a status back to the source artifact. The contract is portable; the domain context is not lost.
+An adapter translates a product artifact into the kernel's claim, evidence, policy, and event records. It does not flatten domain detail into a generic pass/fail. Surface deliberately preserves enough of the product's native structure inside metadata so a reviewer can trace a status back to the source artifact. Veritas may keep domain terms such as evidence checks in its own metadata; Surface product language should describe the portable layer as claims, evidence, traces, policies, and gaps.

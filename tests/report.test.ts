@@ -17,9 +17,9 @@ test("builds a canonical trust report from validation fixtures", async () => {
   assert.equal(report.summary.byStatus.verified, 2);
   assert.equal(report.summary.byStatus.stale, 1);
   assert.equal(report.summary.byStatus.unknown, 1);
-  assert.equal(report.proofRequirementsByClaimId["claim.repo-governance.api-proof"].requiredMethods?.[0], "validation");
-  assert.equal(report.summary.faultLinesByType.freshness_breach, 1);
-  assert.equal(report.faultLines.some((line) => line.claimId === "claim.field-attested-records.registration-status" && line.type === "freshness_breach"), true);
+  assert.equal(report.evidenceRequirementsByClaimId["claim.repo-governance.api-proof"].requiredMethods?.[0], "validation");
+  assert.equal(report.summary.transparencyGapsByType.freshness_breach, 1);
+  assert.equal(report.transparencyGaps.some((line) => line.claimId === "claim.field-attested-records.registration-status" && line.type === "freshness_breach"), true);
   assert.deepEqual(report.summary.staleClaims, ["claim.field-attested-records.registration-status"]);
   assert.match(formatTrustReportSummary(report), /Kontour Surface report test-report/);
 });
@@ -66,8 +66,8 @@ test("rejects unsupported enum values, bad timestamps, and extra fields", () => 
         subjectType: "repo",
         subjectId: "repo-1",
         surface: "surface",
-        claimType: "software-proof",
-        fieldOrBehavior: "proof",
+        claimType: "software-evidence",
+        fieldOrBehavior: "evidence",
         value: true,
         status: "totally_verified",
         createdAt: "2026-04-25T00:00:00.000Z",
@@ -89,8 +89,8 @@ test("rejects unsupported enum values, bad timestamps, and extra fields", () => 
         subjectType: "repo",
         subjectId: "repo-1",
         surface: "surface",
-        claimType: "software-proof",
-        fieldOrBehavior: "proof",
+        claimType: "software-evidence",
+        fieldOrBehavior: "evidence",
         value: true,
         createdAt: "not-a-date",
         updatedAt: "2026-04-25T00:00:00.000Z",
@@ -111,8 +111,8 @@ test("rejects unsupported enum values, bad timestamps, and extra fields", () => 
         subjectType: "repo",
         subjectId: "repo-1",
         surface: "surface",
-        claimType: "software-proof",
-        fieldOrBehavior: "proof",
+        claimType: "software-evidence",
+        fieldOrBehavior: "evidence",
         value: true,
         createdAt: "2026-04-25T00:00:00.000Z",
         updatedAt: "2026-04-25T00:00:00.000Z",
@@ -159,8 +159,8 @@ test("requires evidence methods in schema v2 inputs", () => {
         subjectType: "repo",
         subjectId: "repo-1",
         surface: "surface",
-        claimType: "software-proof",
-        fieldOrBehavior: "proof",
+        claimType: "software-evidence",
+        fieldOrBehavior: "evidence",
         value: true,
         createdAt: "2026-04-25T00:00:00.000Z",
         updatedAt: "2026-04-25T00:00:00.000Z",
@@ -190,8 +190,8 @@ test("accepts optional evidence passing and blocking fields", () => {
       subjectType: "repo",
       subjectId: "repo-1",
       surface: "surface",
-      claimType: "software-proof",
-      fieldOrBehavior: "proof",
+      claimType: "software-evidence",
+      fieldOrBehavior: "evidence",
       value: true,
       createdAt: "2026-04-25T00:00:00.000Z",
       updatedAt: "2026-04-25T00:00:00.000Z",
@@ -225,25 +225,25 @@ test("producerStatus is only emitted when derived status diverges", () => {
       subjectType: "repo",
       subjectId: "repo-1",
       surface: "surface",
-      claimType: "software-proof",
-      fieldOrBehavior: "passing proof",
+      claimType: "software-evidence",
+      fieldOrBehavior: "passing evidence",
       value: true,
       status: "verified",
       createdAt: "2026-04-25T00:00:00.000Z",
       updatedAt: "2026-04-25T00:00:00.000Z",
-      verificationPolicyId: "policy-proof",
+      verificationPolicyId: "policy-evidence",
     }, {
       id: "claim-diverged",
       subjectType: "repo",
       subjectId: "repo-1",
       surface: "surface",
-      claimType: "software-proof",
-      fieldOrBehavior: "missing proof",
+      claimType: "software-evidence",
+      fieldOrBehavior: "missing evidence",
       value: true,
       status: "verified",
       createdAt: "2026-04-25T00:00:00.000Z",
       updatedAt: "2026-04-25T00:00:00.000Z",
-      verificationPolicyId: "policy-proof",
+      verificationPolicyId: "policy-evidence",
     }],
     evidence: [{
       id: "evidence-match",
@@ -266,11 +266,11 @@ test("producerStatus is only emitted when derived status diverges", () => {
       collectedBy: "tester",
     }],
     policies: [{
-      id: "policy-proof",
-      claimType: "software-proof",
+      id: "policy-evidence",
+      claimType: "software-evidence",
       requiredEvidence: ["test_output"],
       requiredMethods: ["validation"],
-      requiredProof: ["test output"],
+      acceptanceCriteria: ["test output"],
       reviewAuthority: "ci",
       validityRule: { kind: "manual" },
       stalenessTriggers: [],
@@ -302,7 +302,7 @@ test("producerStatus is only emitted when derived status diverges", () => {
   assert.equal(report.claims.find((item) => item.id === "claim-diverged")?.producerStatus, "verified");
 });
 
-test("non-blocking evidence failures create non-blocking fault lines while preserving verified status", () => {
+test("non-blocking evidence failures create non-blocking transparency gaps while preserving verified status", () => {
   const input = validateTrustInput({
     schemaVersion: 3,
     source: "non-blocking-failure",
@@ -311,13 +311,13 @@ test("non-blocking evidence failures create non-blocking fault lines while prese
       subjectType: "repo",
       subjectId: "repo-1",
       surface: "surface",
-      claimType: "software-proof",
-      fieldOrBehavior: "proof",
+      claimType: "software-evidence",
+      fieldOrBehavior: "evidence",
       value: true,
       status: "verified",
       createdAt: "2026-04-25T00:00:00.000Z",
       updatedAt: "2026-04-25T00:00:00.000Z",
-      verificationPolicyId: "policy-proof",
+      verificationPolicyId: "policy-evidence",
     }],
     evidence: [{
       id: "evidence-soft-fail",
@@ -332,11 +332,11 @@ test("non-blocking evidence failures create non-blocking fault lines while prese
       blocking: false,
     }],
     policies: [{
-      id: "policy-proof",
-      claimType: "software-proof",
+      id: "policy-evidence",
+      claimType: "software-evidence",
       requiredEvidence: ["test_output"],
       requiredMethods: ["validation"],
-      requiredProof: ["test output"],
+      acceptanceCriteria: ["test output"],
       reviewAuthority: "ci",
       validityRule: { kind: "manual" },
       stalenessTriggers: [],
@@ -356,11 +356,11 @@ test("non-blocking evidence failures create non-blocking fault lines while prese
 
   const report = buildTrustReport(input, { id: "non-blocking-failure", now: new Date("2026-04-25T00:00:00.000Z") });
   const claim = report.claims.find((item) => item.id === "claim-soft-fail");
-  const faultLine = report.faultLines.find((item) => item.evidenceIds?.includes("evidence-soft-fail"));
+  const transparencyGap = report.transparencyGaps.find((item) => item.evidenceIds?.includes("evidence-soft-fail"));
 
   assert.equal(claim?.status, "verified");
   assert.equal(claim?.producerStatus, undefined);
-  assert.equal(faultLine?.blocking, false);
+  assert.equal(transparencyGap?.blocking, false);
 });
 
 test("reputation integrity fixture keeps suspicion distinct from accusation", async () => {
@@ -375,7 +375,7 @@ test("reputation integrity fixture keeps suspicion distinct from accusation", as
   assert.equal(report.summary.byStatus.verified, 1);
   assert.equal(report.summary.byStatus.proposed, 1);
   assert.equal(report.summary.byStatus.unknown, 1);
-  assert.equal(report.summary.faultLinesByType.unsupported_inference, 1);
-  assert.equal(report.summary.faultLinesByType.corroboration_absent, 2);
+  assert.equal(report.summary.transparencyGapsByType.unsupported_inference, 1);
+  assert.equal(report.summary.transparencyGapsByType.corroboration_absent, 2);
   assert.equal(report.claims.find((claim) => claim.id === "claim.reputation.owner-intent")?.status, "unknown");
 });

@@ -66,7 +66,7 @@ const POLICY_KEYS = new Set([
   "requiredEvidence",
   "requiredMethods",
   "requiresCorroboration",
-  "requiredProof",
+  "acceptanceCriteria",
   "reviewAuthority",
   "validityRule",
   "stalenessTriggers",
@@ -76,19 +76,19 @@ const POLICY_KEYS = new Set([
   "incompatibleStatuses",
 ]);
 const EVENT_KEYS = new Set(["id", "claimId", "status", "actor", "method", "evidenceIds", "createdAt", "verifiedAt", "notes"]);
-const COLLECTION_KEYS = new Set(["id", "title", "kind", "description", "claimIds", "controls", "rollupPolicy", "metadata"]);
-const CONTROL_KEYS = new Set(["id", "title", "claimIds", "required", "severity", "validationStrategy", "metadata"]);
-const ROLLUP_POLICY_KEYS = new Set(["mode", "requiredControlIds", "optionalControlIds"]);
+const CLAIM_GROUP_KEYS = new Set(["id", "title", "kind", "description", "claimIds", "requirements", "rollupPolicy", "metadata"]);
+const REQUIREMENT_KEYS = new Set(["id", "title", "claimIds", "required", "severity", "validationStrategy", "metadata"]);
+const ROLLUP_POLICY_KEYS = new Set(["mode", "requiredRequirementIds", "optionalRequirementIds"]);
 const VALIDATION_STRATEGY_KEYS = new Set([
   "requiredEvidence",
   "requiredMethods",
   "requiresCorroboration",
-  "requiredProof",
+  "acceptanceCriteria",
   "reviewAuthority",
   "notes",
   "metadata",
 ]);
-const COLLECTION_KINDS = ["collection", "framework", "control-set"] as const;
+const CLAIM_GROUP_KINDS = ["claimGroup", "framework", "requirement-set"] as const;
 const ROLLUP_MODES = ["all-required", "any-required"] as const;
 
 export function validateTrustInput(input: unknown): TrustInput {
@@ -100,7 +100,7 @@ export function validateTrustInput(input: unknown): TrustInput {
   const policies = requireArray(input, "policies");
   const events = requireArray(input, "events");
   const identityLinks = input.identityLinks === undefined ? undefined : requireArray(input, "identityLinks");
-  const collections = input.collections === undefined ? undefined : requireArray(input, "collections");
+  const claimGroups = input.claimGroups === undefined ? undefined : requireArray(input, "claimGroups");
 
   for (const claim of claims) {
     requireObject(claim, "claim");
@@ -171,7 +171,7 @@ export function validateTrustInput(input: unknown): TrustInput {
     if (policy.requiresCorroboration !== undefined && typeof policy.requiresCorroboration !== "boolean") {
       throw new Error(`policy ${policy.id} requiresCorroboration must be a boolean`);
     }
-    requireStringArray(policy, "requiredProof");
+    requireStringArray(policy, "acceptanceCriteria");
     requireObject(policy.validityRule, "policy.validityRule");
     rejectUnknownKeys(policy.validityRule, new Set(["kind", "durationDays"]), `policy ${policy.id} validityRule`);
     requireEnum(policy.validityRule, "kind", VALIDITY_KINDS);
@@ -237,49 +237,49 @@ export function validateTrustInput(input: unknown): TrustInput {
     }
   }
 
-  if (collections !== undefined) {
-    for (const collection of collections) {
-      validateCollection(collection);
+  if (claimGroups !== undefined) {
+    for (const claimGroup of claimGroups) {
+      validateClaimGroup(claimGroup);
     }
   }
 
-  validateReferences({ claims, evidence, policies, events, collections } as TrustInput);
+  validateReferences({ claims, evidence, policies, events, claimGroups } as TrustInput);
 
   const result: TrustInput = { schemaVersion, source, claims, evidence, policies, events } as TrustInput;
   if (identityLinks !== undefined) (result as TrustInput).identityLinks = identityLinks as TrustInput["identityLinks"];
-  if (collections !== undefined) (result as TrustInput).collections = collections as TrustInput["collections"];
+  if (claimGroups !== undefined) (result as TrustInput).claimGroups = claimGroups as TrustInput["claimGroups"];
   return result;
 }
 
-function validateCollection(collection: unknown): void {
-  requireObject(collection, "collection");
-  rejectUnknownKeys(collection, COLLECTION_KEYS, `collection ${String(collection.id ?? "")}`);
-  for (const field of ["id", "title", "kind"]) requireString(collection, field);
-  requireEnum(collection, "kind", COLLECTION_KINDS);
-  if (collection.description !== undefined) requireString(collection, "description");
-  if (collection.claimIds !== undefined) requireStringArray(collection, "claimIds");
-  if (collection.metadata !== undefined) requireObject(collection.metadata, "collection.metadata");
-  if (collection.controls !== undefined) {
-    const controls = requireArray(collection, "controls");
-    for (const control of controls) {
-      requireObject(control, `collection ${collection.id} control`);
-      rejectUnknownKeys(control, CONTROL_KEYS, `collection ${collection.id} control ${String(control.id ?? "")}`);
-      for (const field of ["id", "title"]) requireString(control, field);
-      requireStringArray(control, "claimIds");
-      if (control.required !== undefined && typeof control.required !== "boolean") {
-        throw new Error(`collection ${collection.id} control ${control.id} required must be a boolean`);
+function validateClaimGroup(claimGroup: unknown): void {
+  requireObject(claimGroup, "claimGroup");
+  rejectUnknownKeys(claimGroup, CLAIM_GROUP_KEYS, `claimGroup ${String(claimGroup.id ?? "")}`);
+  for (const field of ["id", "title", "kind"]) requireString(claimGroup, field);
+  requireEnum(claimGroup, "kind", CLAIM_GROUP_KINDS);
+  if (claimGroup.description !== undefined) requireString(claimGroup, "description");
+  if (claimGroup.claimIds !== undefined) requireStringArray(claimGroup, "claimIds");
+  if (claimGroup.metadata !== undefined) requireObject(claimGroup.metadata, "claimGroup.metadata");
+  if (claimGroup.requirements !== undefined) {
+    const requirements = requireArray(claimGroup, "requirements");
+    for (const requirement of requirements) {
+      requireObject(requirement, `claimGroup ${claimGroup.id} requirement`);
+      rejectUnknownKeys(requirement, REQUIREMENT_KEYS, `claimGroup ${claimGroup.id} requirement ${String(requirement.id ?? "")}`);
+      for (const field of ["id", "title"]) requireString(requirement, field);
+      requireStringArray(requirement, "claimIds");
+      if (requirement.required !== undefined && typeof requirement.required !== "boolean") {
+        throw new Error(`claimGroup ${claimGroup.id} requirement ${requirement.id} required must be a boolean`);
       }
-      if (control.severity !== undefined) requireEnum(control, "severity", IMPACT_LEVELS);
-      if (control.validationStrategy !== undefined) validateValidationStrategy(control.validationStrategy, `collection ${collection.id} control ${control.id}`);
-      if (control.metadata !== undefined) requireObject(control.metadata, "control.metadata");
+      if (requirement.severity !== undefined) requireEnum(requirement, "severity", IMPACT_LEVELS);
+      if (requirement.validationStrategy !== undefined) validateValidationStrategy(requirement.validationStrategy, `claimGroup ${claimGroup.id} requirement ${requirement.id}`);
+      if (requirement.metadata !== undefined) requireObject(requirement.metadata, "requirement.metadata");
     }
   }
-  if (collection.rollupPolicy !== undefined) {
-    requireObject(collection.rollupPolicy, `collection ${collection.id} rollupPolicy`);
-    rejectUnknownKeys(collection.rollupPolicy, ROLLUP_POLICY_KEYS, `collection ${collection.id} rollupPolicy`);
-    requireEnum(collection.rollupPolicy, "mode", ROLLUP_MODES);
-    if (collection.rollupPolicy.requiredControlIds !== undefined) requireStringArray(collection.rollupPolicy, "requiredControlIds");
-    if (collection.rollupPolicy.optionalControlIds !== undefined) requireStringArray(collection.rollupPolicy, "optionalControlIds");
+  if (claimGroup.rollupPolicy !== undefined) {
+    requireObject(claimGroup.rollupPolicy, `claimGroup ${claimGroup.id} rollupPolicy`);
+    rejectUnknownKeys(claimGroup.rollupPolicy, ROLLUP_POLICY_KEYS, `claimGroup ${claimGroup.id} rollupPolicy`);
+    requireEnum(claimGroup.rollupPolicy, "mode", ROLLUP_MODES);
+    if (claimGroup.rollupPolicy.requiredRequirementIds !== undefined) requireStringArray(claimGroup.rollupPolicy, "requiredRequirementIds");
+    if (claimGroup.rollupPolicy.optionalRequirementIds !== undefined) requireStringArray(claimGroup.rollupPolicy, "optionalRequirementIds");
   }
 }
 
@@ -291,7 +291,7 @@ function validateValidationStrategy(value: unknown, label: string): void {
   if (value.requiresCorroboration !== undefined && typeof value.requiresCorroboration !== "boolean") {
     throw new Error(`${label} validationStrategy requiresCorroboration must be a boolean`);
   }
-  if (value.requiredProof !== undefined) requireStringArray(value, "requiredProof");
+  if (value.acceptanceCriteria !== undefined) requireStringArray(value, "acceptanceCriteria");
   if (value.reviewAuthority !== undefined) requireString(value, "reviewAuthority");
   if (value.notes !== undefined) requireString(value, "notes");
   if (value.metadata !== undefined) requireObject(value.metadata, `${label} validationStrategy.metadata`);
@@ -355,25 +355,25 @@ function validateReferences(input: TrustInput): void {
     }
   }
 
-  for (const collection of input.collections ?? []) {
-    for (const claimId of collection.claimIds ?? []) {
+  for (const claimGroup of input.claimGroups ?? []) {
+    for (const claimId of claimGroup.claimIds ?? []) {
       if (!claimIds.has(claimId)) {
-        throw new Error(`Collection ${collection.id} references unknown claim ${claimId}`);
+        throw new Error(`Claim group ${claimGroup.id} references unknown claim ${claimId}`);
       }
     }
-    const controlIds = new Set((collection.controls ?? []).map((control) => control.id));
-    for (const control of collection.controls ?? []) {
-      for (const claimId of control.claimIds) {
+    const requirementIds = new Set((claimGroup.requirements ?? []).map((requirement) => requirement.id));
+    for (const requirement of claimGroup.requirements ?? []) {
+      for (const claimId of requirement.claimIds) {
         if (!claimIds.has(claimId)) {
-          throw new Error(`Collection ${collection.id} control ${control.id} references unknown claim ${claimId}`);
+          throw new Error(`Claim group ${claimGroup.id} requirement ${requirement.id} references unknown claim ${claimId}`);
         }
       }
     }
-    for (const controlId of collection.rollupPolicy?.requiredControlIds ?? []) {
-      if (!controlIds.has(controlId)) throw new Error(`Collection ${collection.id} rollupPolicy references unknown control ${controlId}`);
+    for (const requirementId of claimGroup.rollupPolicy?.requiredRequirementIds ?? []) {
+      if (!requirementIds.has(requirementId)) throw new Error(`Claim group ${claimGroup.id} rollupPolicy references unknown requirement ${requirementId}`);
     }
-    for (const controlId of collection.rollupPolicy?.optionalControlIds ?? []) {
-      if (!controlIds.has(controlId)) throw new Error(`Collection ${collection.id} rollupPolicy references unknown control ${controlId}`);
+    for (const requirementId of claimGroup.rollupPolicy?.optionalRequirementIds ?? []) {
+      if (!requirementIds.has(requirementId)) throw new Error(`Claim group ${claimGroup.id} rollupPolicy references unknown requirement ${requirementId}`);
     }
   }
 }

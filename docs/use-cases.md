@@ -1,21 +1,21 @@
 # Use Cases
 
-Surface is useful when a product needs to turn domain-specific proof into a portable trust report without moving product workflow language into the kernel.
+Surface is useful when a product needs to turn domain-specific evidence into a portable Trust Snapshot without moving product workflow language into the kernel.
 
-The shipped adapters and fixtures below illustrate the shape — they are not the only places Surface fits. Anything that needs to express claims, evidence, freshness, and conflict (fitness tracking, tax filings, marketplace listings, agent output validation, certifications, regulatory disclosures) can build on the same substrate.
+The shipped adapters and fixtures below illustrate the shape. They are not the only places Surface fits. Anything that needs to express claims, evidence, Evidence Trace, Freshness, and Conflict (fitness tracking, tax filings, marketplace listings, agent output validation, certifications, regulatory disclosures) can build with the same product transparency standard.
 
 ## Repo Governance — built and shipping
 
-A repo-governance product can own policy packs, proof lanes, evidence artifacts, and eval history. Its adapter should live in that product repo and emit `TrustInput` through the public Surface SDK.
+A repo-governance product can own repo standardss, evidence checks, evidence artifacts, and eval history. These terms are product-local Veritas language; Surface receives claims, Evidence, Requirements, Freshness, and Conflict state. Its adapter should live in that product repo and emit `TrustInput` through the public Surface SDK.
 
 Portable output:
 
 - repo area claims
-- proof command claims
+- evidence command claims
 - policy result claims
 - verification events grounded in timestamps and source references
 
-Surface then validates the emitted `TrustInput` and generates report-only fields such as summaries, fault lines, proof requirements, freshness, and status.
+Surface then validates the emitted `TrustInput` and generates report-only fields such as summaries, Conflicts or Transparency Gaps, Requirements, Freshness, and status. `TrustInput` remains the current SDK name.
 
 ## Field-Attested Records
 
@@ -27,4 +27,4 @@ A fact-resolution product can map extracted facts, selected values, assumptions,
 
 ## Dependency Audit
 
-A dependency-security workflow can map `npm audit --json` output into evidence for authored package-safety claims. For Veritas, this is a plugin concern rather than a built-in Surface adapter.
+A dependency-security workflow can map `npm audit --json` output into Evidence for authored package-safety claims. For Veritas, this is a plugin concern rather than a built-in Surface adapter.
