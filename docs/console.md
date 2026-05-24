@@ -118,6 +118,7 @@ This is a producer-agnostic shape. Producers may put domain-specific fields unde
 |-------|--------|-------------|
 | `/` | GET | Surface Console HTML shell |
 | `/api/read-model` | GET | Current (or `?run=<id>`) read model JSON |
+| `/api/console-model` | GET | Current (or `?run=<id>`) Surface Console projection |
 | `/api/runs` | GET | Sorted list of available run snapshots |
 | `/api/claims` | POST | Add a claim to the local claim store |
 | `/api/claims/:id` | PUT | Update a claim in the local claim store |

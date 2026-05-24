@@ -36,6 +36,8 @@ The projection includes:
 - review/action queues
 - attestation validity signals
 
+Trace analysis is implemented by `analyzeTrustTraces(report)`. Analytics uses that module for Evidence Trace and Authority Trace checks, then combines trace gaps with policy-derived evidence gaps for queues and Surface Console projections.
+
 ## CLI
 
 ```bash
@@ -75,8 +77,8 @@ This prevents a product from bypassing policy by inventing an attestation string
 
 Surface does not own auth. Product systems should emit actor references, identity evidence references, authority source references, validity windows, revocation markers, and integrity hashes from their own identity providers, directories, signing systems, or audit logs.
 
-## Boundary
+## Seam
 
 Surface owns the generic projection and gap vocabulary. It does not decide who belongs to a product's organization, which user has which role, or how a product authenticates a user.
 
-That boundary keeps Surface product-neutral while still making human and organizational trust inspectable.
+That seam keeps Surface product-neutral while still making human and organizational trust inspectable.

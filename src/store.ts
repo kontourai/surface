@@ -34,7 +34,7 @@ export function updateClaimInStore(
     ...updates,
     id,
     createdAt: existing.createdAt,
-    updatedAt: new Date().toISOString(),
+    updatedAt: updates.updatedAt ?? new Date().toISOString(),
   };
   validateClaimDefinition(updated);
   return {

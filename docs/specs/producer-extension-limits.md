@@ -18,6 +18,8 @@ Producer Extensions may define:
 - suggested actions and capability labels
 - mappings to external standards or producer domain concepts
 
+These are authoring and presentation hints. They are not inputs to Trust Snapshot derivation.
+
 ## Hard Limits
 
 Producer Extensions must not:
@@ -44,6 +46,8 @@ When adding extension behavior to Surface core, prefer:
 - fixtures that prove core semantics are unchanged
 
 If a producer concept changes claim status, evidence meaning, freshness, conflicts, or disclosure semantics, it belongs in a spec or schema proposal before implementation.
+
+Trust Snapshot derivation must remain independent from `SurfaceExtension` registry lookups. Surface Console and authoring tools may read extension hints; derivation modules should consume Claim Packages, policies, evidence, events, traces, and identity links.
 
 ## Current Implementation Names
 

@@ -7,14 +7,18 @@ import { validateTrustInput } from "./validate.js";
 import { toLinkedReport } from "./linked.js";
 import { buildTrustAnalyticsProjection } from "./analytics.js";
 import {
-  addClaimToStore,
+  addAuthoredClaim,
+  parseImpactLevel,
+  removeAuthoredClaim,
+  updateAuthoredClaim,
+  type ClaimDefinitionUpdateDraft,
+} from "./claim-authoring.js";
+import {
   loadClaimStore,
-  removeClaimFromStore,
   saveClaimStore,
-  updateClaimInStore,
   validateClaimStore,
 } from "./store.js";
-import type { ClaimDefinition, ImpactLevel, TrustReport } from "./types.js";
+import type { ImpactLevel, TrustReport } from "./types.js";
 import type { SurfaceConsoleConfig } from "./console/types.js";
 
 export async function runCli(args: string[]): Promise<void> {
@@ -111,30 +115,26 @@ function runClaimList(args: string[]): void {
 function runClaimAdd(args: string[]): void {
   const options = parseClaimArgs(args);
   requireClaimCreateOptions(options);
-  const now = new Date().toISOString();
-  const claim: ClaimDefinition = {
-    id: options.id ?? generateClaimId(options.subjectId, options.surface, options.field),
+  const storePath = resolve(options.store);
+  const { store, claim } = addAuthoredClaim(loadClaimStore(storePath), {
+    id: options.id,
     surface: options.surface,
     claimType: options.type,
     fieldOrBehavior: options.field,
     subjectType: options.subjectType,
     subjectId: options.subjectId,
-    impactLevel: options.impact ?? "medium",
+    impactLevel: options.impact,
     verificationPolicyId: options.policyId,
     metadata: options.metadata,
-    createdAt: now,
-    updatedAt: now,
-  };
-  const storePath = resolve(options.store);
-  const updated = addClaimToStore(loadClaimStore(storePath), claim);
-  saveClaimStore(updated, storePath);
+  });
+  saveClaimStore(store, storePath);
   console.log(`Added claim: ${claim.id}`);
 }
 
 function runClaimEdit(args: string[]): void {
   const options = parseClaimArgs(args);
   if (!options.claimId) throw new Error("surface claim edit requires --claim-id");
-  const updates: Partial<Omit<ClaimDefinition, "id" | "createdAt">> = {};
+  const updates: ClaimDefinitionUpdateDraft = {};
   if (options.type) updates.claimType = options.type;
   if (options.surface) updates.surface = options.surface;
   if (options.subjectType) updates.subjectType = options.subjectType;
@@ -144,8 +144,8 @@ function runClaimEdit(args: string[]): void {
   if (options.policyId) updates.verificationPolicyId = options.policyId;
   if (options.metadata) updates.metadata = options.metadata;
   const storePath = resolve(options.store);
-  const updated = updateClaimInStore(loadClaimStore(storePath), options.claimId, updates);
-  saveClaimStore(updated, storePath);
+  const { store } = updateAuthoredClaim(loadClaimStore(storePath), options.claimId, updates);
+  saveClaimStore(store, storePath);
   console.log(`Updated claim: ${options.claimId}`);
 }
 
@@ -153,7 +153,7 @@ function runClaimRemove(args: string[]): void {
   const options = parseClaimArgs(args);
   if (!options.claimId) throw new Error("surface claim remove requires --claim-id");
   const storePath = resolve(options.store);
-  const updated = removeClaimFromStore(loadClaimStore(storePath), options.claimId);
+  const updated = removeAuthoredClaim(loadClaimStore(storePath), options.claimId);
   saveClaimStore(updated, storePath);
   console.log(`Removed claim: ${options.claimId}`);
 }
@@ -364,7 +364,7 @@ function parseClaimArgs(args: string[]): ClaimCommandOptions {
     else if (arg === "--subject-type") options.subjectType = requireValue(args, ++index, "--subject-type");
     else if (arg === "--subject-id") options.subjectId = requireValue(args, ++index, "--subject-id");
     else if (arg === "--field") options.field = requireValue(args, ++index, "--field");
-    else if (arg === "--impact") options.impact = parseImpact(requireValue(args, ++index, "--impact"));
+    else if (arg === "--impact") options.impact = parseImpactLevel(requireValue(args, ++index, "--impact"), "--impact");
     else if (arg === "--policy-id") options.policyId = requireValue(args, ++index, "--policy-id");
     else if (arg === "--metadata") options.metadata = parseMetadata(requireValue(args, ++index, "--metadata"));
     else throw new Error(`Unknown claim argument: ${arg}`);
@@ -390,29 +390,12 @@ function requireClaimCreateOptions(options: ClaimCommandOptions): asserts option
   }
 }
 
-function parseImpact(value: string): ImpactLevel {
-  if (value === "low" || value === "medium" || value === "high" || value === "critical") return value;
-  throw new Error("--impact must be low, medium, high, or critical");
-}
-
 function parseMetadata(value: string): Record<string, unknown> {
   const parsed = JSON.parse(value);
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
     throw new Error("--metadata must be a JSON object");
   }
   return parsed as Record<string, unknown>;
-}
-
-function generateClaimId(subjectId: string, surface: string, fieldOrBehavior: string): string {
-  return `${slugify(subjectId)}.${slugify(surface)}.${slugify(fieldOrBehavior)}`;
-}
-
-function slugify(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "") || "claim";
 }
 
 function printHelp(): void {

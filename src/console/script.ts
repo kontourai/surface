@@ -403,14 +403,19 @@ function renderConsole() {
   if (runMeta) runMeta.textContent = d.run?.meta ?? "";
 
   if (d.claims?.length) renderDonut(d);
-  el("consoleMetrics").innerHTML = d.metrics.map(([label, value,, delta, color, filterVal]) =>
-    \`<button type="button" class="metric-chip metric-\${esc(color)}\${filters.status === filterVal ? " metric-chip-active" : ""}"
-      data-metric-filter="\${esc(filterVal ?? "all")}" title="Filter to \${esc(label.toLowerCase())}">
+  el("consoleMetrics").innerHTML = d.metrics.map(metric => {
+    const label = Array.isArray(metric) ? metric[0] : metric.label;
+    const value = Array.isArray(metric) ? metric[1] : metric.value;
+    const delta = Array.isArray(metric) ? metric[3] : metric.delta;
+    const color = Array.isArray(metric) ? metric[4] : metric.color;
+    const filterVal = Array.isArray(metric) ? metric[5] : metric.filter;
+    return \`<button type="button" class="metric-chip metric-\${esc(color)}\${filters.status === filterVal ? " metric-chip-active" : ""}"
+      data-metric-filter="\${esc(filterVal ?? "all")}" title="Filter to \${esc(String(label).toLowerCase())}">
       <span class="mc-value" data-count="\${esc(value)}">\${esc(value)}</span>
       <span class="mc-label">\${esc(label)}</span>
       \${delta ? \`<span class="mc-delta">\${esc(delta)}</span>\` : ""}
     </button>\`
-  ).join("");
+  }).join("");
   el("consoleMetrics").querySelectorAll("[data-metric-filter]").forEach(chip => {
     chip.addEventListener("click", () => {
       const f = chip.dataset.metricFilter;
@@ -1134,12 +1139,12 @@ async function confirmDeleteClaim() {
 
 async function refreshConsole(runId, skipHistory = false) {
   currentRunId = runId ?? null;
-  const url = runId && runId !== "latest" ? \`/api/read-model?run=\${encodeURIComponent(runId)}\` : "/api/read-model";
+  const url = runId && runId !== "latest" ? \`/api/console-model?run=\${encodeURIComponent(runId)}\` : "/api/console-model";
   const response = await fetch(url);
   if (!response.ok) {
-    currentData = emptyConsole();
+    currentData = cfg.emptyConsoleModel;
   } else {
-    currentData = consoleFromReadModel(await response.json());
+    currentData = await response.json();
   }
   renderConsole();
   renderRunPicker();
@@ -1237,110 +1242,6 @@ function renderRunPicker() {
   });
 }
 
-// ── run meta formatting ────────────────────────────────
-function formatSourceSummary(producer) {
-  const kind = producer.sourceKind;
-  const scope = Array.isArray(producer.sourceScope)
-    ? producer.sourceScope
-    : producer.sourceScope ? [producer.sourceScope] : [];
-
-  let kindLabel = null;
-  if (kind === "working-tree")   kindLabel = "Working tree";
-  else if (kind === "branch-diff")    kindLabel = "Branch diff";
-  else if (kind === "explicit-files") kindLabel = "Explicit files";
-  else if (kind)                      kindLabel = kind.replace(/-/g, " ");
-
-  const allLocal = ["staged", "unstaged", "untracked"];
-  let scopeLabel = null;
-  if (scope.length && allLocal.every(s => scope.includes(s)) && scope.length === allLocal.length) {
-    scopeLabel = "all local changes";
-  } else if (scope.length === 1) {
-    scopeLabel = scope[0] + " only";
-  } else if (scope.length) {
-    scopeLabel = scope.join(" + ");
-  }
-
-  if (!kindLabel && !scopeLabel) return null;
-  if (!scopeLabel || scopeLabel === kindLabel) return kindLabel;
-  return kindLabel + " · " + scopeLabel;
-}
-
-// ── data ───────────────────────────────────────────────
-function deriveProjectName(claims) {
-  if (!claims?.length) return null;
-  const roots = {};
-  claims.forEach(c => {
-    const raw = (c.subjectId ?? "").split(":")[0].trim();
-    if (raw) roots[raw] = (roots[raw] ?? 0) + 1;
-  });
-  const top = Object.entries(roots).sort((a, b) => b[1] - a[1])[0]?.[0];
-  if (!top) return null;
-  return top.replace(/[-_]+/g, " ").replace(/\b\w/g, ch => ch.toUpperCase());
-}
-
-function consoleFromReadModel(readModel) {
-  const producer   = readModel.producer ?? {};
-  const claims     = readModel.claims ?? [];
-  const sourceSummary = formatSourceSummary(producer);
-  const runDate = producer.timestamp
-    ? new Date(producer.timestamp).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
-    : null;
-  const runMeta = [sourceSummary, runDate].filter(Boolean).join(" · ");
-  const verified  = readModel.summary.statusCounts?.verified ?? 0;
-  const attention = claims.filter(c =>
-    ["stale","disputed","rejected","unknown"].includes(c.status)
-  );
-  const total = Math.max(readModel.summary.claimCount ?? claims.length, 1);
-
-  const folderName = cfg.folderName
-    ? cfg.folderName.replace(/[-_]+/g, " ").replace(/\b\w/g, ch => ch.toUpperCase())
-    : null;
-  const projectName = vocab.projectName ?? cfg.theme?.brandName ?? deriveProjectName(claims) ?? folderName ?? "Console";
-  return {
-    project: { name: projectName },
-    run: { id: producer.runId ?? "unknown", meta: runMeta, label: producer.runId ?? null },
-    narrative: buildNarrative(readModel, attention),
-    metrics: [
-      ["Claims",    String(readModel.summary.claimCount), "", "", "blue", "all"],
-      ["Verified",  String(verified), "", Math.round((verified / total) * 100) + "%", "good", "verified"],
-      ["Attention", String(attention.length), "", readModel.summary.transparencyGapCount + " gaps",
-       attention.length ? "bad" : "good", "attention"],
-    ],
-    claims,
-    surfaceCounts: readModel.summary.surfaceCounts ?? {},
-    readModel,
-  };
-}
-
-function emptyConsole() {
-  return {
-    project: { name: vocab.projectName ?? cfg.theme?.brandName ?? "No data yet" },
-    run:     { id: "", meta: "No runs found — run the producer to generate a read model" },
-    narrative: "",
-    metrics: [
-      ["Claims",    "0", "", "", "blue", "all"],
-      ["Verified",  "0", "", "", "good", "verified"],
-      ["Attention", "0", "", "", "bad",  "attention"],
-    ],
-    claims:        [],
-    surfaceCounts: {},
-    readModel:     null,
-  };
-}
-
-function buildNarrative(readModel, attention) {
-  const verified = readModel.summary.statusCounts?.verified ?? 0;
-  const total    = readModel.summary.claimCount ?? 0;
-  if (!attention.length) {
-    return "All " + verified + " of " + total + " claims are verified.";
-  }
-  const first = attention[0];
-  return attention.length + " claim" + (attention.length !== 1 ? "s" : "") +
-    " need attention. Start with \\u201c" +
-    (first.fieldOrBehavior || first.claimType) +
-    "\\u201d on surface " + surfaceLabel(first.surface) + ".";
-}
-
 // ── boot ───────────────────────────────────────────────
 const _bootUrl = getUrlState();
 applyUrlFilters(_bootUrl);
@@ -1348,9 +1249,7 @@ updateConsoleChromeMetrics();
 window.addEventListener("resize", updateConsoleChromeMetrics);
 
 currentRunId = _bootUrl.run ?? null;
-currentData = cfg.readModel
-  ? consoleFromReadModel(cfg.readModel)
-  : emptyConsole();
+currentData = cfg.consoleModel ?? cfg.emptyConsoleModel;
 renderConsole();
 el("addClaimBtn")?.addEventListener("click", () => openClaimModal());
 el("claimModalCancel")?.addEventListener("click", closeClaimModal);

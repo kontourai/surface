@@ -29,6 +29,8 @@ export interface SurfaceConsoleConfig {
 
 export interface SurfaceConsoleRuntimeConfig extends SurfaceConsoleConfig {
   readModel?: unknown;
+  consoleModel?: unknown;
+  emptyConsoleModel?: unknown;
   producer?: string;
   claimTypes?: ClaimTypeDefinition[];
   folderName?: string;

@@ -5,10 +5,18 @@ import { cwd } from "node:process";
 import { buildConsoleHtml } from "./shell.js";
 import { CONSOLE_SCRIPT } from "./script.js";
 import { CONSOLE_CSS } from "./styles.js";
-import { addClaimToStore, loadClaimStore, removeClaimFromStore, saveClaimStore, updateClaimInStore } from "../store.js";
+import { buildSurfaceConsoleProjection, emptySurfaceConsoleProjection } from "./projection.js";
+import {
+  addAuthoredClaim,
+  parseImpactLevel,
+  removeAuthoredClaim,
+  updateAuthoredClaim,
+  type ClaimDefinitionDraft,
+  type ClaimDefinitionUpdateDraft,
+} from "../claim-authoring.js";
+import { loadClaimStore, saveClaimStore } from "../store.js";
 import { listExtensions } from "../extension.js";
 import type { SurfaceConsoleConfig } from "./types.js";
-import type { ClaimDefinition, ImpactLevel } from "../types.js";
 
 const SURFACE_RUNS_DEFAULT = ".surface/runs/latest.json";
 
@@ -28,6 +36,11 @@ async function loadReadModel(indexPath: string): Promise<unknown> {
 
 async function resolveReadModelPath(configuredPath: string): Promise<string> {
   return configuredPath;
+}
+
+async function loadConsoleProjection(indexPath: string, config: SurfaceConsoleConfig, storePath: string): Promise<unknown> {
+  const readModel = await loadReadModel(indexPath);
+  return buildSurfaceConsoleProjection(readModel, { ...config, storePath, readModel, folderName: basename(cwd()) });
 }
 
 export async function startConsoleServer(config: SurfaceConsoleConfig = {}): Promise<void> {
@@ -100,13 +113,29 @@ export async function startConsoleServer(config: SurfaceConsoleConfig = {}): Pro
       return;
     }
 
+    if (url === "/api/console-model") {
+      const runParam = requestUrl.searchParams.get("run");
+      const resolvedBase = await resolveReadModelPath(readModelPath);
+      const effectivePath = runParam && runParam !== "latest"
+        ? resolve(dirname(resolvedBase), `${runParam}.console.json`)
+        : resolvedBase;
+      try {
+        const consoleModel = await loadConsoleProjection(effectivePath, config, storePath);
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify(consoleModel));
+      } catch {
+        res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ error: "console model not found", path: effectivePath }));
+      }
+      return;
+    }
+
     if (url === "/api/claims" && req.method === "POST") {
       try {
         const body = await readJsonBody(req);
-        const now = new Date().toISOString();
-        const claim = claimFromBody(body, now);
-        const updated = addClaimToStore(loadClaimStore(resolve(storePath)), claim);
-        saveClaimStore(updated, resolve(storePath));
+        const resolvedStorePath = resolve(storePath);
+        const { store, claim } = addAuthoredClaim(loadClaimStore(resolvedStorePath), claimFromBody(body));
+        saveClaimStore(store, resolvedStorePath);
         res.writeHead(201, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify({ ok: true, claim }));
       } catch (error) {
@@ -119,8 +148,9 @@ export async function startConsoleServer(config: SurfaceConsoleConfig = {}): Pro
       try {
         const claimId = decodeURIComponent(url.slice("/api/claims/".length));
         const body = await readJsonBody(req);
-        const updated = updateClaimInStore(loadClaimStore(resolve(storePath)), claimId, claimUpdatesFromBody(body));
-        saveClaimStore(updated, resolve(storePath));
+        const resolvedStorePath = resolve(storePath);
+        const { store } = updateAuthoredClaim(loadClaimStore(resolvedStorePath), claimId, claimUpdatesFromBody(body));
+        saveClaimStore(store, resolvedStorePath);
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify({ ok: true }));
       } catch (error) {
@@ -132,8 +162,9 @@ export async function startConsoleServer(config: SurfaceConsoleConfig = {}): Pro
     if (url.startsWith("/api/claims/") && req.method === "DELETE") {
       try {
         const claimId = decodeURIComponent(url.slice("/api/claims/".length));
-        const updated = removeClaimFromStore(loadClaimStore(resolve(storePath)), claimId);
-        saveClaimStore(updated, resolve(storePath));
+        const resolvedStorePath = resolve(storePath);
+        const updated = removeAuthoredClaim(loadClaimStore(resolvedStorePath), claimId);
+        saveClaimStore(updated, resolvedStorePath);
         res.writeHead(204);
         res.end();
       } catch (error) {
@@ -146,12 +177,30 @@ export async function startConsoleServer(config: SurfaceConsoleConfig = {}): Pro
       const resolvedPath = await resolveReadModelPath(readModelPath);
       const readModel = await loadReadModel(resolvedPath);
       const folderName = basename(cwd());
+      const consoleModel = buildSurfaceConsoleProjection(readModel, { ...config, storePath, readModel, folderName });
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-      res.end(buildConsoleHtml({ ...config, storePath, claimTypes: registeredClaimTypes(), readModel, folderName }));
+      res.end(buildConsoleHtml({
+        ...config,
+        storePath,
+        claimTypes: registeredClaimTypes(),
+        readModel,
+        consoleModel,
+        emptyConsoleModel: emptySurfaceConsoleProjection({ ...config, storePath, folderName }),
+        folderName,
+      }));
     } catch {
       const folderName = basename(cwd());
+      const emptyConsoleModel = emptySurfaceConsoleProjection({ ...config, storePath, folderName });
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-      res.end(buildConsoleHtml({ ...config, storePath, claimTypes: registeredClaimTypes(), readModel: null, folderName }));
+      res.end(buildConsoleHtml({
+        ...config,
+        storePath,
+        claimTypes: registeredClaimTypes(),
+        readModel: null,
+        consoleModel: emptyConsoleModel,
+        emptyConsoleModel,
+        folderName,
+      }));
     }
   });
 
@@ -179,33 +228,31 @@ async function readJsonBody(req: IncomingMessage): Promise<Record<string, unknow
   return parsed as Record<string, unknown>;
 }
 
-function claimFromBody(body: Record<string, unknown>, now: string): ClaimDefinition {
+function claimFromBody(body: Record<string, unknown>): ClaimDefinitionDraft {
   const subjectId = requireString(body, "subjectId");
   const surface = requireString(body, "surface");
   const fieldOrBehavior = requireString(body, "fieldOrBehavior");
   return {
-    id: typeof body.id === "string" && body.id.length > 0 ? body.id : generateClaimId(subjectId, surface, fieldOrBehavior),
+    id: optionalString(body.id),
     surface,
     claimType: requireString(body, "claimType"),
     fieldOrBehavior,
     subjectType: requireString(body, "subjectType"),
     subjectId,
-    impactLevel: parseImpact(body.impactLevel),
+    impactLevel: parseImpactLevel(body.impactLevel),
     verificationPolicyId: optionalString(body.verificationPolicyId),
     metadata: optionalObject(body.metadata),
-    createdAt: now,
-    updatedAt: now,
   };
 }
 
-function claimUpdatesFromBody(body: Record<string, unknown>): Partial<Omit<ClaimDefinition, "id" | "createdAt">> {
-  const updates: Partial<Omit<ClaimDefinition, "id" | "createdAt">> = {};
+function claimUpdatesFromBody(body: Record<string, unknown>): ClaimDefinitionUpdateDraft {
+  const updates: ClaimDefinitionUpdateDraft = {};
   if (body.surface !== undefined) updates.surface = requireString(body, "surface");
   if (body.claimType !== undefined) updates.claimType = requireString(body, "claimType");
   if (body.fieldOrBehavior !== undefined) updates.fieldOrBehavior = requireString(body, "fieldOrBehavior");
   if (body.subjectType !== undefined) updates.subjectType = requireString(body, "subjectType");
   if (body.subjectId !== undefined) updates.subjectId = requireString(body, "subjectId");
-  if (body.impactLevel !== undefined) updates.impactLevel = parseImpact(body.impactLevel);
+  if (body.impactLevel !== undefined) updates.impactLevel = parseImpactLevel(body.impactLevel);
   if (body.verificationPolicyId !== undefined) updates.verificationPolicyId = optionalString(body.verificationPolicyId);
   if (body.metadata !== undefined) updates.metadata = optionalObject(body.metadata);
   return updates;
@@ -227,20 +274,6 @@ function optionalObject(value: unknown): Record<string, unknown> | undefined {
   if (value === undefined || value === null) return undefined;
   if (typeof value !== "object" || Array.isArray(value)) throw new Error("metadata must be a JSON object");
   return value as Record<string, unknown>;
-}
-
-function parseImpact(value: unknown): ImpactLevel | undefined {
-  if (value === undefined || value === null || value === "") return undefined;
-  if (value === "low" || value === "medium" || value === "high" || value === "critical") return value;
-  throw new Error("impactLevel must be low, medium, high, or critical");
-}
-
-function generateClaimId(subjectId: string, surface: string, fieldOrBehavior: string): string {
-  return `${slugify(subjectId)}.${slugify(surface)}.${slugify(fieldOrBehavior)}`;
-}
-
-function slugify(value: string): string {
-  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "claim";
 }
 
 function respondBadRequest(res: ServerResponse, error: unknown): void {

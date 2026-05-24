@@ -5,6 +5,8 @@ import {
   listExtensions,
   registerExtension,
   resolveClaimTypeDefinition,
+  resolveExtensionTheme,
+  resolveExtensionVocab,
   type SurfaceExtension,
 } from "../src/index.js";
 
@@ -19,6 +21,9 @@ function extension(name: string): SurfaceExtension {
       displayName: `${name} claim`,
       description: "test claim type",
       defaultImpact: "medium",
+      defaultSurface: `${name}.surface`,
+      policyTemplateId: `${name}.policy`,
+      metadataFields: [{ key: "owner", label: "Owner", type: "string" }],
     }],
   };
 }
@@ -40,6 +45,26 @@ test("resolveClaimTypeDefinition finds claim types across registered extensions"
   registerExtension(extension("registry-claim-type"));
   assert.equal(resolveClaimTypeDefinition("registry-claim-type-claim")?.displayName, "registry-claim-type claim");
   assert.equal(resolveClaimTypeDefinition("missing"), undefined);
+});
+
+test("claim type definitions expose authoring hints without changing trust semantics", () => {
+  registerExtension(extension("registry-authoring"));
+  const definition = resolveClaimTypeDefinition("registry-authoring-claim");
+
+  assert.equal(definition?.defaultSurface, "registry-authoring.surface");
+  assert.equal(definition?.policyTemplateId, "registry-authoring.policy");
+  assert.deepEqual(definition?.metadataFields, [{ key: "owner", label: "Owner", type: "string" }]);
+});
+
+test("extension vocab and theme are presentation-only registry queries", () => {
+  registerExtension({
+    ...extension("registry-presentation"),
+    vocab: { statusLabels: { verified: "Checked" } },
+    theme: { brandName: "Presentation Extension" },
+  });
+
+  assert.equal(resolveExtensionVocab("registry-presentation")?.statusLabels?.verified, "Checked");
+  assert.equal(resolveExtensionTheme("registry-presentation")?.brandName, "Presentation Extension");
 });
 
 test("listExtensions returns registered extensions", () => {

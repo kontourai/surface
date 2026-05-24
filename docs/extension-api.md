@@ -30,7 +30,7 @@ An extension has:
 - `claimTypes`: optional claim type definitions for authoring UIs.
 - `policyTemplates`: optional reusable policy templates keyed by ID.
 
-Extensions may make Surface feel native to a product, but they must not redefine core statuses, Evidence semantics, Freshness semantics, Conflicts, Transparency Gaps, or trust derivation.
+Extensions may make Surface feel native to a product, but they must not redefine core statuses, Evidence semantics, Freshness semantics, Conflicts, Transparency Gaps, or Trust Snapshot derivation. Extension data is an authoring and presentation input, not a derivation hook.
 
 ## Claim Types
 
@@ -58,3 +58,7 @@ Surface exports:
 - `resolveExtensionTheme(producerName)`
 
 The Surface Console includes registered claim type definitions in its runtime config so local producer Console instances can expose first-class authoring without hardcoding producer-specific fields in Surface.
+
+## Derivation Seam
+
+Trust Snapshot derivation does not query Producer Extensions. A Producer Extension can label a status, suggest a default surface namespace, provide metadata fields, or point an authored claim at a policy template. It cannot make a claim verified, hide a Transparency Gap, reinterpret an Evidence Trace, or change Authority Trace meaning.
