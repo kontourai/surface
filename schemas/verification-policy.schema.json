@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://kontour.ai/schemas/surface/verification-policy.schema.json",
+  "$id": "https://kontourai.io/schemas/surface/verification-policy.schema.json",
   "title": "Kontour Surface Verification Policy",
   "type": "object",
   "required": ["id", "claimType", "requiredEvidence", "acceptanceCriteria", "reviewAuthority", "validityRule", "stalenessTriggers", "conflictRules", "impactLevel"],

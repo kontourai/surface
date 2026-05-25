@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://kontour.ai/schemas/surface/trust-input.schema.json",
+  "$id": "https://kontourai.io/schemas/surface/trust-input.schema.json",
   "title": "Surface TrustInput",
   "type": "object",
   "additionalProperties": false,

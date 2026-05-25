@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://kontour.ai/schemas/surface/trust-report.schema.json",
+  "$id": "https://kontourai.io/schemas/surface/trust-report.schema.json",
   "title": "Kontour Surface Trust Report",
   "type": "object",
   "required": ["schemaVersion", "id", "generatedAt", "source", "claims", "evidence", "policies", "events", "evidenceRequirementsByClaimId", "transparencyGaps", "subjectGroups", "claimGroupRollups", "summary"],

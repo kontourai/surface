@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://kontour.ai/schemas/surface/verification-event.schema.json",
+  "$id": "https://kontourai.io/schemas/surface/verification-event.schema.json",
   "title": "Kontour Surface Verification Event",
   "type": "object",
   "required": ["id", "claimId", "status", "actor", "method", "evidenceIds", "createdAt"],

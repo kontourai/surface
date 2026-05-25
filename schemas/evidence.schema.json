@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://kontour.ai/schemas/surface/evidence.schema.json",
+  "$id": "https://kontourai.io/schemas/surface/evidence.schema.json",
   "title": "Kontour Surface Evidence",
   "type": "object",
   "required": ["id", "claimId", "evidenceType", "method", "sourceRef", "excerptOrSummary", "observedAt", "collectedBy"],

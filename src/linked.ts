@@ -10,7 +10,7 @@ import type { TrustReport } from "./types.js";
  * removing or repurposing terms requires a new namespace bump.
  */
 
-export const SURFACE_LINKED_VOCAB = "https://kontour.ai/surface/v1#";
+export const SURFACE_LINKED_VOCAB = "https://kontourai.io/surface/v1#";
 
 export const SURFACE_LINKED_CONTEXT = {
   "@version": 1.1,
