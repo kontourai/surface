@@ -2,6 +2,9 @@ import type {
   Claim,
   ClaimQueueItem,
   EvidenceGap,
+  AuthorityTrace,
+  AuthorityTraceItem,
+  AuthorityTraceProjection,
   TransparencyGap,
   TransparencyGapQueueItem,
   TransparencyGapType,
@@ -41,9 +44,11 @@ export function buildTrustAnalyticsProjection(report: TrustReport): TrustAnalyti
       evidence: report.evidence.length,
       policies: report.policies.length,
       events: report.events.length,
+      authorityTrace: report.authorityTrace?.length ?? 0,
       transparencyGaps: report.transparencyGaps.length,
       claimGroups: report.claimGroupRollups.length,
     },
+    authorityTrace: buildAuthorityTraceProjection(report.authorityTrace ?? [], report.generatedAt),
     claimGroupRollups: report.claimGroupRollups,
     coverageBySurface: buildCoverageBySurface(report.claims),
     staleClaims: claimItems.filter((item) => item.status === "stale"),
@@ -68,6 +73,46 @@ export function buildTrustAnalyticsProjection(report: TrustReport): TrustAnalyti
     }),
     attestationValidity: traceAnalysis.attestationValidity,
   };
+}
+
+function buildAuthorityTraceProjection(authorityTrace: AuthorityTrace[], generatedAt: string): AuthorityTraceProjection {
+  const records = authorityTrace.map((trace): AuthorityTraceItem => {
+    const status = trace.revokedAt
+      ? "revoked"
+      : isBefore(trace.validUntil, generatedAt) ? "expired" : "active";
+    const item: AuthorityTraceItem = {
+      id: trace.id,
+      subject: trace.subject,
+      actorRef: trace.actorRef,
+      authorityType: trace.authorityType,
+      authorityRef: trace.authorityRef,
+      sourceRef: trace.sourceRef,
+      observedAt: trace.observedAt,
+      evidenceIds: trace.evidenceIds ?? [],
+      claimIds: trace.claimIds ?? [],
+      status,
+    };
+    if (trace.validFrom) item.validFrom = trace.validFrom;
+    if (trace.validUntil) item.validUntil = trace.validUntil;
+    if (trace.revokedAt) item.revokedAt = trace.revokedAt;
+    if (trace.integrityRef) item.integrityRef = trace.integrityRef;
+    return item;
+  }).sort((a, b) => a.id.localeCompare(b.id));
+
+  return {
+    totalRecords: records.length,
+    activeRecords: records.filter((item) => item.status === "active").length,
+    expiredRecords: records.filter((item) => item.status === "expired").length,
+    revokedRecords: records.filter((item) => item.status === "revoked").length,
+    records,
+  };
+}
+
+function isBefore(value: string | undefined, comparedTo: string): boolean {
+  if (!value) return false;
+  const timestamp = Date.parse(value);
+  const comparedTimestamp = Date.parse(comparedTo);
+  return Number.isFinite(timestamp) && Number.isFinite(comparedTimestamp) && timestamp < comparedTimestamp;
 }
 
 function buildCoverageBySurface(claims: Array<Claim & { status: TrustStatus }>): SurfaceTrustCoverage[] {

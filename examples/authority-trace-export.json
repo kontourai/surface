@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 3,
+  "source": "records-producer:authority-trace-example",
+  "claims": [
+    {
+      "id": "claim.record.status",
+      "subjectType": "record",
+      "subjectId": "record-1",
+      "surface": "public-data.records",
+      "claimType": "record-field",
+      "fieldOrBehavior": "status",
+      "value": "OPEN",
+      "createdAt": "2026-05-01T00:00:00.000Z",
+      "updatedAt": "2026-05-01T00:00:00.000Z",
+      "impactLevel": "high",
+      "verificationPolicyId": "policy.record-status"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "evidence.record.attestation",
+      "claimId": "claim.record.status",
+      "evidenceType": "attestation",
+      "method": "attestation",
+      "sourceRef": "review-log",
+      "excerptOrSummary": "A record steward approved the record status.",
+      "observedAt": "2026-05-01T00:05:00.000Z",
+      "collectedBy": "actor:record-steward-1",
+      "integrityRef": "sha256:attestation",
+      "metadata": {
+        "actor": {
+          "id": "actor:record-steward-1",
+          "identityProof": "oidc:directory:record-steward-1"
+        }
+      }
+    }
+  ],
+  "authorityTrace": [
+    {
+      "id": "authority.record-steward-1",
+      "subject": { "subjectType": "record", "subjectId": "record-1" },
+      "actorRef": "actor:record-steward-1",
+      "authorityType": "role",
+      "authorityRef": "role:record-steward",
+      "sourceRef": "directory:records-team",
+      "observedAt": "2026-05-01T00:04:00.000Z",
+      "evidenceIds": ["evidence.record.attestation"],
+      "claimIds": ["claim.record.status"],
+      "validFrom": "2026-01-01T00:00:00.000Z",
+      "validUntil": "2026-12-31T00:00:00.000Z",
+      "integrityRef": "sha256:directory-entry"
+    }
+  ],
+  "policies": [
+    {
+      "id": "policy.record-status",
+      "claimType": "record-field",
+      "requiredEvidence": ["attestation"],
+      "requiredMethods": ["attestation"],
+      "acceptanceCriteria": ["authorized steward review"],
+      "reviewAuthority": "role:record-steward",
+      "validityRule": { "kind": "manual" },
+      "stalenessTriggers": [],
+      "conflictRules": [],
+      "impactLevel": "high"
+    }
+  ],
+  "events": [
+    {
+      "id": "event.record.attestation",
+      "claimId": "claim.record.status",
+      "status": "verified",
+      "actor": "actor:record-steward-1",
+      "method": "attestation",
+      "evidenceIds": ["evidence.record.attestation"],
+      "createdAt": "2026-05-01T00:05:00.000Z"
+    }
+  ]
+}

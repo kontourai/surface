@@ -34,6 +34,30 @@ Attestation is the canonical shape for a human saying, "this policy, record, or 
 
 The exported `buildHumanAttestationEvidence({ subject, actor, attestedAt, validUntil, contentHash })` helper builds this evidence record for producers that need a consistent human attestation payload.
 
+## Authority Trace
+
+Authority Trace records why an actor or system had authority to create, approve, or verify evidence for a subject. It is producer-neutral: the authority can be a role, permission, credential, system, organization, policy, or other reference from the producer's own directory, policy engine, workflow log, or signing system.
+
+The current API field is `authorityTrace?: AuthorityTrace[]` on `TrustInput` and `TrustReport`. Each record links an `actorRef` and `authorityRef` to a `subject`, `sourceRef`, observation timestamp, and optional claim or evidence IDs. Optional validity windows, revocation timestamps, integrity references, and metadata let consumers distinguish active authority from expired, revoked, or weak authority evidence.
+
+Example:
+
+```json
+{
+  "id": "authority.record-steward-1",
+  "subject": { "subjectType": "record", "subjectId": "record-1" },
+  "actorRef": "actor:record-steward-1",
+  "authorityType": "role",
+  "authorityRef": "role:record-steward",
+  "sourceRef": "directory:records-team",
+  "observedAt": "2026-05-01T00:04:00.000Z",
+  "evidenceIds": ["evidence.record.attestation"],
+  "claimIds": ["claim.record.status"],
+  "validUntil": "2026-12-31T00:00:00.000Z",
+  "integrityRef": "sha256:directory-entry"
+}
+```
+
 ## Check
 
 A check is a verification run or event. Checks can promote a claim to verified, mark it stale, dispute it, reject it, or supersede it.
@@ -68,7 +92,7 @@ Examples:
 
 A Trust Snapshot is product language for the point-in-time trust state behind a product output, workflow, or package. It can drive a Trust Panel, Surface Console, API response, MCP resource, or export.
 
-`buildTrustReport(input, options?)` is the stable public API that turns a validated `TrustInput` into a `TrustReport`. The report carries claims, evidence, policies, events, and current `claimGroups` field data, then adds derived status, freshness outcomes, requirement fields, `transparencyGaps` annotations, subject groups, claim group rollups, and summary counts.
+`buildTrustReport(input, options?)` is the stable public API that turns a validated `TrustInput` into a `TrustReport`. The report carries claims, evidence, policies, events, current `claimGroups`, and current `authorityTrace` field data, then adds derived status, freshness outcomes, requirement fields, `transparencyGaps` annotations, subject groups, claim group rollups, and summary counts.
 
 Producers should project product-specific workflow data into `TrustInput`, call `validateTrustInput`, and then call `buildTrustReport`. Product layers may persist a compact report summary, but Surface remains responsible for deriving statuses such as `verified`, `stale`, `disputed`, and `rejected`.
 
@@ -104,7 +128,7 @@ Coverage measures how much of a product surface is supported by current evidence
 
 ## Trust Analytics Projection
 
-`buildTrustAnalyticsProjection(report)` derives evidence intelligence from a `TrustReport`. It groups verification coverage by producer namespace, claim group rollups, stale and disputed claims, high-impact unsupported claims, transparency gaps, evidence gaps, requirement gaps, confidence basis, action queues, and attestation validity.
+`buildTrustAnalyticsProjection(report)` derives evidence intelligence from a `TrustReport`. It groups verification coverage by producer namespace, claim group rollups, stale and disputed claims, high-impact unsupported claims, transparency gaps, evidence gaps, requirement gaps, authority trace state, confidence basis, action queues, and attestation validity.
 
 The projection is Console-ready and query-ready, but it is still derived from the open trust format. Surface analytics should mean provenance-aware trust analytics, not arbitrary charts over product data.
 
@@ -112,6 +136,6 @@ The projection is Console-ready and query-ready, but it is still derived from th
 
 An attestation records that an actor approved, observed, or accepted something. It does not automatically prove that the actor was real, authorized, current, or bound to the attested payload.
 
-Surface treats attestation validity as a separate evidence-intelligence layer. A product can emit actor references, identity evidence references, authority source references, validity windows, revocation markers, and integrity hashes. Surface can then expose gaps when an attestation is missing identity evidence, authority evidence, freshness, or integrity.
+Surface treats attestation validity as a separate evidence-intelligence layer. A product can emit actor references, identity evidence references, first-class `authorityTrace` records, validity windows, revocation markers, and integrity hashes. Surface can then expose gaps when an attestation is missing identity evidence, authority evidence, freshness, or integrity. Existing metadata keys such as `authoritySource` remain compatible, but new producers should prefer `authorityTrace`.
 
 Surface does not own auth or product permissions. Downstream systems own accounts, roles, and login. Surface owns the portable evidence shape and the derived visibility into whether the attestation can satisfy trust policy.

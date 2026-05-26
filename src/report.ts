@@ -34,6 +34,7 @@ export function buildTrustReport(input: TrustInput, options: { now?: Date; id?: 
     events: input.events,
     identityLinks: input.identityLinks ?? [],
     claimGroups: input.claimGroups ?? [],
+    authorityTrace: input.authorityTrace ?? [],
     evidenceRequirementsByClaimId: snapshot.evidenceRequirementsByClaimId,
     transparencyGaps: snapshot.transparencyGaps,
     subjectGroups: snapshot.subjectGroups,

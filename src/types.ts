@@ -45,6 +45,25 @@ export interface SubjectRef {
   subjectId: string;
 }
 
+export type AuthorityType = "role" | "permission" | "credential" | "system" | "organization" | "policy" | "other";
+
+export interface AuthorityTrace {
+  id: string;
+  subject: SubjectRef;
+  actorRef: string;
+  authorityType: AuthorityType;
+  authorityRef: string;
+  sourceRef: string;
+  observedAt: string;
+  evidenceIds?: string[];
+  claimIds?: string[];
+  validFrom?: string;
+  validUntil?: string;
+  revokedAt?: string;
+  integrityRef?: string;
+  metadata?: Record<string, unknown>;
+}
+
 export interface IdentityLink {
   subjects: SubjectRef[];
   reason?: string;
@@ -277,6 +296,7 @@ export interface TrustInput {
   events: VerificationEvent[];
   identityLinks?: IdentityLink[];
   claimGroups?: ClaimGroup[];
+  authorityTrace?: AuthorityTrace[];
 }
 
 /**
@@ -385,9 +405,11 @@ export interface TrustAnalyticsProjection {
     evidence: number;
     policies: number;
     events: number;
-      transparencyGaps: number;
-      claimGroups: number;
-    };
+    authorityTrace: number;
+    transparencyGaps: number;
+    claimGroups: number;
+  };
+  authorityTrace: AuthorityTraceProjection;
   claimGroupRollups: ClaimGroupRollup[];
   coverageBySurface: SurfaceTrustCoverage[];
   staleClaims: ClaimQueueItem[];
@@ -452,6 +474,31 @@ export interface TrustActionQueues {
   strengthenEvidence: EvidenceGap[];
 }
 
+export interface AuthorityTraceProjection {
+  totalRecords: number;
+  activeRecords: number;
+  expiredRecords: number;
+  revokedRecords: number;
+  records: AuthorityTraceItem[];
+}
+
+export interface AuthorityTraceItem {
+  id: string;
+  subject: SubjectRef;
+  actorRef: string;
+  authorityType: AuthorityType;
+  authorityRef: string;
+  sourceRef: string;
+  observedAt: string;
+  evidenceIds: string[];
+  claimIds: string[];
+  status: "active" | "expired" | "revoked";
+  validFrom?: string;
+  validUntil?: string;
+  revokedAt?: string;
+  integrityRef?: string;
+}
+
 export type AttestationGapType =
   | "attestation_actor_missing"
   | "attestation_identity_unverified"
@@ -472,6 +519,7 @@ export interface AttestationValidityItem {
   evidenceId: string;
   claimId: string;
   actorRef?: string;
+  authorityTraceIds?: string[];
   requiredAuthority?: string;
   status: "valid" | "weak" | "invalid";
   gaps: AttestationGapType[];

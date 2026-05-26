@@ -1,6 +1,6 @@
 # Schemas
 
-Kontour Surface starts with five contract types. Trust inputs and trust reports use `schemaVersion: 2`.
+Kontour Surface starts with core contract types. Trust inputs and trust reports currently accept `schemaVersion: 2` and `schemaVersion: 3`.
 
 ## Claim
 
@@ -51,9 +51,34 @@ Schema: `schemas/verification-event.schema.json`
 
 ## Trust Input
 
-A trust input packages claims, evidence, policies, events, and optional claimGroups before Surface generates report-only fields.
+A trust input packages claims, evidence, policies, events, optional claimGroups, optional identity links, and optional Authority Trace records before Surface generates report-only fields.
 
 Schema: `schemas/trust-input.schema.json`
+
+## Authority Trace
+
+Authority Trace is the first-class producer-neutral way to describe why an actor or system had authority over a claim or evidence record. It avoids relying on producer-specific evidence metadata conventions for role, permission, credential, policy, organization, or system authority.
+
+```typescript
+interface AuthorityTrace {
+  id: string;
+  subject: { subjectType: string; subjectId: string };
+  actorRef: string;
+  authorityType: "role" | "permission" | "credential" | "system" | "organization" | "policy" | "other";
+  authorityRef: string;
+  sourceRef: string;
+  observedAt: string;
+  evidenceIds?: string[];
+  claimIds?: string[];
+  validFrom?: string;
+  validUntil?: string;
+  revokedAt?: string;
+  integrityRef?: string;
+  metadata?: Record<string, unknown>;
+}
+```
+
+`evidenceIds` and `claimIds` must reference records in the same `TrustInput` when present. Surface validates timestamps, enum values, known references, and unknown fields. Producers own the identity provider, directory, credential registry, policy engine, and signature checks behind these references; Surface records and projects the resulting authority context.
 
 ## Claim Groups
 
@@ -61,7 +86,7 @@ Claim groups collect related claims into a framework, requirement set, or produc
 
 ## Trust Report
 
-A report packages claims, evidence, policies, events, report-derived evidence requirement fields, typed `transparencyGaps` annotations, claim group rollups, and a derived summary.
+A report packages claims, evidence, policies, events, preserved Authority Trace records, report-derived evidence requirement fields, typed `transparencyGaps` annotations, claim group rollups, and a derived summary.
 
 Schema: `schemas/trust-report.schema.json`
 

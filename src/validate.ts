@@ -24,6 +24,7 @@ const EVIDENCE_TYPES = [
   "policy_rule",
 ] as const;
 const VALIDITY_KINDS = ["duration", "commit", "historical", "manual"] as const;
+const AUTHORITY_TYPES = ["role", "permission", "credential", "system", "organization", "policy", "other"] as const;
 
 const CLAIM_KEYS = new Set([
   "id",
@@ -88,6 +89,22 @@ const VALIDATION_STRATEGY_KEYS = new Set([
   "notes",
   "metadata",
 ]);
+const AUTHORITY_TRACE_KEYS = new Set([
+  "id",
+  "subject",
+  "actorRef",
+  "authorityType",
+  "authorityRef",
+  "sourceRef",
+  "observedAt",
+  "evidenceIds",
+  "claimIds",
+  "validFrom",
+  "validUntil",
+  "revokedAt",
+  "integrityRef",
+  "metadata",
+]);
 const CLAIM_GROUP_KINDS = ["claimGroup", "framework", "requirement-set"] as const;
 const ROLLUP_MODES = ["all-required", "any-required"] as const;
 
@@ -101,6 +118,7 @@ export function validateTrustInput(input: unknown): TrustInput {
   const events = requireArray(input, "events");
   const identityLinks = input.identityLinks === undefined ? undefined : requireArray(input, "identityLinks");
   const claimGroups = input.claimGroups === undefined ? undefined : requireArray(input, "claimGroups");
+  const authorityTrace = input.authorityTrace === undefined ? undefined : requireArray(input, "authorityTrace");
 
   for (const claim of claims) {
     requireObject(claim, "claim");
@@ -243,12 +261,38 @@ export function validateTrustInput(input: unknown): TrustInput {
     }
   }
 
-  validateReferences({ claims, evidence, policies, events, claimGroups } as TrustInput);
+  if (authorityTrace !== undefined) {
+    for (const trace of authorityTrace) {
+      validateAuthorityTrace(trace);
+    }
+  }
+
+  validateReferences({ claims, evidence, policies, events, claimGroups, authorityTrace } as TrustInput);
 
   const result: TrustInput = { schemaVersion, source, claims, evidence, policies, events } as TrustInput;
   if (identityLinks !== undefined) (result as TrustInput).identityLinks = identityLinks as TrustInput["identityLinks"];
   if (claimGroups !== undefined) (result as TrustInput).claimGroups = claimGroups as TrustInput["claimGroups"];
+  if (authorityTrace !== undefined) (result as TrustInput).authorityTrace = authorityTrace as TrustInput["authorityTrace"];
   return result;
+}
+
+function validateAuthorityTrace(trace: unknown): void {
+  requireObject(trace, "authorityTrace");
+  rejectUnknownKeys(trace, AUTHORITY_TRACE_KEYS, `authorityTrace ${String(trace.id ?? "")}`);
+  for (const field of ["id", "actorRef", "authorityType", "authorityRef", "sourceRef", "observedAt"]) requireString(trace, field);
+  requireObject(trace.subject, `authorityTrace ${trace.id} subject`);
+  rejectUnknownKeys(trace.subject, new Set(["subjectType", "subjectId"]), `authorityTrace ${trace.id} subject`);
+  requireString(trace.subject, "subjectType");
+  requireString(trace.subject, "subjectId");
+  requireEnum(trace, "authorityType", AUTHORITY_TYPES);
+  requireDateTime(trace, "observedAt");
+  if (trace.evidenceIds !== undefined) requireStringArray(trace, "evidenceIds");
+  if (trace.claimIds !== undefined) requireStringArray(trace, "claimIds");
+  if (trace.validFrom !== undefined) requireDateTime(trace, "validFrom");
+  if (trace.validUntil !== undefined) requireDateTime(trace, "validUntil");
+  if (trace.revokedAt !== undefined) requireDateTime(trace, "revokedAt");
+  if (trace.integrityRef !== undefined) requireString(trace, "integrityRef");
+  if (trace.metadata !== undefined) requireObject(trace.metadata, "authorityTrace.metadata");
 }
 
 function validateClaimGroup(claimGroup: unknown): void {
@@ -374,6 +418,19 @@ function validateReferences(input: TrustInput): void {
     }
     for (const requirementId of claimGroup.rollupPolicy?.optionalRequirementIds ?? []) {
       if (!requirementIds.has(requirementId)) throw new Error(`Claim group ${claimGroup.id} rollupPolicy references unknown requirement ${requirementId}`);
+    }
+  }
+
+  for (const trace of input.authorityTrace ?? []) {
+    for (const claimId of trace.claimIds ?? []) {
+      if (!claimIds.has(claimId)) {
+        throw new Error(`Authority trace ${trace.id} references unknown claim ${claimId}`);
+      }
+    }
+    for (const evidenceId of trace.evidenceIds ?? []) {
+      if (!evidenceIds.has(evidenceId)) {
+        throw new Error(`Authority trace ${trace.id} references unknown evidence ${evidenceId}`);
+      }
     }
   }
 }
