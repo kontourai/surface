@@ -12,6 +12,7 @@ The projection turns an existing `TrustReport` into a stable JSON object for the
 - transparency gaps through the current `transparencyGaps` field
 - confidence basis
 - attestations
+- authority trace
 
 Downstream products still own product-specific extraction, workflow vocabulary, domain interfaces, and user account systems.
 
@@ -33,6 +34,7 @@ The projection includes:
 - transparency gaps by type and severity
 - evidence and requirement gaps
 - confidence basis rollups
+- authority trace totals and active, expired, or revoked records
 - review/action queues
 - attestation validity signals
 
@@ -75,7 +77,11 @@ This prevents a product from bypassing policy by inventing an attestation string
 - `attestation_expired`
 - `attestation_revoked`
 
-Surface does not own auth. Product systems should emit actor references, identity evidence references, authority source references, validity windows, revocation markers, and integrity hashes from their own identity providers, directories, signing systems, or audit logs.
+Surface does not own auth. Product systems should emit actor references, identity evidence references, first-class Authority Trace records, validity windows, revocation markers, and integrity hashes from their own identity providers, directories, signing systems, or audit logs. Metadata-only authority fields remain readable for older producers, but analytics prefers matching `authorityTrace` records when present.
+
+## Authority Trace Projection
+
+Analytics exposes `authorityTrace` with `totalRecords`, active, expired, and revoked counts, plus stable records containing the actor, subject, authority type, authority reference, source, linked claim IDs, linked evidence IDs, validity fields, and integrity reference. This lets consumers display authority state without parsing producer metadata.
 
 ## Seam
 

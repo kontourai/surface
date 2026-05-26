@@ -3,7 +3,7 @@
   "$id": "https://kontourai.io/schemas/surface/trust-report.schema.json",
   "title": "Kontour Surface Trust Report",
   "type": "object",
-  "required": ["schemaVersion", "id", "generatedAt", "source", "claims", "evidence", "policies", "events", "evidenceRequirementsByClaimId", "transparencyGaps", "subjectGroups", "claimGroupRollups", "summary"],
+  "required": ["schemaVersion", "id", "generatedAt", "source", "claims", "evidence", "policies", "events", "authorityTrace", "evidenceRequirementsByClaimId", "transparencyGaps", "subjectGroups", "claimGroupRollups", "summary"],
   "properties": {
     "schemaVersion": { "enum": [2, 3] },
     "id": { "type": "string" },
@@ -16,6 +16,10 @@
     "claimGroups": {
       "type": "array",
       "items": { "$ref": "trust-input.schema.json#/$defs/claimGroup" }
+    },
+    "authorityTrace": {
+      "type": "array",
+      "items": { "$ref": "trust-input.schema.json#/$defs/authorityTrace" }
     },
     "evidenceRequirementsByClaimId": {
       "type": "object",

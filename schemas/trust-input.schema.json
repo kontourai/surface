@@ -52,9 +52,43 @@
     "claimGroups": {
       "type": "array",
       "items": { "$ref": "#/$defs/claimGroup" }
+    },
+    "authorityTrace": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/authorityTrace" }
     }
   },
   "$defs": {
+    "subjectRef": {
+      "type": "object",
+      "required": ["subjectType", "subjectId"],
+      "properties": {
+        "subjectType": { "type": "string" },
+        "subjectId": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "authorityTrace": {
+      "type": "object",
+      "required": ["id", "subject", "actorRef", "authorityType", "authorityRef", "sourceRef", "observedAt"],
+      "properties": {
+        "id": { "type": "string" },
+        "subject": { "$ref": "#/$defs/subjectRef" },
+        "actorRef": { "type": "string" },
+        "authorityType": { "enum": ["role", "permission", "credential", "system", "organization", "policy", "other"] },
+        "authorityRef": { "type": "string" },
+        "sourceRef": { "type": "string" },
+        "observedAt": { "type": "string", "format": "date-time" },
+        "evidenceIds": { "type": "array", "items": { "type": "string" } },
+        "claimIds": { "type": "array", "items": { "type": "string" } },
+        "validFrom": { "type": "string", "format": "date-time" },
+        "validUntil": { "type": "string", "format": "date-time" },
+        "revokedAt": { "type": "string", "format": "date-time" },
+        "integrityRef": { "type": "string" },
+        "metadata": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
     "claimGroup": {
       "type": "object",
       "required": ["id", "title", "kind"],

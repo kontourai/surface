@@ -291,6 +291,7 @@ function projectClaimQuery(report: TrustReport, claimId: string): unknown {
   return {
     claim,
     evidence: report.evidence.filter((item) => item.claimId === claimId),
+    authorityTrace: (report.authorityTrace ?? []).filter((item) => item.claimIds?.includes(claimId)),
     events: report.events.filter((item) => item.claimId === claimId),
     policy,
     evidenceRequirement: report.evidenceRequirementsByClaimId[claimId],
@@ -309,6 +310,9 @@ function projectPolicyQuery(report: TrustReport, options: QueryOptions): unknown
       policy,
       claims,
       gaps: projection.evidenceRequirementGaps.filter((item) => item.policyId === policyId),
+      authorityTrace: projection.authorityTrace.records.filter((item) => {
+        return claims.some((claim) => item.claimIds.includes(claim.id));
+      }),
       transparencyGaps: report.transparencyGaps.filter((item) => item.policyId === policyId),
     };
   }

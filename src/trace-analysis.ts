@@ -2,6 +2,7 @@ import type {
   AttestationGapType,
   AttestationValidityItem,
   AttestationValidityProjection,
+  AuthorityTrace,
   Claim,
   Evidence,
   EvidenceGap,
@@ -38,6 +39,7 @@ function buildAttestationValidityProjection(
       events: report.events,
       policy: policyForClaim(claimsById.get(evidence.claimId), policiesById),
       generatedAt: report.generatedAt,
+      authorityTrace: report.authorityTrace ?? [],
     }))
     .sort((a, b) => a.evidenceId.localeCompare(b.evidenceId));
 
@@ -56,16 +58,18 @@ function buildAttestationValidityItem(input: {
   events: VerificationEvent[];
   policy?: VerificationPolicy;
   generatedAt: string;
+  authorityTrace: AuthorityTrace[];
 }): AttestationValidityItem {
   const actorRef = actorRefForEvidence(input.evidence);
-  const validUntil = stringMetadata(input.evidence.metadata, "validUntil");
-  const revokedAt = stringMetadata(input.evidence.metadata, "revokedAt");
-  const integrityRef = input.evidence.integrityRef ?? stringMetadata(input.evidence.metadata, "contentHash");
+  const matchingAuthority = matchingAuthorityTrace(input.evidence, input.claim, actorRef, input.authorityTrace);
+  const validUntil = matchingAuthority.find((trace) => trace.validUntil)?.validUntil ?? stringMetadata(input.evidence.metadata, "validUntil");
+  const revokedAt = matchingAuthority.find((trace) => trace.revokedAt)?.revokedAt ?? stringMetadata(input.evidence.metadata, "revokedAt");
+  const integrityRef = input.evidence.integrityRef ?? matchingAuthority.find((trace) => trace.integrityRef)?.integrityRef ?? stringMetadata(input.evidence.metadata, "contentHash");
   const gaps: AttestationGapType[] = [];
 
   if (!actorRef) gaps.push("attestation_actor_missing");
   if (!hasIdentityProof(input.evidence)) gaps.push("attestation_identity_unverified");
-  if (!hasAuthoritySource(input.evidence, input.policy, actorRef)) gaps.push("attestation_authority_unverified");
+  if (!hasAuthoritySource(input.evidence, input.policy, actorRef, matchingAuthority, input.generatedAt)) gaps.push("attestation_authority_unverified");
   if (!integrityRef) gaps.push("attestation_integrity_missing");
   if (isBefore(validUntil, input.generatedAt)) gaps.push("attestation_expired");
   if (revokedAt) gaps.push("attestation_revoked");
@@ -85,6 +89,7 @@ function buildAttestationValidityItem(input: {
     gaps,
   };
   if (actorRef) item.actorRef = actorRef;
+  if (matchingAuthority.length > 0) item.authorityTraceIds = matchingAuthority.map((trace) => trace.id).sort();
   if (validUntil) item.validUntil = validUntil;
   if (revokedAt) item.revokedAt = revokedAt;
   if (integrityRef) item.integrityRef = integrityRef;
@@ -128,10 +133,43 @@ function hasIdentityProof(evidence: Evidence): boolean {
   return hasMetadataKey(evidence.metadata, "identityProof") || hasNestedActorKey(evidence.metadata, "identityProof");
 }
 
-function hasAuthoritySource(evidence: Evidence, policy: VerificationPolicy | undefined, actorRef: string | undefined): boolean {
+function hasAuthoritySource(
+  evidence: Evidence,
+  policy: VerificationPolicy | undefined,
+  actorRef: string | undefined,
+  authorityTrace: AuthorityTrace[],
+  generatedAt: string,
+): boolean {
+  if (authorityTrace.some((trace) => isActiveAuthorityTrace(trace, generatedAt) && authoritySatisfiesPolicy(trace, policy))) return true;
   if (!policy) return hasMetadataKey(evidence.metadata, "authoritySource") || hasNestedActorKey(evidence.metadata, "authoritySource");
   if (hasMetadataKey(evidence.metadata, "authoritySource") || hasNestedActorKey(evidence.metadata, "authoritySource")) return true;
   return Boolean(actorRef && policy.reviewAuthority === actorRef);
+}
+
+function matchingAuthorityTrace(
+  evidence: Evidence,
+  claim: Claim | undefined,
+  actorRef: string | undefined,
+  authorityTrace: AuthorityTrace[],
+): AuthorityTrace[] {
+  return authorityTrace.filter((trace) => {
+    if (actorRef && trace.actorRef !== actorRef) return false;
+    const evidenceMatch = trace.evidenceIds?.includes(evidence.id) ?? false;
+    const claimMatch = trace.claimIds?.includes(evidence.claimId) ?? false;
+    const subjectMatch = claim !== undefined &&
+      trace.subject.subjectType === claim.subjectType &&
+      trace.subject.subjectId === claim.subjectId;
+    return evidenceMatch || claimMatch || subjectMatch;
+  });
+}
+
+function isActiveAuthorityTrace(trace: AuthorityTrace, generatedAt: string): boolean {
+  return !trace.revokedAt && !isBefore(trace.validUntil, generatedAt) && !isAfter(trace.validFrom, generatedAt);
+}
+
+function authoritySatisfiesPolicy(trace: AuthorityTrace, policy: VerificationPolicy | undefined): boolean {
+  if (!policy) return true;
+  return trace.authorityRef === policy.reviewAuthority;
 }
 
 function hasMetadataKey(metadata: Record<string, unknown> | undefined, key: string): boolean {
@@ -158,6 +196,13 @@ function isBefore(value: string | undefined, comparedTo: string): boolean {
   const timestamp = Date.parse(value);
   const comparedTimestamp = Date.parse(comparedTo);
   return Number.isFinite(timestamp) && Number.isFinite(comparedTimestamp) && timestamp < comparedTimestamp;
+}
+
+function isAfter(value: string | undefined, comparedTo: string): boolean {
+  if (!value) return false;
+  const timestamp = Date.parse(value);
+  const comparedTimestamp = Date.parse(comparedTo);
+  return Number.isFinite(timestamp) && Number.isFinite(comparedTimestamp) && timestamp > comparedTimestamp;
 }
 
 function attestationGapMessage(type: AttestationGapType, item: AttestationValidityItem): string {
