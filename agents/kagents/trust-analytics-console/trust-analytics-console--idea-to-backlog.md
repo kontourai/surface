@@ -11,7 +11,7 @@
 
 Raw input:
 
-> Surface should add a mature console / analytics layer that makes the trust substrate more valuable as more systems integrate. Shape this into executable backlog slices. Keep Surface product-neutral: downstream products own product-specific adapters and workflow vocabulary, while Surface owns portable trust primitives, reports, query surfaces, and derived trust analytics. Push back on accidental bundling; identify the thinnest meaningful slice; map dependencies; relate it to the current roadmap phases for agent query surface, human console, and hosted sink. Produce the expected .agents/kagents artifact and stop before implementation.
+> Surface should add a mature console / analytics layer that makes the Surface foundation more valuable as more systems integrate. Shape this into executable backlog slices. Keep Surface product-neutral: downstream products own product-specific adapters and workflow vocabulary, while Surface owns portable trust primitives, reports, query surfaces, and derived trust analytics. Push back on accidental bundling; identify the thinnest meaningful slice; map dependencies; relate it to the current roadmap phases for agent query surface, human console, and hosted sink. Produce the expected .agents/kagents artifact and stop before implementation.
 
 Related repo context:
 
@@ -118,7 +118,7 @@ Rationale:
 - A mature console is an outcome, not a single implementation slice.
 - Agent queries, human console, and hosted sink have different delivery risks and roadmap phases.
 - Product-specific adapters and workflow vocabulary are explicitly downstream-owned and must not be bundled into Surface.
-- The first slice must strengthen the portable trust substrate; UI and hosted features should consume that substrate rather than define it.
+- The first slice must strengthen the portable Surface foundation; UI and hosted features should consume that foundation rather than define it.
 
 Permitted bundle:
 

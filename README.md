@@ -1,8 +1,8 @@
 # Kontour Surface
 
-Surface is a product transparency standard and foundation product for the AI era.
+Surface is the shared foundation under Kontour's products — and any product that needs to show its work.
 
-**Show your work. Earn trust.** Surface connects evidence provenance to the claims products ask users and agents to trust. It gives products a portable way to expose material claims, evidence traces, freshness, conflicts, and transparency gaps without collapsing them into a trust score.
+Surface connects evidence provenance to the claims products ask users and agents to trust. It gives products a portable way to expose material claims, evidence traces, freshness, conflicts, and transparency gaps without collapsing them into a trust score.
 
 Surface is not a promise of perfect truth, a certification business, or a hosted-only evidence collector. Producers collect domain evidence and make domain decisions. Surface defines the open trust format, derives portable trust state, and makes that state inspectable through reports, a Trust Panel, the Surface Console, APIs, and agent-readable resources.
 
@@ -41,7 +41,7 @@ AI makes plausible output cheap and lets polished product claims move faster tha
 
 Surface is a foundation product. Anything that needs to answer "what claims are visible, what supports them, and what gaps remain?" can build with it.
 
-**Veritas** — a repo-local governance product built with Surface for AI-assisted code changes. Veritas authors and projects claims, collects evidence per run, and maps repo standardss into Surface claim groups so a reviewer can start from a framework/requirement view and drill into the exact claim and evidence. See [What builds on Surface](docs/built-on-surface.md).
+**Veritas** — a repo-local governance product built with Surface for AI-assisted code changes. Veritas authors and projects claims, collects evidence per run, and maps repo standards into Surface claim groups so a reviewer can start from a framework/requirement view and drill into the exact claim and evidence. See [What builds on Surface](docs/built-on-surface.md).
 
 **Custom producers** — any system that emits `TrustInput` can use Surface for report generation, status derivation, and the Surface Console. Product artifacts may embed `surface.input` directly; Surface remains responsible for generated report fields. Start with the [external adapter example](examples/external-adapter/README.md).
 
@@ -49,7 +49,7 @@ The dependency direction is one-way: producers depend on Surface; Surface does n
 
 ## Repository layout
 
-- `src/` — TypeScript trust kernel, CLI, and local Console server.
+- `src/` — TypeScript Surface library, CLI, and local Console server.
 - `src/adapters/` — adapter registry and the native `surface` passthrough.
 - `schemas/` — JSON schema contracts for Surface records.
 - `examples/` — validation fixtures, the external adapter example.

@@ -36,7 +36,7 @@ Forcing the kernel to move at the speed of policy is how trust contracts become 
 
 The schemas in `schemas/`, the TypeScript types in `src/types.ts`, and the report shapes are the product. They should be portable across runtimes, consoles, and product layers without a proprietary handshake. Reports can be exported in formats other systems already read, and adapter input formats are documented enough that a third party can build one.
 
-Imports are read-only at the edge. Surface does not write back into product systems. That keeps the trust kernel honest about what it is — a derivation, not a system of record.
+Imports are read-only at the edge. Surface does not write back into product systems. That keeps the trust derivation honest about what it is — a derivation, not a system of record.
 
 ## No single confidence score
 

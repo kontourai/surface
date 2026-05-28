@@ -1,6 +1,6 @@
 # Vision
 
-Kontour Surface is a product transparency standard and foundation product for the AI era.
+Kontour Surface is the shared foundation under Kontour's products and any product that needs to show its work.
 
 **Show your work. Earn trust.** The premise is simple: every product makes claims. A record directory claims registration is open. A fact-resolution workflow claims a number came from a verified source. A developer tool claims a code change passed the required checks for the product area it touched.
 

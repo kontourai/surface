@@ -2,7 +2,7 @@
 
 ## What ships today
 
-Surface ships the trust kernel, CLI, local Surface Console, and claim authoring.
+Surface ships the Surface library, CLI, local Surface Console, and claim authoring.
 
 **Kernel** — claims, evidence, verification policies, verification events, status derivation, freshness, transparency gaps through the current `transparencyGaps` field, evidence requirements, identity links, incompatibility rules, derived claims, and linked-data export.
 

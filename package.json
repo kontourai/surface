@@ -1,7 +1,7 @@
 {
   "name": "@kontourai/surface",
   "version": "0.4.1",
-  "description": "Evidence-backed trust surface for products built with humans and AI agents.",
+  "description": "Shared transparency foundation under Kontour's products. Claims, evidence, freshness, and gaps in one inspectable shape.",
   "license": "Apache-2.0",
   "type": "module",
   "private": false,

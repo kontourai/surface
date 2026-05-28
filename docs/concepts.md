@@ -2,7 +2,7 @@
 
 ## Surface
 
-Surface is the foundation product and transparency standard for making product claims, evidence, policies, freshness, conflicts, and gaps inspectable by humans and agents.
+Surface is the shared foundation for making product claims, evidence, policies, freshness, conflicts, and gaps inspectable by humans and agents.
 
 In the current data contract, `surface` is still a producer-defined namespace for related claims. Do not confuse that field with the product itself.
 

@@ -2,11 +2,11 @@
 
 Surface is useful when a product needs to turn domain-specific evidence into a portable Trust Snapshot without moving product workflow language into the kernel.
 
-The shipped adapters and fixtures below illustrate the shape. They are not the only places Surface fits. Anything that needs to express claims, evidence, Evidence Trace, Freshness, and Conflict (fitness tracking, tax filings, marketplace listings, agent output validation, certifications, regulatory disclosures) can build with the same product transparency standard.
+The shipped adapters and fixtures below illustrate the shape. They are not the only places Surface fits. Anything that needs to express claims, evidence, Evidence Trace, Freshness, and Conflict (fitness tracking, tax filings, marketplace listings, agent output validation, certifications, regulatory disclosures) can build with the same Surface foundation.
 
 ## Repo Governance — built and shipping
 
-A repo-governance product can own repo standardss, evidence checks, evidence artifacts, and eval history. These terms are product-local Veritas language; Surface receives claims, Evidence, Requirements, Freshness, and Conflict state. Its adapter should live in that product repo and emit `TrustInput` through the public Surface SDK.
+A repo-governance product can own repo standards, evidence checks, evidence artifacts, and eval history. These terms are product-local Veritas language; Surface receives claims, Evidence, Requirements, Freshness, and Conflict state. Its adapter should live in that product repo and emit `TrustInput` through the public Surface SDK.
 
 Portable output:
 
