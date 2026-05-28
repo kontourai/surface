@@ -57,4 +57,4 @@ Every product layer built on Surface should make the boundary explicit:
 3. Surface generates report-only fields after validation.
 4. Product-specific lifecycle language should stay outside Surface until it repeats across domains.
 
-For a repo-governance product, evidence checks, proof families, readiness coverages, repo standardss, and repo runs remain product-native. Their portable output is `surface.input`, which Surface turns into claims, evidence, policies, events, transparency gaps through the current `transparencyGaps` field, requirement fields, and summaries.
+For a repo-governance product, evidence checks, proof families, readiness coverages, repo standards, and repo runs remain product-native. Their portable output is `surface.input`, which Surface turns into claims, evidence, policies, events, transparency gaps through the current `transparencyGaps` field, requirement fields, and summaries.

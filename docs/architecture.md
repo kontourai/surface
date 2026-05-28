@@ -8,7 +8,7 @@ Veritas      ->  evidence collection   -> per-run observations against claim IDs
 Surface      ->  trust derivation      -> status, conflicts, transparency gaps, reports, analytics
 ```
 
-Product systems sit above these layers and keep their own workflow language. Producers such as Veritas collect evidence against authored claims. Surface remains the product-neutral transparency standard and trust kernel.
+Product systems sit above these layers and keep their own workflow language. Producers such as Veritas collect evidence against authored claims. Surface remains the product-neutral shared foundation and trust derivation.
 
 Surface has four internal layers.
 

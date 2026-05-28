@@ -1,6 +1,6 @@
 # Getting Started
 
-Surface is a product transparency standard and foundation product. Use it when a product needs to show:
+Surface is the shared foundation under Kontour's products and any product that needs to show its work. Use it when a product needs to show:
 
 - what is being claimed
 - what evidence supports the claim

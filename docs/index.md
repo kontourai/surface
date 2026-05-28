@@ -1,14 +1,14 @@
 # Kontour Surface
 
-Kontour Surface is product transparency for the AI era.
+Every product makes claims. AI makes those claims faster, more polished, and harder to review. Surface gives a product one shape for the claim, the evidence behind it, how fresh that evidence is, and the gaps that should slow anyone down before they rely on it.
 
-**Show your work. Earn trust.** Surface helps products expose the claims they ask people and agents to rely on, the evidence behind those claims, and the gaps that still need attention.
+Veritas uses Surface underneath. So can your product.
 
 ## The problem
 
 AI makes plausible, polished product output cheap. But when agents route records, select facts, merge changes, or draft responses at scale, the informal trust layer disappears. There is no one to notice a stale number, a quiet contradiction, unsupported evidence, or a verification that was valid last month but not today.
 
-Trust state has to be derivable from the product contract itself: readable, deterministic, and the same answer for every Viewer, Operator, Builder, Verifier, or agent that asks.
+Trust state has to be derivable from the product contract itself: readable, deterministic, and the same answer for every Viewer, Operator, Builder, or agent that asks.
 
 ## How Surface works
 
@@ -30,10 +30,9 @@ Status is derived by construction — not summarized by a model, not hidden behi
 
 ## Role paths
 
-- **View the Surface** — inspect material claims, evidence, freshness, conflicts, and transparency gaps in a Trust Panel.
-- **Shape the Surface** — manage claims, policies, evidence, owners, review queues, and gaps in the Surface Console.
-- **Build with Surface** — emit claim packages, Producer Extensions, evidence traces, integrity references, and Trust Snapshots.
-- **Verify with Surface** — expose reverification, authority trace, integrity checks, signatures, and independent verification.
+- **Viewers** — Inspect the trust state behind a product answer, report, recommendation, or agent output before you rely on it. Surface shows you the claim, the evidence behind it, how current that evidence is, and what's still uncertain.
+- **Builders** — Emit claims, evidence, and policies from your product. Surface gives you a shared shape so the same trust state can be read by people, agents, and other systems downstream.
+- **Operators** — Manage the claims your product makes — ownership, evidence review, policies, transparency gaps, conflicts — from one workspace. Surface Console runs locally. No cloud, no login.
 
 ## Where to go next
 

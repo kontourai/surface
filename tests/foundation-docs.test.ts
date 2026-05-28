@@ -14,8 +14,8 @@ test("first-contact docs preserve Surface as the product-neutral foundation", as
     readDoc("docs/cli.md"),
   ]);
 
-  assert.match(readme, /product transparency standard and foundation product/);
-  assert.match(readme, /Show your work\. Earn trust\./);
+  assert.match(readme, /shared foundation under Kontour's products/);
+  assert.match(readme, /Surface connects evidence provenance/);
   assert.match(readme, /Trust Snapshot/);
   assert.match(readme, /Product artifacts may embed `surface\.input`/);
   assert.match(readme, /Surface remains responsible for generated report fields/);

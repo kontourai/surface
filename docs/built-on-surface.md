@@ -1,6 +1,6 @@
 # What builds with Surface
 
-Surface is the foundation product and product transparency standard. It does not solve a vertical problem on its own; it gives products a portable shape for **claims**, the **evidence** behind them, the **policies** that decide what counts as verified, the **events** that change a claim's status over time, and the **Trust Snapshot** a Viewer, agent, or downstream system can inspect before relying.
+Surface is the shared foundation under Kontour's products. It does not solve a vertical problem on its own; it gives products a portable shape for **claims**, the **evidence** behind them, the **policies** that decide what counts as verified, the **events** that change a claim's status over time, and the **Trust Snapshot** a customer, agent, or downstream system can inspect before relying.
 
 Anything that needs to answer "is this information verified, fresh, and uncontested?" can be built with Surface.
 
@@ -17,15 +17,15 @@ If you are doing any of that and you do not yet have a vocabulary for claims, ev
 
 ## Reference Inputs
 
-Surface ships fixtures that demonstrate the Trust Snapshot shape. Domain adapters live with the producers or plugins that own their source artifacts.
+Surface ships fixtures that demonstrate the Trust Snapshot shape. Domain adapters live with the producers or plugins that own their source artifacts. A Builder path emits the claim package your product owns, then Surface derives the trust state your customers, team, agents, or downstream systems inspect.
 
 ## Products built with Surface
 
 These projects use Surface as their product transparency layer. They each own their own product workflow and adapter code; Surface owns the portable trust state and report shape underneath.
 
-- **[Veritas](https://github.com/kontourai/veritas)** — repo-local governance for AI-assisted code changes. Projects each code-change run into `surface.input`, calls `buildTrustReport`, and uses derived `stale` and `disputed` statuses as repo-governance feedback.
+- **[Veritas](https://github.com/kontourai/veritas)** — repo-local governance for AI-assisted code changes. Projects each code-change run into Surface trust state and uses derived `stale` and `disputed` statuses as repo-governance feedback.
 
-If you are building with Surface, start with the [consumer SDK guide](guides/consumer-sdk.md). The package name is current implementation language; in product language, a Builder emits trust state for Viewers, Operators, Verifiers, agents, and downstream systems. The [external adapter example](../examples/external-adapter/README.md) is the minimum shape: define your input, map it to claims and evidence with `TrustInputBuilder`, emit valid `TrustInput`, then call `buildTrustReport`. `TrustInput`, `TrustReport`, and `buildTrustReport` are current API names. Product-facing docs should describe the result as a Trust Snapshot with derived status, summary, Requirement, Evidence Trace, Freshness, and Conflict or Transparency Gap fields.
+If you are building with Surface, start with the [consumer SDK guide](guides/consumer-sdk.md). Product-facing docs should describe the result as a Trust Snapshot with derived status, summary, Requirement, Evidence Trace, Freshness, and Conflict or Transparency Gap fields.
 
 ## What Surface deliberately does not do
 
@@ -33,3 +33,7 @@ If you are building with Surface, start with the [consumer SDK guide](guides/con
 - Surface does not run policies against external systems. Policies declare what makes a claim valid; events record what was observed.
 - Surface does not write back. Trust Snapshots and current `TrustReport` API outputs are the output; Viewers, Operators, agents, and downstream systems decide what to do with them.
 - Surface does not own product workflow vocabulary. Each product built with Surface keeps its own terms (Veritas calls them "rules" and "evidence checks"; a tax product might call them "deductions" and "supporting documents"). Those project *into* Surface claims and evidence at the boundary.
+
+## Current implementation names
+
+The [external adapter example](../examples/external-adapter/README.md) is the minimum shape: define your input, map it to claims and evidence with `TrustInputBuilder`, emit valid `TrustInput`, then call `buildTrustReport`. `TrustInput`, `TrustReport`, and `buildTrustReport` are current API names.

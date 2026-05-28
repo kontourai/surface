@@ -93,7 +93,7 @@ Veritas is the reference vertical product built with Surface. It maps a repo cha
 - evidence for each claim using the Veritas readiness id as `sourceRef`
 - policies that describe what evidence is required for each claim type
 - events that verify, dispute, reject, stale, or propose those claims
-- claim groups that project repo standardss into requirement frameworks
+- claim groups that project repo standards into requirement frameworks
 
 Veritas validates the builder output, calls `buildTrustReport`, and consumes derived `stale` and `disputed` statuses as lint feedback.
 
