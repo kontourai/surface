@@ -3,7 +3,7 @@
   "$id": "https://kontourai.io/schemas/surface/trust-report.schema.json",
   "title": "Kontour Surface Trust Report",
   "type": "object",
-  "required": ["schemaVersion", "id", "generatedAt", "source", "claims", "evidence", "policies", "events", "authorityTrace", "evidenceRequirementsByClaimId", "transparencyGaps", "subjectGroups", "claimGroupRollups", "summary"],
+  "required": ["schemaVersion", "id", "generatedAt", "source", "claims", "evidence", "policies", "events", "authorityTrace", "evidenceRequirementsByClaimId", "transparencyGaps", "changeRecords", "subjectGroups", "claimGroupRollups", "summary"],
   "properties": {
     "schemaVersion": { "enum": [2, 3] },
     "id": { "type": "string" },
@@ -55,6 +55,28 @@
           "evidenceIds": { "type": "array", "items": { "type": "string" } },
           "policyId": { "type": "string" },
           "createdAt": { "type": "string", "format": "date-time" },
+          "metadata": { "type": "object" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "changeRecords": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "claimId", "inputClaimIds", "reason", "action", "createdAt", "message"],
+        "properties": {
+          "id": { "type": "string" },
+          "claimId": { "type": "string" },
+          "inputClaimIds": { "type": "array", "items": { "type": "string" } },
+          "reason": { "enum": ["input-stale", "input-superseded", "input-disputed", "input-rejected", "input-assumed", "input-missing", "derivation-cycle"] },
+          "action": { "enum": ["recompute", "review", "blocked"] },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "message": { "type": "string" },
+          "inputStatuses": {
+            "type": "object",
+            "additionalProperties": { "enum": ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected"] }
+          },
           "metadata": { "type": "object" }
         },
         "additionalProperties": false
@@ -118,7 +140,7 @@
           "id": { "type": "string" },
           "title": { "type": "string" },
           "kind": { "enum": ["claimGroup", "framework", "requirement-set"] },
-          "status": { "enum": ["unknown", "proposed", "verified", "stale", "disputed", "superseded", "rejected"] },
+          "status": { "enum": ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected"] },
           "description": { "type": "string" },
           "claimIds": { "type": "array", "items": { "type": "string" } },
           "requirements": {
@@ -129,7 +151,7 @@
               "properties": {
                 "id": { "type": "string" },
                 "title": { "type": "string" },
-                "status": { "enum": ["unknown", "proposed", "verified", "stale", "disputed", "superseded", "rejected"] },
+                "status": { "enum": ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected"] },
                 "claimIds": { "type": "array", "items": { "type": "string" } },
                 "required": { "type": "boolean" },
                 "severity": { "enum": ["low", "medium", "high", "critical"] },
@@ -166,7 +188,7 @@
     },
     "summary": {
       "type": "object",
-      "required": ["totalClaims", "byStatus", "bySurface", "transparencyGapsByType", "highImpactUnsupported", "staleClaims", "disputedClaims"],
+      "required": ["totalClaims", "byStatus", "bySurface", "transparencyGapsByType", "highImpactUnsupported", "staleClaims", "disputedClaims", "recomputeNeededClaims"],
       "properties": {
         "totalClaims": { "type": "number" },
         "byStatus": { "type": "object" },
@@ -174,7 +196,8 @@
         "transparencyGapsByType": { "type": "object" },
         "highImpactUnsupported": { "type": "array", "items": { "type": "string" } },
         "staleClaims": { "type": "array", "items": { "type": "string" } },
-        "disputedClaims": { "type": "array", "items": { "type": "string" } }
+        "disputedClaims": { "type": "array", "items": { "type": "string" } },
+        "recomputeNeededClaims": { "type": "array", "items": { "type": "string" } }
       },
       "additionalProperties": false
     }

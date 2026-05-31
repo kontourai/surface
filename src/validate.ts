@@ -1,7 +1,7 @@
 import type { SchemaVersion, TrustInput } from "./types.js";
 
 const SUPPORTED_SCHEMA_VERSIONS = [2, 3] as const;
-const TRUST_STATUSES = ["unknown", "proposed", "verified", "stale", "disputed", "superseded", "rejected"] as const;
+const TRUST_STATUSES = ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected"] as const;
 const IMPACT_LEVELS = ["low", "medium", "high", "critical"] as const;
 const EVIDENCE_METHODS = [
   "observation",
@@ -25,6 +25,8 @@ const EVIDENCE_TYPES = [
 ] as const;
 const VALIDITY_KINDS = ["duration", "commit", "historical", "manual"] as const;
 const AUTHORITY_TYPES = ["role", "permission", "credential", "system", "organization", "policy", "other"] as const;
+const DERIVATION_METHODS = ["sum", "max", "min", "model", "rule-application", "copy", "normalization", "manual"] as const;
+const SUPPORT_STRENGTHS = ["weak", "moderate", "strong"] as const;
 
 const CLAIM_KEYS = new Set([
   "id",
@@ -43,8 +45,10 @@ const CLAIM_KEYS = new Set([
   "confidenceBasis",
   "subjectAliases",
   "derivedFrom",
+  "derivationEdges",
   "metadata",
 ]);
+const DERIVATION_EDGE_KEYS = new Set(["inputClaimId", "method", "role", "supportStrength", "rationale", "metadata"]);
 const EVIDENCE_KEYS = new Set([
   "id",
   "claimId",
@@ -147,6 +151,22 @@ export function validateTrustInput(input: unknown): TrustInput {
       const inputs = requireStringArray(claim, "derivedFrom");
       if (inputs.includes(claim.id as string)) {
         throw new Error(`Claim ${claim.id} cannot list itself in derivedFrom`);
+      }
+    }
+    if (claim.derivationEdges !== undefined) {
+      const edges = requireArray(claim, "derivationEdges");
+      for (const edge of edges) {
+        requireObject(edge, `claim ${claim.id} derivationEdge`);
+        rejectUnknownKeys(edge, DERIVATION_EDGE_KEYS, `claim ${claim.id} derivationEdge`);
+        const inputClaimId = requireString(edge, "inputClaimId");
+        if (inputClaimId === claim.id) {
+          throw new Error(`Claim ${claim.id} cannot list itself in derivationEdges`);
+        }
+        if (edge.method !== undefined) requireEnum(edge, "method", DERIVATION_METHODS);
+        if (edge.role !== undefined) requireString(edge, "role");
+        if (edge.supportStrength !== undefined) requireEnum(edge, "supportStrength", SUPPORT_STRENGTHS);
+        if (edge.rationale !== undefined) requireString(edge, "rationale");
+        if (edge.metadata !== undefined) requireObject(edge.metadata, "derivationEdge.metadata");
       }
     }
     if (claim.metadata !== undefined) requireObject(claim.metadata, "claim.metadata");
@@ -377,6 +397,13 @@ function validateReferences(input: TrustInput): void {
       for (const inputId of claim.derivedFrom) {
         if (!claimIds.has(inputId)) {
           throw new Error(`Claim ${claim.id} derives from unknown claim ${inputId}`);
+        }
+      }
+    }
+    if (claim.derivationEdges) {
+      for (const edge of claim.derivationEdges) {
+        if (!claimIds.has(edge.inputClaimId)) {
+          throw new Error(`Claim ${claim.id} derives from unknown claim ${edge.inputClaimId}`);
         }
       }
     }

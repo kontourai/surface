@@ -1,6 +1,7 @@
 import type {
   Claim,
   ClaimGroupRollup,
+  DerivationChangeRecord,
   Evidence,
   EvidenceRequirement,
   SubjectGroup,
@@ -29,6 +30,7 @@ export interface TrustSnapshotDerivation {
   claims: Array<Claim & { status: TrustStatus }>;
   evidenceRequirementsByClaimId: Record<string, EvidenceRequirement>;
   transparencyGaps: TransparencyGap[];
+  changeRecords: DerivationChangeRecord[];
   subjectGroups: SubjectGroup[];
   claimGroupRollups: ClaimGroupRollup[];
 }
@@ -37,6 +39,7 @@ export function deriveTrustSnapshot(input: TrustInput, options: { now?: Date } =
   const now = options.now ?? new Date();
   const evidenceRequirementsByClaimId: Record<string, EvidenceRequirement> = {};
   const transparencyGaps: TransparencyGap[] = [];
+  const changeRecords: DerivationChangeRecord[] = [];
   const identityIndex = buildIdentityIndex(input);
   const policyByClaimId = new Map<string, VerificationPolicy>();
 
@@ -70,6 +73,7 @@ export function deriveTrustSnapshot(input: TrustInput, options: { now?: Date } =
   const claims = ownStatuses.map(({ claim, ownStatus, producerStatus }) => {
     const outcome = applyDerivation({ claim, ownStatus, ownStatusByClaimId, claimsById, now });
     transparencyGaps.push(...outcome.transparencyGaps);
+    changeRecords.push(...outcome.changeRecords);
     const derived = outcome.status;
     const output: Claim & { status: TrustStatus; producerStatus?: TrustStatus } = {
       ...claim,
@@ -92,6 +96,7 @@ export function deriveTrustSnapshot(input: TrustInput, options: { now?: Date } =
     claims,
     evidenceRequirementsByClaimId,
     transparencyGaps,
+    changeRecords,
     subjectGroups: identityIndex.groups,
     claimGroupRollups: deriveClaimGroupRollups({ claimGroups: input.claimGroups, claims }),
   };

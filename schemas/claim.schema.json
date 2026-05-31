@@ -12,7 +12,7 @@
     "claimType": { "type": "string" },
     "fieldOrBehavior": { "type": "string" },
     "value": {},
-    "status": { "enum": ["unknown", "proposed", "verified", "stale", "disputed", "superseded", "rejected"] },
+    "status": { "enum": ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected"] },
     "createdAt": { "type": "string", "format": "date-time" },
     "updatedAt": { "type": "string", "format": "date-time" },
     "impactLevel": { "enum": ["low", "medium", "high", "critical"] },
@@ -34,6 +34,22 @@
     "derivedFrom": {
       "type": "array",
       "items": { "type": "string" }
+    },
+    "derivationEdges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["inputClaimId"],
+        "properties": {
+          "inputClaimId": { "type": "string" },
+          "method": { "enum": ["sum", "max", "min", "model", "rule-application", "copy", "normalization", "manual"] },
+          "role": { "type": "string" },
+          "supportStrength": { "enum": ["weak", "moderate", "strong"] },
+          "rationale": { "type": "string" },
+          "metadata": { "type": "object" }
+        },
+        "additionalProperties": false
+      }
     },
     "metadata": { "type": "object" }
   },

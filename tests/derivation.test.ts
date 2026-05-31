@@ -28,6 +28,7 @@ test("weakerStatus orders rejected below verified", () => {
   assert.equal(weakerStatus("verified", "rejected"), "rejected");
   assert.equal(weakerStatus("stale", "verified"), "stale");
   assert.equal(weakerStatus("proposed", "unknown"), "unknown");
+  assert.equal(weakerStatus("verified", "assumed"), "assumed");
 });
 
 test("derived claim inherits the weakest input status", () => {
@@ -132,6 +133,121 @@ test("derived claim inherits stale freshness from inputs", () => {
   const report = buildTrustReport(input, { id: "report-stale", now: new Date("2026-04-26T00:00:00.000Z") });
   const derived = report.claims.find((c) => c.id === "derived");
   assert.equal(derived!.status, "stale", "derived claim should inherit stale ceiling from its input");
+  assert.equal(report.summary.recomputeNeededClaims.includes("derived"), true);
+  assert.deepEqual(
+    report.changeRecords.map((record) => record.reason),
+    ["input-stale"],
+  );
+});
+
+test("structured derivation edges drive status ceiling and recompute records", () => {
+  const input = validateTrustInput(makeInput({
+    claims: [
+      { ...baseClaim, id: "wages", fieldOrBehavior: "w2.wages", value: 82000 },
+      { ...baseClaim, id: "withholding", fieldOrBehavior: "w2.federalIncomeTaxWithheld", value: 9100 },
+      {
+        ...baseClaim,
+        id: "withholding-position",
+        fieldOrBehavior: "withholdingPosition",
+        value: "withholding-present",
+        derivationEdges: [
+          {
+            inputClaimId: "wages",
+            method: "rule-application",
+            role: "wage-input",
+            supportStrength: "strong",
+          },
+          {
+            inputClaimId: "withholding",
+            method: "rule-application",
+            role: "withholding-input",
+            supportStrength: "strong",
+          },
+        ],
+      },
+    ],
+    events: [
+      {
+        id: "ev-wages",
+        claimId: "wages",
+        status: "stale",
+        actor: "survey-proof",
+        method: "corrected-source-arrived",
+        evidenceIds: [],
+        createdAt: "2026-06-01T00:00:00.000Z",
+      },
+      {
+        id: "ev-withholding",
+        claimId: "withholding",
+        status: "verified",
+        actor: "owner",
+        method: "attestation",
+        evidenceIds: [],
+        createdAt: "2026-06-01T00:00:00.000Z",
+      },
+      {
+        id: "ev-derived",
+        claimId: "withholding-position",
+        status: "verified",
+        actor: "rule-engine",
+        method: "rule-application",
+        evidenceIds: [],
+        createdAt: "2026-06-01T00:00:00.000Z",
+      },
+    ],
+  }));
+
+  const report = buildTrustReport(input, { id: "report-structured-derive", now: new Date("2026-06-02T00:00:00.000Z") });
+  const derived = report.claims.find((c) => c.id === "withholding-position");
+  assert.equal(derived?.status, "stale");
+  assert.deepEqual(report.summary.recomputeNeededClaims, ["withholding-position"]);
+  assert.equal(report.changeRecords.length, 1);
+  assert.equal(report.changeRecords[0].claimId, "withholding-position");
+  assert.equal(report.changeRecords[0].reason, "input-stale");
+  assert.equal(report.changeRecords[0].action, "recompute");
+  assert.deepEqual(report.changeRecords[0].inputClaimIds, ["wages"]);
+});
+
+test("assumed inputs downgrade derived claims and create review records", () => {
+  const input = validateTrustInput(makeInput({
+    claims: [
+      { ...baseClaim, id: "assumption", fieldOrBehavior: "filingStatus", value: "single", status: "assumed" },
+      {
+        ...baseClaim,
+        id: "derived",
+        fieldOrBehavior: "taxPosition",
+        value: "estimate",
+        derivedFrom: ["assumption"],
+        status: "verified",
+      },
+    ],
+    events: [
+      {
+        id: "ev-assumption",
+        claimId: "assumption",
+        status: "assumed",
+        actor: "planner",
+        method: "planning-assumption",
+        evidenceIds: [],
+        createdAt: "2026-06-01T00:00:00.000Z",
+      },
+      {
+        id: "ev-derived",
+        claimId: "derived",
+        status: "verified",
+        actor: "rule-engine",
+        method: "rule-application",
+        evidenceIds: [],
+        createdAt: "2026-06-01T00:00:00.000Z",
+      },
+    ],
+  }));
+
+  const report = buildTrustReport(input, { id: "report-assumed", now: new Date("2026-06-02T00:00:00.000Z") });
+  const derived = report.claims.find((c) => c.id === "derived");
+  assert.equal(derived?.status, "assumed");
+  assert.equal(report.changeRecords[0].reason, "input-assumed");
+  assert.equal(report.changeRecords[0].action, "review");
 });
 
 test("derived chains propagate transitively", () => {
@@ -169,6 +285,9 @@ test("derived chains propagate transitively", () => {
   const report = buildTrustReport(input, { id: "report-chain", now: new Date("2026-04-26T00:00:00.000Z") });
   const top = report.claims.find((c) => c.id === "top");
   assert.equal(top!.status, "disputed", "transitive derivation should carry weakest input through the chain");
+  const topChange = report.changeRecords.find((record) => record.claimId === "top");
+  assert.equal(topChange?.reason, "input-disputed");
+  assert.deepEqual(topChange?.inputClaimIds, ["leaf"]);
 });
 
 test("derivedFrom cycles are detected and emit unsupported_inference", () => {
@@ -227,6 +346,24 @@ test("validator rejects derivedFrom referencing unknown claim", () => {
             fieldOrBehavior: "passes",
             value: true,
             derivedFrom: ["does-not-exist"],
+          },
+        ],
+      })),
+    /derives from unknown claim/,
+  );
+});
+
+test("validator rejects derivationEdges referencing unknown claim", () => {
+  assert.throws(
+    () =>
+      validateTrustInput(makeInput({
+        claims: [
+          {
+            ...baseClaim,
+            id: "claim-a",
+            fieldOrBehavior: "passes",
+            value: true,
+            derivationEdges: [{ inputClaimId: "does-not-exist", method: "rule-application" }],
           },
         ],
       })),

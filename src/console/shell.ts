@@ -52,6 +52,7 @@ export function buildConsoleHtml(config: SurfaceConsoleRuntimeConfig = {}): stri
           <option value="verified">Verified</option>
           <option value="disputed">Disputed</option>
           <option value="stale">Stale</option>
+          <option value="assumed">Assumed</option>
           <option value="proposed">Proposed</option>
           <option value="unknown">Unknown</option>
         </select>

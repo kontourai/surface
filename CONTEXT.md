@@ -385,7 +385,7 @@ An expected condition inside a claim group or framework. Use "requirement" for g
 _Avoid_: Control, rule
 
 **Status**:
-The current derived trust state of a claim, such as unknown, proposed, verified, stale, disputed, superseded, or rejected.
+The current derived trust state of a claim, such as unknown, proposed, assumed, verified, stale, disputed, superseded, or rejected.
 _Avoid_: Score, verdict, confidence
 
 **Core Status**:

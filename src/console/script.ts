@@ -160,14 +160,14 @@ function renderObservedResult(result) {
 }
 
 function statusColor(status) {
-  const m = { verified:"good", disputed:"bad", rejected:"bad", stale:"warn", proposed:"amber", unknown:"muted" };
+  const m = { verified:"good", disputed:"bad", rejected:"bad", stale:"warn", assumed:"amber", proposed:"amber", unknown:"muted" };
   return m[status] ?? "muted";
 }
 
 function statusLabel(status, evidenceCount) {
   if (status === "unknown") return evidenceCount === 0 ? "Never run" : "No evidence";
   const m = { verified:"Verified", stale:"Needs refresh", disputed:"Disputed",
-               rejected:"Rejected", proposed:"Pending" };
+               rejected:"Rejected", assumed:"Assumed", proposed:"Pending" };
   return m[status] ?? status;
 }
 
@@ -198,6 +198,7 @@ function statusGuidance(status, evidenceCount) {
       : "Evidence exists but trust status could not be determined from it.";
   }
   const m = {
+    assumed: "This claim depends on an explicit assumption. Review the assumption before relying on downstream conclusions.",
     proposed: "Awaiting first evidence collection run.",
     stale:    "Evidence is outdated — collected against a different version of the code. Stale claims are refreshed one run at a time.",
     disputed: "Surface derived a different status than the producer declared. Resolve the transparency gaps above.",
@@ -214,7 +215,7 @@ function updateConsoleChromeMetrics() {
 
 function suggestCommand(claim, evidence, readModel) {
   const producer = readModel?.producer ?? {};
-  const needsEvidence = ["unknown", "stale", "proposed", "rejected"].includes(claim.status);
+  const needsEvidence = ["unknown", "stale", "assumed", "proposed", "rejected"].includes(claim.status);
   if (!needsEvidence) return null;
 
   if (claim.metadata?.command) {
@@ -351,13 +352,13 @@ function renderDonut(d) {
 
   const claims = d.claims ?? [];
   const total  = claims.length || 1;
-  const counts = { verified: 0, stale: 0, disputed: 0, rejected: 0, unknown: 0, proposed: 0 };
+  const counts = { verified: 0, stale: 0, disputed: 0, rejected: 0, unknown: 0, assumed: 0, proposed: 0 };
   claims.forEach(c => { if (counts[c.status] !== undefined) counts[c.status]++; });
 
   const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
   const palette = isDark
-    ? { verified:"#52c47e", stale:"#f0835a", disputed:"#e06060", rejected:"#e06060", unknown:"#3a4e3c", proposed:"#d4aa3a" }
-    : { verified:"#0c6b4a", stale:"#9b4819", disputed:"#9b2b2b", rejected:"#9b2b2b", unknown:"#dce8d5", proposed:"#886600" };
+    ? { verified:"#52c47e", stale:"#f0835a", disputed:"#e06060", rejected:"#e06060", unknown:"#3a4e3c", assumed:"#d4aa3a", proposed:"#d4aa3a" }
+    : { verified:"#0c6b4a", stale:"#9b4819", disputed:"#9b2b2b", rejected:"#9b2b2b", unknown:"#dce8d5", assumed:"#886600", proposed:"#886600" };
 
   const slices = Object.entries(counts).filter(([, v]) => v > 0);
   const cx = size / 2, cy = size / 2, r = 20, inner = 12;
@@ -529,7 +530,7 @@ function filterClaims(claims) {
     const statusOk =
       filters.status === "all" ||
       (filters.status === "attention"
-        ? ["stale","disputed","rejected","unknown","proposed"].includes(c.status)
+        ? ["stale","disputed","rejected","unknown","assumed","proposed"].includes(c.status)
         : c.status === filters.status);
     const surfaceOk = filters.surface === "all" || c.surface === filters.surface;
     const hay = [c.id, c.status, c.surface, c.claimType, c.fieldOrBehavior,
