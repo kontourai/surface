@@ -136,6 +136,14 @@ _Avoid_: Agent runtime policy, autonomous action engine
 A product or workflow that emits claims, evidence, policies, and events for Surface to evaluate. Use "producer" in technical contexts; use "product built with Surface" in human-facing copy.
 _Avoid_: Adapter, consumer, source system
 
+**Survey**:
+The upstream Kontour product for producer-side raw source -> extraction -> candidate -> review -> claim shaping. Survey helps producers emit disciplined Surface-ready inputs, but Surface remains the downstream transparency/evaluation layer. Survey is not a Surface module and Surface should not own crawling, parsing, candidate ranking, or domain review policy.
+_Avoid_: Surface extractor, Surface crawler, Surface-owned verification
+
+**Producer Observation**:
+A producer-shaped bundle of raw source, extraction, candidate, review outcome, and target claim that can be projected into Surface claims, evidence, and events. Survey provides generic producer-observation helpers; Surface evaluates the resulting trust state and keeps the provenance visible.
+_Avoid_: Surface-generated truth, untraceable adapter mapping
+
 **Build with Surface**:
 The developer documentation path for integrating a product with Surface by emitting claims, evidence, policies, traces, and trust snapshots.
 _Avoid_: End-user guide, operator guide
@@ -148,6 +156,10 @@ _Avoid_: Surface module, producer extension only
 A producer-supplied customization layer that makes Surface interfaces feel native through vocabulary, branding, claim types, required fields, policy templates, evidence labels, and suggested actions. Producer extensions must not redefine core statuses, evidence semantics, freshness, conflicts, or trust derivation.
 _Avoid_: Plugin that changes trust semantics, custom Surface fork
 
+**Producer Discipline**:
+The integration obligation that producers must supply the properties needed for trustworthy claims: subject, field or behavior, value, source, extraction trace, candidate/review state, status, impact, timestamps, and relevant metadata. Surface and Survey can make this structure easier to emit and inspect, but producers still own domain correctness and source interpretation.
+_Avoid_: Surface fills in missing truth, schema-only integration
+
 **Producer Reverification**:
 A producer-owned recheck of the evidence, authority, freshness, or integrity behind claims it emitted. Surface represents the reverification result and trace, but the producer performs the domain or identity checks.
 _Avoid_: Independent verification, Surface certification
@@ -159,6 +171,14 @@ _Avoid_: Guaranteed refresh, Surface-owned verification
 **Claim**:
 Something a producer says is true enough to inspect, verify, refresh, dispute, or reject. A claim has a subject, asserted field or behavior, value, impact, and optional policy.
 _Avoid_: Assertion, check, rule
+
+**Repeated Field Claim**:
+A claim whose value is a list or repeated entity set, such as schedules, aliases, line items, officers, or public-record rows. Surface can represent aggregate repeated-field provenance like any other claim value; independent row-level provenance requires durable row identifiers or separate row claims supplied by the producer.
+_Avoid_: Implicit per-row verification, hidden array semantics
+
+**Current Claim Status**:
+The current best-known trust state of a claim across available evidence, events, freshness, and conflicts. Current claim status is the primary way to inspect a claim without starting from a producer run; runs remain provenance for how the status was observed or changed.
+_Avoid_: Run-only status, workflow status, final truth
 
 **Subject**:
 The thing a claim is about, such as a product output, report, profile, field, repo change, policy run, entity, document, or API response. Use "subject" in technical contexts and plain language such as "about" in user interfaces.
