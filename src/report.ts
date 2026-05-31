@@ -9,7 +9,7 @@ import type {
 } from "./types.js";
 import { deriveTrustSnapshot } from "./trust-snapshot.js";
 
-const STATUSES: TrustStatus[] = ["unknown", "proposed", "verified", "stale", "disputed", "superseded", "rejected"];
+const STATUSES: TrustStatus[] = ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected"];
 const TRANSPARENCY_GAP_TYPES: TransparencyGapType[] = [
   "contradiction",
   "provenance_gap",
@@ -37,13 +37,18 @@ export function buildTrustReport(input: TrustInput, options: { now?: Date; id?: 
     authorityTrace: input.authorityTrace ?? [],
     evidenceRequirementsByClaimId: snapshot.evidenceRequirementsByClaimId,
     transparencyGaps: snapshot.transparencyGaps,
+    changeRecords: snapshot.changeRecords,
     subjectGroups: snapshot.subjectGroups,
     claimGroupRollups: snapshot.claimGroupRollups,
-    summary: summarizeClaims(snapshot.claims, snapshot.transparencyGaps),
+    summary: summarizeClaims(snapshot.claims, snapshot.transparencyGaps, snapshot.changeRecords),
   };
 }
 
-export function summarizeClaims(claims: Array<Claim & { status: TrustStatus }>, transparencyGaps: TransparencyGap[] = []): TrustReportSummary {
+export function summarizeClaims(
+  claims: Array<Claim & { status: TrustStatus }>,
+  transparencyGaps: TransparencyGap[] = [],
+  changeRecords: Array<{ claimId: string; action: string }> = [],
+): TrustReportSummary {
   const byStatus = Object.fromEntries(STATUSES.map((status) => [status, 0])) as Record<TrustStatus, number>;
   const bySurface: Record<string, number> = {};
   const sourceQuality: Record<string, number> = {};
@@ -57,6 +62,7 @@ export function summarizeClaims(claims: Array<Claim & { status: TrustStatus }>, 
   const highImpactUnsupported: string[] = [];
   const staleClaims: string[] = [];
   const disputedClaims: string[] = [];
+  const recomputeNeededClaims = [...new Set(changeRecords.filter((record) => record.action === "recompute").map((record) => record.claimId))];
 
   for (const claim of claims) {
     byStatus[claim.status] += 1;
@@ -70,7 +76,10 @@ export function summarizeClaims(claims: Array<Claim & { status: TrustStatus }>, 
     if ((basis?.freshnessRemainingDays ?? 1) <= 0) freshnessAtRisk.push(claim.id);
     if ((basis?.conflictCount ?? 0) > 0) conflictedClaims.push(claim.id);
 
-    if ((claim.impactLevel === "high" || claim.impactLevel === "critical") && (claim.status === "unknown" || claim.status === "proposed")) {
+    if (
+      (claim.impactLevel === "high" || claim.impactLevel === "critical") &&
+      (claim.status === "unknown" || claim.status === "proposed" || claim.status === "assumed")
+    ) {
       highImpactUnsupported.push(claim.id);
     }
     if (claim.status === "stale") staleClaims.push(claim.id);
@@ -100,6 +109,7 @@ export function summarizeClaims(claims: Array<Claim & { status: TrustStatus }>, 
     highImpactUnsupported,
     staleClaims,
     disputedClaims,
+    recomputeNeededClaims,
   };
 }
 
@@ -119,6 +129,7 @@ export function formatTrustReportSummary(report: TrustReport): string {
     `Surfaces: ${surfaceSummary || "none"}`,
     `High-impact unsupported: ${report.summary.highImpactUnsupported.join(", ") || "none"}`,
     `Stale: ${report.summary.staleClaims.join(", ") || "none"}`,
+    `Recompute needed: ${report.summary.recomputeNeededClaims.join(", ") || "none"}`,
     `Disputed: ${report.summary.disputedClaims.join(", ") || "none"}`,
     `Claim groups: ${report.claimGroupRollups.length}`,
     `Transparency gaps: ${report.transparencyGaps.length}`,

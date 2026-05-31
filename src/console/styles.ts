@@ -819,6 +819,8 @@ button {
   border-color: color-mix(in srgb, var(--green) 35%, transparent);
 }
 
+.status-assumed .card-status-text,
+.card-status-text.status-assumed,
 .status-proposed .card-status-text,
 .card-status-text.status-proposed {
   background: var(--amber-bg);
@@ -831,6 +833,7 @@ button {
 .status-rejected { color: var(--red); }
 .status-stale    { color: var(--orange); }
 .status-verified { color: var(--green); }
+.status-assumed { color: var(--amber); }
 .status-proposed { color: var(--amber); }
 
 /* Gap & divergence badges */

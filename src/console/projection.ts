@@ -37,7 +37,7 @@ export function buildSurfaceConsoleProjection(
   const verified = numberValue(statusCounts.verified);
   const attention = claims.filter((claim) => {
     const status = stringValue(claim.status);
-    return status === "stale" || status === "disputed" || status === "rejected" || status === "unknown";
+    return status === "stale" || status === "disputed" || status === "rejected" || status === "unknown" || status === "assumed";
   });
   const claimCount = numberValue(summary.claimCount, claims.length);
   const total = Math.max(claimCount, 1);

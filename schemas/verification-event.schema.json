@@ -7,7 +7,7 @@
   "properties": {
     "id": { "type": "string" },
     "claimId": { "type": "string" },
-    "status": { "enum": ["unknown", "proposed", "verified", "stale", "disputed", "superseded", "rejected"] },
+    "status": { "enum": ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected"] },
     "actor": { "type": "string" },
     "method": { "type": "string" },
     "evidenceIds": { "type": "array", "items": { "type": "string" } },
@@ -17,4 +17,3 @@
   },
   "additionalProperties": false
 }
-

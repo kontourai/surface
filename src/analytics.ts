@@ -55,7 +55,7 @@ export function buildTrustAnalyticsProjection(report: TrustReport): TrustAnalyti
     disputedClaims: claimItems.filter((item) => item.status === "disputed"),
     highImpactUnsupportedClaims: claimItems.filter((item) => {
       return (item.impactLevel === "high" || item.impactLevel === "critical") &&
-        (item.status === "unknown" || item.status === "proposed");
+        (item.status === "unknown" || item.status === "proposed" || item.status === "assumed");
     }),
     transparencyGaps: {
       byType: report.summary.transparencyGapsByType,
@@ -132,7 +132,7 @@ function buildCoverageBySurface(claims: Array<Claim & { status: TrustStatus }>):
     if (claim.status === "verified") item.verifiedClaims += 1;
     if (claim.status === "stale") item.staleClaims += 1;
     if (claim.status === "disputed") item.disputedClaims += 1;
-    if (claim.status === "unknown" || claim.status === "proposed") item.unsupportedClaims += 1;
+    if (claim.status === "unknown" || claim.status === "proposed" || claim.status === "assumed") item.unsupportedClaims += 1;
     bySurface.set(claim.surface, item);
   }
 
@@ -207,7 +207,10 @@ function buildActionQueues(input: {
   const reviewClaimIds = new Set<string>();
   for (const item of input.claimItems) {
     if (item.status === "disputed") reviewClaimIds.add(item.claimId);
-    if ((item.impactLevel === "high" || item.impactLevel === "critical") && (item.status === "unknown" || item.status === "proposed")) {
+    if (
+      (item.impactLevel === "high" || item.impactLevel === "critical") &&
+      (item.status === "unknown" || item.status === "proposed" || item.status === "assumed")
+    ) {
       reviewClaimIds.add(item.claimId);
     }
   }

@@ -4,7 +4,20 @@ Kontour Surface starts with core contract types. Trust inputs and trust reports 
 
 ## Claim
 
-A claim records the subject, surface, claim type, field or behavior, value, timestamps, status, policy link, and confidence basis.
+A claim records the subject, surface, claim type, field or behavior, value, timestamps, status, policy link, confidence basis, and optional derivation links.
+
+Use `derivedFrom` for simple claim-id dependencies. Use `derivationEdges` when the dependency needs method, role, or support-strength metadata:
+
+```typescript
+derivationEdges?: Array<{
+  inputClaimId: string;
+  method?: "sum" | "max" | "min" | "model" | "rule-application" | "copy" | "normalization" | "manual";
+  role?: string;
+  supportStrength?: "weak" | "moderate" | "strong";
+  rationale?: string;
+  metadata?: Record<string, unknown>;
+}>;
+```
 
 Schema: `schemas/claim.schema.json`
 
@@ -86,7 +99,9 @@ Claim groups collect related claims into a framework, requirement set, or produc
 
 ## Trust Report
 
-A report packages claims, evidence, policies, events, preserved Authority Trace records, report-derived evidence requirement fields, typed `transparencyGaps` annotations, claim group rollups, and a derived summary.
+A report packages claims, evidence, policies, events, preserved Authority Trace records, report-derived evidence requirement fields, typed `transparencyGaps` annotations, derivation `changeRecords`, claim group rollups, and a derived summary.
+
+`changeRecords` are report-derived guidance for claim dependencies. They mark derived claims that need recompute, review, or blocking because an input became stale, superseded, disputed, rejected, assumed, missing, or cyclic.
 
 Schema: `schemas/trust-report.schema.json`
 

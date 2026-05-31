@@ -1,6 +1,7 @@
 export type TrustStatus =
   | "unknown"
   | "proposed"
+  | "assumed"
   | "verified"
   | "stale"
   | "disputed"
@@ -8,6 +9,7 @@ export type TrustStatus =
   | "rejected";
 
 export type ImpactLevel = "low" | "medium" | "high" | "critical";
+export type SupportStrength = "weak" | "moderate" | "strong";
 
 export type EvidenceType =
   | "source_excerpt"
@@ -71,6 +73,47 @@ export interface IdentityLink {
 }
 
 export type SchemaVersion = 2 | 3;
+export type DerivationMethod =
+  | "sum"
+  | "max"
+  | "min"
+  | "model"
+  | "rule-application"
+  | "copy"
+  | "normalization"
+  | "manual";
+
+export interface DerivationEdge {
+  inputClaimId: string;
+  method?: DerivationMethod;
+  role?: string;
+  supportStrength?: SupportStrength;
+  rationale?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export type DerivationChangeReason =
+  | "input-stale"
+  | "input-superseded"
+  | "input-disputed"
+  | "input-rejected"
+  | "input-assumed"
+  | "input-missing"
+  | "derivation-cycle";
+
+export type DerivationChangeAction = "recompute" | "review" | "blocked";
+
+export interface DerivationChangeRecord {
+  id: string;
+  claimId: string;
+  inputClaimIds: string[];
+  reason: DerivationChangeReason;
+  action: DerivationChangeAction;
+  createdAt: string;
+  message: string;
+  inputStatuses?: Record<string, TrustStatus>;
+  metadata?: Record<string, unknown>;
+}
 
 export interface Claim {
   id: string;
@@ -89,6 +132,7 @@ export interface Claim {
   confidenceBasis?: ConfidenceBasis;
   subjectAliases?: SubjectRef[];
   derivedFrom?: string[];
+  derivationEdges?: DerivationEdge[];
   metadata?: Record<string, unknown>;
 }
 
@@ -347,6 +391,7 @@ export interface TrustReportSummary {
   highImpactUnsupported: string[];
   staleClaims: string[];
   disputedClaims: string[];
+  recomputeNeededClaims: string[];
 }
 
 export interface EvidenceRequirement {
@@ -391,6 +436,7 @@ export interface TrustReport extends TrustInput {
   claims: Array<Claim & { status: TrustStatus; producerStatus?: TrustStatus }>;
   evidenceRequirementsByClaimId: Record<string, EvidenceRequirement>;
   transparencyGaps: TransparencyGap[];
+  changeRecords: DerivationChangeRecord[];
   subjectGroups: SubjectGroup[];
   claimGroupRollups: ClaimGroupRollup[];
   summary: TrustReportSummary;

@@ -19,6 +19,10 @@ export function deriveTrustStatus(input: {
     return latestEvent.status;
   }
 
+  if (latestEvent?.status === "assumed") {
+    return "assumed";
+  }
+
   if (latestEvent?.status === "verified") {
     if (isVerifiedEventStale(latestEvent, input.claim, input.evidence, input.policy, now)) {
       return "stale";
@@ -44,6 +48,10 @@ export function deriveTrustStatus(input: {
 
   if (input.claim.status === "proposed") {
     return "proposed";
+  }
+
+  if (input.claim.status === "assumed") {
+    return "assumed";
   }
 
   if (!input.policy) {

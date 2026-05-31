@@ -92,9 +92,9 @@ Examples:
 
 A Trust Snapshot is product language for the point-in-time trust state behind a product output, workflow, or package. It can drive a Trust Panel, Surface Console, API response, MCP resource, or export.
 
-`buildTrustReport(input, options?)` is the stable public API that turns a validated `TrustInput` into a `TrustReport`. The report carries claims, evidence, policies, events, current `claimGroups`, and current `authorityTrace` field data, then adds derived status, freshness outcomes, requirement fields, `transparencyGaps` annotations, subject groups, claim group rollups, and summary counts.
+`buildTrustReport(input, options?)` is the stable public API that turns a validated `TrustInput` into a `TrustReport`. The report carries claims, evidence, policies, events, current `claimGroups`, and current `authorityTrace` field data, then adds derived status, freshness outcomes, requirement fields, `transparencyGaps` annotations, derivation `changeRecords`, subject groups, claim group rollups, and summary counts.
 
-Producers should project product-specific workflow data into `TrustInput`, call `validateTrustInput`, and then call `buildTrustReport`. Product layers may persist a compact report summary, but Surface remains responsible for deriving statuses such as `verified`, `stale`, `disputed`, and `rejected`.
+Producers should project product-specific workflow data into `TrustInput`, call `validateTrustInput`, and then call `buildTrustReport`. Product layers may persist a compact report summary, but Surface remains responsible for deriving statuses such as `verified`, `assumed`, `stale`, `disputed`, and `rejected`.
 
 ## Trust Panel
 
@@ -112,15 +112,17 @@ Confidence basis records how much verification depth supports a claim. It captur
 - `reviewerAuthority`: who verified the claim (system, human, agent)
 - `evidenceStrength`: for technical evidence, the evidence strength (strong, moderate, weak)
 
-When claims depend on other claims (`derivedFrom`), the confidence ceiling is determined by the weakest link in the chain. Surface applies derivation ceilings to prevent upstream weak links from inflating downstream confidence.
+When claims depend on other claims (`derivedFrom` or `derivationEdges`), the confidence ceiling is determined by the weakest link in the chain. Surface applies derivation ceilings to prevent upstream weak links from inflating downstream confidence.
 
 ## Derivation
 
-When one claim depends on another, the dependent claim carries a `derivedFrom` field. This chains the provenance so reviewers and systems can:
+When one claim depends on another, the dependent claim can carry `derivedFrom` for simple claim-id links or `derivationEdges` for typed links. A derivation edge records the input claim, method, optional role, and support strength. This chains the provenance so reviewers and systems can:
 
 - Detect when upstream claims become stale
 - Apply confidence ceilings (derived claims cannot be stronger than their sources)
 - Surface conflict when an upstream claim is disputed or superseded
+
+When a derivation input becomes stale, superseded, disputed, rejected, assumed, missing, or cyclic, the report emits `changeRecords`. These records are report-derived guidance: they explain whether a derived claim should be recomputed, reviewed, or treated as blocked. Producers still own the domain recomputation itself.
 
 ## Coverage
 
