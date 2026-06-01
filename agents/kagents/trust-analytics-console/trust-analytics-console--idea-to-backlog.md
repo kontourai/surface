@@ -47,7 +47,7 @@ Dedupe decision:
 - **Success signal:** Given existing example reports, Surface can emit stable analytics JSON containing coverage, stale areas, transparency-gap hotspots, high-impact unsupported claims, evidence depth, confidence distribution, and drilldown references back to claim/evidence/policy ids.
 - **Non-goals:**
   - No React app or hosted UI.
-  - No product-specific nouns such as case, facility, tax return, PR, customer, or workflow stage.
+  - No product-specific nouns such as case, facility, application, PR, customer, or workflow stage.
   - No database or historical trend store.
   - No adapter-specific parsing.
   - No score that obscures evidence, freshness, or conflict state.

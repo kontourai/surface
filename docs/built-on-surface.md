@@ -32,7 +32,7 @@ If you are building with Surface, start with the [consumer SDK guide](guides/con
 - Surface does not gather evidence. You bring the input.
 - Surface does not run policies against external systems. Policies declare what makes a claim valid; events record what was observed.
 - Surface does not write back. Trust Snapshots and current `TrustReport` API outputs are the output; Viewers, Operators, agents, and downstream systems decide what to do with them.
-- Surface does not own product workflow vocabulary. Each product built with Surface keeps its own terms (Veritas calls them "rules" and "evidence checks"; a tax product might call them "deductions" and "supporting documents"). Those project *into* Surface claims and evidence at the boundary.
+- Surface does not own product workflow vocabulary. Each product built with Surface keeps its own terms (Veritas calls them "rules" and "evidence checks"; another product might call them "records" and "supporting documents"). Those project *into* Surface claims and evidence at the boundary.
 
 ## Current implementation names
 

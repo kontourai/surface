@@ -2,7 +2,7 @@
 
 Surface is useful when a product needs to turn domain-specific evidence into a portable Trust Snapshot without moving product workflow language into the kernel.
 
-The shipped adapters and fixtures below illustrate the shape. They are not the only places Surface fits. Anything that needs to express claims, evidence, Evidence Trace, Freshness, and Conflict (fitness tracking, tax filings, marketplace listings, agent output validation, certifications, regulatory disclosures) can build with the same Surface foundation.
+The shipped adapters and fixtures below illustrate the shape. They are not the only places Surface fits. Anything that needs to express claims, evidence, Evidence Trace, Freshness, and Conflict (field-attested records, marketplace listings, agent output validation, certifications, regulatory disclosures) can build with the same Surface foundation.
 
 ## Repo Governance — built and shipping
 
