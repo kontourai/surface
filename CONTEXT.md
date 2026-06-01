@@ -177,7 +177,7 @@ A claim whose value is a list or repeated entity set, such as schedules, aliases
 _Avoid_: Implicit per-row verification, hidden array semantics
 
 **Current Claim Status**:
-The current best-known trust state of a claim across available evidence, events, freshness, and conflicts. Current claim status is the primary way to inspect a claim without starting from a producer run; runs remain provenance for how the status was observed or changed.
+The current derived trust state of a claim across available evidence, events, freshness, and conflicts. Current claim status is the primary way to inspect a claim without starting from a producer run; runs remain provenance for how the status was observed or changed.
 _Avoid_: Run-only status, workflow status, final truth
 
 **Subject**:
