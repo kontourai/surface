@@ -64,6 +64,10 @@ _Avoid_: Monolithic trust object, console state
 The portability principle that Surface trust state should be schema-first, exportable, embeddable, locally inspectable, and usable without a proprietary hosted service. Hosted Surface services may add storage, monitoring, discovery, and Console features, but should not be required to understand the trust state.
 _Avoid_: Proprietary handshake, hosted-only trust
 
+**Kontour Resource Shape**:
+The shared convention for new portable Kontour records: `apiVersion`, `kind`, `metadata`, `spec`, optional `status`, and optional `proof`. Canonical doc: https://github.com/kontourai/kontourai.io/blob/main/docs/kontour-resource-shape.md. Surface-specific use: keep existing `TrustInput`, claim, evidence, and report contracts stable, and use the resource shape additively for portable records such as integrity anchors, trust snapshots, and exported history. A Surface proof or integrity anchor proves provenance and tamper evidence; it does not prove the underlying domain claim is true.
+_Avoid_: Breaking all Surface inputs into a new envelope, storing trust semantics in metadata, treating `proof` as a truth guarantee
+
 **Interoperability Target**:
 An external standard or ecosystem Surface may map to or integrate with, such as C2PA/Content Credentials for content provenance, W3C Verifiable Credentials for signed attestations, OpenLineage for data/process lineage, SLSA/in-toto for software supply-chain provenance, and MCP for agent access. Interoperability targets should inform Surface without replacing its product-transparency model.
 _Avoid_: Core model replacement, standards cargo cult
