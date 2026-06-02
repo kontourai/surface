@@ -47,6 +47,29 @@ export interface SubjectRef {
   subjectId: string;
 }
 
+export type IntegrityAnchorKind =
+  | "hash"
+  | "signature"
+  | "transparency_log"
+  | "timestamp"
+  | "external_ref"
+  | "other";
+
+export type IntegrityAnchorVerificationStatus = "unverified" | "verified" | "failed" | "not_applicable";
+
+export interface IntegrityAnchor {
+  id: string;
+  kind: IntegrityAnchorKind;
+  algorithm: string;
+  value: string;
+  sourceRef: string;
+  observedAt?: string;
+  verificationStatus?: IntegrityAnchorVerificationStatus;
+  verifiedAt?: string;
+  verifiedBy?: string;
+  metadata?: Record<string, unknown>;
+}
+
 export type AuthorityType = "role" | "permission" | "credential" | "system" | "organization" | "policy" | "other";
 
 export interface AuthorityTrace {
@@ -63,6 +86,7 @@ export interface AuthorityTrace {
   validUntil?: string;
   revokedAt?: string;
   integrityRef?: string;
+  integrityAnchor?: IntegrityAnchor;
   metadata?: Record<string, unknown>;
 }
 
@@ -128,6 +152,7 @@ export interface Claim {
   updatedAt: string;
   impactLevel?: ImpactLevel;
   currentIntegrityRef?: string;
+  currentIntegrityAnchor?: IntegrityAnchor;
   verificationPolicyId?: string;
   confidenceBasis?: ConfidenceBasis;
   subjectAliases?: SubjectRef[];
@@ -198,6 +223,7 @@ export interface Evidence {
   observedAt: string;
   collectedBy: string;
   integrityRef?: string;
+  integrityAnchor?: IntegrityAnchor;
   passing?: boolean;
   blocking?: boolean;
   metadata?: Record<string, unknown>;
@@ -543,6 +569,7 @@ export interface AuthorityTraceItem {
   validUntil?: string;
   revokedAt?: string;
   integrityRef?: string;
+  integrityAnchor?: IntegrityAnchor;
 }
 
 export type AttestationGapType =
@@ -572,4 +599,5 @@ export interface AttestationValidityItem {
   validUntil?: string;
   revokedAt?: string;
   integrityRef?: string;
+  integrityAnchor?: IntegrityAnchor;
 }

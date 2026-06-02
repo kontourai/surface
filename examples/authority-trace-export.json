@@ -27,6 +27,18 @@
       "observedAt": "2026-05-01T00:05:00.000Z",
       "collectedBy": "actor:record-steward-1",
       "integrityRef": "sha256:attestation",
+      "integrityAnchor": {
+        "id": "anchor.attestation.hash",
+        "kind": "hash",
+        "algorithm": "sha256",
+        "value": "sha256:attestation",
+        "sourceRef": "review-log",
+        "observedAt": "2026-05-01T00:05:00.000Z",
+        "verificationStatus": "unverified",
+        "metadata": {
+          "producer": "records-producer"
+        }
+      },
       "metadata": {
         "actor": {
           "id": "actor:record-steward-1",
@@ -48,7 +60,16 @@
       "claimIds": ["claim.record.status"],
       "validFrom": "2026-01-01T00:00:00.000Z",
       "validUntil": "2026-12-31T00:00:00.000Z",
-      "integrityRef": "sha256:directory-entry"
+      "integrityRef": "sha256:directory-entry",
+      "integrityAnchor": {
+        "id": "anchor.directory-entry.log",
+        "kind": "transparency_log",
+        "algorithm": "rekor-v1",
+        "value": "rekor:records-team:directory-entry",
+        "sourceRef": "directory:records-team",
+        "observedAt": "2026-05-01T00:04:00.000Z",
+        "verificationStatus": "unverified"
+      }
     }
   ],
   "policies": [
