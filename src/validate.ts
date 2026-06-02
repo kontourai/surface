@@ -27,6 +27,20 @@ const VALIDITY_KINDS = ["duration", "commit", "historical", "manual"] as const;
 const AUTHORITY_TYPES = ["role", "permission", "credential", "system", "organization", "policy", "other"] as const;
 const DERIVATION_METHODS = ["sum", "max", "min", "model", "rule-application", "copy", "normalization", "manual"] as const;
 const SUPPORT_STRENGTHS = ["weak", "moderate", "strong"] as const;
+const INTEGRITY_ANCHOR_KINDS = ["hash", "signature", "transparency_log", "timestamp", "external_ref", "other"] as const;
+const INTEGRITY_ANCHOR_VERIFICATION_STATUSES = ["unverified", "verified", "failed", "not_applicable"] as const;
+const INTEGRITY_ANCHOR_KEYS = new Set([
+  "id",
+  "kind",
+  "algorithm",
+  "value",
+  "sourceRef",
+  "observedAt",
+  "verificationStatus",
+  "verifiedAt",
+  "verifiedBy",
+  "metadata",
+]);
 
 const CLAIM_KEYS = new Set([
   "id",
@@ -41,6 +55,7 @@ const CLAIM_KEYS = new Set([
   "updatedAt",
   "impactLevel",
   "currentIntegrityRef",
+  "currentIntegrityAnchor",
   "verificationPolicyId",
   "confidenceBasis",
   "subjectAliases",
@@ -60,6 +75,7 @@ const EVIDENCE_KEYS = new Set([
   "observedAt",
   "collectedBy",
   "integrityRef",
+  "integrityAnchor",
   "passing",
   "blocking",
   "metadata",
@@ -107,6 +123,7 @@ const AUTHORITY_TRACE_KEYS = new Set([
   "validUntil",
   "revokedAt",
   "integrityRef",
+  "integrityAnchor",
   "metadata",
 ]);
 const CLAIM_GROUP_KINDS = ["claimGroup", "framework", "requirement-set"] as const;
@@ -136,6 +153,7 @@ export function validateTrustInput(input: unknown): TrustInput {
     if (claim.status !== undefined) requireEnum(claim, "status", TRUST_STATUSES);
     if (claim.impactLevel !== undefined) requireEnum(claim, "impactLevel", IMPACT_LEVELS);
     if (claim.currentIntegrityRef !== undefined) requireString(claim, "currentIntegrityRef");
+    if (claim.currentIntegrityAnchor !== undefined) validateIntegrityAnchor(claim.currentIntegrityAnchor, `claim ${claim.id} currentIntegrityAnchor`);
     if (claim.verificationPolicyId !== undefined) requireString(claim, "verificationPolicyId");
     if (claim.confidenceBasis !== undefined) requireObject(claim.confidenceBasis, "claim.confidenceBasis");
     if (claim.subjectAliases !== undefined) {
@@ -187,6 +205,7 @@ export function validateTrustInput(input: unknown): TrustInput {
     requireDateTime(item, "observedAt");
     if (item.sourceLocator !== undefined) requireString(item, "sourceLocator");
     if (item.integrityRef !== undefined) requireString(item, "integrityRef");
+    if (item.integrityAnchor !== undefined) validateIntegrityAnchor(item.integrityAnchor, `evidence ${item.id} integrityAnchor`);
     if (item.passing !== undefined && typeof item.passing !== "boolean") {
       throw new Error(`Evidence ${item.id} passing must be a boolean`);
     }
@@ -312,7 +331,20 @@ function validateAuthorityTrace(trace: unknown): void {
   if (trace.validUntil !== undefined) requireDateTime(trace, "validUntil");
   if (trace.revokedAt !== undefined) requireDateTime(trace, "revokedAt");
   if (trace.integrityRef !== undefined) requireString(trace, "integrityRef");
+  if (trace.integrityAnchor !== undefined) validateIntegrityAnchor(trace.integrityAnchor, `authorityTrace ${trace.id} integrityAnchor`);
   if (trace.metadata !== undefined) requireObject(trace.metadata, "authorityTrace.metadata");
+}
+
+function validateIntegrityAnchor(value: unknown, label: string): void {
+  requireObject(value, label);
+  rejectUnknownKeys(value, INTEGRITY_ANCHOR_KEYS, label);
+  for (const field of ["id", "algorithm", "value", "sourceRef"]) requireString(value, field);
+  requireEnum(value, "kind", INTEGRITY_ANCHOR_KINDS);
+  if (value.observedAt !== undefined) requireDateTime(value, "observedAt");
+  if (value.verificationStatus !== undefined) requireEnum(value, "verificationStatus", INTEGRITY_ANCHOR_VERIFICATION_STATUSES);
+  if (value.verifiedAt !== undefined) requireDateTime(value, "verifiedAt");
+  if (value.verifiedBy !== undefined) requireString(value, "verifiedBy");
+  if (value.metadata !== undefined) requireObject(value.metadata, `${label}.metadata`);
 }
 
 function validateClaimGroup(claimGroup: unknown): void {

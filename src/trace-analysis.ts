@@ -65,6 +65,7 @@ function buildAttestationValidityItem(input: {
   const validUntil = matchingAuthority.find((trace) => trace.validUntil)?.validUntil ?? stringMetadata(input.evidence.metadata, "validUntil");
   const revokedAt = matchingAuthority.find((trace) => trace.revokedAt)?.revokedAt ?? stringMetadata(input.evidence.metadata, "revokedAt");
   const integrityRef = input.evidence.integrityRef ?? matchingAuthority.find((trace) => trace.integrityRef)?.integrityRef ?? stringMetadata(input.evidence.metadata, "contentHash");
+  const integrityAnchor = input.evidence.integrityAnchor ?? matchingAuthority.find((trace) => trace.integrityAnchor)?.integrityAnchor;
   const gaps: AttestationGapType[] = [];
 
   if (!actorRef) gaps.push("attestation_actor_missing");
@@ -93,6 +94,7 @@ function buildAttestationValidityItem(input: {
   if (validUntil) item.validUntil = validUntil;
   if (revokedAt) item.revokedAt = revokedAt;
   if (integrityRef) item.integrityRef = integrityRef;
+  if (integrityAnchor) item.integrityAnchor = integrityAnchor;
   return item;
 }
 

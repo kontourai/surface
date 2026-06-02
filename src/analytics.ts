@@ -96,6 +96,7 @@ function buildAuthorityTraceProjection(authorityTrace: AuthorityTrace[], generat
     if (trace.validUntil) item.validUntil = trace.validUntil;
     if (trace.revokedAt) item.revokedAt = trace.revokedAt;
     if (trace.integrityRef) item.integrityRef = trace.integrityRef;
+    if (trace.integrityAnchor) item.integrityAnchor = trace.integrityAnchor;
     return item;
   }).sort((a, b) => a.id.localeCompare(b.id));
 

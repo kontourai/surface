@@ -10,11 +10,11 @@
     "source": { "type": "string" },
     "claims": {
       "type": "array",
-      "items": { "type": "object" }
+      "items": { "$ref": "claim.schema.json" }
     },
     "evidence": {
       "type": "array",
-      "items": { "type": "object" }
+      "items": { "$ref": "evidence.schema.json" }
     },
     "policies": {
       "type": "array",
@@ -85,6 +85,24 @@
         "validUntil": { "type": "string", "format": "date-time" },
         "revokedAt": { "type": "string", "format": "date-time" },
         "integrityRef": { "type": "string" },
+        "integrityAnchor": { "$ref": "#/$defs/integrityAnchor" },
+        "metadata": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "integrityAnchor": {
+      "type": "object",
+      "required": ["id", "kind", "algorithm", "value", "sourceRef"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "enum": ["hash", "signature", "transparency_log", "timestamp", "external_ref", "other"] },
+        "algorithm": { "type": "string" },
+        "value": { "type": "string" },
+        "sourceRef": { "type": "string" },
+        "observedAt": { "type": "string", "format": "date-time" },
+        "verificationStatus": { "enum": ["unverified", "verified", "failed", "not_applicable"] },
+        "verifiedAt": { "type": "string", "format": "date-time" },
+        "verifiedBy": { "type": "string" },
         "metadata": { "type": "object" }
       },
       "additionalProperties": false
