@@ -40,8 +40,9 @@
     "docs:build": "node scripts/build-pages-site.mjs",
     "surface:report": "npm run build && node bin/surface.mjs report",
     "surface:summary": "npm run build && node bin/surface.mjs report --format summary",
-    "verify": "npm run typecheck && npm test && npm run docs:build && npm run surface:summary",
-    "prepare": "npm run build"
+    "verify": "node scripts/check-content-boundary.cjs && npm run typecheck && npm test && npm run docs:build && npm run surface:summary",
+    "prepare": "npm run build",
+    "check:content-boundary": "node scripts/check-content-boundary.cjs"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
