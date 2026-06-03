@@ -24,6 +24,8 @@ Evidence explains why a claim deserves trust. It can be a source excerpt, test o
 
 Each evidence record also declares a verification method: observation, extraction, validation, corroboration, attestation, auditability, anchoring, or monitoring. The evidence type says what the artifact is; the method says how much verification depth it represents.
 
+Survey-produced source-of-authority observations should keep producer-declared source authority on the evidence record, under `metadata.sourceAuthority`. Do not promote that value into `authorityTrace` unless the producer also emits a producer-neutral actor or system authority record.
+
 ## Evidence Trace
 
 An evidence trace is the inspectable path showing how evidence was produced, including source, method, actor or system, timestamp, tool or run context, logs when relevant, and integrity scope. Surface standardizes evidence traceability without owning evidence collection.
@@ -37,6 +39,8 @@ The exported `buildHumanAttestationEvidence({ subject, actor, attestedAt, validU
 ## Authority Trace
 
 Authority Trace records why an actor or system had authority to create, approve, or verify evidence for a subject. It is producer-neutral: the authority can be a role, permission, credential, system, organization, policy, or other reference from the producer's own directory, policy engine, workflow log, or signing system.
+
+Authority Trace is reserved for portable actor or system authority. Producer-declared source authority from Survey observations belongs in `Evidence.metadata.sourceAuthority` unless and until it can be represented as a neutral authority record.
 
 The current API field is `authorityTrace?: AuthorityTrace[]` on `TrustInput` and `TrustReport`. Each record links an `actorRef` and `authorityRef` to a `subject`, `sourceRef`, observation timestamp, and optional claim or evidence IDs. Optional validity windows, revocation timestamps, integrity references, and metadata let consumers distinguish active authority from expired, revoked, or weak authority evidence.
 

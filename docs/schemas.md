@@ -27,6 +27,8 @@ Evidence records the source, locator, summary or excerpt, observed time, collect
 
 The current method vocabulary is `observation`, `extraction`, `validation`, `corroboration`, `attestation`, `auditability`, `anchoring`, and `monitoring`.
 
+Survey-produced source-of-authority observations may declare the producer's source authority in `metadata.sourceAuthority`. Surface treats that as evidence metadata, not portable actor or system authority.
+
 The optional `execution` field records provenance for evidence produced by running a command or tool. Producers such as Veritas populate it when an Evidence Check generated the evidence. Surface treats it as opaque metadata — it is carried through to reports and consumers but does not affect trust derivation.
 
 ```typescript
@@ -71,6 +73,8 @@ Schema: `schemas/trust-input.schema.json`
 ## Authority Trace
 
 Authority Trace is the first-class producer-neutral way to describe why an actor or system had authority over a claim or evidence record. It avoids relying on producer-specific evidence metadata conventions for role, permission, credential, policy, organization, or system authority.
+
+Do not use `authorityTrace` for Survey's producer-declared source authority unless the producer has a neutral actor or system authority record to emit. Until then, keep that declaration under `Evidence.metadata.sourceAuthority`.
 
 ```typescript
 interface AuthorityTrace {
