@@ -35,6 +35,7 @@ Start here when you are working on the Surface repo or building against `@kontou
 - [Surface Console](consoles.md) — local Console server over producer read models
 - [Walkthrough](guides/walkthrough.md) — real session walkthrough with native Surface input
 - [Releasing](RELEASING.md) — npm publish checklist and trusted publishing setup
+- [Repo Hooks](repo-hooks.md) — local contributor hook setup and validation
 
 ## Direction
 
