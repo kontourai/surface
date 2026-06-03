@@ -1,0 +1,11 @@
+#!/bin/sh
+set -eu
+
+HOOK_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+REPO_ROOT=$(CDPATH= cd -- "$HOOK_DIR/.." && pwd)
+
+cd "$REPO_ROOT"
+
+echo "Running Surface pre-push verification..."
+npm run validate:repo-hooks
+npm run verify

@@ -17,9 +17,13 @@ For local development in this repo:
 
 ```bash
 npm install
+npm run setup:repo-hooks
+npm run validate:repo-hooks
 npm run verify
 npm run surface:summary
 ```
+
+`npm run setup:repo-hooks` configures this clone's local Git config with `core.hooksPath=.githooks`. The repo-owned pre-push hook is contributor tooling: it runs local verification before push, can be repaired by rerunning setup, and does not define Surface Console, projection, Trust Snapshot, runtime adapter, producer, or product behavior. See [Repo Hooks](docs/repo-hooks.md).
 
 The default report reads [examples/surface-fixtures.json](examples/surface-fixtures.json), derives claim statuses, and emits a local trust report. In product language, this report is the basis for a point-in-time **Trust Snapshot**:
 
@@ -69,4 +73,5 @@ The dependency direction is one-way: producers depend on Surface; Surface does n
 - [Schemas](docs/schemas.md) — claim, evidence, policy, event, and report contracts
 - [Use Cases](docs/use-cases.md) — where Surface fits
 - [Architecture](docs/architecture.md) — kernel, adapters, and product boundaries
+- [Repo Hooks](docs/repo-hooks.md) — local contributor hook setup and validation
 - [External Adapter Example](examples/external-adapter/README.md) — minimal package-shaped producer
