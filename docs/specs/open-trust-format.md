@@ -33,9 +33,13 @@ Claims describe what a producer says is true enough to inspect. Evidence support
 
 Trace and integrity records explain how evidence or authority was produced, who or what produced it, when it was observed, and what source state it was anchored to. Surface standardizes the representation; producers own claimGroup and verification workflows.
 
+For Survey-produced source-of-authority observations, producer-declared source authority belongs under `Evidence.metadata.sourceAuthority`. It is evidence metadata unless the producer can emit a producer-neutral actor or system authority record.
+
 ## Authority Trace
 
 Authority Trace is the portable authority context for evidence, attestations, and claims. The current field name is `authorityTrace`, available on both `TrustInput` and `TrustReport`.
+
+Reserve `authorityTrace` for portable actor or system authority. Do not use it as a bucket for Survey source-authority declarations that only describe how the producer interpreted a source.
 
 Each Authority Trace record contains:
 

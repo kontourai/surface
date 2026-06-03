@@ -148,6 +148,10 @@ _Avoid_: Surface extractor, Surface crawler, Surface-owned verification
 A producer-shaped bundle of raw source, extraction, candidate, review outcome, and target claim that can be projected into Surface claims, evidence, and events. Survey provides generic producer-observation helpers; Surface evaluates the resulting trust state and keeps the provenance visible.
 _Avoid_: Surface-generated truth, untraceable adapter mapping
 
+**Source Authority**:
+A producer-declared statement about why a source should be treated as authoritative for a Survey-produced observation. In Surface packages, this belongs under `Evidence.metadata.sourceAuthority` unless the producer can emit a producer-neutral actor or system authority record.
+_Avoid_: Authority trace, reviewer authority, portable permission record
+
 **Build with Surface**:
 The developer documentation path for integrating a product with Surface by emitting claims, evidence, policies, traces, and trust snapshots.
 _Avoid_: End-user guide, operator guide
@@ -274,7 +278,7 @@ _Avoid_: Silent deletion, active claim
 
 **Authority Trace**:
 The inspectable path showing why an actor or system had authority to verify, attest, modify, approve, or own a claim. Authority trace may reference identity systems, role sources, licenses, CODEOWNERS, attestations, validity windows, revocation markers, and integrity references without requiring raw sensitive identity data.
-_Avoid_: Account profile, permission graph, raw auth log
+_Avoid_: Account profile, permission graph, raw auth log, Survey source-authority metadata
 
 **Authority Reverification**:
 Producer-supplied evidence that an actor or system's authority was checked again after the original action. Authority reverification can show authority as still valid, expired, revoked, missing, drifted, or unverifiable.
