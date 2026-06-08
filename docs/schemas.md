@@ -27,6 +27,12 @@ Evidence records the source, locator, summary or excerpt, observed time, collect
 
 The current method vocabulary is `observation`, `extraction`, `validation`, `corroboration`, `attestation`, `auditability`, `anchoring`, and `monitoring`.
 
+Evidence remains linked to a claim with the required `claimId` field. Existing producers that only emit `claimId` are still compatible: omitted `supportStrength` is interpreted as `"entails"`. Producers may set `supportStrength: "cited"` when an evidence record is useful context or a source reference but does not by itself entail the claim. Cited evidence is carried through reports, but it does not satisfy policy evidence or method requirements and can produce an `unsupported_inference` transparency gap.
+
+```typescript
+supportStrength?: "cited" | "entails"; // omitted means "entails" for legacy claimId records
+```
+
 Survey-produced source-of-authority observations may declare the producer's source authority in `metadata.sourceAuthority`. Surface treats that as evidence metadata, not portable actor or system authority.
 
 The optional `execution` field records provenance for evidence produced by running a command or tool. Producers such as Veritas populate it when an Evidence Check generated the evidence. Surface treats it as opaque metadata — it is carried through to reports and consumers but does not affect trust derivation.

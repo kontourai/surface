@@ -10,6 +10,7 @@ export type TrustStatus =
 
 export type ImpactLevel = "low" | "medium" | "high" | "critical";
 export type SupportStrength = "weak" | "moderate" | "strong";
+export type EvidenceSupportStrength = "cited" | "entails";
 
 export type EvidenceType =
   | "source_excerpt"
@@ -215,6 +216,7 @@ export interface SurfaceExtension {
 export interface Evidence {
   id: string;
   claimId: string;
+  supportStrength?: EvidenceSupportStrength;
   evidenceType: EvidenceType;
   method: EvidenceMethod;
   sourceRef: string;

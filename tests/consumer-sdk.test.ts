@@ -66,6 +66,75 @@ test("TrustInputBuilder creates validated input and links evidence fluently", ()
   assert.equal(buildTrustReport(built).summary.byStatus.verified, 1);
 });
 
+test("TrustInputBuilder preserves legacy entailing default and cited support behavior", () => {
+  const claimId = "sdk.ticket-2.status";
+  const evidenceId = `${claimId}.evidence`;
+  const base = new TrustInputBuilder({ source: "sdk:support-strength" })
+    .addClaim(buildClaim({
+      id: claimId,
+      subjectType: "ticket",
+      subjectId: "ticket-2",
+      surface: "tickets.workflow",
+      claimType: "ticket-status",
+      fieldOrBehavior: "status",
+      value: "verified",
+      createdAt: "2026-05-01T00:00:00.000Z",
+      updatedAt: "2026-05-01T00:00:00.000Z",
+      verificationPolicyId: "ticket.status",
+    }))
+    .addPolicy(buildPolicy({
+      id: "ticket.status",
+      claimType: "ticket-status",
+      requiredEvidence: ["source_excerpt"],
+      requiredMethods: ["observation"],
+      requiresCorroboration: false,
+      acceptanceCriteria: ["ticket export row"],
+      reviewAuthority: "ticket system",
+      validityRule: { kind: "manual" },
+      stalenessTriggers: ["ticket status changes"],
+      conflictRules: ["newer status supersedes older status"],
+      impactLevel: "medium",
+    }))
+    .addEvent(buildEvent({
+      id: `${claimId}.verified`,
+      claimId,
+      status: "verified",
+      actor: "ticket system",
+      method: "ticket export",
+      evidenceIds: [evidenceId],
+      createdAt: "2026-05-01T00:00:00.000Z",
+      verifiedAt: "2026-05-01T00:00:00.000Z",
+    }));
+
+  base.addEvidence(buildEvidence({
+    id: evidenceId,
+    supportStrength: "cited",
+    evidenceType: "source_excerpt",
+    method: "observation",
+    sourceRef: "ticket-export",
+    sourceLocator: "ticket-2",
+    excerptOrSummary: "ticket-2 is mentioned in the export",
+    observedAt: "2026-05-01T00:00:00.000Z",
+    collectedBy: "ticket system",
+  })).linkTo(claimId);
+
+  const citedReport = buildTrustReport(base.build(), { now: new Date("2026-05-01T00:05:00.000Z") });
+  assert.equal(citedReport.summary.byStatus.proposed, 1);
+  assert.equal(citedReport.summary.transparencyGapsByType.unsupported_inference, 1);
+
+  const legacy = new TrustInputBuilder({ source: "sdk:support-strength-legacy" })
+    .addClaim(citedReport.claims[0])
+    .addPolicy(citedReport.policies[0])
+    .addEvent(citedReport.events[0]);
+
+  legacy.addEvidence(buildEvidence({
+    ...citedReport.evidence[0],
+    supportStrength: undefined,
+  })).linkTo(claimId);
+
+  assert.equal(buildTrustReport(legacy.build()).summary.byStatus.verified, 1);
+});
+
 test("TrustInputBuilder validates before returning input", () => {
   assert.throws(
     () => new TrustInputBuilder({ source: "sdk:invalid" })
