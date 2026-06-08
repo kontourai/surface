@@ -1,5 +1,5 @@
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join, normalize } from "node:path";
 
 const pages = [
   ["index", "docs/index.md", "Kontour Surface"],
@@ -10,6 +10,7 @@ const pages = [
   ["concepts", "docs/concepts.md", "Concepts"],
   ["use-cases", "docs/use-cases.md", "Use Cases"],
   ["architecture", "docs/architecture.md", "Architecture"],
+  ["developer-architecture", "docs/architecture/developer-architecture.md", "Developer Architecture"],
   ["surface-foundation", "docs/architecture/surface-foundation.md", "Surface Foundation"],
   ["cli", "docs/cli.md", "CLI"],
   ["claim-authoring", "docs/claim-authoring.md", "Claim Authoring"],
@@ -29,9 +30,12 @@ const pages = [
   ["linked-data-roadmap", "docs/linked-data-roadmap.md", "Linked-Data Roadmap"],
   ["integration-plan", "docs/integration-plan.md", "Integration Plan"],
   ["grounding-audit", "docs/grounding-audit.md", "Grounding Audit"],
+  ["resource-contract-audit", "docs/resource-contract-audit.md", "Resource Contract Audit"],
   ["brand-language", "docs/brand-language.md", "Brand Language"],
   ["adr-0001-vocabulary-migration", "docs/adr/0001-vocabulary-migration.md", "ADR 0001"],
 ];
+const githubSourceBaseUrl = "https://github.com/kontourai/surface/blob/main/";
+const pageSlugBySource = new Map(pages.map(([slug, source]) => [normalize(source), slug]));
 
 await mkdir("docs-site", { recursive: true });
 await cleanDocsSite();
@@ -39,7 +43,7 @@ await writeFile("docs-site/styles.css", buildStyles());
 
 for (const [slug, source, title] of pages) {
   const markdown = await readFile(source, "utf8");
-  await writeFile(join("docs-site", `${slug}.html`), renderPage({ slug, title, markdown }));
+  await writeFile(join("docs-site", `${slug}.html`), renderPage({ slug, source, title, markdown }));
 }
 
 console.log(`Built ${pages.length} docs pages in docs-site/`);
@@ -53,10 +57,11 @@ async function cleanDocsSite() {
   );
 }
 
-function renderPage({ slug, title, markdown }) {
+function renderPage({ slug, source, title, markdown }) {
   const nav = pages
     .map(([pageSlug, , pageTitle]) => `<a ${pageSlug === slug ? 'aria-current="page"' : ""} href="${pageSlug}.html">${pageTitle}</a>`)
     .join("");
+  const hasMermaid = /```mermaid\s/.test(markdown);
   return `<!doctype html>
 <html lang="en" class="theme-surface">
 <head>
@@ -74,9 +79,10 @@ function renderPage({ slug, title, markdown }) {
   </header>
   <main>
     ${slug === "index" ? hero() : ""}
-    <article>${markdownToHtml(markdown)}</article>
+    <article>${markdownToHtml(markdown, source)}</article>
   </main>
   <footer>Product transparency for humans and AI agents.</footer>
+  ${hasMermaid ? mermaidScript() : ""}
 </body>
 </html>`;
 }
@@ -93,22 +99,31 @@ function hero() {
   </section>`;
 }
 
-function markdownToHtml(markdown) {
+function markdownToHtml(markdown, source) {
   const lines = markdown.split(/\r?\n/);
   const out = [];
-  let inList = false;
+  let listType = null;
   let inCode = false;
+  let inTable = false;
+  let codeLang = "";
   let codeLines = [];
 
-  for (const line of lines) {
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
     if (line.startsWith("```")) {
       if (inCode) {
-        out.push(`<pre><code>${escapeHtml(codeLines.join("\n"))}</code></pre>`);
+        if (codeLang === "mermaid") {
+          out.push(`<pre class="mermaid">${escapeHtml(codeLines.join("\n"))}</pre>`);
+        } else {
+          out.push(`<pre><code>${escapeHtml(codeLines.join("\n"))}</code></pre>`);
+        }
         codeLines = [];
         inCode = false;
+        codeLang = "";
       } else {
         closeList();
         inCode = true;
+        codeLang = line.slice(3).trim();
       }
       continue;
     }
@@ -116,43 +131,196 @@ function markdownToHtml(markdown) {
       codeLines.push(line);
       continue;
     }
+    if (isTableHeader(line, lines[index + 1])) {
+      closeList();
+      const headers = splitTableRow(line);
+      out.push("<table>");
+      out.push(`<thead><tr>${headers.map((cell) => `<th>${escapeInline(cell, source)}</th>`).join("")}</tr></thead>`);
+      out.push("<tbody>");
+      inTable = true;
+      continue;
+    }
+    if (inTable && isTableSeparator(line)) {
+      continue;
+    }
+    if (inTable && isTableRow(line)) {
+      out.push(`<tr>${splitTableRow(line).map((cell) => `<td>${escapeInline(cell, source)}</td>`).join("")}</tr>`);
+      continue;
+    }
+    if (inTable) {
+      closeTable();
+    }
     if (line.startsWith("# ")) {
       closeList();
-      out.push(`<h1>${escapeInline(line.slice(2))}</h1>`);
+      out.push(`<h1>${escapeInline(line.slice(2), source)}</h1>`);
     } else if (line.startsWith("## ")) {
       closeList();
-      out.push(`<h2>${escapeInline(line.slice(3))}</h2>`);
+      out.push(`<h2>${escapeInline(line.slice(3), source)}</h2>`);
     } else if (line.startsWith("### ")) {
       closeList();
-      out.push(`<h3>${escapeInline(line.slice(4))}</h3>`);
+      out.push(`<h3>${escapeInline(line.slice(4), source)}</h3>`);
     } else if (line.startsWith("- ")) {
-      if (!inList) {
-        out.push("<ul>");
-        inList = true;
-      }
-      out.push(`<li>${escapeInline(line.slice(2))}</li>`);
+      openList("ul");
+      out.push(`<li>${escapeInline(line.slice(2), source)}</li>`);
+    } else if (/^\d+\.\s+/.test(line)) {
+      openList("ol");
+      out.push(`<li>${escapeInline(line.replace(/^\d+\.\s+/, ""), source)}</li>`);
     } else if (line.trim() === "") {
       closeList();
+      closeTable();
     } else {
       closeList();
-      out.push(`<p>${escapeInline(line)}</p>`);
+      out.push(`<p>${escapeInline(line, source)}</p>`);
     }
   }
   closeList();
+  closeTable();
   return out.join("\n");
 
+  function openList(type) {
+    if (listType === type) {
+      return;
+    }
+    closeList();
+    if (type === "ul") {
+      out.push("<ul>");
+    } else {
+      out.push("<ol>");
+    }
+    listType = type;
+  }
+
   function closeList() {
-    if (inList) {
+    if (listType === "ul") {
       out.push("</ul>");
-      inList = false;
+      listType = null;
+    } else if (listType === "ol") {
+      out.push("</ol>");
+      listType = null;
+    }
+  }
+
+  function closeTable() {
+    if (inTable) {
+      out.push("</tbody></table>");
+      inTable = false;
     }
   }
 }
 
-function escapeInline(text) {
-  return escapeHtml(text)
+function isTableHeader(line, nextLine) {
+  return isTableRow(line) && isTableSeparator(nextLine ?? "");
+}
+
+function isTableRow(line) {
+  return line.trim().startsWith("|") && line.trim().endsWith("|");
+}
+
+function isTableSeparator(line) {
+  if (!isTableRow(line)) {
+    return false;
+  }
+  return splitTableRow(line).every((cell) => /^:?-{3,}:?$/.test(cell.trim()));
+}
+
+function splitTableRow(line) {
+  const cells = [];
+  let cell = "";
+  let inCode = false;
+  const content = line.trim().slice(1, -1);
+
+  for (const char of content) {
+    if (char === "`") {
+      inCode = !inCode;
+      cell += char;
+    } else if (char === "|" && !inCode) {
+      cells.push(cell.trim());
+      cell = "";
+    } else {
+      cell += char;
+    }
+  }
+  cells.push(cell.trim());
+  return cells;
+}
+
+function resolveHref(href, source) {
+  if (/^(https?:|mailto:)/i.test(href) || href.startsWith("#")) {
+    return href;
+  }
+
+  if (/^[a-z][a-z0-9+.-]*:/i.test(href)) {
+    return "#";
+  }
+
+  const hashIndex = href.indexOf("#");
+  const pathPart = hashIndex === -1 ? href : href.slice(0, hashIndex);
+  const fragment = hashIndex === -1 ? "" : href.slice(hashIndex + 1);
+  if (!isConservativeRelativePath(pathPart)) {
+    return "#";
+  }
+
+  const target = normalize(join(dirname(source), pathPart));
+  if (target.startsWith("..") || target.startsWith("/")) {
+    return "#";
+  }
+
+  if (pathPart.endsWith(".md")) {
+    const slug = pageSlugBySource.get(target);
+    if (slug) {
+      return `${slug}.html${fragment ? `#${fragment}` : ""}`;
+    }
+    return githubSourceUrl(target, fragment);
+  }
+
+  if (!hasFileExtension(pathPart) && !pathPart.includes("/")) {
+    return href;
+  }
+
+  return githubSourceUrl(target, fragment);
+}
+
+function isConservativeRelativePath(pathPart) {
+  return pathPart !== "" && !pathPart.startsWith("/") && !pathPart.startsWith("//") && !pathPart.includes("\\") && !/[\u0000-\u001f]/.test(pathPart);
+}
+
+function hasFileExtension(pathPart) {
+  return /\/?[^/]+\.[^/.]+$/.test(pathPart);
+}
+
+function githubSourceUrl(path, fragment) {
+  return `${githubSourceBaseUrl}${encodeURI(path)}${fragment ? `#${encodeURIComponent(fragment)}` : ""}`;
+}
+
+function escapeAttribute(value) {
+  return escapeHtml(value).replaceAll("'", "&#39;");
+}
+
+function escapeInline(text, source) {
+  const placeholders = [];
+  const withPlaceholders = text.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_match, label, href) => {
+    const safeLabel = escapeInline(label, source);
+    const safeHref = escapeAttribute(resolveHref(href, source));
+    const token = `\u0000${placeholders.length}\u0000`;
+    placeholders.push(`<a href="${safeHref}">${safeLabel}</a>`);
+    return token;
+  });
+
+  let escaped = escapeHtml(withPlaceholders)
     .replace(/`([^`]+)`/g, "<code>$1</code>")
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+
+  placeholders.forEach((html, index) => {
+    escaped = escaped.replace(`\u0000${index}\u0000`, html);
+  });
+  return escaped;
+}
+
+function mermaidScript() {
+  return `<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({ startOnLoad: true, securityLevel: "strict" });
+</script>`;
 }
 
 function escapeHtml(text) {
@@ -314,6 +482,24 @@ h1, h2, h3 {
 h1 { font-size: clamp(2rem, 5vw, 3.8rem); }
 h2 { margin-top: 2.2rem; font-size: 2rem; }
 a { color: var(--k-brand); }
+ol, ul {
+  padding-left: 1.4rem;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  overflow-wrap: anywhere;
+}
+th, td {
+  vertical-align: top;
+  padding: 0.75rem;
+  border: 1px solid var(--k-line);
+}
+th {
+  text-align: left;
+  background: var(--surface-panel-raised);
+}
 code {
   font-family: var(--k-font-mono);
   font-size: 0.92em;
@@ -324,6 +510,10 @@ pre {
   border-radius: 1rem;
   border: 1px solid var(--k-line);
   background: var(--surface-code-bg);
+}
+pre.mermaid {
+  background: var(--surface-panel-raised);
+  white-space: pre;
 }
 footer {
   position: relative;
