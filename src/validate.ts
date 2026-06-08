@@ -27,6 +27,7 @@ const VALIDITY_KINDS = ["duration", "commit", "historical", "manual"] as const;
 const AUTHORITY_TYPES = ["role", "permission", "credential", "system", "organization", "policy", "other"] as const;
 const DERIVATION_METHODS = ["sum", "max", "min", "model", "rule-application", "copy", "normalization", "manual"] as const;
 const SUPPORT_STRENGTHS = ["weak", "moderate", "strong"] as const;
+const EVIDENCE_SUPPORT_STRENGTHS = ["cited", "entails"] as const;
 const INTEGRITY_ANCHOR_KINDS = ["hash", "signature", "transparency_log", "timestamp", "external_ref", "other"] as const;
 const INTEGRITY_ANCHOR_VERIFICATION_STATUSES = ["unverified", "verified", "failed", "not_applicable"] as const;
 const INTEGRITY_ANCHOR_KEYS = new Set([
@@ -67,6 +68,7 @@ const DERIVATION_EDGE_KEYS = new Set(["inputClaimId", "method", "role", "support
 const EVIDENCE_KEYS = new Set([
   "id",
   "claimId",
+  "supportStrength",
   "evidenceType",
   "method",
   "sourceRef",
@@ -202,6 +204,7 @@ export function validateTrustInput(input: unknown): TrustInput {
     }
     requireEnum(item, "evidenceType", EVIDENCE_TYPES);
     requireEnum(item, "method", EVIDENCE_METHODS);
+    if (item.supportStrength !== undefined) requireEvidenceSupportStrength(item);
     requireDateTime(item, "observedAt");
     if (item.sourceLocator !== undefined) requireString(item, "sourceLocator");
     if (item.integrityRef !== undefined) requireString(item, "integrityRef");
@@ -530,6 +533,13 @@ function requireEnum<T extends readonly string[]>(object: Record<string, unknown
   const value = requireString(object, field);
   if (!allowed.includes(value)) throw new Error(`${field} contains unsupported value: ${value}`);
   return value;
+}
+
+function requireEvidenceSupportStrength(evidence: Record<string, unknown>): void {
+  const value = requireString(evidence, "supportStrength");
+  if (!EVIDENCE_SUPPORT_STRENGTHS.includes(value as (typeof EVIDENCE_SUPPORT_STRENGTHS)[number])) {
+    throw new Error(`Evidence ${String(evidence.id ?? "")} supportStrength contains unsupported value: ${value}`);
+  }
 }
 
 function requireDateTime(object: Record<string, unknown>, field: string): void {

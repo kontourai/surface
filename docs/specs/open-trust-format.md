@@ -31,6 +31,8 @@ In the current implementation, this shape is represented primarily through `Trus
 
 Claims describe what a producer says is true enough to inspect. Evidence supports or challenges claims. Policies describe what evidence, methods, authority, freshness, and conflict behavior matter. Events record append-only claim lifecycle changes.
 
+Evidence uses `claimId` as the compatibility link to its claim. Consumers that only need the single-hop graph can continue reading `claimId`. Consumers that evaluate whether a claim is supported should also read `evidence.supportStrength`: omitted means `entails` for legacy packages, `entails` means the evidence can satisfy policy support, and `cited` means reference/context evidence that remains visible but is insufficient to verify the claim by itself.
+
 Trace and integrity records explain how evidence or authority was produced, who or what produced it, when it was observed, and what source state it was anchored to. Surface standardizes the representation; producers own claimGroup and verification workflows.
 
 For Survey-produced source-of-authority observations, producer-declared source authority belongs under `Evidence.metadata.sourceAuthority`. It is evidence metadata unless the producer can emit a producer-neutral actor or system authority record.
@@ -91,6 +93,7 @@ Use current field names only where exact technical reference requires them:
 - `TrustReport` is the current derived report contract.
 - `schemaVersion: 2` and `schemaVersion: 3` remain accepted.
 - `evidence.execution` remains the current structured execution trace field.
+- `evidence.supportStrength` distinguishes cited/reference support from entailing support; omitted means entailing for legacy `claimId` evidence.
 - `authorityTrace` remains the current structured authority trace field.
 - `metadata` remains valid for producer-specific trace details until first-class portable fields are added.
 - `transparencyGaps` remains the current typed gap field; product docs should present it as Transparency Gaps or Conflicts.

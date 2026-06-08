@@ -15,6 +15,7 @@ export * from "./analytics.js";
 export * from "./store.js";
 export * from "./extension.js";
 export * from "./trust-snapshot.js";
+export * from "./evidence-support.js";
 export * from "./claim-authoring.js";
 export * from "./trace-analysis.js";
 export * from "./adapters/index.js";

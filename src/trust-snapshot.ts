@@ -13,6 +13,7 @@ import type {
 } from "./types.js";
 import { deriveClaimGroupRollups } from "./claim-groups.js";
 import { applyDerivation } from "./derivation.js";
+import { partitionEvidenceBySupport } from "./evidence-support.js";
 import { buildIdentityIndex } from "./identity.js";
 import { resolvePolicyForClaim } from "./policy-resolver.js";
 import { deriveTrustStatus } from "./status.js";
@@ -48,14 +49,15 @@ export function deriveTrustSnapshot(input: TrustInput, options: { now?: Date } =
   const ownStatuses = input.claims.map((claim) => {
     claimsById.set(claim.id, claim);
     const evidence = input.evidence.filter((item) => item.claimId === claim.id);
+    const { entailingEvidence } = partitionEvidenceBySupport(evidence);
     const policy = resolvePolicyForClaim(claim, input.policies);
     if (policy) policyByClaimId.set(claim.id, policy);
     const producerStatus = claim.status;
-    const ownStatus = deriveTrustStatus({ claim, evidence, policy, events: input.events, now });
+    const ownStatus = deriveTrustStatus({ claim, evidence: entailingEvidence, policy, events: input.events, now });
     ownStatusByClaimId.set(claim.id, ownStatus);
     if (policy) {
       evidenceRequirementsByClaimId[claim.id] = evidenceRequirementFromPolicy(policy);
-      transparencyGaps.push(...deriveTransparencyGaps({ claim, evidence, policy, status: ownStatus, now }));
+      transparencyGaps.push(...deriveTransparencyGaps({ claim, evidence, entailingEvidence, policy, status: ownStatus, now }));
     } else if (evidence.length === 0) {
       transparencyGaps.push({
         id: `${claim.id}.gap.provenance-gap`,
@@ -115,16 +117,20 @@ function evidenceRequirementFromPolicy(policy: VerificationPolicy): EvidenceRequ
 function deriveTransparencyGaps(input: {
   claim: Claim;
   evidence: Evidence[];
+  entailingEvidence: Evidence[];
   policy: VerificationPolicy;
   status: TrustStatus;
   now: Date;
 }): TransparencyGap[] {
   const transparencyGaps: TransparencyGap[] = [];
   const createdAt = input.now.toISOString();
-  const evidenceTypes = new Set(input.evidence.map((item) => item.evidenceType));
-  const evidenceMethods = new Set(input.evidence.map((item) => item.method));
+  const evidenceTypes = new Set(input.entailingEvidence.map((item) => item.evidenceType));
+  const evidenceMethods = new Set(input.entailingEvidence.map((item) => item.method));
   const missingEvidence = input.policy.requiredEvidence.filter((type) => !evidenceTypes.has(type));
   const missingMethods = (input.policy.requiredMethods ?? []).filter((method) => !evidenceMethods.has(method));
+  const citedEvidenceIds = input.evidence
+    .filter((item) => !input.entailingEvidence.some((entailing) => entailing.id === item.id))
+    .map((item) => item.id);
 
   if (missingEvidence.length > 0) {
     transparencyGaps.push({
@@ -153,18 +159,48 @@ function deriveTransparencyGaps(input: {
     });
   }
 
-  if (input.policy.requiresCorroboration && input.evidence.length < 2) {
+  if (input.policy.requiresCorroboration && input.entailingEvidence.length < 2) {
     transparencyGaps.push({
       id: `${input.claim.id}.gap.corroboration-absent`,
       claimId: input.claim.id,
       type: "corroboration_absent",
       severity: input.claim.impactLevel ?? input.policy.impactLevel,
       message: "Policy requires corroboration from at least two evidence records.",
-      evidenceIds: input.evidence.map((item) => item.id),
+      evidenceIds: input.entailingEvidence.map((item) => item.id),
       policyId: input.policy.id,
       blocking: true,
       createdAt,
     });
+  }
+
+  if (
+    input.evidence.length > 0 &&
+    citedEvidenceIds.length > 0 &&
+    (missingEvidence.length > 0 || missingMethods.length > 0 || (input.policy.requiresCorroboration && input.entailingEvidence.length < 2))
+  ) {
+    const hasProducerUnsupportedInferenceHint = input.evidence.some((item) => {
+      const hints = item.metadata?.transparencyGapHints;
+      return Array.isArray(hints) && hints.some((hint) => (
+        typeof hint === "object" &&
+        hint !== null &&
+        "type" in hint &&
+        hint.type === "unsupported_inference"
+      ));
+    });
+
+    if (!hasProducerUnsupportedInferenceHint) {
+      transparencyGaps.push({
+        id: `${input.claim.id}.gap.unsupported-inference`,
+        claimId: input.claim.id,
+        type: "unsupported_inference",
+        severity: input.claim.impactLevel ?? input.policy.impactLevel,
+        message: "Linked evidence cites or references the claim but does not entail enough support under policy.",
+        evidenceIds: citedEvidenceIds,
+        policyId: input.policy.id,
+        blocking: true,
+        createdAt,
+      });
+    }
   }
 
   if (input.status === "stale") {
@@ -174,14 +210,14 @@ function deriveTransparencyGaps(input: {
       type: "freshness_breach",
       severity: input.claim.impactLevel ?? input.policy.impactLevel,
       message: "Claim verification is stale under its verification policy.",
-      evidenceIds: input.evidence.map((item) => item.id),
+      evidenceIds: input.entailingEvidence.map((item) => item.id),
       policyId: input.policy.id,
       blocking: true,
       createdAt,
     });
   }
 
-  for (const item of input.evidence.filter((evidence) => evidence.passing === false)) {
+  for (const item of input.entailingEvidence.filter((evidence) => evidence.passing === false)) {
     transparencyGaps.push({
       id: `${input.claim.id}.gap.evidence-${item.id}`,
       claimId: input.claim.id,
