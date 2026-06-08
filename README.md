@@ -73,5 +73,6 @@ The dependency direction is one-way: producers depend on Surface; Surface does n
 - [Schemas](docs/schemas.md) — claim, evidence, policy, event, and report contracts
 - [Use Cases](docs/use-cases.md) — where Surface fits
 - [Architecture](docs/architecture.md) — kernel, adapters, and product boundaries
+- [Developer Architecture](docs/architecture/developer-architecture.md) — trust/evidence flow and cross-product boundaries
 - [Repo Hooks](docs/repo-hooks.md) — local contributor hook setup and validation
 - [External Adapter Example](examples/external-adapter/README.md) — minimal package-shaped producer
