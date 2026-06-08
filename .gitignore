@@ -1,6 +1,8 @@
 node_modules/
 dist/
 docs-site/
+test-results/
+playwright-report/
 *.tsbuildinfo
 
 .omx/

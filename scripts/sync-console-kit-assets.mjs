@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const installedKitRoot = path.join(root, "node_modules", "@kontourai", "console-kit");
-const siblingKitRoot = path.resolve(root, "..", "console-ui");
+const siblingKitRoot = path.resolve(root, "..", "console-kit");
 const target = path.join(root, "docs-site", "vendor", "console-kit", "tokens");
 const checkOnly = process.argv.includes("--check");
 const kitRoot = await resolveKitRoot();
@@ -27,7 +27,7 @@ async function resolveKitRoot() {
     await assertPackageName(candidate);
     return candidate;
   }
-  throw new Error("Missing @kontourai/console-kit. Install it or run from the kontourai workspace with ../console-ui present.");
+  throw new Error("Missing @kontourai/console-kit. Install it or run from the kontourai workspace with ../console-kit present.");
 }
 
 async function assertPackageName(candidate) {
