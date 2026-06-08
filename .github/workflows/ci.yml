@@ -24,18 +24,18 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: surface
 
       - name: Checkout Console Kit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: kontourai/console-kit
           path: console-kit
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
