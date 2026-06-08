@@ -5,7 +5,7 @@ Kontour Surface is a foundation product and product-neutral transparency standar
 ## Language
 
 **Surface**:
-The foundation product and transparency standard for making product claims, evidence, policies, freshness, and conflicts inspectable by humans and agents. Surface is primarily proven through vertical products that use it, rather than through direct end-user workflow adoption. As a data field, `surface` is a producer-defined grouping or namespace for related claims, not the primary thing users evaluate.
+The foundation product and transparency standard for making product claims, evidence, policies, freshness, and conflicts inspectable by humans and agents. Surface is a foundational primitive that other Kontour products build on. Surface is primarily proven through vertical products that use it, rather than through direct end-user workflow adoption. As a data field, `surface` is a producer-defined grouping or namespace for related claims, not the primary thing users evaluate.
 _Avoid_: Treating "surface" as the canonical noun for a page, dataset, workflow, repository area, or evaluated object.
 
 **Product Transparency**:
