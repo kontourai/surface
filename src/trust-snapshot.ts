@@ -64,6 +64,7 @@ export function deriveTrustSnapshot(input: TrustInput, options: { now?: Date } =
         claimId: claim.id,
         type: "provenance_gap",
         severity: claim.impactLevel ?? "medium",
+        ...materialityFromClaim(claim),
         message: `Claim ${claim.id} has no evidence and no verification policy.`,
         blocking: true,
         createdAt: now.toISOString(),
@@ -138,6 +139,7 @@ function deriveTransparencyGaps(input: {
       claimId: input.claim.id,
       type: "provenance_gap",
       severity: input.claim.impactLevel ?? input.policy.impactLevel,
+      ...materialityFromClaim(input.claim),
       message: `Missing required evidence: ${missingEvidence.join(", ")}.`,
       policyId: input.policy.id,
       blocking: true,
@@ -151,6 +153,7 @@ function deriveTransparencyGaps(input: {
       claimId: input.claim.id,
       type: "policy_violation",
       severity: input.claim.impactLevel ?? input.policy.impactLevel,
+      ...materialityFromClaim(input.claim),
       message: `Missing required verification method: ${missingMethods.join(", ")}.`,
       evidenceIds: input.evidence.map((item) => item.id),
       policyId: input.policy.id,
@@ -165,6 +168,7 @@ function deriveTransparencyGaps(input: {
       claimId: input.claim.id,
       type: "corroboration_absent",
       severity: input.claim.impactLevel ?? input.policy.impactLevel,
+      ...materialityFromClaim(input.claim),
       message: "Policy requires corroboration from at least two evidence records.",
       evidenceIds: input.entailingEvidence.map((item) => item.id),
       policyId: input.policy.id,
@@ -194,6 +198,7 @@ function deriveTransparencyGaps(input: {
         claimId: input.claim.id,
         type: "unsupported_inference",
         severity: input.claim.impactLevel ?? input.policy.impactLevel,
+        ...materialityFromClaim(input.claim),
         message: "Linked evidence cites or references the claim but does not entail enough support under policy.",
         evidenceIds: citedEvidenceIds,
         policyId: input.policy.id,
@@ -209,6 +214,7 @@ function deriveTransparencyGaps(input: {
       claimId: input.claim.id,
       type: "freshness_breach",
       severity: input.claim.impactLevel ?? input.policy.impactLevel,
+      ...materialityFromClaim(input.claim),
       message: "Claim verification is stale under its verification policy.",
       evidenceIds: input.entailingEvidence.map((item) => item.id),
       policyId: input.policy.id,
@@ -223,6 +229,7 @@ function deriveTransparencyGaps(input: {
       claimId: input.claim.id,
       type: "policy_violation",
       severity: input.claim.impactLevel ?? input.policy.impactLevel,
+      ...materialityFromClaim(input.claim),
       message: "Evidence explicitly reported a non-passing result.",
       evidenceIds: [item.id],
       policyId: input.policy.id,
@@ -231,14 +238,14 @@ function deriveTransparencyGaps(input: {
     });
   }
 
-  for (const hint of input.evidence.flatMap((item) => transparencyGapHintsFromEvidence(item, input.policy.id, createdAt))) {
+  for (const hint of input.evidence.flatMap((item) => transparencyGapHintsFromEvidence(item, input.claim, input.policy.id, createdAt))) {
     transparencyGaps.push(hint);
   }
 
   return transparencyGaps;
 }
 
-function transparencyGapHintsFromEvidence(evidence: Evidence, policyId: string, createdAt: string): TransparencyGap[] {
+function transparencyGapHintsFromEvidence(evidence: Evidence, claim: Claim, policyId: string, createdAt: string): TransparencyGap[] {
   const hints = evidence.metadata?.transparencyGapHints;
   if (!Array.isArray(hints)) return [];
 
@@ -249,6 +256,7 @@ function transparencyGapHintsFromEvidence(evidence: Evidence, policyId: string, 
       claimId: evidence.claimId,
       type: isTransparencyGapType(hint.type) ? hint.type : "unsupported_inference",
       severity: isImpactLevel(hint.severity) ? hint.severity : "medium",
+      ...materialityFromClaim(claim),
       message: typeof hint.message === "string" ? hint.message : "Evidence contains a transparency-gap hint.",
       evidenceIds: [evidence.id],
       policyId,
@@ -266,6 +274,10 @@ function isTransparencyGapType(value: unknown): value is TransparencyGapType {
 
 function isImpactLevel(value: unknown): value is TransparencyGap["severity"] {
   return value === "low" || value === "medium" || value === "high" || value === "critical";
+}
+
+function materialityFromClaim(claim: Claim): Pick<TransparencyGap, "materiality"> | Record<string, never> {
+  return claim.materiality === undefined ? {} : { materiality: claim.materiality };
 }
 
 function deriveIncompatibilityTransparencyGaps(input: {
@@ -304,6 +316,7 @@ function deriveIncompatibilityTransparencyGaps(input: {
               claimId: a.id,
               type: "contradiction",
               severity: a.impactLevel ?? b.impactLevel ?? group.policy.impactLevel,
+              ...materialityFromClaim(a),
               message:
                 pair.message ??
                 `Claims ${a.id} and ${b.id} hold incompatible values under policy ${group.policy.id}.`,
@@ -321,6 +334,7 @@ function deriveIncompatibilityTransparencyGaps(input: {
               claimId: a.id,
               type: "contradiction",
               severity: a.impactLevel ?? b.impactLevel ?? group.policy.impactLevel,
+              ...materialityFromClaim(a),
               message:
                 pair.message ??
                 `Claims ${a.id} and ${b.id} hold incompatible statuses under policy ${group.policy.id}.`,

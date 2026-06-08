@@ -51,6 +51,7 @@
           "claimId": { "type": "string" },
           "type": { "enum": ["contradiction", "provenance_gap", "policy_violation", "freshness_breach", "corroboration_absent", "unsupported_inference"] },
           "severity": { "enum": ["low", "medium", "high", "critical"] },
+          "materiality": { "enum": ["low", "medium", "high"] },
           "message": { "type": "string" },
           "evidenceIds": { "type": "array", "items": { "type": "string" } },
           "policyId": { "type": "string" },

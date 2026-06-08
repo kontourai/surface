@@ -216,6 +216,203 @@ test("accepts optional evidence passing and blocking fields", () => {
   assert.equal(input.evidence[0].blocking, false);
 });
 
+test("validates optional ordinal claim materiality", () => {
+  const baseInput = {
+    schemaVersion: 3,
+    source: "materiality-validation",
+    claims: [{
+      id: "claim-1",
+      subjectType: "repo",
+      subjectId: "repo-1",
+      surface: "surface",
+      claimType: "software-evidence",
+      fieldOrBehavior: "evidence",
+      value: true,
+      createdAt: "2026-04-25T00:00:00.000Z",
+      updatedAt: "2026-04-25T00:00:00.000Z",
+    }],
+    evidence: [],
+    policies: [],
+    events: [],
+  };
+
+  assert.equal(validateTrustInput(baseInput).claims[0].materiality, undefined);
+  for (const materiality of ["low", "medium", "high"]) {
+    const input = validateTrustInput({
+      ...baseInput,
+      claims: [{ ...baseInput.claims[0], id: `claim-${materiality}`, materiality }],
+    });
+    assert.equal(input.claims[0].materiality, materiality);
+  }
+  assert.throws(
+    () => validateTrustInput({ ...baseInput, claims: [{ ...baseInput.claims[0], materiality: "critical" }] }),
+    /materiality contains unsupported value: critical/,
+  );
+  assert.throws(
+    () => validateTrustInput({ ...baseInput, claims: [{ ...baseInput.claims[0], materiality: 3 }] }),
+    /Missing required string field: materiality/,
+  );
+});
+
+test("carries ordinal materiality from claims to generated transparency gaps", () => {
+  const input = validateTrustInput({
+    schemaVersion: 3,
+    source: "materiality-report",
+    claims: [{
+      id: "claim-high",
+      subjectType: "repo",
+      subjectId: "repo-1",
+      surface: "surface",
+      claimType: "software-evidence",
+      fieldOrBehavior: "evidence",
+      value: true,
+      materiality: "high",
+      createdAt: "2026-04-25T00:00:00.000Z",
+      updatedAt: "2026-04-25T00:00:00.000Z",
+      verificationPolicyId: "policy-evidence",
+    }, {
+      id: "claim-absent",
+      subjectType: "repo",
+      subjectId: "repo-1",
+      surface: "surface",
+      claimType: "software-evidence",
+      fieldOrBehavior: "other evidence",
+      value: true,
+      createdAt: "2026-04-25T00:00:00.000Z",
+      updatedAt: "2026-04-25T00:00:00.000Z",
+      verificationPolicyId: "policy-evidence",
+    }],
+    evidence: [],
+    policies: [{
+      id: "policy-evidence",
+      claimType: "software-evidence",
+      requiredEvidence: ["test_output"],
+      requiredMethods: ["validation"],
+      acceptanceCriteria: ["test output"],
+      reviewAuthority: "ci",
+      validityRule: { kind: "manual" },
+      stalenessTriggers: [],
+      conflictRules: [],
+      impactLevel: "medium",
+    }],
+    events: [],
+  });
+
+  const report = buildTrustReport(input, { id: "materiality-report", now: new Date("2026-04-25T00:00:00.000Z") });
+  const highGap = report.transparencyGaps.find((gap) => gap.claimId === "claim-high" && gap.type === "provenance_gap");
+  const absentGap = report.transparencyGaps.find((gap) => gap.claimId === "claim-absent" && gap.type === "provenance_gap");
+
+  assert.equal(report.claims.find((claim) => claim.id === "claim-high")?.materiality, "high");
+  assert.equal(highGap?.materiality, "high");
+  assert.equal(Object.hasOwn(absentGap ?? {}, "materiality"), false);
+});
+
+test("contradiction gaps use only the owning claim materiality", () => {
+  const input = validateTrustInput({
+    schemaVersion: 3,
+    source: "materiality-contradictions",
+    claims: [{
+      id: "claim-owner-absent",
+      subjectType: "record",
+      subjectId: "record-1",
+      surface: "surface",
+      claimType: "record-field",
+      fieldOrBehavior: "status",
+      value: "open",
+      impactLevel: "high",
+      createdAt: "2026-04-25T00:00:00.000Z",
+      updatedAt: "2026-04-25T00:00:00.000Z",
+      verificationPolicyId: "policy-status",
+    }, {
+      id: "claim-peer-high",
+      subjectType: "record",
+      subjectId: "record-1",
+      surface: "surface",
+      claimType: "record-field",
+      fieldOrBehavior: "status",
+      value: "closed",
+      impactLevel: "high",
+      materiality: "high",
+      createdAt: "2026-04-25T00:00:00.000Z",
+      updatedAt: "2026-04-25T00:00:00.000Z",
+      verificationPolicyId: "policy-status",
+    }],
+    evidence: [],
+    policies: [{
+      id: "policy-status",
+      claimType: "record-field",
+      requiredEvidence: [],
+      requiredMethods: [],
+      acceptanceCriteria: ["status consistency"],
+      reviewAuthority: "ops",
+      validityRule: { kind: "manual" },
+      stalenessTriggers: [],
+      conflictRules: [],
+      impactLevel: "high",
+      incompatibleValues: [{ values: ["open", "closed"] }],
+    }],
+    events: [],
+  });
+
+  const report = buildTrustReport(input, { id: "materiality-contradictions", now: new Date("2026-04-25T00:00:00.000Z") });
+  const contradictionGap = report.transparencyGaps.find((gap) => gap.type === "contradiction");
+
+  assert.equal(contradictionGap?.claimId, "claim-owner-absent");
+  assert.equal(Object.hasOwn(contradictionGap ?? {}, "materiality"), false);
+});
+
+test("evidence transparency-gap hints inherit owning claim materiality", () => {
+  const input = validateTrustInput({
+    schemaVersion: 3,
+    source: "materiality-evidence-hints",
+    claims: [{
+      id: "claim-hinted",
+      subjectType: "repo",
+      subjectId: "repo-1",
+      surface: "surface",
+      claimType: "software-evidence",
+      fieldOrBehavior: "evidence",
+      value: true,
+      materiality: "medium",
+      createdAt: "2026-04-25T00:00:00.000Z",
+      updatedAt: "2026-04-25T00:00:00.000Z",
+      verificationPolicyId: "policy-evidence",
+    }],
+    evidence: [{
+      id: "evidence-hint",
+      claimId: "claim-hinted",
+      evidenceType: "test_output",
+      method: "validation",
+      sourceRef: "npm test",
+      excerptOrSummary: "passed with a hint",
+      observedAt: "2026-04-25T00:00:00.000Z",
+      collectedBy: "tester",
+      metadata: {
+        transparencyGapHints: [{ id: "gap-from-hint", type: "unsupported_inference", severity: "high" }],
+      },
+    }],
+    policies: [{
+      id: "policy-evidence",
+      claimType: "software-evidence",
+      requiredEvidence: ["test_output"],
+      requiredMethods: ["validation"],
+      acceptanceCriteria: ["test output"],
+      reviewAuthority: "ci",
+      validityRule: { kind: "manual" },
+      stalenessTriggers: [],
+      conflictRules: [],
+      impactLevel: "medium",
+    }],
+    events: [],
+  });
+
+  const report = buildTrustReport(input, { id: "materiality-evidence-hints", now: new Date("2026-04-25T00:00:00.000Z") });
+  const hintGap = report.transparencyGaps.find((gap) => gap.id === "gap-from-hint");
+
+  assert.equal(hintGap?.claimId, "claim-hinted");
+  assert.equal(hintGap?.materiality, "medium");
+});
+
 test("producerStatus is only emitted when derived status diverges", () => {
   const input = validateTrustInput({
     schemaVersion: 3,

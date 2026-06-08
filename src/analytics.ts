@@ -9,6 +9,7 @@ import type {
   TransparencyGapQueueItem,
   TransparencyGapType,
   ImpactLevel,
+  Materiality,
   SurfaceTrustCoverage,
   TrustActionQueues,
   TrustAnalyticsProjection,
@@ -18,6 +19,11 @@ import type {
 import { analyzeTrustTraces } from "./trace-analysis.js";
 
 const IMPACT_LEVELS: ImpactLevel[] = ["low", "medium", "high", "critical"];
+const MATERIALITY_ORDER: Record<Materiality, number> = {
+  high: 0,
+  medium: 1,
+  low: 2,
+};
 const GAP_TRANSPARENCY_GAP_TYPES: TransparencyGapType[] = [
   "provenance_gap",
   "policy_violation",
@@ -60,7 +66,7 @@ export function buildTrustAnalyticsProjection(report: TrustReport): TrustAnalyti
     transparencyGaps: {
       byType: report.summary.transparencyGapsByType,
       bySeverity: countTransparencyGapsBySeverity(report.transparencyGaps),
-      items: transparencyGapItems,
+      items: sortTransparencyGapItems(transparencyGapItems),
     },
     evidenceGaps,
     evidenceRequirementGaps,
@@ -157,6 +163,7 @@ function claimQueueItem(claim: Claim & { status: TrustStatus }): ClaimQueueItem 
       subjectId: claim.subjectId,
     },
   };
+  if (claim.materiality) item.materiality = claim.materiality;
   if (claim.verificationPolicyId) item.policyId = claim.verificationPolicyId;
   return item;
 }
@@ -170,6 +177,7 @@ function transparencyGapQueueItem(transparencyGap: TransparencyGap): Transparenc
     message: transparencyGap.message,
     evidenceIds: transparencyGap.evidenceIds ?? [],
   };
+  if (transparencyGap.materiality) item.materiality = transparencyGap.materiality;
   if (transparencyGap.policyId) item.policyId = transparencyGap.policyId;
   return item;
 }
@@ -193,6 +201,8 @@ function buildEvidenceGaps(report: TrustReport, claimsById: Map<string, Claim>):
         message: transparencyGap.message,
         evidenceIds: transparencyGap.evidenceIds ?? [],
       };
+      const materiality = transparencyGap.materiality ?? claim?.materiality;
+      if (materiality) gap.materiality = materiality;
       if (transparencyGap.policyId) gap.policyId = transparencyGap.policyId;
       return gap;
     });
@@ -220,17 +230,40 @@ function buildActionQueues(input: {
   }
 
   return {
-    reviewNow: input.claimItems.filter((item) => reviewClaimIds.has(item.claimId)),
-    reverifyStale: input.claimItems.filter((item) => item.status === "stale"),
-    resolveConflicts: input.resolveConflicts,
+    reviewNow: sortClaimItems(input.claimItems.filter((item) => reviewClaimIds.has(item.claimId))),
+    reverifyStale: sortClaimItems(input.claimItems.filter((item) => item.status === "stale")),
+    resolveConflicts: sortTransparencyGapItems(input.resolveConflicts),
     strengthenEvidence: input.evidenceRequirementGaps,
   };
 }
 
 function sortGaps(gaps: EvidenceGap[]): EvidenceGap[] {
   return gaps.sort((a, b) => (
+    compareMateriality(a.materiality, b.materiality) ||
     a.claimId.localeCompare(b.claimId) ||
     String(a.gapType).localeCompare(String(b.gapType)) ||
     a.message.localeCompare(b.message)
   ));
+}
+
+function sortClaimItems(items: ClaimQueueItem[]): ClaimQueueItem[] {
+  return items.sort((a, b) => (
+    compareMateriality(a.materiality, b.materiality) ||
+    a.claimId.localeCompare(b.claimId)
+  ));
+}
+
+function sortTransparencyGapItems(items: TransparencyGapQueueItem[]): TransparencyGapQueueItem[] {
+  return items.sort((a, b) => (
+    compareMateriality(a.materiality, b.materiality) ||
+    a.claimId.localeCompare(b.claimId) ||
+    a.type.localeCompare(b.type) ||
+    a.message.localeCompare(b.message)
+  ));
+}
+
+function compareMateriality(a: Materiality | undefined, b: Materiality | undefined): number {
+  const aOrder = a === undefined ? Number.POSITIVE_INFINITY : MATERIALITY_ORDER[a];
+  const bOrder = b === undefined ? Number.POSITIVE_INFINITY : MATERIALITY_ORDER[b];
+  return aOrder - bOrder;
 }
