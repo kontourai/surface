@@ -4,7 +4,9 @@ Kontour Surface starts with core contract types. Trust inputs and trust reports 
 
 ## Claim
 
-A claim records the subject, surface, claim type, field or behavior, value, timestamps, status, policy link, confidence basis, and optional derivation links.
+A claim records the subject, surface, claim type, field or behavior, value, timestamps, status, policy link, confidence basis, optional materiality, and optional derivation links.
+
+`materiality?: "low" | "medium" | "high"` is a portable ordinal for prioritizing inspection. It is not a trust score and it is not a replacement for `impactLevel`, status, or confidence basis. Surface validates only the domain-neutral ordinals; producers and vertical extensions own any calibration of those labels in their own docs, metadata, or extension policy.
 
 Use `derivedFrom` for simple claim-id dependencies. Use `derivationEdges` when the dependency needs method, role, or support-strength metadata:
 
@@ -112,6 +114,8 @@ Claim groups collect related claims into a framework, requirement set, or produc
 A report packages claims, evidence, policies, events, preserved Authority Trace records, report-derived evidence requirement fields, typed `transparencyGaps` annotations, derivation `changeRecords`, claim group rollups, and a derived summary.
 
 `changeRecords` are report-derived guidance for claim dependencies. They mark derived claims that need recompute, review, or blocking because an input became stale, superseded, disputed, rejected, assumed, missing, or cyclic.
+
+Generated transparency gaps preserve claim `materiality` when present. Analytics and review queue projections can then sort or filter by `materiality` while keeping severity/impact and trust status separate.
 
 Schema: `schemas/trust-report.schema.json`
 

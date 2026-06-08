@@ -3,6 +3,7 @@ import type { SchemaVersion, TrustInput } from "./types.js";
 const SUPPORTED_SCHEMA_VERSIONS = [2, 3] as const;
 const TRUST_STATUSES = ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected"] as const;
 const IMPACT_LEVELS = ["low", "medium", "high", "critical"] as const;
+const MATERIALITY_LEVELS = ["low", "medium", "high"] as const;
 const EVIDENCE_METHODS = [
   "observation",
   "extraction",
@@ -55,6 +56,7 @@ const CLAIM_KEYS = new Set([
   "createdAt",
   "updatedAt",
   "impactLevel",
+  "materiality",
   "currentIntegrityRef",
   "currentIntegrityAnchor",
   "verificationPolicyId",
@@ -154,6 +156,7 @@ export function validateTrustInput(input: unknown): TrustInput {
     requireDateTime(claim, "updatedAt");
     if (claim.status !== undefined) requireEnum(claim, "status", TRUST_STATUSES);
     if (claim.impactLevel !== undefined) requireEnum(claim, "impactLevel", IMPACT_LEVELS);
+    if (claim.materiality !== undefined) requireEnum(claim, "materiality", MATERIALITY_LEVELS);
     if (claim.currentIntegrityRef !== undefined) requireString(claim, "currentIntegrityRef");
     if (claim.currentIntegrityAnchor !== undefined) validateIntegrityAnchor(claim.currentIntegrityAnchor, `claim ${claim.id} currentIntegrityAnchor`);
     if (claim.verificationPolicyId !== undefined) requireString(claim, "verificationPolicyId");

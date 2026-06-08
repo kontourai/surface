@@ -16,6 +16,7 @@
     "createdAt": { "type": "string", "format": "date-time" },
     "updatedAt": { "type": "string", "format": "date-time" },
     "impactLevel": { "enum": ["low", "medium", "high", "critical"] },
+    "materiality": { "enum": ["low", "medium", "high"] },
     "currentIntegrityRef": { "type": "string" },
     "currentIntegrityAnchor": { "$ref": "#/$defs/integrityAnchor" },
     "verificationPolicyId": { "type": "string" },

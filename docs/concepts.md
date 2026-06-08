@@ -8,7 +8,7 @@ In the current data contract, `surface` is still a producer-defined namespace fo
 
 ## Claim
 
-A claim is something a producer says is true enough to inspect, verify, refresh, dispute, or reject. It has a subject, asserted field or behavior, value, impact, optional policy, and derived status.
+A claim is something a producer says is true enough to inspect, verify, refresh, dispute, or reject. It has a subject, asserted field or behavior, value, impact, optional materiality, optional policy, and derived status.
 
 Examples:
 
@@ -76,6 +76,14 @@ A transparency gap is a missing, weak, stale, disputed, private, unavailable, un
 
 The current contract exposes many of these as `transparencyGaps` report annotations. Product-facing docs should call them transparency gaps or conflicts. They expose provenance gaps, policy requirement gaps, freshness breaches, missing corroboration, unsupported inferences, and contradictions without changing trust status by themselves.
 
+Transparency gaps can carry `materiality` when the owning claim declares it. This lets review queues prioritize important gaps without turning the gap into a trust score.
+
+## Materiality
+
+Materiality is an optional ordinal hint for prioritizing human or agent inspection: `low`, `medium`, or `high`. It is separate from trust status, confidence basis, impact level, and transparency-gap severity. Materiality says how important the claim or gap is to inspect; it does not say whether the claim is true.
+
+Surface core keeps materiality domain-neutral. Producers and vertical extensions own calibration, such as what "high" means for a legal filing, a financial fact, a repo policy, or a support workflow. Put those mappings in producer documentation, extension metadata, or product policy. Do not encode domain-specific materiality labels or numeric trust scores in the core Surface contract.
+
 ## Conflict
 
 A conflict is a transparency gap where claims, evidence, policies, or source states disagree. Surface should make conflicts visible instead of smoothing them over.
@@ -134,7 +142,7 @@ Coverage measures how much of a product surface is supported by current evidence
 
 ## Trust Analytics Projection
 
-`buildTrustAnalyticsProjection(report)` derives evidence intelligence from a `TrustReport`. It groups verification coverage by producer namespace, claim group rollups, stale and disputed claims, high-impact unsupported claims, transparency gaps, evidence gaps, requirement gaps, authority trace state, confidence basis, action queues, and attestation validity.
+`buildTrustAnalyticsProjection(report)` derives evidence intelligence from a `TrustReport`. It groups verification coverage by producer namespace, claim group rollups, stale and disputed claims, high-impact unsupported claims, transparency gaps, evidence gaps, requirement gaps, authority trace state, confidence basis, action queues, and attestation validity. Queue items carry optional materiality so consumers can sort or filter review work by `low`, `medium`, or `high` without using a numeric trust score.
 
 The projection is Console-ready and query-ready, but it is still derived from the open trust format. Surface analytics should mean provenance-aware trust analytics, not arbitrary charts over product data.
 

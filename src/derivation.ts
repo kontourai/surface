@@ -109,6 +109,7 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
       claimId: claim.id,
       type: "unsupported_inference",
       severity: claim.impactLevel ?? "medium",
+      ...materialityFromClaim(claim),
       message: `Claim ${claim.id} participates in a derivedFrom cycle.`,
       createdAt,
       metadata: { source: "derivation.cycle" },
@@ -131,6 +132,7 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
       claimId: claim.id,
       type: "unsupported_inference",
       severity: claim.impactLevel ?? "medium",
+      ...materialityFromClaim(claim),
       message: `Claim ${claim.id} derives from missing claims: ${missingInputs.join(", ")}.`,
       createdAt,
       metadata: { source: "derivation.missing", missingInputs },
@@ -160,6 +162,10 @@ export function derivationInputIds(claim: Claim): string[] {
   for (const id of claim.derivedFrom ?? []) ids.add(id);
   for (const edge of claim.derivationEdges ?? []) ids.add(edge.inputClaimId);
   return [...ids];
+}
+
+function materialityFromClaim(claim: Claim): Pick<TransparencyGap, "materiality"> | Record<string, never> {
+  return claim.materiality === undefined ? {} : { materiality: claim.materiality };
 }
 
 function changeRecordsForInputStatuses(input: {

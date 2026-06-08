@@ -9,6 +9,7 @@ export type TrustStatus =
   | "rejected";
 
 export type ImpactLevel = "low" | "medium" | "high" | "critical";
+export type Materiality = "low" | "medium" | "high";
 export type SupportStrength = "weak" | "moderate" | "strong";
 export type EvidenceSupportStrength = "cited" | "entails";
 
@@ -152,6 +153,7 @@ export interface Claim {
   createdAt: string;
   updatedAt: string;
   impactLevel?: ImpactLevel;
+  materiality?: Materiality;
   currentIntegrityRef?: string;
   currentIntegrityAnchor?: IntegrityAnchor;
   verificationPolicyId?: string;
@@ -170,6 +172,7 @@ export interface ClaimDefinition {
   subjectType: string;
   subjectId: string;
   impactLevel?: ImpactLevel;
+  materiality?: Materiality;
   verificationPolicyId?: string;
   metadata?: Record<string, unknown>;
   createdAt: string;
@@ -443,6 +446,7 @@ export interface TransparencyGap {
   claimId: string;
   type: TransparencyGapType;
   severity: ImpactLevel;
+  materiality?: Materiality;
   message: string;
   evidenceIds?: string[];
   policyId?: string;
@@ -516,6 +520,7 @@ export interface ClaimQueueItem {
   surface: string;
   status: TrustStatus;
   impactLevel: ImpactLevel;
+  materiality?: Materiality;
   claimType: string;
   subject: SubjectRef;
   policyId?: string;
@@ -526,6 +531,7 @@ export interface TransparencyGapQueueItem {
   claimId: string;
   type: TransparencyGapType;
   severity: ImpactLevel;
+  materiality?: Materiality;
   message: string;
   policyId?: string;
   evidenceIds: string[];
@@ -535,6 +541,7 @@ export interface EvidenceGap {
   claimId: string;
   surface: string;
   impactLevel: ImpactLevel;
+  materiality?: Materiality;
   gapType: TransparencyGapType | AttestationGapType;
   message: string;
   policyId?: string;

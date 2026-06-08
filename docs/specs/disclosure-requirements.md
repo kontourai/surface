@@ -35,7 +35,7 @@ A disclosure record should explain:
 
 ## Materiality
 
-Disclosure should prioritize material claims: claims that affect whether a user or agent should rely on product output. Producers own materiality mapping. Surface displays and carries the mapping so gaps around important claims are visible.
+Disclosure should prioritize material claims: claims that affect whether a user or agent should rely on product output. Producers own materiality mapping. Surface displays and carries the domain-neutral `low`, `medium`, and `high` ordinal so gaps around important claims are visible without adding numeric trust scores or domain-specific materiality labels to Surface core.
 
 ## Current Implementation Names
 

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildTrustReport, validateTrustInput, weakerStatus } from "../src/index.js";
+import { applyDerivation, buildTrustReport, validateTrustInput, weakerStatus } from "../src/index.js";
 import type { Claim, TrustInput } from "../src/index.js";
 
 const baseClaim: Omit<Claim, "id" | "value" | "fieldOrBehavior"> = {
@@ -298,6 +298,7 @@ test("derivedFrom cycles are detected and emit unsupported_inference", () => {
         id: "claim-a",
         fieldOrBehavior: "passes",
         value: true,
+        materiality: "high",
         derivedFrom: ["claim-b"],
       },
       {
@@ -315,6 +316,59 @@ test("derivedFrom cycles are detected and emit unsupported_inference", () => {
     (fl) => fl.type === "unsupported_inference" && (fl.metadata as Record<string, unknown> | undefined)?.source === "derivation.cycle",
   );
   assert.ok(cycleGaps.length >= 1, "expected at least one cycle transparency gap");
+  assert.equal(cycleGaps.find((gap) => gap.claimId === "claim-a")?.materiality, "high");
+});
+
+test("derivedFrom cycle gaps omit materiality when the claim has none", () => {
+  const input = validateTrustInput(makeInput({
+    claims: [
+      {
+        ...baseClaim,
+        id: "claim-a",
+        fieldOrBehavior: "passes",
+        value: true,
+        derivedFrom: ["claim-b"],
+      },
+      {
+        ...baseClaim,
+        id: "claim-b",
+        fieldOrBehavior: "passes",
+        value: true,
+        derivedFrom: ["claim-a"],
+      },
+    ],
+  }));
+
+  const report = buildTrustReport(input, { id: "report-cycle-no-materiality", now: new Date("2026-04-26T00:00:00.000Z") });
+  const cycleGap = report.transparencyGaps.find(
+    (gap) => gap.claimId === "claim-a" && (gap.metadata as Record<string, unknown> | undefined)?.source === "derivation.cycle",
+  );
+  assert.ok(cycleGap);
+  assert.equal(Object.hasOwn(cycleGap, "materiality"), false);
+});
+
+test("missing derivation input gaps inherit claim materiality", () => {
+  const claim: Claim = {
+    ...baseClaim,
+    id: "derived",
+    fieldOrBehavior: "release-ready",
+    value: true,
+    materiality: "high",
+    derivedFrom: ["missing-input"],
+  };
+
+  const outcome = applyDerivation({
+    claim,
+    ownStatus: "verified",
+    ownStatusByClaimId: new Map(),
+    claimsById: new Map([[claim.id, claim]]),
+    now: new Date("2026-04-26T00:00:00.000Z"),
+  });
+
+  const missingGap = outcome.transparencyGaps.find(
+    (gap) => (gap.metadata as Record<string, unknown> | undefined)?.source === "derivation.missing",
+  );
+  assert.equal(missingGap?.materiality, "high");
 });
 
 test("validator rejects derivedFrom referencing the claim itself", () => {
