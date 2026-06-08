@@ -48,13 +48,30 @@ Query commands emit JSON:
 
 - `surface stale`: stale claim queue.
 - `surface missing`: evidence and requirement gaps, including weak attestation signals.
-- `surface get`: claim drilldown with evidence, events, policy, requirement gaps, and current `transparencyGaps` annotations.
+- `surface get`: claim drilldown with evidence, events, policy, requirement gaps, current `transparencyGaps` annotations, and a `derivation` read model.
 - `surface policy`: policy drilldown or policy index with related claims and gaps.
 - `surface claim`: read and write `veritas.claims.json` claim stores.
 
 ## Contract
 
 The CLI does not trust incoming status labels by default. A claim is only `verified` when a verification event and required evidence support it. Commit-scoped verification becomes `stale` when the current integrity reference no longer matches the evidence used by the verification event.
+
+`surface get --claim-id <derived-claim>` preserves the existing top-level shape:
+
+```typescript
+{
+  claim,
+  evidence,
+  authorityTrace,
+  events,
+  policy,
+  evidenceRequirement,
+  transparencyGaps,
+  derivation
+}
+```
+
+The `derivation` field starts at the requested claim and exposes `directInputs`, nested `childInputs`, `leafClaims`, and `diagnostics`. Structured `derivationEdges` keep their method metadata, such as `sum`, `max`, `model`, `rule-application`, `copy`, `normalization`, and `manual`. Leaf claims include their direct evidence and events so agents can explain a derived claim back to source evidence without changing how ordinary claims are consumed.
 
 ## Claim Store Flags
 

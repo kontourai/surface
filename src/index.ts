@@ -9,6 +9,7 @@ export * from "./policy-helpers.js";
 export * from "./consumer-sdk.js";
 export * from "./attestation.js";
 export * from "./derivation.js";
+export * from "./derivation-drilldown.js";
 export * from "./claim-groups.js";
 export * from "./linked.js";
 export * from "./analytics.js";

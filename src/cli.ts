@@ -6,6 +6,7 @@ import { buildTrustReport, formatTrustReportSummary } from "./report.js";
 import { validateTrustInput } from "./validate.js";
 import { toLinkedReport } from "./linked.js";
 import { buildTrustAnalyticsProjection } from "./analytics.js";
+import { buildDerivationDrilldown } from "./derivation-drilldown.js";
 import {
   addAuthoredClaim,
   parseImpactLevel,
@@ -296,6 +297,7 @@ function projectClaimQuery(report: TrustReport, claimId: string): unknown {
     policy,
     evidenceRequirement: report.evidenceRequirementsByClaimId[claimId],
     transparencyGaps: report.transparencyGaps.filter((item) => item.claimId === claimId),
+    derivation: buildDerivationDrilldown(report, claimId),
   };
 }
 

@@ -21,6 +21,8 @@ derivationEdges?: Array<{
 }>;
 ```
 
+Derived claims remain ordinary claims in `TrustReport.claims`: consumers can keep reading their `status`, `value`, evidence, events, policy, and transparency gaps without using a special claim type. Consumers that need to explain a derivation can call `buildDerivationDrilldown(report, claimId)` or inspect the `surface get` projection. The drilldown preserves the target claim, direct inputs, nested inputs, leaf claims, leaf evidence, and derivation diagnostics while leaving the underlying claims unchanged.
+
 Schema: `schemas/claim.schema.json`
 
 ## Evidence
@@ -114,6 +116,8 @@ Claim groups collect related claims into a framework, requirement set, or produc
 A report packages claims, evidence, policies, events, preserved Authority Trace records, report-derived evidence requirement fields, typed `transparencyGaps` annotations, derivation `changeRecords`, claim group rollups, and a derived summary.
 
 `changeRecords` are report-derived guidance for claim dependencies. They mark derived claims that need recompute, review, or blocking because an input became stale, superseded, disputed, rejected, assumed, missing, or cyclic.
+
+Derivation drilldowns are read models over existing report fields. They normalize `derivedFrom` and `derivationEdges`, keep inspectable edge metadata such as `method`, `role`, `supportStrength`, and `rationale`, and attach each input or leaf claim's evidence, events, Authority Trace records, policy, requirement, transparency gaps, and derivation change records. They do not add freshness cascades, recompute execution records, counterfactual traversal, or numeric trust scoring.
 
 Generated transparency gaps preserve claim `materiality` when present. Analytics and review queue projections can then sort or filter by `materiality` while keeping severity/impact and trust status separate.
 
