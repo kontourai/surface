@@ -31,6 +31,7 @@ Start here when you are working on the Surface repo or building against `@kontou
 - [Producer Extension Limits](specs/producer-extension-limits.md) — customization boundaries that preserve core semantics
 - [Fixtures](fixtures.md) — examples used by tests and docs
 - [Schema Versioning](schema-versioning.md) — versioning rules for contract changes
+- [Resource Contract Audit](resource-contract-audit.md) — migration map for durable Surface contracts
 - [Trust Analytics Projection](analytics.md) — evidence intelligence derived from `TrustReport`
 - [Surface Console](consoles.md) — local Console server over producer read models
 - [Walkthrough](guides/walkthrough.md) — real session walkthrough with native Surface input
