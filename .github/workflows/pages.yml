@@ -23,14 +23,16 @@ jobs:
           path: surface
       - uses: actions/checkout@v4
         with:
-          repository: kontourai/console-ui
-          path: console-ui
+          repository: kontourai/console-kit
+          path: console-kit
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: surface/package-lock.json
       - run: npm ci
+        working-directory: surface
+      - run: npx playwright install --with-deps chromium
         working-directory: surface
       - run: npm run verify
         working-directory: surface
