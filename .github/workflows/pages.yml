@@ -19,18 +19,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: surface
+      - uses: actions/checkout@v4
+        with:
+          repository: kontourai/console-ui
+          path: console-ui
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: surface/package-lock.json
       - run: npm ci
+        working-directory: surface
       - run: npm run verify
+        working-directory: surface
       - uses: actions/configure-pages@v5
         with:
           enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: docs-site
+          path: surface/docs-site
   deploy:
     environment:
       name: github-pages

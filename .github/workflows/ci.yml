@@ -25,18 +25,30 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          path: surface
+
+      - name: Checkout Console Kit
+        uses: actions/checkout@v4
+        with:
+          repository: kontourai/console-ui
+          path: console-ui
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
+          cache-dependency-path: surface/package-lock.json
 
       - name: Install dependencies
         run: npm ci --no-fund --no-audit
+        working-directory: surface
 
       - name: Verify
         run: npm run verify
+        working-directory: surface
 
       - name: Package dry run
         run: npm pack --dry-run
+        working-directory: surface

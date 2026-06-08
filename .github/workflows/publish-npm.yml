@@ -22,21 +22,32 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          path: surface
+
+      - name: Checkout Console Kit
+        uses: actions/checkout@v6
+        with:
+          repository: kontourai/console-ui
+          path: console-ui
 
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
+          cache-dependency-path: surface/package-lock.json
 
       - name: Install
         run: npm ci --no-fund --no-audit
+        working-directory: surface
 
       - name: Verify
         run: npm run verify
+        working-directory: surface
 
       - name: Pack Dry Run
         run: npm pack --dry-run
+        working-directory: surface
 
   publish:
     needs: verify
@@ -50,6 +61,13 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          path: surface
+
+      - name: Checkout Console Kit
+        uses: actions/checkout@v6
+        with:
+          repository: kontourai/console-ui
+          path: console-ui
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -60,6 +78,7 @@ jobs:
 
       - name: Install
         run: npm ci --no-fund --no-audit
+        working-directory: surface
 
       - name: Verify Tag Matches Package Version
         run: |
@@ -68,6 +87,7 @@ jobs:
             echo "Tag ${GITHUB_REF_NAME} does not match package.json version v${PACKAGE_VERSION}" >&2
             exit 1
           fi
+        working-directory: surface
 
       - name: Verify Tagged Commit Is On Main
         run: |
@@ -76,6 +96,7 @@ jobs:
             echo "Tagged commit ${GITHUB_SHA} is not reachable from the fetched origin/main tip" >&2
             exit 1
           fi
+        working-directory: surface
 
       - name: Check Published Version
         id: published
@@ -88,7 +109,9 @@ jobs:
           else
             echo "published=false" >> "${GITHUB_OUTPUT}"
           fi
+        working-directory: surface
 
       - name: Publish
         if: steps.published.outputs.published != 'true'
         run: npm publish --access public
+        working-directory: surface

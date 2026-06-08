@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 const pages = [
@@ -34,6 +34,7 @@ const pages = [
 ];
 
 await mkdir("docs-site", { recursive: true });
+await cleanDocsSite();
 await writeFile("docs-site/styles.css", buildStyles());
 
 for (const [slug, source, title] of pages) {
@@ -43,16 +44,26 @@ for (const [slug, source, title] of pages) {
 
 console.log(`Built ${pages.length} docs pages in docs-site/`);
 
+async function cleanDocsSite() {
+  const entries = await readdir("docs-site", { withFileTypes: true });
+  await Promise.all(
+    entries
+      .filter((entry) => entry.isFile() && (entry.name.endsWith(".html") || entry.name === "styles.css"))
+      .map((entry) => rm(join("docs-site", entry.name), { force: true })),
+  );
+}
+
 function renderPage({ slug, title, markdown }) {
   const nav = pages
     .map(([pageSlug, , pageTitle]) => `<a ${pageSlug === slug ? 'aria-current="page"' : ""} href="${pageSlug}.html">${pageTitle}</a>`)
     .join("");
   return `<!doctype html>
-<html lang="en">
+<html lang="en" class="theme-surface">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${escapeHtml(title)} | Kontour Surface</title>
+  <link rel="stylesheet" href="vendor/console-kit/tokens/index.css">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -155,33 +166,45 @@ function escapeHtml(text) {
 function buildStyles() {
   return `:root {
   color-scheme: light dark;
-  --bg: #f3efe3;
-  --text: #17201b;
-  --muted: #657267;
-  --panel: rgba(255, 252, 241, 0.78);
-  --line: rgba(36, 68, 52, 0.16);
-  --accent: #0f6b52;
-  --accent-2: #c45d34;
+  --k-font-display: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+  --k-font-ui: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+  --k-bg: #f3efe3;
+  --k-text: #17201b;
+  --k-text-muted: #657267;
+  --k-panel: #fffcf1;
+  --k-panel-raised: #fbf6e7;
+  --k-line: rgba(36, 68, 52, 0.16);
+  --k-brand: #0f6b52;
+  --surface-panel: color-mix(in srgb, var(--k-panel) 78%, transparent);
+  --surface-panel-raised: color-mix(in srgb, var(--k-panel-raised) 82%, transparent);
+  --surface-accent-secondary: color-mix(in srgb, var(--k-caution) 72%, var(--k-negative));
+  --surface-brand-glow: color-mix(in srgb, var(--k-brand) 18%, transparent);
+  --surface-code-bg: color-mix(in srgb, var(--k-text) 8%, transparent);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #101511;
-    --text: #edf0e8;
-    --muted: #a3ad9d;
-    --panel: rgba(21, 30, 23, 0.82);
-    --line: rgba(212, 224, 204, 0.16);
-    --accent: #7ee0bd;
-    --accent-2: #ff9a70;
+    --k-bg: #101511;
+    --k-text: #edf0e8;
+    --k-text-muted: #a3ad9d;
+    --k-panel: #151e17;
+    --k-panel-raised: #1c281f;
+    --k-line: rgba(212, 224, 204, 0.16);
+    --k-brand: #7ee0bd;
+    --surface-panel: color-mix(in srgb, var(--k-panel) 82%, transparent);
+    --surface-panel-raised: color-mix(in srgb, var(--k-panel-raised) 82%, transparent);
+    --surface-accent-secondary: color-mix(in srgb, var(--k-caution) 52%, var(--k-negative));
+    --surface-brand-glow: color-mix(in srgb, var(--k-brand) 18%, transparent);
+    --surface-code-bg: color-mix(in srgb, var(--k-text) 8%, transparent);
   }
 }
 
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
-  color: var(--text);
-  background: radial-gradient(circle at top left, rgba(15, 107, 82, 0.18), transparent 28rem), var(--bg);
+  font-family: var(--k-font-display);
+  color: var(--k-text);
+  background: radial-gradient(circle at top left, var(--surface-brand-glow), transparent 28rem), var(--k-bg);
   line-height: 1.6;
 }
 .terrain {
@@ -190,8 +213,8 @@ body {
   pointer-events: none;
   opacity: 0.22;
   background-image:
-    repeating-radial-gradient(ellipse at 20% 20%, transparent 0 18px, var(--line) 19px 20px),
-    repeating-radial-gradient(ellipse at 80% 10%, transparent 0 28px, var(--line) 29px 30px);
+    repeating-radial-gradient(ellipse at 20% 20%, transparent 0 18px, var(--k-line) 19px 20px),
+    repeating-radial-gradient(ellipse at 80% 10%, transparent 0 28px, var(--k-line) 29px 30px);
   mask-image: linear-gradient(to bottom, black, transparent 75%);
 }
 header {
@@ -203,12 +226,12 @@ header {
   align-items: center;
   justify-content: space-between;
   padding: 1rem clamp(1rem, 4vw, 4rem);
-  background: color-mix(in srgb, var(--bg) 84%, transparent);
+  background: color-mix(in srgb, var(--k-bg) 84%, transparent);
   backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--k-line);
 }
 .brand {
-  color: var(--text);
+  color: var(--k-text);
   font-weight: 800;
   letter-spacing: -0.03em;
   text-decoration: none;
@@ -221,7 +244,7 @@ nav {
   justify-content: flex-end;
 }
 nav a {
-  color: var(--muted);
+  color: var(--k-text-muted);
   text-decoration: none;
   border: 1px solid transparent;
   border-radius: 999px;
@@ -229,9 +252,9 @@ nav a {
   font-size: 0.9rem;
 }
 nav a[aria-current="page"], nav a:hover {
-  color: var(--text);
-  border-color: var(--line);
-  background: var(--panel);
+  color: var(--k-text);
+  border-color: var(--k-line);
+  background: var(--surface-panel);
 }
 main {
   position: relative;
@@ -241,13 +264,13 @@ main {
 }
 .hero {
   padding: clamp(2rem, 6vw, 6rem);
-  border: 1px solid var(--line);
+  border: 1px solid var(--k-line);
   border-radius: 2rem;
-  background: linear-gradient(135deg, var(--panel), color-mix(in srgb, var(--panel) 70%, transparent));
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.12);
+  background: linear-gradient(135deg, var(--surface-panel), color-mix(in srgb, var(--surface-panel) 70%, transparent));
+  box-shadow: var(--k-shadow);
 }
 .eyebrow {
-  color: var(--accent-2);
+  color: var(--surface-accent-secondary);
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.12em;
@@ -271,18 +294,18 @@ main {
   margin-top: 2rem;
 }
 .hero-grid span {
-  border: 1px solid var(--line);
+  border: 1px solid var(--k-line);
   border-radius: 1rem;
   padding: 0.9rem;
-  background: color-mix(in srgb, var(--panel) 82%, transparent);
+  background: var(--surface-panel-raised);
   font-weight: 700;
 }
 article {
   margin-top: 2rem;
   padding: clamp(1.25rem, 4vw, 3rem);
-  border: 1px solid var(--line);
+  border: 1px solid var(--k-line);
   border-radius: 1.5rem;
-  background: var(--panel);
+  background: var(--surface-panel);
 }
 h1, h2, h3 {
   line-height: 1.05;
@@ -290,23 +313,23 @@ h1, h2, h3 {
 }
 h1 { font-size: clamp(2rem, 5vw, 3.8rem); }
 h2 { margin-top: 2.2rem; font-size: 2rem; }
-a { color: var(--accent); }
+a { color: var(--k-brand); }
 code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: var(--k-font-mono);
   font-size: 0.92em;
 }
 pre {
   overflow: auto;
   padding: 1rem;
   border-radius: 1rem;
-  border: 1px solid var(--line);
-  background: rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--k-line);
+  background: var(--surface-code-bg);
 }
 footer {
   position: relative;
   padding: 2rem;
   text-align: center;
-  color: var(--muted);
+  color: var(--k-text-muted);
 }
 `;
 }
