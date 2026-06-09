@@ -49,7 +49,9 @@ Surface keeps its own standalone Surface Console. Keep product-specific trust be
 | CLI command | `src/cli.ts` | Parses `surface console` flags and starts the local server. |
 | Local server and API routes | `src/console/server.ts` | Serves the HTML shell, static assets, read model, projection, run list, and claim authoring endpoints. |
 | Projection contract | `src/console/projection.ts`, `src/console/types.ts` | Converts producer read models into the UI shape consumed by the Console. |
-| Standalone UI assets | `src/console/shell.ts`, `src/console/script.ts`, `src/console/styles.ts` | Owns the dependency-free Console shell, client behavior, and embedded Console Kit-compatible token aliases. |
+| Standalone UI shell | `src/console/shell.ts` | Owns the dependency-free HTML shell served by `/`. |
+| Standalone UI asset sources | `src/console/client/index.js`, `src/console/styles/index.css` | Owns the editable browser behavior and Console Kit-compatible token aliases for the standalone Surface Console. |
+| Generated UI asset constants | `scripts/build-console-assets.mjs`, `src/console/assets.generated.ts`, `src/console/script.ts`, `src/console/styles.ts` | Converts the editable JS/CSS assets into TypeScript constants consumed by `/console.js` and `/console.css`; regenerate with `npm run build:console-assets`. |
 | Browser coverage | `tests/browser/console.spec.ts` | Starts `bin/surface.mjs console` and verifies the real standalone page on desktop and mobile. |
 | Docs-site Console Kit assets | `scripts/sync-console-kit-assets.mjs`, `docs-site/vendor/console-kit/` | Copies token CSS from the installed public `@kontourai/console-kit` package for generated docs pages. |
 | Package boundary guard | `tests/package-files.test.ts`, `scripts/check-package-contents.mjs` | Keeps Console Kit dev-only, prevents React/runtime leakage, and verifies published package contents. |

@@ -20,14 +20,16 @@ Consumers should import from `@kontourai/surface`. Deep `dist/` imports are not 
 | Extensions and adapters | `src/extension.ts`, `src/adapter.ts`, `src/adapters/` | Public | Keep public | Producers need a supported seam for vocabulary, claim types, and input adaptation. |
 | CLI implementation | `src/cli.ts` | Internal by convention | Keep internal | The package exposes `bin/surface.mjs`, not `src/cli.ts`. Tests may import it directly, but package consumers should use the CLI. |
 | Surface Console runtime | `src/console/server.ts`, `src/console/projection.ts`, `src/console/types.ts` | Partly public through `startConsoleServer` and config types | Keep public entry minimal | `startConsoleServer` is currently exported. Routes and projection internals should stay Surface-owned until a real external embedding use case requires a deeper Console interface. |
-| Surface Console assets | `src/console/script.ts`, `src/console/styles.ts`, `src/console/shell.ts` | Internal by convention | Keep internal, split only with a build step | These files are large because they embed dependency-free browser assets. The immediate cleanup is to keep their declarations compact; a future split should preserve the standalone CLI contract. |
+| Surface Console assets | `src/console/client/index.js`, `src/console/styles/index.css`, `src/console/assets.generated.ts`, `src/console/script.ts`, `src/console/styles.ts`, `src/console/shell.ts` | Internal by convention | Keep internal, generated behind a build step | The editable browser script and stylesheet now live as normal source assets. `assets.generated.ts` is checked in so TypeScript builds and package output stay deterministic, while `script.ts` and `styles.ts` preserve the server imports. |
 
 ## Large File Findings
 
 | File | Current size | Finding | Next action |
 |------|--------------|---------|-------------|
-| `src/console/styles.ts` | ~2.1k lines | Large embedded stylesheet, but localized to one dependency-free asset module. | Keep until a small asset build step exists; do not split manually into runtime string fragments. |
-| `src/console/script.ts` | ~1.3k lines | Large embedded browser script with real UI behavior. | Candidate for `src/console/client/` source layout if Console behavior starts changing frequently. |
+| `src/console/client/index.js` | ~1.3k lines | Dependency-free browser script with real UI behavior, now editable without TypeScript string escaping. | Keep behavior here until enough client complexity justifies smaller modules and a bundling step. |
+| `src/console/styles/index.css` | ~2.1k lines | Standalone stylesheet using Console Kit-compatible token aliases. | Keep as one stylesheet unless repeated edits reveal stable sections worth splitting. |
+| `src/console/assets.generated.ts` | Generated | Build output from source JS/CSS assets. | Regenerate with `npm run build:console-assets`; do not edit directly. |
+| `src/console/script.ts`, `src/console/styles.ts` | Tiny wrappers | Preserve existing server imports for `/console.js` and `/console.css`. | Keep as stable import shims. |
 | `src/types.ts` | ~600 lines | Broad portable contract file. | Keep together while schema versioning is active; split only if exported type groups gain independent lifecycle. |
 | `src/validate.ts` | ~560 lines | Deep validation implementation behind a small public function. | Keep interface; consider internal helper split only if validation changes become hard to review. |
 
@@ -37,7 +39,8 @@ Consumers should import from `@kontourai/surface`. Deep `dist/` imports are not 
 - Package contents checks require `package.json`, `README.md`, `LICENSE`, runtime files, schemas, docs, and examples.
 - Console asset constants are typed as `string` so generated declarations expose a small interface instead of embedded asset contents.
 - Package tests fail if the generated Console asset declarations grow beyond a small threshold.
+- `npm run typecheck` fails if `src/console/assets.generated.ts` is stale relative to `src/console/client/index.js` or `src/console/styles/index.css`.
 
 ## Top Recommendation
 
-Do not move source folders yet. The next high-leverage refactor is a small Console asset build step that lets `src/console/client/` and `src/console/styles/` be edited as normal source while preserving the current standalone server output. That should be planned as a dedicated slice with browser coverage, not mixed into package metadata cleanup.
+Keep the source folders stable for now. The next Console refactor should only split `src/console/client/index.js` into smaller browser modules if new behavior makes single-file review painful, and it should include a real bundling step plus browser coverage rather than ad hoc runtime string assembly.

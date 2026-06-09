@@ -23,7 +23,7 @@ test("first-contact docs preserve Surface as the product-neutral foundation", as
   assert.match(architecture, /Product systems sit above these layers/);
   assert.match(architecture, /product repos or packages/);
   assert.match(sourceAudit, /src\/index\.ts` is the only public module entrypoint/);
-  assert.match(sourceAudit, /Do not move source folders yet/);
+  assert.match(sourceAudit, /Keep the source folders stable for now/);
   assert.match(foundation, /## Product Layers Built On Surface/);
   assert.match(foundation, /## Foundation Contract/);
   assert.match(foundation, /Surface generates report-only fields after validation/);
