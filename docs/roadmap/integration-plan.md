@@ -57,7 +57,7 @@ registerAdapter(adapter);
 
 Surface does not discover adapters from `node_modules` or config. Registration is always explicit.
 
-See the [external adapter example](../examples/external-adapter/README.md) for a package-shaped reference implementation.
+See the [external adapter example](../../examples/external-adapter/README.md) for a package-shaped reference implementation.
 
 ## Patterns by domain
 

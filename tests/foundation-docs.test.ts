@@ -9,10 +9,10 @@ async function readDoc(path: string): Promise<string> {
 test("first-contact docs preserve Surface as the product-neutral foundation", async () => {
   const [readme, architecture, sourceAudit, foundation, cli] = await Promise.all([
     readDoc("README.md"),
-    readDoc("docs/architecture.md"),
-    readDoc("docs/architecture/source-module-audit.md"),
+    readDoc("docs/architecture/index.md"),
+    readDoc("docs/audits/source-module-audit.md"),
     readDoc("docs/architecture/surface-foundation.md"),
-    readDoc("docs/cli.md"),
+    readDoc("docs/reference/cli.md"),
   ]);
 
   assert.match(readme, /shared foundation under Kontour's products/);

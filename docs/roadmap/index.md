@@ -22,4 +22,4 @@ Surface ships the Surface library, CLI, local Surface Console, and claim authori
 
 **Hosted sink** — durable storage for longitudinal reports and organization-wide trend analysis, after the local report contract proves stable.
 
-**Linked data** — a resolvable vocabulary, SHACL shapes for validation without running Surface TypeScript, optional Turtle/N-Quads output, and eventual Verifiable Credentials alignment. See [linked-data-roadmap.md](./linked-data-roadmap.md) for the full sequence.
+**Linked data** — a resolvable vocabulary, SHACL shapes for validation without running Surface TypeScript, optional Turtle/N-Quads output, and eventual Verifiable Credentials alignment. See [linked-data-roadmap.md](linked-data.md) for the full sequence.

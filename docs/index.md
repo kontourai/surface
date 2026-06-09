@@ -36,15 +36,16 @@ Status is derived by construction — not summarized by a model, not hidden behi
 
 ## Published Pages
 
-- [Vision](vision.md) — why product transparency matters now and what Surface is designed to answer
-- [Concepts](concepts.md) — the full vocabulary: claims, evidence traces, policies, claim groups, transparency gaps, status
-- [Use Cases](use-cases.md) — repo governance, field-attested records, fact resolution, dependency audit
-- [What builds on Surface](built-on-surface.md) — when to reach for Surface as your foundation
+- [Vision](product/vision.md) — why product transparency matters now and what Surface is designed to answer
+- [Concepts](product/concepts.md) — the full vocabulary: claims, evidence traces, policies, claim groups, transparency gaps, status
+- [Use Cases](product/use-cases.md) — repo governance, field-attested records, fact resolution, dependency audit
+- [What builds on Surface](product/built-on-surface.md) — when to reach for Surface as your foundation
 - [Walkthrough](guides/walkthrough.md) — a real session with native Surface input
 
 ## Repo References
 
 - [Getting Started](guides/getting-started.md) — install Surface, run a fixture report, and emit your first trust input
+- [Docs Index](README.md) — folder layout and full maintainer index
 
 ## Docs Site Scope
 

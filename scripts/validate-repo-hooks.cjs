@@ -27,7 +27,7 @@ const hookBody = read(join(repoRoot, PRE_PUSH));
 const setupBody = read(join(repoRoot, "scripts/setup-repo-hooks.cjs"));
 const readme = read(join(repoRoot, "README.md"));
 const docsIndex = read(join(repoRoot, "docs/README.md"));
-const repoHooksDoc = read(join(repoRoot, "docs/repo-hooks.md"));
+const repoHooksDoc = read(join(repoRoot, "docs/maintenance/repo-hooks.md"));
 const failures = [];
 
 function check(label, condition, detail) {

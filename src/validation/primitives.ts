@@ -4,13 +4,13 @@ import { EVIDENCE_METHODS, EVIDENCE_SUPPORT_STRENGTHS } from "./constants.js";
 export function requireSchemaVersion(input: Record<string, unknown>): SchemaVersion {
   if (!("schemaVersion" in input)) {
     throw new Error(
-      "Missing required schemaVersion: expected 2 or 3. See docs/schema-versioning.md for the v1-to-v2 migration.",
+      "Missing required schemaVersion: expected 2 or 3. See docs/reference/schema-versioning.md for the v1-to-v2 migration.",
     );
   }
   const value = input.schemaVersion;
   if (value !== 2 && value !== 3) {
     throw new Error(
-      `Unsupported schemaVersion ${String(value)}: expected 2 or 3. See docs/schema-versioning.md for the v1-to-v2 migration.`,
+      `Unsupported schemaVersion ${String(value)}: expected 2 or 3. See docs/reference/schema-versioning.md for the v1-to-v2 migration.`,
     );
   }
   return value as SchemaVersion;
@@ -20,7 +20,7 @@ export function requireEvidenceMethod(evidence: Record<string, unknown>): void {
   if (typeof evidence.method === "string" && evidence.method.length > 0) return;
   const evidenceId = typeof evidence.id === "string" && evidence.id.length > 0 ? evidence.id : "<unknown>";
   throw new Error(
-    `Evidence ${evidenceId} is missing required method. Add one of: ${EVIDENCE_METHODS.join(", ")}. See docs/schema-versioning.md for the v1-to-v2 migration.`,
+    `Evidence ${evidenceId} is missing required method. Add one of: ${EVIDENCE_METHODS.join(", ")}. See docs/reference/schema-versioning.md for the v1-to-v2 migration.`,
   );
 }
 

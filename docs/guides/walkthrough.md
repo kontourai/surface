@@ -57,7 +57,7 @@ The `--input` flag accepts any file matching the `TrustInput` schema:
 npx surface report --input my-claims.json --format summary
 ```
 
-For the schema, see [Schemas](../schemas.md). For the minimal adapter shape, see the [external adapter example](../../examples/external-adapter/README.md).
+For the schema, see [Schemas](../reference/schemas.md). For the minimal adapter shape, see the [external adapter example](../../examples/external-adapter/README.md).
 
 ## What you do not get from Surface
 

@@ -32,7 +32,7 @@ const requiredFiles = [
   "dist/src/console/styles.js",
   "schemas/trust-input.schema.json",
   "schemas/trust-report.schema.json",
-  "docs/console.md",
+  "docs/reference/console.md",
   "examples/external-adapter/src/index.ts",
 ];
 

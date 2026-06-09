@@ -84,7 +84,7 @@ Use the detail panel to inspect evidence, policy gaps, files in scope, and integ
 
 ## 5. Read Next
 
-- [Concepts](../concepts.md) for the vocabulary.
+- [Concepts](../product/concepts.md) for the vocabulary.
 - [Consumer SDK](consumer-sdk.md) for builder APIs.
-- [Surface Console](../console.md) for local review.
+- [Surface Console](../reference/console.md) for local review.
 - [External Adapter Example](../../examples/external-adapter/README.md) for a minimal producer.
