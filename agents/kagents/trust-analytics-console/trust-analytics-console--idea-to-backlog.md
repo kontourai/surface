@@ -1,7 +1,7 @@
 # Idea To Backlog: Portable Trust Analytics And Console Layer
 
 - **Artifact:** `trust-analytics-console--idea-to-backlog.md`
-- **Requested artifact path:** `.agents/kagents/trust-analytics-console/trust-analytics-console--idea-to-backlog.md`
+- **Requested artifact path:** `.flow-agents/kagents/trust-analytics-console/trust-analytics-console--idea-to-backlog.md`
 - **Actual artifact path:** `agents/kagents/trust-analytics-console/trust-analytics-console--idea-to-backlog.md`
 - **Date:** 2026-05-11
 - **Phase:** shape
@@ -11,7 +11,7 @@
 
 Raw input:
 
-> Surface should add a mature console / analytics layer that makes the Surface foundation more valuable as more systems integrate. Shape this into executable backlog slices. Keep Surface product-neutral: downstream products own product-specific adapters and workflow vocabulary, while Surface owns portable trust primitives, reports, query surfaces, and derived trust analytics. Push back on accidental bundling; identify the thinnest meaningful slice; map dependencies; relate it to the current roadmap phases for agent query surface, human console, and hosted sink. Produce the expected .agents/kagents artifact and stop before implementation.
+> Surface should add a mature console / analytics layer that makes the Surface foundation more valuable as more systems integrate. Shape this into executable backlog slices. Keep Surface product-neutral: downstream products own product-specific adapters and workflow vocabulary, while Surface owns portable trust primitives, reports, query surfaces, and derived trust analytics. Push back on accidental bundling; identify the thinnest meaningful slice; map dependencies; relate it to the current roadmap phases for agent query surface, human console, and hosted sink. Produce the expected .flow-agents/kagents artifact and stop before implementation.
 
 Related repo context:
 
@@ -153,7 +153,7 @@ Roadmap mapping:
 | Split analytics substrate, query commands, console, and hosted sink into separate backlog slices. | They have different risk profiles and roadmap phases; bundling would obscure the thinnest valuable Surface-owned work. | Codex shaping recommendation for Brian review | 2026-05-11 |
 | Keep product-specific adapters and workflow vocabulary out of Surface scope. | Existing integration plan says downstream products own product extraction, product docs, runtime query wiring, and product UI. | Codex applying repo boundary | 2026-05-11 |
 | Recommend S1 as the thinnest meaningful slice. | It creates portable value for agents and future consoles without requiring UI or hosting. | Codex shaping recommendation for Brian review | 2026-05-11 |
-| Do not create GitHub issues yet. | The user asked for `.agents/kagents` artifact and to stop before implementation; issue creation needs explicit commitment/priority decision. | Codex | 2026-05-11 |
+| Do not create GitHub issues yet. | The user asked for `.flow-agents/kagents` artifact and to stop before implementation; issue creation needs explicit commitment/priority decision. | Codex | 2026-05-11 |
 
 ## opportunity_briefs
 
@@ -325,7 +325,7 @@ No GitHub issues were created in this pass.
 
 Reason:
 
-- The user requested a `.agents/kagents` shaping artifact and to stop before implementation.
+- The user requested a `.flow-agents/kagents` shaping artifact and to stop before implementation.
 - The backlog slices above are executable issue drafts, but issue creation should wait for human approval of priority and bundle/split decisions.
 
 Suggested issue drafts after approval:

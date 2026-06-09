@@ -8,7 +8,7 @@ This audit inventories Surface contracts against the Kontour Resource Contract d
 
 - Resource Contract decision: [ADR 0005: Kubernetes-Inspired Kontour Resource Contracts](https://github.com/kontourai/flow-agents/blob/main/docs/adr/0005-kubernetes-inspired-resource-contracts.md) in `kontourai/flow-agents`.
 - Local ADR source checked during implementation: `/Users/brian/dev/github/kontourai/flow-agents/docs/adr/0005-kubernetes-inspired-resource-contracts.md`.
-- Required idea-to-backlog source artifact: `/Users/brian/dev/github/kontourai/flow-agents/.agents/kagents/kontour-resource-contract-audits/kontour-resource-contract-audits--idea-to-backlog.md`.
+- Required idea-to-backlog source artifact: `/Users/brian/dev/github/kontourai/flow-agents/.flow-agents/kagents/kontour-resource-contract-audits/kontour-resource-contract-audits--idea-to-backlog.md`.
   - Re-check result on 2026-06-08: `NOT_VERIFIED`; the file was not present locally.
 - Surface source references: [Schemas](schemas.md), [Open Trust Format and Claim Package Shape](specs/open-trust-format.md), [CLI](cli.md), [Trust Analytics Projection](analytics.md), [Surface Console](console.md), [Producer Extension API](extension-api.md), [Adapters](adapters.md), [Consumer SDK](guides/consumer-sdk.md), [Fixtures](fixtures.md), [src/types.ts](../src/types.ts), [src/index.ts](../src/index.ts), [schemas/](../schemas/), and [examples/](../examples/).
 
@@ -159,5 +159,5 @@ These objects are useful control-flow and computation shapes. They do not have s
 ## Publish And Verification Notes
 
 - This audit is docs-only. It does not change schemas, runtime behavior, generated files, package manifests, dependencies, claim evaluation internals, or Kubernetes runtime behavior.
-- The required idea-to-backlog source artifact is `NOT_VERIFIED` because `/Users/brian/dev/github/kontourai/flow-agents/.agents/kagents/kontour-resource-contract-audits/kontour-resource-contract-audits--idea-to-backlog.md` was not present locally on 2026-06-08.
+- The required idea-to-backlog source artifact is `NOT_VERIFIED` because `/Users/brian/dev/github/kontourai/flow-agents/.flow-agents/kagents/kontour-resource-contract-audits/kontour-resource-contract-audits--idea-to-backlog.md` was not present locally on 2026-06-08.
 - Future migration PRs should cite this audit, ADR 0005, and the exact migrated contract family. Each should include schema fixture validation, CLI compatibility evidence, report/query behavior evidence, and backward-compatibility notes.
