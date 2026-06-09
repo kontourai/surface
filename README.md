@@ -81,12 +81,11 @@ The package also ships the `surface` CLI, JSON schemas under `schemas/`, example
 - `.github/workflows/` — CI and GitHub Pages publishing workflow definitions.
 - `.githooks/` — repo-owned local Git hooks installed by `npm run setup:repo-hooks`.
 - `agents/` — tracked agent/runtime resources that are part of the repo.
-- `.agents/` — ignored local workflow artifacts from agent runs; useful for coordination, not product source.
 - `dist/` — generated TypeScript build output from `npm run build`; do not edit directly.
 - `docs-site/` — generated GitHub Pages output from `npm run docs:build`; curated public subset, not source.
 - `test-results/` — local Playwright/test artifacts; ignored and safe to regenerate.
 
-Ignored local/generated directories such as `node_modules/`, `.surface/`, `.agents/`, `dist/`, `docs-site/`, `test-results/`, and `playwright-report/` should be regenerated from source commands rather than reviewed as product source.
+Ignored local/generated directories such as `node_modules/`, `.surface/`, `.flow-agents/`, `dist/`, `docs-site/`, `test-results/`, and `playwright-report/` should be regenerated from source commands rather than reviewed as product source.
 
 ## Documentation
 
