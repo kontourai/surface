@@ -9,7 +9,7 @@ export function buildConsoleHtml(config: SurfaceConsoleRuntimeConfig = {}): stri
   <title>Surface Console</title>
   <link rel="stylesheet" href="/console.css">
 </head>
-<body class="console-page">
+<body class="console-page theme-surface">
   <header class="dash-header">
     <div class="dash-brand">
       <p class="dash-eyebrow">Surface</p>

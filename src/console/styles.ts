@@ -6,76 +6,106 @@ export const CONSOLE_CSS = `
 
 /* ── 1. Design Tokens ───────────────────────────────────────── */
 :root {
-  /* Backgrounds */
-  --bg:       #f2efe5;
-  --surface:  #fdfaf2;
-  --raised:   #f7f4ea;
-  --input-bg: #ffffff;
+  /* Embedded Console Kit token contract. Kept local so the published CLI
+     remains standalone while matching the shared dashboard design system. */
+  color-scheme: dark;
+  --k-bg: #0a0e13;
+  --k-panel: #111824;
+  --k-panel-raised: #16202d;
+  --k-line: rgba(150, 180, 210, 0.12);
+  --k-line-strong: rgba(150, 180, 210, 0.22);
+  --k-shadow: 0 26px 60px -42px rgba(0, 0, 0, 0.95);
+  --k-text: #eef3f8;
+  --k-text-muted: #aebccb;
+  --k-text-faint: #72869b;
+  --k-brand: #5ce0c6;
+  --k-brand-contrast: #06080b;
+  --k-positive: #34d399;
+  --k-caution: #f3b14b;
+  --k-negative: #ff6f6f;
+  --k-neutral: #6f8095;
+  --k-active: #7aa2ff;
+  --k-positive-soft: color-mix(in oklab, var(--k-positive) 14%, transparent);
+  --k-caution-soft: color-mix(in oklab, var(--k-caution) 16%, transparent);
+  --k-negative-soft: color-mix(in oklab, var(--k-negative) 15%, transparent);
+  --k-active-soft: color-mix(in oklab, var(--k-active) 14%, transparent);
+  --k-space-1: 0.25rem;
+  --k-space-2: 0.5rem;
+  --k-space-3: 0.75rem;
+  --k-space-4: 1rem;
+  --k-space-5: 1.5rem;
+  --k-space-6: 2rem;
+  --k-radius-sm: 9px;
+  --k-radius-md: 14px;
+  --k-text-xs: 0.75rem;
+  --k-text-sm: 0.875rem;
+  --k-text-md: 1rem;
+  --k-text-lg: 1.125rem;
+  --k-text-xl: 1.375rem;
+  --k-text-2xl: 1.75rem;
+  --k-font-display: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --k-font-ui: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --k-font-mono: "SFMono-Regular", "Cascadia Code", "Liberation Mono", Menlo, Consolas, monospace;
+  --k-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --k-dur: 160ms;
 
-  /* Typography */
-  --ink:   #1a2019;
-  --ink-2: #445046;
-  --muted: #7a8c7c;
-
-  /* Borders & surfaces */
-  --line: rgba(26, 52, 30, 0.13);
-  --soft: rgba(26, 52, 30, 0.055);
-
-  /* Semantic colours */
-  --green:      #0c6b4a;
-  --green-bg:   rgba(12, 107, 74, 0.09);
-  --amber:      #886600;
-  --amber-bg:   rgba(136, 102, 0, 0.09);
-  --red:        #9b2b2b;
-  --red-bg:     rgba(155, 43, 43, 0.09);
-  --blue:       #1c6d8a;
-  --blue-bg:    rgba(28, 109, 138, 0.09);
-  --orange:     #9b4819;
-  --orange-bg:  rgba(155, 72, 25, 0.09);
-
-  /* Shadows */
-  --shadow:    0 1px 4px rgba(26, 52, 30, 0.08), 0 4px 16px rgba(26, 52, 30, 0.05);
-  --shadow-lg: 0 8px 40px rgba(26, 52, 30, 0.13);
-  --shadow-xl: 0 20px 60px rgba(26, 52, 30, 0.18);
-
-  /* Radii */
-  --radius-sm: 6px;
-  --radius:    10px;
-  --radius-lg: 14px;
-  --radius-xl: 18px;
-
-  /* Transitions */
-  --ease-out: cubic-bezier(0.32, 0.72, 0, 1);
+  /* Surface Console aliases for the existing standalone CSS. */
+  --bg: var(--k-bg);
+  --surface: var(--k-panel);
+  --raised: var(--k-panel-raised);
+  --input-bg: var(--k-panel-raised);
+  --ink: var(--k-text);
+  --ink-2: var(--k-text-muted);
+  --muted: var(--k-text-faint);
+  --line: var(--k-line);
+  --soft: color-mix(in oklab, var(--k-line) 45%, transparent);
+  --green: var(--k-positive);
+  --green-bg: var(--k-positive-soft);
+  --amber: var(--k-caution);
+  --amber-bg: var(--k-caution-soft);
+  --red: var(--k-negative);
+  --red-bg: var(--k-negative-soft);
+  --blue: var(--k-active);
+  --blue-bg: var(--k-active-soft);
+  --orange: var(--k-caution);
+  --orange-bg: var(--k-caution-soft);
+  --shadow: var(--k-shadow);
+  --shadow-lg: 0 18px 48px -28px rgba(0, 0, 0, 0.55);
+  --shadow-xl: 0 28px 80px -32px rgba(0, 0, 0, 0.72);
+  --radius-sm: var(--k-radius-sm);
+  --radius: var(--k-radius-md);
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --ease-out: var(--k-ease);
 }
 
-@media (prefers-color-scheme: dark) {
+.theme-surface {
+  --k-brand: #14a37a;
+}
+
+@media (prefers-color-scheme: light) {
   :root {
-    --bg:       #0d1411;
-    --surface:  #131c15;
-    --raised:   #192018;
-    --input-bg: #1a2419;
+    color-scheme: light;
+    --k-bg: #f7f8fa;
+    --k-panel: #ffffff;
+    --k-panel-raised: #f0f3f7;
+    --k-line: rgba(35, 49, 65, 0.12);
+    --k-line-strong: rgba(35, 49, 65, 0.2);
+    --k-shadow: 0 20px 42px -34px rgba(19, 27, 38, 0.36);
+    --k-text: #17202b;
+    --k-text-muted: #4e6074;
+    --k-text-faint: #7a8999;
+    --k-brand: #0f766e;
+    --k-brand-contrast: #ffffff;
+    --k-positive: #0f8f66;
+    --k-caution: #a86612;
+    --k-negative: #c24141;
+    --k-neutral: #6b7785;
+    --k-active: #3266d6;
+  }
 
-    --ink:   #dce8d5;
-    --ink-2: #9bb09a;
-    --muted: #647a65;
-
-    --line: rgba(155, 200, 160, 0.11);
-    --soft: rgba(155, 200, 160, 0.055);
-
-    --green:      #52c47e;
-    --green-bg:   rgba(82, 196, 126, 0.12);
-    --amber:      #d4aa3a;
-    --amber-bg:   rgba(212, 170, 58, 0.12);
-    --red:        #e06060;
-    --red-bg:     rgba(224, 96, 96, 0.12);
-    --blue:       #4fb8d6;
-    --blue-bg:    rgba(79, 184, 214, 0.12);
-    --orange:     #f0835a;
-    --orange-bg:  rgba(240, 131, 90, 0.12);
-
-    --shadow:    0 1px 4px rgba(0, 0, 0, 0.28), 0 4px 16px rgba(0, 0, 0, 0.18);
-    --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.36);
-    --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.48);
+  .theme-surface {
+    --k-brand: #0f6b52;
   }
 }
 
@@ -110,7 +140,7 @@ html, body { margin: 0; padding: 0; }
 body {
   background: var(--bg);
   color: var(--ink);
-  font-family: system-ui, -apple-system, "Segoe UI", "Helvetica Neue", sans-serif;
+  font-family: var(--k-font-ui);
   font-size: 15px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;

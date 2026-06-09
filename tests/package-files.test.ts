@@ -22,6 +22,7 @@ test("package files whitelist excludes generated example output", async () => {
   assert.ok(files.includes("schemas/"));
   assert.ok(files.includes("docs/"));
   assert.ok(files.includes("README.md"));
+  assert.ok(files.includes("LICENSE"));
   assert.ok(files.includes("examples/*.json"));
   assert.ok(files.includes("examples/external-adapter/src/"));
 
