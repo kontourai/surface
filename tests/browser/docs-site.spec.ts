@@ -81,7 +81,7 @@ test("renders Resource Contract Audit tables and source links safely", async ({ 
   await expect(page.getByRole("main").getByRole("link", { name: "CLI" }).first()).toHaveAttribute("href", "cli.html");
   await expect(page.getByRole("main").getByRole("link", { name: "Surface Console" }).first()).toHaveAttribute(
     "href",
-    "https://github.com/kontourai/surface/blob/main/docs/console.md",
+    "https://github.com/kontourai/surface/blob/main/docs/reference/console.md",
   );
   await expect(page.getByRole("main").getByRole("link", { name: "src/types.ts" }).first()).toHaveAttribute(
     "href",

@@ -25,7 +25,7 @@ These projects use Surface as their product transparency layer. They each own th
 
 - **[Veritas](https://github.com/kontourai/veritas)** — repo-local governance for AI-assisted code changes. Projects each code-change run into Surface trust state and uses derived `stale` and `disputed` statuses as repo-governance feedback.
 
-If you are building with Surface, start with the [consumer SDK guide](guides/consumer-sdk.md). Product-facing docs should describe the result as a Trust Snapshot with derived status, summary, Requirement, Evidence Trace, Freshness, and Conflict or Transparency Gap fields.
+If you are building with Surface, start with the [consumer SDK guide](../guides/consumer-sdk.md). Product-facing docs should describe the result as a Trust Snapshot with derived status, summary, Requirement, Evidence Trace, Freshness, and Conflict or Transparency Gap fields.
 
 ## What Surface deliberately does not do
 
@@ -36,4 +36,4 @@ If you are building with Surface, start with the [consumer SDK guide](guides/con
 
 ## Current implementation names
 
-The [external adapter example](../examples/external-adapter/README.md) is the minimum shape: define your input, map it to claims and evidence with `TrustInputBuilder`, emit valid `TrustInput`, then call `buildTrustReport`. `TrustInput`, `TrustReport`, and `buildTrustReport` are current API names.
+The [external adapter example](../../examples/external-adapter/README.md) is the minimum shape: define your input, map it to claims and evidence with `TrustInputBuilder`, emit valid `TrustInput`, then call `buildTrustReport`. `TrustInput`, `TrustReport`, and `buildTrustReport` are current API names.

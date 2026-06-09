@@ -84,7 +84,7 @@ test("root public API does not re-export private Console internals", async () =>
 test("package scripts are classified active repo workflows", async () => {
   const [packageJson, sourceModuleAudit] = await Promise.all([
     readPackageJson(),
-    readFile("docs/architecture/source-module-audit.md", "utf8"),
+    readFile("docs/audits/source-module-audit.md", "utf8"),
   ]);
   const scriptNames = Object.keys(packageJson.scripts ?? {}).sort();
 

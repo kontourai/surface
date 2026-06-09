@@ -13,7 +13,7 @@ Surface is the canonical source for this repo. Treat generated agent bundles, se
 
 - Keep Surface behavior stable unless the task explicitly asks for runtime changes: validation, trust derivation, report projection, adapters, extension registry, CLI, and Console routes are compatibility-sensitive.
 - Prefer small edits that match existing TypeScript and docs style.
-- Do not add empty placeholder directories. Current adapter docs and examples are `docs/adapters.md` and `examples/external-adapter/`.
+- Do not add empty placeholder directories. Current adapter docs and examples are `docs/reference/adapters.md` and `examples/external-adapter/`.
 - Do not hand-edit generated Pages output in `docs-site/`.
 - Do not revert unrelated user or agent changes.
 
