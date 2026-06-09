@@ -46,4 +46,6 @@ The same boundary applies when these artifact directories appear under examples.
 
 ## Release Boundary
 
-`npm run check:package-contents` verifies the npm tarball contains the intended runtime, docs, schemas, and examples while excluding source, tests, scripts, generated docs-site output, local workflow state, and caches.
+`package.json` is the source of truth for `exports`, `bin`, and `files`; `src/index.ts` is the source of truth for root module exports. `npm run check:package-contents` runs `scripts/check-package-contents.mjs` to verify the npm tarball contains the intended runtime, docs, schemas, and examples while excluding source, tests, scripts, generated docs-site output, local workflow state, and caches.
+
+`npm run test:package-smoke` installs the packed tarball into a fresh consumer project, imports the root `@kontourai/surface` API, verifies unsupported deep imports stay blocked by package exports, checks declarations are present, and runs the installed `surface` CLI.
