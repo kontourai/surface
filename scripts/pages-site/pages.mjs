@@ -1,0 +1,37 @@
+import { normalize } from "node:path";
+
+export const pages = [
+  ["index", "docs/index.md", "Kontour Surface"],
+  ["built-on-surface", "docs/product/built-on-surface.md", "What Builds on Surface"],
+  ["walkthrough", "docs/guides/walkthrough.md", "Walkthrough"],
+  ["vision", "docs/product/vision.md", "Vision"],
+  ["principles", "docs/product/principles.md", "Principles"],
+  ["concepts", "docs/product/concepts.md", "Concepts"],
+  ["use-cases", "docs/product/use-cases.md", "Use Cases"],
+  ["architecture", "docs/architecture/index.md", "Architecture"],
+  ["developer-architecture", "docs/architecture/developer-architecture.md", "Developer Architecture"],
+  ["surface-foundation", "docs/architecture/surface-foundation.md", "Surface Foundation"],
+  ["cli", "docs/reference/cli.md", "CLI"],
+  ["claim-authoring", "docs/reference/claim-authoring.md", "Claim Authoring"],
+  ["extension-api", "docs/reference/extension-api.md", "Extension API"],
+  ["analytics", "docs/reference/analytics.md", "Trust Analytics"],
+  ["minimum-trust-panel", "docs/specs/minimum-trust-panel.md", "Minimum Trust Panel"],
+  ["minimum-surface-console", "docs/specs/minimum-surface-console.md", "Minimum Surface Console"],
+  ["open-trust-format", "docs/specs/open-trust-format.md", "Open Trust Format"],
+  ["disclosure-requirements", "docs/specs/disclosure-requirements.md", "Disclosure Requirements"],
+  ["transparency-capabilities", "docs/specs/transparency-capabilities.md", "Transparency Capabilities"],
+  ["producer-extension-limits", "docs/specs/producer-extension-limits.md", "Producer Extension Limits"],
+  ["adapters", "docs/reference/adapters.md", "Adapters"],
+  ["schemas", "docs/reference/schemas.md", "Schemas"],
+  ["schema-versioning", "docs/reference/schema-versioning.md", "Schema Versioning"],
+  ["fixtures", "docs/reference/fixtures.md", "Fixtures"],
+  ["roadmap", "docs/roadmap/index.md", "Roadmap"],
+  ["linked-data-roadmap", "docs/roadmap/linked-data.md", "Linked-Data Roadmap"],
+  ["integration-plan", "docs/roadmap/integration-plan.md", "Integration Plan"],
+  ["grounding-audit", "docs/audits/grounding-audit.md", "Grounding Audit"],
+  ["resource-contract-audit", "docs/audits/resource-contract-audit.md", "Resource Contract Audit"],
+  ["brand-language", "docs/product/brand-language.md", "Brand Language"],
+  ["adr-0001-vocabulary-migration", "docs/adr/0001-vocabulary-migration.md", "ADR 0001"],
+];
+export const githubSourceBaseUrl = "https://github.com/kontourai/surface/blob/main/";
+export const pageSlugBySource = new Map(pages.map(([slug, source]) => [normalize(source), slug]));
