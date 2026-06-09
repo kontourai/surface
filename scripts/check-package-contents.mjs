@@ -22,6 +22,7 @@ const fileSet = new Set(files);
 
 const requiredFiles = [
   "README.md",
+  "LICENSE",
   "bin/surface.mjs",
   "dist/src/index.js",
   "dist/src/index.d.ts",

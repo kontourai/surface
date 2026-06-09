@@ -33,7 +33,8 @@
     "examples/external-adapter/src/",
     "examples/external-adapter/tsconfig.json",
     "docs/",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "rm -rf dist && tsc",

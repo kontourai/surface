@@ -355,10 +355,17 @@ function renderDonut(d) {
   const counts = { verified: 0, stale: 0, disputed: 0, rejected: 0, unknown: 0, assumed: 0, proposed: 0 };
   claims.forEach(c => { if (counts[c.status] !== undefined) counts[c.status]++; });
 
-  const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  const palette = isDark
-    ? { verified:"#52c47e", stale:"#f0835a", disputed:"#e06060", rejected:"#e06060", unknown:"#3a4e3c", assumed:"#d4aa3a", proposed:"#d4aa3a" }
-    : { verified:"#0c6b4a", stale:"#9b4819", disputed:"#9b2b2b", rejected:"#9b2b2b", unknown:"#dce8d5", assumed:"#886600", proposed:"#886600" };
+  const styles = getComputedStyle(document.body);
+  const cssVar = (name, fallback) => styles.getPropertyValue(name).trim() || fallback;
+  const palette = {
+    verified: cssVar("--green", "#34d399"),
+    stale: cssVar("--orange", "#f3b14b"),
+    disputed: cssVar("--red", "#ff6f6f"),
+    rejected: cssVar("--red", "#ff6f6f"),
+    unknown: cssVar("--muted", "#72869b"),
+    assumed: cssVar("--amber", "#f3b14b"),
+    proposed: cssVar("--blue", "#7aa2ff")
+  };
 
   const slices = Object.entries(counts).filter(([, v]) => v > 0);
   const cx = size / 2, cy = size / 2, r = 20, inner = 12;
@@ -379,7 +386,7 @@ function renderDonut(d) {
 
   // center text: verified count
   const verified = counts.verified;
-  ctx.fillStyle = isDark ? "#dce8d5" : "#1a2019";
+  ctx.fillStyle = cssVar("--ink", "#eef3f8");
   ctx.font = \`bold \${verified > 9 ? 9 : 10}px ui-monospace, monospace\`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
