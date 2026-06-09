@@ -7,7 +7,7 @@ const execFileAsync = promisify(execFile);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const cache = path.join(root, ".npm-pack-cache");
 
-const { stdout } = await execFileAsync("npm", ["pack", "--dry-run", "--json", "--cache", cache], {
+const { stdout } = await execFileAsync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts", "--cache", cache], {
   cwd: root,
   maxBuffer: 1024 * 1024 * 10,
 });

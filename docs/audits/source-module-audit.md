@@ -52,6 +52,7 @@ The root module may re-export `startConsoleServer` and `SurfaceConsoleConfig` / 
 
 - Package metadata now declares the public ESM and TypeScript entrypoint explicitly.
 - Package tests require `exports` to expose only `"."` and assert unsupported deep imports are rejected by Node package exports.
+- `test:package-smoke` installs the packed tarball into a fresh consumer project, imports the root package API, checks declarations, verifies deep imports remain blocked, and runs the installed `surface` CLI.
 - Package tests assert the root public API does not re-export private Console internals such as generated assets, client parts, projections, shell, script, or style shims.
 - Package contents checks require `package.json`, `README.md`, `LICENSE`, runtime files, schemas, docs, and examples.
 - Console asset constants are typed as `string` so generated declarations expose a small interface instead of embedded asset contents.
@@ -71,6 +72,7 @@ Every `package.json` script is an active repo workflow, release guard, or contri
 | `typecheck` | Guard | Runs asset sync check before TypeScript `--noEmit`. |
 | `test` | Verification | Builds and runs the Node test suite from `dist/tests`. |
 | `test:external-adapter` | Verification | Runs the package-consumer adapter example test. |
+| `test:package-smoke` | Release guard | Builds the package, installs the packed tarball into a fresh consumer project, imports the root API, and runs the installed CLI. |
 | `test:browser` | Verification | Runs Playwright coverage for the standalone Console and docs site. |
 | `test:coverage` | Verification | Runs Node tests with experimental coverage reporting. |
 | `docs:build` | Build | Syncs Console Kit docs assets and builds the static docs site. |
