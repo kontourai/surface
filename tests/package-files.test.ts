@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { stat, readFile } from "node:fs/promises";
+import { readdir, stat, readFile } from "node:fs/promises";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
@@ -75,8 +75,36 @@ test("Surface Console assets are edited as source files and generated before bui
   assert.match(packageJson.scripts?.typecheck ?? "", /check:console-assets/);
   assert.equal(scriptModule.trim(), 'export { CONSOLE_SCRIPT } from "./assets.generated.js";');
   assert.equal(stylesModule.trim(), 'export { CONSOLE_CSS } from "./assets.generated.js";');
-  assert.match(clientSource, /window\.__SURFACE_CONFIG__/);
+  assert.match(clientSource, /src\/console\/client\/parts/);
   assert.match(styleSource, /SURFACE CONSOLE/);
+});
+
+test("Surface Console client source is split into ordered concern files", async () => {
+  const partFiles = [
+    "state.js",
+    "format.js",
+    "analysis.js",
+    "dashboard.js",
+    "detail.js",
+    "routing-help.js",
+    "authoring.js",
+    "runs.js",
+  ];
+  const [buildScript, ...partSources] = await Promise.all([
+    readFile("scripts/build-console-assets.mjs", "utf8"),
+    ...partFiles.map((file) => readFile(`src/console/client/parts/${file}`, "utf8")),
+  ]);
+  const discoveredPartFiles = (await readdir("src/console/client/parts"))
+    .filter((file) => file.endsWith(".js"))
+    .sort();
+
+  assert.deepEqual(discoveredPartFiles, [...partFiles].sort());
+  for (const file of partFiles) assert.match(buildScript, new RegExp(`"${file}"`));
+  assert.match(partSources[0], /window\.__SURFACE_CONFIG__/);
+  assert.match(partSources[3], /function renderConsole/);
+  assert.match(partSources[4], /function showClaimDetail/);
+  assert.match(partSources[6], /function openClaimModal/);
+  assert.match(partSources[7], /function renderRunPicker/);
 });
 
 test("Surface Console generated assets are synced with source assets", async () => {
