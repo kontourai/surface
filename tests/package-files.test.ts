@@ -109,6 +109,7 @@ test("package scripts are classified active repo workflows", async () => {
   assert.match(packageJson.scripts?.verify ?? "", /check:doc-links/);
   assert.match(packageJson.scripts?.verify ?? "", /check:generated-boundaries/);
   assert.match(packageJson.scripts?.verify ?? "", /check:package-contents/);
+  assert.match(packageJson.scripts?.verify ?? "", /test:external-adapter/);
   assert.match(packageJson.scripts?.verify ?? "", /test:package-smoke/);
   assert.match(packageJson.scripts?.verify ?? "", /test:browser/);
   assert.match(packageJson.scripts?.prepare ?? "", /npm run build/);
