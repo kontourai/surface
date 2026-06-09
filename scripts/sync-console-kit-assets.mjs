@@ -4,7 +4,6 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const installedKitRoot = path.join(root, "node_modules", "@kontourai", "console-kit");
-const siblingKitRoot = path.resolve(root, "..", "console-kit");
 const target = path.join(root, "docs-site", "vendor", "console-kit", "tokens");
 const checkOnly = process.argv.includes("--check");
 const kitRoot = await resolveKitRoot();
@@ -21,13 +20,12 @@ if (checkOnly) {
 }
 
 async function resolveKitRoot() {
-  for (const candidate of [installedKitRoot, siblingKitRoot]) {
-    const stat = await lstat(candidate).catch(() => undefined);
-    if (!stat?.isDirectory() && !stat?.isSymbolicLink()) continue;
-    await assertPackageName(candidate);
-    return candidate;
+  const stat = await lstat(installedKitRoot).catch(() => undefined);
+  if (stat?.isDirectory() || stat?.isSymbolicLink()) {
+    await assertPackageName(installedKitRoot);
+    return installedKitRoot;
   }
-  throw new Error("Missing @kontourai/console-kit. Run npm install, or run from the kontourai workspace with ../console-kit present.");
+  throw new Error("Missing @kontourai/console-kit. Run npm install before syncing docs assets.");
 }
 
 async function assertPackageName(candidate) {

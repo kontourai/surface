@@ -40,15 +40,19 @@ surface console --config surface.config.json
 
 Implementation note: `surface console`, `*.console.json`, `/console.js`, and `/console.css` are current implementation names. Product-facing language should describe the Operator experience as the Surface Console.
 
-## Console Kit boundary
+## Developer map
 
-Surface keeps its own standalone Surface Console. Surface owns the Console routes, read model projection, claim authoring workflow, status model, metadata drilldown, and local server behavior in `src/console/`.
+Surface keeps its own standalone Surface Console. Keep product-specific trust behavior in this repo, and use Console Kit only as the shared UI system for presentation consistency across Kontour products.
 
-`@kontourai/console-kit` is a shared presentation dependency. Surface currently uses it as a development asset source for Console Kit design tokens that are vendored into the docs site build. Product dashboards and future product consoles may use the same tokens, styles, primitives, or custom elements for visual consistency, but Surface Console behavior should remain in Surface.
-
-The vendored token CSS is a Kontour-owned asset published through Console Kit's Apache-2.0 package metadata. Before Surface consumes any non-token Console Kit assets from npm, confirm that the asset class is covered by the upstream package metadata or document the redistribution approval in the consuming Surface change.
-
-Do not move Surface Console runtime behavior behind a generic `console-ui` package or a React dependency. If Surface adopts more Console Kit assets later, keep the shared layer limited to presentation assets and keep Surface-specific trust semantics in this repo.
+| Area | Location | Purpose |
+|------|----------|---------|
+| CLI command | `src/cli.ts` | Parses `surface console` flags and starts the local server. |
+| Local server and API routes | `src/console/server.ts` | Serves the HTML shell, static assets, read model, projection, run list, and claim authoring endpoints. |
+| Projection contract | `src/console/projection.ts`, `src/console/types.ts` | Converts producer read models into the UI shape consumed by the Console. |
+| Standalone UI assets | `src/console/shell.ts`, `src/console/script.ts`, `src/console/styles.ts` | Owns the dependency-free Console shell, client behavior, and embedded Console Kit-compatible token aliases. |
+| Browser coverage | `tests/browser/console.spec.ts` | Starts `bin/surface.mjs console` and verifies the real standalone page on desktop and mobile. |
+| Docs-site Console Kit assets | `scripts/sync-console-kit-assets.mjs`, `docs-site/vendor/console-kit/` | Copies token CSS from the installed public `@kontourai/console-kit` package for generated docs pages. |
+| Package boundary guard | `tests/package-files.test.ts`, `scripts/check-package-contents.mjs` | Keeps Console Kit dev-only, prevents React/runtime leakage, and verifies published package contents. |
 
 ## Run directory convention
 
