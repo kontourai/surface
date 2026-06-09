@@ -34,11 +34,18 @@ Status is derived by construction — not summarized by a model, not hidden behi
 - **Builders** — Emit claims, evidence, and policies from your product. Surface gives you a shared shape so the same trust state can be read by people, agents, and other systems downstream.
 - **Operators** — Manage the claims your product makes — ownership, evidence review, policies, transparency gaps, conflicts — from one workspace. Surface Console runs locally. No cloud, no login.
 
-## Where to go next
+## Published Pages
 
-- [Getting Started](getting-started.html) — install Surface, run a fixture report, and emit your first trust input
-- [Vision](vision.html) — why product transparency matters now and what Surface is designed to answer
-- [Concepts](concepts.html) — the full vocabulary: claims, evidence traces, policies, claim groups, transparency gaps, status
-- [Use Cases](use-cases.html) — repo governance, field-attested records, fact resolution, dependency audit
-- [What builds on Surface](built-on-surface.html) — when to reach for Surface as your foundation
-- [Walkthrough](walkthrough.html) — a real session with native Surface input
+- [Vision](vision.md) — why product transparency matters now and what Surface is designed to answer
+- [Concepts](concepts.md) — the full vocabulary: claims, evidence traces, policies, claim groups, transparency gaps, status
+- [Use Cases](use-cases.md) — repo governance, field-attested records, fact resolution, dependency audit
+- [What builds on Surface](built-on-surface.md) — when to reach for Surface as your foundation
+- [Walkthrough](guides/walkthrough.md) — a real session with native Surface input
+
+## Repo References
+
+- [Getting Started](guides/getting-started.md) — install Surface, run a fixture report, and emit your first trust input
+
+## Docs Site Scope
+
+`docs-site/` is generated from selected source docs for the public Pages site. It is curated, not a mirror of every repo document, and includes selected specs, audits, planning, and reference docs. Remaining maintainer, release, and hook docs are browsable from [docs/README.md](README.md).

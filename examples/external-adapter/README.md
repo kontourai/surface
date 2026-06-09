@@ -13,5 +13,5 @@ The adapter is intentionally explicit. Surface does not discover adapters from `
 Run it from the Surface repo with:
 
 ```bash
-npm test -- external-adapter
+npm run test:external-adapter
 ```

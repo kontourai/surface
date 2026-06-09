@@ -2,6 +2,26 @@
 
 Start here when you are working on the Surface repo or building against `@kontourai/surface`.
 
+The generated `docs-site/` output is a curated public site built from selected source docs. This index includes both published pages and repo-only references for maintainers and contributors.
+
+## Published Site Pages
+
+The public site is built from the page list in `scripts/build-pages-site.mjs`. Current published source docs include:
+
+- [Concepts](concepts.md) — the trust model: claims, evidence traces, policies, Trust Snapshots, claim groups, status, and transparency gaps
+- [What builds on Surface](built-on-surface.md) — when to build with Surface and what uses it
+- [Walkthrough](guides/walkthrough.md) — real session walkthrough with native Surface input
+- [Use Cases](use-cases.md) — repo governance, public data trust, fact resolution, dependency audit
+- [Vision](vision.md) — product transparency thesis
+- [Principles](principles.md) — kernel and adapter rules
+- [Brand Language](brand-language.md) — product language and positioning
+- [Architecture](architecture.md) — how the kernel, adapters, and product packages fit together
+- [CLI](cli.md), [Schemas](schemas.md), [Adapters](adapters.md), specs, roadmap, audits, and ADR references listed below
+
+## Repo Reference Docs
+
+The remaining docs are source references for local development, package consumers, release work, and contributor workflow. They may link from the public site as GitHub source docs when they are not part of the generated Pages subset.
+
 ## Understanding Surface
 
 - [Concepts](concepts.md) — the trust model: claims, evidence traces, policies, Trust Snapshots, claim groups, status, and transparency gaps
@@ -34,7 +54,7 @@ Start here when you are working on the Surface repo or building against `@kontou
 - [Schema Versioning](schema-versioning.md) — versioning rules for contract changes
 - [Resource Contract Audit](resource-contract-audit.md) — migration map for durable Surface contracts
 - [Trust Analytics Projection](analytics.md) — evidence intelligence derived from `TrustReport`
-- [Surface Console](consoles.md) — local Console server over producer read models
+- [Surface Console](console.md) — local Console server over producer read models
 - [Walkthrough](guides/walkthrough.md) — real session walkthrough with native Surface input
 - [Releasing](RELEASING.md) — npm publish checklist and trusted publishing setup
 - [Repo Hooks](repo-hooks.md) — local contributor hook setup and validation
