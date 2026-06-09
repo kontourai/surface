@@ -43,11 +43,79 @@ test("package files whitelist excludes generated example output", async () => {
 test("package entrypoint exposes explicit ESM and TypeScript contracts", async () => {
   const packageJson = await readPackageJson();
 
+  assert.deepEqual(Object.keys(packageJson.exports ?? {}).sort(), ["."]);
   assert.equal(packageJson.types, "./dist/src/index.d.ts");
   assert.deepEqual(packageJson.exports?.["."], {
     types: "./dist/src/index.d.ts",
     import: "./dist/src/index.js",
   });
+});
+
+test("package exports block unsupported deep imports", async () => {
+  const importBlocked = (specifier: string) => import(specifier);
+
+  await assert.rejects(
+    importBlocked("@kontourai/surface/console/server"),
+    (error: unknown) => error instanceof Error && error.message.includes("Package subpath")
+  );
+  await assert.rejects(
+    importBlocked("@kontourai/surface/dist/src/console/projection.js"),
+    (error: unknown) => error instanceof Error && error.message.includes("Package subpath")
+  );
+});
+
+test("root public API does not re-export private Console internals", async () => {
+  const publicIndex = await readFile("src/index.ts", "utf8");
+
+  assert.match(publicIndex, /export \{ startConsoleServer \} from "\.\/console\/server\.js";/);
+  assert.match(publicIndex, /export type \{ SurfaceConsoleConfig, SurfaceConsoleTheme, SurfaceConsoleVocab \} from "\.\/console\/types\.js";/);
+  for (const privateExport of [
+    "./console/assets.generated.js",
+    "./console/client/",
+    "./console/projection.js",
+    "./console/script.js",
+    "./console/styles.js",
+    "./console/shell.js",
+  ]) {
+    assert.equal(publicIndex.includes(privateExport), false, `${privateExport} should stay private`);
+  }
+});
+
+test("package scripts are classified active repo workflows", async () => {
+  const [packageJson, sourceModuleAudit] = await Promise.all([
+    readPackageJson(),
+    readFile("docs/architecture/source-module-audit.md", "utf8"),
+  ]);
+  const scriptNames = Object.keys(packageJson.scripts ?? {}).sort();
+
+  assert.deepEqual(scriptNames, [
+    "build",
+    "build:console-assets",
+    "check:console-assets",
+    "check:console-kit-assets",
+    "check:content-boundary",
+    "check:package-contents",
+    "docs:build",
+    "prepare",
+    "setup:repo-hooks",
+    "surface:report",
+    "surface:summary",
+    "sync:console-kit",
+    "test",
+    "test:browser",
+    "test:coverage",
+    "test:external-adapter",
+    "typecheck",
+    "validate:repo-hooks",
+    "verify",
+  ]);
+  assert.match(packageJson.scripts?.verify ?? "", /check-content-boundary/);
+  assert.match(packageJson.scripts?.verify ?? "", /check:package-contents/);
+  assert.match(packageJson.scripts?.verify ?? "", /test:browser/);
+  assert.match(packageJson.scripts?.prepare ?? "", /npm run build/);
+  for (const scriptName of scriptNames) {
+    assert.match(sourceModuleAudit, new RegExp(`\\| \`${scriptName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\` \\|`));
+  }
 });
 
 test("embedded console assets do not leak template literals into public declarations", async () => {
