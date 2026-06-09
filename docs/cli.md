@@ -86,4 +86,4 @@ The `derivation` field starts at the requested claim and exposes `directInputs`,
 - `surface adapters` for listing registered custom adapters and their expected input shapes.
 - `surface publish` for writing static reports to Pages or artifact storage.
 
-The `analytics` format is the local evidence-intelligence contract that future query commands, MCP resources, and the human console should consume. It is derived from the report; it is not a hosted store or generic BI surface.
+The `analytics` format is the local evidence-intelligence contract that future query commands, MCP resources, and the Surface Console should consume. It is derived from the report; it is not a hosted store or generic BI surface.

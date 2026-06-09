@@ -40,6 +40,12 @@ The remaining docs are source references for local development, package consumer
 - [Producers and the Surface Boundary](integration-plan.md) — adapter and claim store patterns, boundary rules
 - [External Adapter Example](../examples/external-adapter/README.md) — minimal package-shaped producer
 
+## Package Boundary
+
+The public npm package exposes `@kontourai/surface` as its only module entrypoint, plus the `surface` CLI. TypeScript declarations are published through `dist/src/index.d.ts`, and package metadata points both `types` and `exports["."].types` at that file. Consumers should not import deep `dist/` paths directly.
+
+The package intentionally includes docs, schemas, examples, and built runtime files. It intentionally excludes source files, tests, scripts, generated docs-site output, Playwright artifacts, and local workflow artifacts. `npm run check:package-contents` is the release guard for that boundary.
+
 ## Reference
 
 - [CLI](cli.md) — `surface report`, `surface claim`, and output formats

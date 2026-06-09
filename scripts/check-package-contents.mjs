@@ -21,6 +21,7 @@ const files = packEntries[0].files.map((file) => file.path).sort();
 const fileSet = new Set(files);
 
 const requiredFiles = [
+  "package.json",
   "README.md",
   "LICENSE",
   "bin/surface.mjs",

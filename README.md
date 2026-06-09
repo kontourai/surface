@@ -51,6 +51,20 @@ Surface is a foundation product. Anything that needs to answer "what claims are 
 
 The dependency direction is one-way: producers depend on Surface; Surface does not depend on any producer's runtime.
 
+## Public package surface
+
+The npm package exposes one stable module entrypoint:
+
+```ts
+import {
+  TrustInputBuilder,
+  buildTrustReport,
+  validateTrustInput,
+} from "@kontourai/surface";
+```
+
+The package also ships the `surface` CLI, JSON schemas under `schemas/`, examples, docs, and TypeScript declarations. Internal files under `dist/src/` are included so the exported module graph can run, but consumers should import from `@kontourai/surface` rather than deep `dist/` paths. The package contents guard in `scripts/check-package-contents.mjs` keeps generated test output, local docs-site output, scripts, and source files out of the published tarball.
+
 ## Repository layout
 
 - `bin/` — package CLI launcher; `surface` resolves here before loading built code from `dist/`.

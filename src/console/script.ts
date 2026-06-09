@@ -1,4 +1,4 @@
-export const CONSOLE_SCRIPT = `
+export const CONSOLE_SCRIPT: string = `
 const cfg = window.__SURFACE_CONFIG__ ?? {};
 const vocab = cfg.vocab ?? {};
 const claimTypes = cfg.claimTypes ?? [];
