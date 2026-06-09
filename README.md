@@ -53,13 +53,26 @@ The dependency direction is one-way: producers depend on Surface; Surface does n
 
 ## Repository layout
 
-- `src/` — TypeScript Surface library, CLI, and local Console server.
-- `src/adapters/` — adapter registry and the native `surface` passthrough.
-- `schemas/` — JSON schema contracts for Surface records.
-- `examples/` — validation fixtures, the external adapter example.
-- `tests/` — unit and integration coverage.
-- `docs/` — narrative docs used by the static Pages build.
-- `scripts/build-pages-site.mjs` — dependency-free GitHub Pages builder.
+- `bin/` — package CLI launcher; `surface` resolves here before loading built code from `dist/`.
+- `src/` — TypeScript Surface library, CLI implementation, derivation kernel, reporting, adapters, and Console runtime.
+- `src/adapters/` — built-in adapter registry and native `surface` passthrough adapter.
+- `src/console/` — local Surface Console server, read-model projection, and static UI assets.
+- `schemas/` — JSON schema contracts for Surface inputs, reports, policies, evidence, and events.
+- `examples/` — sample Surface inputs and package-shaped producer examples.
+- `examples/external-adapter/` — canonical external adapter example for product-owned producer logic.
+- `tests/` — Node test coverage for library, CLI, adapter, Console, and docs behavior.
+- `tests/browser/` — Playwright coverage for the generated docs site.
+- `docs/` — source documentation. Some pages publish to the generated site; repo-only references stay here.
+- `scripts/` — repo maintenance, docs build, content-boundary, and hook setup scripts.
+- `.github/workflows/` — CI and GitHub Pages publishing workflow definitions.
+- `.githooks/` — repo-owned local Git hooks installed by `npm run setup:repo-hooks`.
+- `agents/` — tracked agent/runtime resources that are part of the repo.
+- `.agents/` — ignored local workflow artifacts from agent runs; useful for coordination, not product source.
+- `dist/` — generated TypeScript build output from `npm run build`; do not edit directly.
+- `docs-site/` — generated GitHub Pages output from `npm run docs:build`; curated public subset, not source.
+- `test-results/` — local Playwright/test artifacts; ignored and safe to regenerate.
+
+Ignored local/generated directories such as `node_modules/`, `.surface/`, `.agents/`, `dist/`, `docs-site/`, `test-results/`, and `playwright-report/` should be regenerated from source commands rather than reviewed as product source.
 
 ## Documentation
 

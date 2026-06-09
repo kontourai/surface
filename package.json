@@ -24,11 +24,14 @@
   },
   "files": [
     "bin/",
-    "dist/examples/",
     "dist/src/",
-    "dist/bin/",
     "schemas/",
-    "examples/",
+    "examples/*.json",
+    "examples/external-adapter/README.md",
+    "examples/external-adapter/fixture.json",
+    "examples/external-adapter/package.json",
+    "examples/external-adapter/src/",
+    "examples/external-adapter/tsconfig.json",
     "docs/",
     "README.md"
   ],
