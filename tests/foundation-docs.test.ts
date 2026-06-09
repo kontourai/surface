@@ -7,9 +7,10 @@ async function readDoc(path: string): Promise<string> {
 }
 
 test("first-contact docs preserve Surface as the product-neutral foundation", async () => {
-  const [readme, architecture, foundation, cli] = await Promise.all([
+  const [readme, architecture, sourceAudit, foundation, cli] = await Promise.all([
     readDoc("README.md"),
     readDoc("docs/architecture.md"),
+    readDoc("docs/architecture/source-module-audit.md"),
     readDoc("docs/architecture/surface-foundation.md"),
     readDoc("docs/cli.md"),
   ]);
@@ -21,6 +22,8 @@ test("first-contact docs preserve Surface as the product-neutral foundation", as
   assert.match(readme, /Surface remains responsible for generated report fields/);
   assert.match(architecture, /Product systems sit above these layers/);
   assert.match(architecture, /product repos or packages/);
+  assert.match(sourceAudit, /src\/index\.ts` is the only public module entrypoint/);
+  assert.match(sourceAudit, /Do not move source folders yet/);
   assert.match(foundation, /## Product Layers Built On Surface/);
   assert.match(foundation, /## Foundation Contract/);
   assert.match(foundation, /Surface generates report-only fields after validation/);
