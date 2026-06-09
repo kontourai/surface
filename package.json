@@ -41,8 +41,10 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "rm -rf dist && tsc",
-    "typecheck": "tsc --noEmit",
+    "build": "npm run build:console-assets && rm -rf dist && tsc",
+    "build:console-assets": "node scripts/build-console-assets.mjs",
+    "check:console-assets": "node scripts/build-console-assets.mjs --check",
+    "typecheck": "npm run check:console-assets && tsc --noEmit",
     "test": "npm run build && node --test dist/tests/*.test.js",
     "test:external-adapter": "npm run build && node --test dist/tests/external-adapter.test.js",
     "test:browser": "playwright test",

@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
 import { stat, readFile } from "node:fs/promises";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
 
 type PackageJson = {
   dependencies?: Record<string, string>;
@@ -8,6 +12,7 @@ type PackageJson = {
   exports?: Record<string, unknown>;
   files?: string[];
   peerDependencies?: Record<string, string>;
+  scripts?: Record<string, string>;
   types?: string;
 };
 
@@ -46,13 +51,36 @@ test("package entrypoint exposes explicit ESM and TypeScript contracts", async (
 });
 
 test("embedded console assets do not leak template literals into public declarations", async () => {
-  const [scriptDeclaration, stylesDeclaration] = await Promise.all([
+  const [assetDeclaration, scriptDeclaration, stylesDeclaration] = await Promise.all([
+    stat("dist/src/console/assets.generated.d.ts"),
     stat("dist/src/console/script.d.ts"),
     stat("dist/src/console/styles.d.ts"),
   ]);
 
+  assert.ok(assetDeclaration.size < 200, `asset declaration is too large: ${assetDeclaration.size}`);
   assert.ok(scriptDeclaration.size < 200, `script declaration is too large: ${scriptDeclaration.size}`);
   assert.ok(stylesDeclaration.size < 200, `styles declaration is too large: ${stylesDeclaration.size}`);
+});
+
+test("Surface Console assets are edited as source files and generated before build", async () => {
+  const [packageJson, scriptModule, stylesModule, clientSource, styleSource] = await Promise.all([
+    readPackageJson(),
+    readFile("src/console/script.ts", "utf8"),
+    readFile("src/console/styles.ts", "utf8"),
+    readFile("src/console/client/index.js", "utf8"),
+    readFile("src/console/styles/index.css", "utf8"),
+  ]);
+
+  assert.match(packageJson.scripts?.build ?? "", /build:console-assets/);
+  assert.match(packageJson.scripts?.typecheck ?? "", /check:console-assets/);
+  assert.equal(scriptModule.trim(), 'export { CONSOLE_SCRIPT } from "./assets.generated.js";');
+  assert.equal(stylesModule.trim(), 'export { CONSOLE_CSS } from "./assets.generated.js";');
+  assert.match(clientSource, /window\.__SURFACE_CONFIG__/);
+  assert.match(styleSource, /SURFACE CONSOLE/);
+});
+
+test("Surface Console generated assets are synced with source assets", async () => {
+  await execFileAsync("node", ["scripts/build-console-assets.mjs", "--check"]);
 });
 
 test("Console Kit stays a development asset source, not a runtime dependency", async () => {

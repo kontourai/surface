@@ -70,7 +70,7 @@ The package also ships the `surface` CLI, JSON schemas under `schemas/`, example
 - `bin/` — package CLI launcher; `surface` resolves here before loading built code from `dist/`.
 - `src/` — TypeScript Surface library, CLI implementation, derivation kernel, reporting, adapters, and Console runtime.
 - `src/adapters/` — built-in adapter registry and native `surface` passthrough adapter.
-- `src/console/` — local Surface Console server, read-model projection, and dependency-free UI assets.
+- `src/console/` — local Surface Console server, read-model projection, editable dependency-free UI assets, and generated asset constants.
 - `schemas/` — JSON schema contracts for Surface inputs, reports, policies, evidence, and events.
 - `examples/` — sample Surface inputs and package-shaped producer examples.
 - `examples/external-adapter/` — canonical external adapter example for product-owned producer logic.
