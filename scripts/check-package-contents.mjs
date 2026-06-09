@@ -46,6 +46,7 @@ const forbiddenPatterns = [
   /^test-results\//,
   /^playwright-report\//,
   /^\.agents\//,
+  /^\.flow-agents\//,
   /^\.surface\//,
   /^dist\/tests\//,
   /^dist\/bin\//,

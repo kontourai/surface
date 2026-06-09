@@ -21,10 +21,6 @@ jobs:
       - uses: actions/checkout@v6
         with:
           path: surface
-      - uses: actions/checkout@v6
-        with:
-          repository: kontourai/console-kit
-          path: console-kit
       - uses: actions/setup-node@v6
         with:
           node-version: 22

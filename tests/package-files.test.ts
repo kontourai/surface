@@ -121,9 +121,18 @@ test("Console Kit stays a development asset source, not a runtime dependency", a
 });
 
 test("Console Kit docs assets sync from the installed public package", async () => {
-  const script = await readFile("scripts/sync-console-kit-assets.mjs", "utf8");
+  const [script, ciWorkflow, pagesWorkflow, publishWorkflow] = await Promise.all([
+    readFile("scripts/sync-console-kit-assets.mjs", "utf8"),
+    readFile(".github/workflows/ci.yml", "utf8"),
+    readFile(".github/workflows/pages.yml", "utf8"),
+    readFile(".github/workflows/publish-npm.yml", "utf8"),
+  ]);
 
   assert.match(script, /node_modules.+@kontourai.+console-kit/s);
   assert.equal(script.includes('path.resolve(root, "..", "console-kit")'), false);
   assert.equal(script.includes("kontourai workspace with ../console-kit"), false);
+  for (const workflow of [ciWorkflow, pagesWorkflow, publishWorkflow]) {
+    assert.equal(workflow.includes("repository: kontourai/console-kit"), false);
+    assert.equal(workflow.includes("path: console-kit"), false);
+  }
 });
