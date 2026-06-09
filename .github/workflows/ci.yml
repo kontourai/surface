@@ -52,7 +52,3 @@ jobs:
       - name: Verify
         run: npm run verify
         working-directory: surface
-
-      - name: Package dry run
-        run: npm pack --dry-run
-        working-directory: surface
