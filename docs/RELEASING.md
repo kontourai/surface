@@ -5,8 +5,9 @@ This document is the operator checklist for cutting a release of `@kontourai/sur
 ## Preconditions
 
 - `npm run verify` passes
-- `npm pack --dry-run` shows only intended package files
+- `npm run check:package-contents` passes, proving the packed file list matches the intended package boundary
 - package metadata in `package.json` is correct
+- vendored docs assets sourced from `@kontourai/console-kit` are limited to approved token CSS, or the upstream package declares explicit license metadata for any additional asset class
 - any breaking changes are documented
 
 ## Release Flow

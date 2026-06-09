@@ -3,7 +3,10 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 type PackageJson = {
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
   files?: string[];
+  peerDependencies?: Record<string, string>;
 };
 
 async function readPackageJson(): Promise<PackageJson> {
@@ -27,4 +30,13 @@ test("package files whitelist excludes generated example output", async () => {
   assert.equal(files.includes("dist/examples/"), false);
   assert.equal(files.includes("dist/bin/"), false);
   assert.equal(files.some((entry) => entry.includes("node_modules")), false);
+});
+
+test("Console Kit stays a development asset source, not a runtime dependency", async () => {
+  const packageJson = await readPackageJson();
+
+  assert.equal(packageJson.devDependencies?.["@kontourai/console-kit"], "^0.1.0");
+  assert.equal(packageJson.dependencies?.["@kontourai/console-kit"], undefined);
+  assert.equal(packageJson.dependencies?.react, undefined);
+  assert.equal(packageJson.peerDependencies?.react, undefined);
 });

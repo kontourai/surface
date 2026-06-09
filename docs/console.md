@@ -40,6 +40,16 @@ surface console --config surface.config.json
 
 Implementation note: `surface console`, `*.console.json`, `/console.js`, and `/console.css` are current implementation names. Product-facing language should describe the Operator experience as the Surface Console.
 
+## Console Kit boundary
+
+Surface keeps its own standalone Surface Console. Surface owns the Console routes, read model projection, claim authoring workflow, status model, metadata drilldown, and local server behavior in `src/console/`.
+
+`@kontourai/console-kit` is a shared presentation dependency. Surface currently uses it as a development asset source for Console Kit design tokens that are vendored into the docs site build. Product dashboards and future product consoles may use the same tokens, styles, primitives, or custom elements for visual consistency, but Surface Console behavior should remain in Surface.
+
+The vendored token CSS is a Kontour-owned asset approved for Surface docs redistribution. Before Surface consumes any non-token Console Kit assets from npm, publish Console Kit with explicit package license metadata for that asset class or document the redistribution approval in the consuming Surface change.
+
+Do not move Surface Console runtime behavior behind a generic `console-ui` package or a React dependency. If Surface adopts more Console Kit assets later, keep the shared layer limited to presentation assets and keep Surface-specific trust semantics in this repo.
+
 ## Run directory convention
 
 Producers write one file per run:

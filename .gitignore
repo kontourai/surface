@@ -3,6 +3,7 @@ dist/
 docs-site/
 test-results/
 playwright-report/
+.npm-pack-cache/
 *.tsbuildinfo
 
 .omx/

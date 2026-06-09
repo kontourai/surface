@@ -27,7 +27,7 @@ async function resolveKitRoot() {
     await assertPackageName(candidate);
     return candidate;
   }
-  throw new Error("Missing @kontourai/console-kit. Install it or run from the kontourai workspace with ../console-kit present.");
+  throw new Error("Missing @kontourai/console-kit. Run npm install, or run from the kontourai workspace with ../console-kit present.");
 }
 
 async function assertPackageName(candidate) {
