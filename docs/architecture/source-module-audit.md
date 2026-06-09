@@ -8,6 +8,16 @@ This audit records the current `src/` module seams before larger source moves. I
 
 Consumers should import from `@kontourai/surface`. Deep `dist/` imports are not a supported interface, even though built files are present in the package so the public module graph can run.
 
+Surface intentionally exposes one package module entrypoint:
+
+| Package surface | Metadata | Status |
+|-----------------|----------|--------|
+| Root module | `exports["."]`, `types` -> `dist/src/index.d.ts`, `import` -> `dist/src/index.js` | Supported public API |
+| CLI | `bin.surface` -> `bin/surface.mjs` | Supported command-line API |
+| Deep package paths | `@kontourai/surface/dist/**`, `@kontourai/surface/console/**`, `@kontourai/surface/src/**` | Unsupported; package `exports` should reject these imports |
+
+The root module may re-export `startConsoleServer` and `SurfaceConsoleConfig` / `SurfaceConsoleTheme` / `SurfaceConsoleVocab` as the narrow supported Console embedding seam. Browser assets, route handlers, projections, generated constants, and shell/style/script shims stay private implementation.
+
 ## Keep / Internal / Split Table
 
 | Area | Files | Current interface | Decision | Rationale |
@@ -38,10 +48,38 @@ Consumers should import from `@kontourai/surface`. Deep `dist/` imports are not 
 ## Guardrails Added
 
 - Package metadata now declares the public ESM and TypeScript entrypoint explicitly.
+- Package tests require `exports` to expose only `"."` and assert unsupported deep imports are rejected by Node package exports.
+- Package tests assert the root public API does not re-export private Console internals such as generated assets, client parts, projections, shell, script, or style shims.
 - Package contents checks require `package.json`, `README.md`, `LICENSE`, runtime files, schemas, docs, and examples.
 - Console asset constants are typed as `string` so generated declarations expose a small interface instead of embedded asset contents.
 - Package tests fail if the generated Console asset declarations grow beyond a small threshold.
 - `npm run typecheck` fails if `src/console/assets.generated.ts`, `src/console/client/index.js`, or `src/console/styles/index.css` is stale relative to `src/console/client/parts/` or `src/console/styles/parts/`.
+
+## Active Script Classification
+
+Every `package.json` script is an active repo workflow, release guard, or contributor utility. New scripts should either fit one of these categories or come with a matching docs/test update that explains why the command belongs in the public contributor surface.
+
+| Script | Category | Purpose |
+|--------|----------|---------|
+| `build` | Build | Regenerates Console assets and compiles TypeScript into `dist/`. |
+| `build:console-assets` | Build | Concatenates ordered Console JS/CSS source parts into checked generated assets. |
+| `check:console-assets` | Guard | Fails when checked generated Console assets are stale. |
+| `typecheck` | Guard | Runs asset sync check before TypeScript `--noEmit`. |
+| `test` | Verification | Builds and runs the Node test suite from `dist/tests`. |
+| `test:external-adapter` | Verification | Runs the package-consumer adapter example test. |
+| `test:browser` | Verification | Runs Playwright coverage for the standalone Console and docs site. |
+| `test:coverage` | Verification | Runs Node tests with experimental coverage reporting. |
+| `docs:build` | Build | Syncs Console Kit docs assets and builds the static docs site. |
+| `sync:console-kit` | Build | Copies docs-site token assets from the installed public `@kontourai/console-kit` package. |
+| `check:console-kit-assets` | Guard | Fails when generated docs-site Console Kit assets are stale. |
+| `check:package-contents` | Release guard | Verifies the npm tarball includes only intended files. |
+| `surface:report` | Smoke test | Builds and runs the CLI report command. |
+| `surface:summary` | Smoke test | Builds and runs the CLI summary report used by `verify`. |
+| `verify` | Release guard | Runs the full local CI lane. |
+| `prepare` | npm lifecycle | Builds the package before npm packaging/install lifecycle hooks need `dist/`. |
+| `check:content-boundary` | Guard | Prevents terminology and content-boundary regressions. |
+| `setup:repo-hooks` | Contributor utility | Installs repo-owned local Git hooks. |
+| `validate:repo-hooks` | Guard | Verifies the repo hook wiring and docs stay aligned. |
 
 ## Top Recommendation
 
