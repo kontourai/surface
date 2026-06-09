@@ -120,6 +120,23 @@ flowchart TD
 
 **Future Resource Contract alignment:** Flow Agents and Builder Kit may consume Resource-shaped Surface records after future migration slices. That does not move their workflow semantics into Surface.
 
+## Source Module Map
+
+The current source layout is intentionally small and layer-oriented. Keep the public API stable through `src/index.ts`; prefer documentation and tests over broad source moves unless a module becomes hard to change through its current interface.
+
+| Area | Current files | Purpose | Split only when |
+| --- | --- | --- | --- |
+| Public entry | `src/index.ts`, `bin/surface.mjs`, package `exports` and `bin` | Defines the package and CLI surface callers depend on | A new public subpath is deliberately designed and versioned |
+| Kernel contracts | `src/types.ts`, `src/validate.ts`, `schemas/` | Owns portable claims, evidence, policies, events, and schema validation | Schema evolution creates independent validation paths with separate tests |
+| Trust derivation | `src/status.ts`, `src/derivation.ts`, `src/trust-snapshot.ts`, `src/report.ts`, `src/trace-analysis.ts`, `src/claim-groups.ts`, `src/evidence-support.ts`, `src/identity.ts`, `src/policy-resolver.ts` | Derives status, freshness, conflicts, Transparency Gaps, identity rollups, Claim Group rollups, Trust Snapshots, and reports | A smaller interface can hide repeated traversal or policy logic from callers |
+| Projections | `src/analytics.ts`, `src/linked.ts`, `src/derivation-drilldown.ts` | Projects derived trust state for analytics, linked output, and claim drilldown | Multiple projections duplicate the same traversal or formatting rules |
+| Builder and stores | `src/consumer-sdk.ts`, `src/claim-authoring.ts`, `src/store.ts`, `src/policy-helpers.ts`, `src/attestation.ts` | Helps Builders author claim packages, evidence, attestations, and local claim stores | Store persistence or claim authoring gains another durable adapter |
+| Extension and adapters | `src/extension.ts`, `src/adapter.ts`, `src/adapters/` | Registers producer vocabulary, claim types, and explicit adapter mappings | Two or more concrete adapters need shared lifecycle or configuration |
+| CLI | `src/cli.ts` | Exposes local report, query, claim-store, and Surface Console commands | Command parsing or output formatting needs a smaller tested interface |
+| Surface Console | `src/console/` | Runs the local Operator Console and serves its projection, HTML, CSS, and client script | Console assets need independent build tooling or repeated UI modules emerge |
+
+The largest files today are Console assets, `validate.ts`, and `types.ts`. Their size alone is not a reason to move folders: split them when the new module would give maintainers locality or hide meaningful implementation complexity behind a smaller interface.
+
 ## Local Reading Path
 
 Use this order when you need to understand Surface without starting in cross-product docs:

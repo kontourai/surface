@@ -39,6 +39,7 @@
     "build": "rm -rf dist && tsc",
     "typecheck": "tsc --noEmit",
     "test": "npm run build && node --test dist/tests/*.test.js",
+    "test:external-adapter": "npm run build && node --test dist/tests/external-adapter.test.js",
     "test:browser": "playwright test",
     "test:coverage": "npm run build && node --test --experimental-test-coverage dist/tests/*.test.js",
     "docs:build": "node scripts/sync-console-kit-assets.mjs && node scripts/build-pages-site.mjs",

@@ -42,10 +42,12 @@ test("renders developer architecture route with navigation and Mermaid diagrams"
     "href",
     "resource-contract-audit.html",
   );
-  await expect(page.getByRole("table")).toHaveCount(1);
-  await expect(page.locator("article table th").first()).toHaveText("System");
-  const surfaceRow = page.locator("article table tbody tr").nth(0);
-  const veritasRow = page.locator("article table tbody tr").nth(1);
+  const tables = page.locator("article table");
+  await expect(tables).toHaveCount(2);
+  await expect(tables.nth(0).locator("th").first()).toHaveText("System");
+  await expect(tables.nth(1).locator("th").first()).toHaveText("Area");
+  const surfaceRow = tables.nth(0).locator("tbody tr").nth(0);
+  const veritasRow = tables.nth(0).locator("tbody tr").nth(1);
   await expect(surfaceRow.locator("td").first()).toHaveText("Surface");
   await expect(surfaceRow).toContainText("Trust Reports");
   await expect(surfaceRow).toContainText("Flow gates");
