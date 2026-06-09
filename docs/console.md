@@ -46,7 +46,7 @@ Surface keeps its own standalone Surface Console. Surface owns the Console route
 
 `@kontourai/console-kit` is a shared presentation dependency. Surface currently uses it as a development asset source for Console Kit design tokens that are vendored into the docs site build. Product dashboards and future product consoles may use the same tokens, styles, primitives, or custom elements for visual consistency, but Surface Console behavior should remain in Surface.
 
-The vendored token CSS is a Kontour-owned asset approved for Surface docs redistribution. Before Surface consumes any non-token Console Kit assets from npm, publish Console Kit with explicit package license metadata for that asset class or document the redistribution approval in the consuming Surface change.
+The vendored token CSS is a Kontour-owned asset published through Console Kit's Apache-2.0 package metadata. Before Surface consumes any non-token Console Kit assets from npm, confirm that the asset class is covered by the upstream package metadata or document the redistribution approval in the consuming Surface change.
 
 Do not move Surface Console runtime behavior behind a generic `console-ui` package or a React dependency. If Surface adopts more Console Kit assets later, keep the shared layer limited to presentation assets and keep Surface-specific trust semantics in this repo.
 

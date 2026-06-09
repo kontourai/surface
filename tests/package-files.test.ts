@@ -35,7 +35,7 @@ test("package files whitelist excludes generated example output", async () => {
 test("Console Kit stays a development asset source, not a runtime dependency", async () => {
   const packageJson = await readPackageJson();
 
-  assert.equal(packageJson.devDependencies?.["@kontourai/console-kit"], "^0.1.0");
+  assert.equal(packageJson.devDependencies?.["@kontourai/console-kit"], "^0.1.1");
   assert.equal(packageJson.dependencies?.["@kontourai/console-kit"], undefined);
   assert.equal(packageJson.dependencies?.react, undefined);
   assert.equal(packageJson.peerDependencies?.react, undefined);
