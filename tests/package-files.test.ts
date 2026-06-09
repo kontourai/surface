@@ -95,6 +95,7 @@ test("package scripts are classified active repo workflows", async () => {
     "check:console-kit-assets",
     "check:content-boundary",
     "check:doc-links",
+    "check:generated-boundaries",
     "check:package-contents",
     "docs:build",
     "prepare",
@@ -112,6 +113,7 @@ test("package scripts are classified active repo workflows", async () => {
   ]);
   assert.match(packageJson.scripts?.verify ?? "", /check-content-boundary/);
   assert.match(packageJson.scripts?.verify ?? "", /check:doc-links/);
+  assert.match(packageJson.scripts?.verify ?? "", /check:generated-boundaries/);
   assert.match(packageJson.scripts?.verify ?? "", /check:package-contents/);
   assert.match(packageJson.scripts?.verify ?? "", /test:browser/);
   assert.match(packageJson.scripts?.prepare ?? "", /npm run build/);
@@ -148,6 +150,10 @@ test("Surface Console assets are edited as source files and generated before bui
   assert.equal(stylesModule.trim(), 'export { CONSOLE_CSS } from "./assets.generated.js";');
   assert.match(clientSource, /src\/console\/client\/parts/);
   assert.match(styleSource, /src\/console\/styles\/parts/);
+  assert.match(
+    await readFile("src/console/assets.generated.ts", "utf8"),
+    /Do not edit directly; edit src\/console\/client\/parts\/ or src\/console\/styles\/parts\/ instead\./
+  );
   assert.match(tokensSource, /SURFACE CONSOLE/);
 });
 
