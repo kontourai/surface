@@ -27,6 +27,7 @@ The remaining docs are source references for local development, package consumer
 - [Concepts](concepts.md) — the trust model: claims, evidence traces, policies, Trust Snapshots, claim groups, status, and transparency gaps
 - [Architecture](architecture.md) — how the kernel, adapters, and product packages fit together
 - [Developer Architecture](architecture/developer-architecture.md) — Surface trust/evidence flow and cross-product boundaries
+- [Source Module Audit](architecture/source-module-audit.md) — public entrypoint, internal modules, and future split candidates
 - [Surface Foundation Boundary](architecture/surface-foundation.md) — one-way dependency rule for product layers
 - [What builds on Surface](built-on-surface.md) — when to build with Surface and what uses it
 - [Use Cases](use-cases.md) — repo governance, public data trust, fact resolution, dependency audit
