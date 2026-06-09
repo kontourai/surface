@@ -1,0 +1,305 @@
+/* ── 2. Reset & Base ────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--k-font-ui);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100dvh;
+}
+
+body.sheet-open { overflow: hidden; }
+
+button {
+  appearance: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  padding: 0;
+}
+
+/* ── 3. Header ──────────────────────────────────────────────── */
+.dash-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  padding: 0.875rem 1.25rem;
+  display: grid;
+  gap: 0.875rem;
+  /* Subtle backdrop blur for premium feel */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+}
+
+/* Brand section */
+.dash-brand {
+  min-width: 0;
+}
+
+.dash-eyebrow {
+  margin: 0 0 0.2rem;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-family: ui-monospace, "Cascadia Code", "SF Mono", monospace;
+}
+
+.dash-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.dash-brand h1 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  font-family: ui-serif, Georgia, "Times New Roman", serif;
+  color: var(--ink);
+}
+
+/* Run ID shown inline next to project name — small, muted, monospace badge */
+.run-label {
+  font-size: 0.62rem;
+  font-family: ui-monospace, "Cascadia Code", "SF Mono", monospace;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0.1rem 0.45rem;
+  line-height: 1.6;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+/* Metrics row — wraps donut + chips */
+.dash-metrics-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.status-donut {
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+.dash-metrics {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Run metadata — compact inline line under project name */
+.dash-run-line {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.dash-run-meta {
+  margin: 0.35rem 0 0;
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-family: ui-monospace, "Cascadia Code", "SF Mono", monospace;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+/* Run selector — custom dropdown */
+.run-select {
+  position: relative;
+  margin-top: 0.3rem;
+  display: inline-block;
+}
+
+.run-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.22rem 0.65rem;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: 0.7rem;
+  font-family: ui-monospace, "Cascadia Code", "SF Mono", monospace;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
+  white-space: nowrap;
+  max-width: 260px;
+}
+.run-trigger:hover {
+  border-color: var(--blue);
+  color: var(--ink);
+}
+.run-trigger:focus-visible {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 20%, transparent);
+}
+.run-trigger-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.run-chevron {
+  flex-shrink: 0;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+.run-trigger[aria-expanded="true"] .run-chevron {
+  transform: rotate(180deg);
+}
+
+/* Fixed dropdown — rendered outside header stacking context */
+.run-dropdown {
+  position: fixed;
+  z-index: 9999;
+  display: none;
+  min-width: 260px;
+  max-width: 360px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+}
+.run-dropdown.open {
+  display: block;
+  animation: dropdown-in 0.15s var(--ease-out) both;
+}
+
+@keyframes dropdown-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.run-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  text-align: left;
+  border-bottom: 1px solid var(--soft);
+  transition: background 0.1s ease;
+  cursor: pointer;
+}
+.run-option:last-child { border-bottom: none; }
+.run-option:hover { background: var(--raised); }
+.run-option-active { background: color-mix(in srgb, var(--blue) 9%, var(--surface)); }
+.run-option-active:hover { background: color-mix(in srgb, var(--blue) 14%, var(--surface)); }
+
+.run-opt-date {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink);
+  font-family: ui-monospace, "Cascadia Code", "SF Mono", monospace;
+}
+.run-option-active .run-opt-date { color: var(--blue); }
+
+.run-opt-stats {
+  font-size: 0.68rem;
+  font-family: ui-monospace, "Cascadia Code", "SF Mono", monospace;
+  color: var(--ink-2);
+}
+
+.run-opt-id {
+  font-size: 0.62rem;
+  font-family: ui-monospace, "Cascadia Code", "SF Mono", monospace;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 0.1rem;
+}
+
+/* ── 4. Metric Chips ────────────────────────────────────────── */
+.metric-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 99px;
+  border: 1px solid var(--line);
+  background: var(--raised);
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, transform 0.1s ease, border-color 0.15s ease;
+}
+
+.metric-chip:hover {
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+}
+
+.metric-chip-active {
+  box-shadow: var(--shadow);
+  border-width: 2px;
+  transform: translateY(-1px);
+}
+
+.metric-chip.metric-good {
+  border-color: color-mix(in srgb, var(--green) 40%, transparent);
+  background: var(--green-bg);
+  color: var(--green);
+}
+.metric-chip.metric-warn {
+  border-color: color-mix(in srgb, var(--orange) 40%, transparent);
+  background: var(--orange-bg);
+  color: var(--orange);
+}
+.metric-chip.metric-bad {
+  border-color: color-mix(in srgb, var(--red) 40%, transparent);
+  background: var(--red-bg);
+  color: var(--red);
+}
+.metric-chip.metric-blue {
+  border-color: color-mix(in srgb, var(--blue) 40%, transparent);
+  background: var(--blue-bg);
+  color: var(--blue);
+}
+
+.mc-value {
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, "Cascadia Code", monospace;
+}
+.mc-label {
+  font-size: 0.67rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  opacity: 0.75;
+}
+.mc-delta {
+  font-size: 0.7rem;
+  opacity: 0.65;
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+

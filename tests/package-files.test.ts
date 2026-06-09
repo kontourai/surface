@@ -63,12 +63,13 @@ test("embedded console assets do not leak template literals into public declarat
 });
 
 test("Surface Console assets are edited as source files and generated before build", async () => {
-  const [packageJson, scriptModule, stylesModule, clientSource, styleSource] = await Promise.all([
+  const [packageJson, scriptModule, stylesModule, clientSource, styleSource, tokensSource] = await Promise.all([
     readPackageJson(),
     readFile("src/console/script.ts", "utf8"),
     readFile("src/console/styles.ts", "utf8"),
     readFile("src/console/client/index.js", "utf8"),
     readFile("src/console/styles/index.css", "utf8"),
+    readFile("src/console/styles/parts/01-tokens.css", "utf8"),
   ]);
 
   assert.match(packageJson.scripts?.build ?? "", /build:console-assets/);
@@ -76,7 +77,8 @@ test("Surface Console assets are edited as source files and generated before bui
   assert.equal(scriptModule.trim(), 'export { CONSOLE_SCRIPT } from "./assets.generated.js";');
   assert.equal(stylesModule.trim(), 'export { CONSOLE_CSS } from "./assets.generated.js";');
   assert.match(clientSource, /src\/console\/client\/parts/);
-  assert.match(styleSource, /SURFACE CONSOLE/);
+  assert.match(styleSource, /src\/console\/styles\/parts/);
+  assert.match(tokensSource, /SURFACE CONSOLE/);
 });
 
 test("Surface Console client source is split into ordered concern files", async () => {
@@ -105,6 +107,41 @@ test("Surface Console client source is split into ordered concern files", async 
   assert.match(partSources[4], /function showClaimDetail/);
   assert.match(partSources[6], /function openClaimModal/);
   assert.match(partSources[7], /function renderRunPicker/);
+});
+
+test("Surface Console CSS source is split into ordered concern files", async () => {
+  const partFiles = [
+    "01-tokens.css",
+    "02-base-header.css",
+    "03-layout-feed.css",
+    "04-detail-sheet.css",
+    "05-context-help.css",
+    "06-gaps.css",
+    "07-evidence-details.css",
+    "08-authoring-modal.css",
+    "09-responsive.css",
+  ];
+  const [buildScript, styleSource, ...partSources] = await Promise.all([
+    readFile("scripts/build-console-assets.mjs", "utf8"),
+    readFile("src/console/styles/index.css", "utf8"),
+    ...partFiles.map((file) => readFile(`src/console/styles/parts/${file}`, "utf8")),
+  ]);
+  const discoveredPartFiles = (await readdir("src/console/styles/parts"))
+    .filter((file) => file.endsWith(".css"))
+    .sort();
+
+  assert.deepEqual(discoveredPartFiles, [...partFiles].sort());
+  assert.match(styleSource, /src\/console\/styles\/parts/);
+  for (const file of partFiles) assert.match(buildScript, new RegExp(`"${file}"`));
+  assert.match(partSources[0], /SURFACE CONSOLE/);
+  assert.match(partSources[1], /Reset & Base/);
+  assert.match(partSources[2], /Claim Cards/);
+  assert.match(partSources[3], /Detail Sheet/);
+  assert.match(partSources[4], /Contextual Help/);
+  assert.match(partSources[5], /Gap Items/);
+  assert.match(partSources[6], /Observed Result/);
+  assert.match(partSources[7], /Claim Authoring Modal/);
+  assert.match(partSources[8], /Reduced motion/);
 });
 
 test("Surface Console generated assets are synced with source assets", async () => {

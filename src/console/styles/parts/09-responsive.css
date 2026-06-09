@@ -1,0 +1,96 @@
+/* ── 22. Desktop: 2-column Header + Master-Detail Layout ────── */
+@media (min-width: 900px) {
+  .dash-header {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 1rem 1.75rem;
+    padding: 1rem 1.75rem;
+  }
+
+  .dash-metrics-row { justify-content: flex-end; }
+  .dash-metrics { justify-content: flex-end; }
+
+  /* Master-detail: body + inline panel side by side */
+  .dash-layout {
+    align-items: flex-start;
+    height: calc(100svh - var(--dash-header-height, 96px));
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .dash-body {
+    max-width: none;
+    margin: 0;
+    padding: 1rem 1.75rem 5rem;
+    transition: none;
+    height: 100%;
+    overflow-y: auto;
+  }
+
+  /* Override [hidden] so the panel stays in flow and can animate width */
+  .detail-sheet[hidden] {
+    display: flex;
+    width: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  /* Inline sticky panel */
+  .detail-sheet {
+    position: relative;
+    top: auto;
+    align-self: flex-start;
+    height: 100%;
+    /* reset mobile positioning */
+    left: auto; right: auto; bottom: auto;
+    max-height: none;
+    border-radius: 0;
+    border: none;
+    border-left: 1px solid var(--line);
+    box-shadow: none;
+    /* animate width instead of transform */
+    width: 0;
+    flex-shrink: 0;
+    overflow: hidden;
+    transform: none !important;
+    transition: width 0.32s var(--ease-out);
+  }
+
+  .detail-sheet:not([hidden]) {
+    width: min(440px, 42vw);
+    overflow: hidden;
+    transform: none;
+    pointer-events: auto;
+  }
+
+  /* Sheet content: fixed width so it doesn't reflow during the width animation */
+  .detail-sheet .sheet-scroll {
+    width: min(440px, 42vw);
+    flex-shrink: 0;
+    height: 100%;
+    overflow-x: hidden;
+  }
+
+  .sheet-drag { display: none; }
+  .sheet-backdrop { display: none !important; }
+
+  /* Don't lock body scroll on desktop */
+  body.sheet-open { overflow: auto; }
+}
+
+/* ── 23. Large desktop: wider padding ───────────────────────── */
+@media (min-width: 1200px) {
+  .dash-header { padding-left: 2.5rem; padding-right: 2.5rem; }
+  .dash-body   { padding-left: 2.5rem; padding-right: 2.5rem; }
+}
+
+/* ── 24. Reduced motion ─────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

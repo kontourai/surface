@@ -1,0 +1,241 @@
+/* ── 17. Observed Result ────────────────────────────────────── */
+.observed-result {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.observed-result p {
+  margin: 0;
+  color: var(--ink);
+  line-height: 1.45;
+}
+
+.observed-grid { display: grid; gap: 0.4rem; }
+
+.observed-row {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: start;
+  gap: 0.55rem;
+}
+
+.observed-row span {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  padding-top: 0.1rem;
+}
+
+.observed-row code,
+.observed-output pre {
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  overflow-wrap: anywhere;
+}
+
+.observed-row code { color: var(--ink); font-size: 0.82rem; }
+
+.observed-output {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--raised);
+  overflow: hidden;
+}
+
+.observed-output summary {
+  cursor: pointer;
+  padding: 0.55rem 0.75rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  user-select: none;
+  transition: color 0.1s ease;
+}
+
+.observed-output summary:hover { color: var(--ink); }
+
+.observed-output pre {
+  max-height: 360px;
+  overflow: auto;
+  margin: 0;
+  padding: 0.75rem;
+  border-top: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 0.77rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+/* ── 18a. Integrity Scope ──────────────────────────────────── */
+.integrity-scope {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.integrity-group {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--raised);
+}
+
+.integrity-group > span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: ui-monospace, "Cascadia Code", monospace;
+}
+
+.integrity-group code {
+  display: inline-block;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.12rem 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--soft);
+  color: var(--ink);
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  font-size: 0.76rem;
+  overflow-wrap: anywhere;
+}
+
+.integrity-group em {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-style: normal;
+}
+
+/* ── 18. Action List ────────────────────────────────────────── */
+.action-list { display: grid; gap: 0.45rem; }
+
+.action-item {
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--raised);
+  transition: border-color 0.1s ease;
+}
+
+.action-item:hover { border-color: color-mix(in srgb, var(--blue) 30%, transparent); }
+
+.action-type {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--blue);
+  margin-bottom: 0.25rem;
+  font-family: ui-monospace, "Cascadia Code", monospace;
+}
+
+.action-item p { margin: 0; font-size: 0.87rem; line-height: 1.45; color: var(--ink); }
+
+.action-path {
+  display: inline-block;
+  margin: 0.35rem 0.3rem 0 0;
+  font-size: 0.73rem;
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  padding: 0.1rem 0.42rem;
+  background: var(--soft);
+  border-radius: 4px;
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+
+.more-note {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.plugin-attribution {
+  font-size: 0.73rem;
+  color: var(--muted);
+  border-left: 2px solid var(--blue);
+  padding-left: 0.55rem;
+  margin-top: 0.4rem;
+  line-height: 1.45;
+}
+
+/* ── 19. File Chips ─────────────────────────────────────────── */
+.file-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+
+.file-chip {
+  font-size: 0.71rem;
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  padding: 0.15rem 0.48rem;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 0.1s ease, border-color 0.1s ease;
+}
+
+.file-chip:hover {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--ink) 22%, transparent);
+}
+
+/* ── 20. Raw Details Accordion ──────────────────────────────── */
+.sheet-raw {
+  margin-top: 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.sheet-raw summary {
+  padding: 0.65rem 0.9rem;
+  font-size: 0.79rem;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+  background: var(--raised);
+  transition: color 0.1s ease;
+  list-style: none;
+}
+
+.sheet-raw summary::-webkit-details-marker { display: none; }
+.sheet-raw summary::before {
+  content: "▶ ";
+  font-size: 0.6rem;
+  vertical-align: middle;
+}
+details[open] > .sheet-raw summary::before,
+.sheet-raw details[open] summary::before { content: "▼ "; }
+
+.sheet-raw summary:hover { color: var(--ink); }
+
+.sheet-raw pre {
+  margin: 0;
+  padding: 0.9rem;
+  font-size: 0.74rem;
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 400px;
+  overflow: auto;
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+  color: var(--ink-2);
+  line-height: 1.5;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
