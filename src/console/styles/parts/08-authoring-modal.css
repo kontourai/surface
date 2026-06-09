@@ -1,0 +1,138 @@
+/* ── 21. Claim Authoring Modal ──────────────────────────────── */
+.claim-modal {
+  width: min(560px, 95vw);
+  max-height: 88dvh;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-xl);
+}
+
+.claim-modal::backdrop {
+  background: rgba(0, 0, 0, 0.48);
+  backdrop-filter: blur(3px);
+}
+
+.claim-modal form { margin: 0; }
+
+.modal-title {
+  margin: 0;
+  padding: 1.1rem 1.5rem;
+  border-bottom: 1px solid var(--line);
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-family: ui-serif, Georgia, serif;
+  letter-spacing: -0.01em;
+}
+
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+  max-height: 65dvh;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.form-field label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.01em;
+}
+
+.form-field input,
+.form-field select {
+  min-height: 38px;
+  background: var(--input-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.875rem;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.form-field input:focus,
+.form-field select:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 20%, transparent);
+}
+
+.form-field input::placeholder { color: var(--muted); }
+
+.field-hint {
+  margin: 0;
+  min-height: 1.1rem;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--line);
+  background: var(--raised);
+}
+
+.modal-actions button:not(.btn-primary) {
+  min-height: 36px;
+  padding: 0.45rem 0.875rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-weight: 700;
+  font-size: 0.86rem;
+  color: var(--ink-2);
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.modal-actions button:not(.btn-primary):hover {
+  border-color: color-mix(in srgb, var(--ink) 25%, transparent);
+  background: var(--raised);
+}
+
+.btn-danger {
+  min-height: 36px;
+  padding: 0.45rem 0.875rem;
+  border: 1px solid color-mix(in srgb, var(--red) 45%, transparent);
+  border-radius: var(--radius-sm);
+  background: var(--red-bg);
+  color: var(--red);
+  font-weight: 800;
+  font-size: 0.86rem;
+}
+
+.btn-danger:hover,
+.btn-danger:focus-visible {
+  border-color: var(--red);
+  background: color-mix(in srgb, var(--red) 16%, var(--surface));
+  outline: none;
+}
+
+.btn-danger:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.delete-confirm-copy {
+  margin: 0 0 0.75rem;
+  color: var(--ink-2);
+  line-height: 1.6;
+}
+

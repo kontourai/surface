@@ -1,0 +1,373 @@
+/* ── 10. Sheet Backdrop ─────────────────────────────────────── */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.42);
+  z-index: 99;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  animation: fadeIn 0.18s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── 11. Detail Sheet — Mobile: bottom sheet ────────────────── */
+.detail-sheet {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 100;
+  max-height: 92dvh;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-bottom: none;
+  box-shadow: 0 -8px 48px rgba(0, 0, 0, 0.22);
+  transform: translateY(100%);
+  transition: transform 0.3s var(--ease-out);
+}
+
+.detail-sheet:not([hidden]) {
+  transform: translateY(0);
+  display: flex;
+}
+
+/* Drag handle */
+.sheet-drag {
+  flex-shrink: 0;
+  width: 40px;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--line);
+  margin: 12px auto 0;
+  cursor: grab;
+  transition: background 0.15s ease;
+}
+
+.sheet-drag:active { cursor: grabbing; }
+.detail-sheet:hover .sheet-drag { background: var(--muted); }
+
+/* Close button */
+.sheet-close {
+  position: absolute;
+  top: 0.875rem;
+  right: 0.875rem;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  font-size: 0.82rem;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  transition: background 0.12s ease, color 0.12s ease;
+  line-height: 1;
+}
+
+.sheet-close:hover {
+  color: var(--ink);
+  background: var(--soft);
+  border-color: color-mix(in srgb, var(--ink) 20%, transparent);
+}
+
+/* Scrollable content area */
+.sheet-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 1rem 1.25rem 3rem;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+  word-break: break-word;
+}
+
+/* Sheet top meta row */
+.sheet-top {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding-right: 2.6rem;
+  flex-wrap: wrap;
+}
+
+/* Status badge (sheet header) */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 99px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  background: var(--soft);
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+
+.badge-good  {
+  background: var(--green-bg);
+  color: var(--green);
+  border-color: color-mix(in srgb, var(--green) 35%, transparent);
+}
+.badge-bad   {
+  background: var(--red-bg);
+  color: var(--red);
+  border-color: color-mix(in srgb, var(--red) 35%, transparent);
+}
+.badge-warn  {
+  background: var(--orange-bg);
+  color: var(--orange);
+  border-color: color-mix(in srgb, var(--orange) 35%, transparent);
+}
+.badge-amber {
+  background: var(--amber-bg);
+  color: var(--amber);
+  border-color: color-mix(in srgb, var(--amber) 35%, transparent);
+}
+.badge-muted {
+  background: var(--soft);
+  color: var(--muted);
+}
+
+.sheet-surface {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--blue);
+  font-family: ui-monospace, "Cascadia Code", monospace;
+}
+
+/* Sheet typography */
+.sheet-title {
+  margin: 0 0 0.25rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  font-family: ui-serif, Georgia, "Times New Roman", serif;
+}
+
+.sheet-subtitle {
+  margin: 0 0 1.1rem;
+  font-size: 0.74rem;
+  color: var(--muted);
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+
+.sheet-description {
+  margin: 0.3rem 0 0.85rem;
+  font-size: 0.86rem;
+  color: var(--ink-2);
+  line-height: 1.6;
+}
+
+/* Status guidance — contextual hint with optional actionable command */
+.detail-guidance {
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--blue);
+  background: var(--blue-bg);
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.detail-guidance--warn {
+  border-left-color: var(--orange);
+  background: var(--orange-bg);
+}
+
+.detail-guidance--bad {
+  border-left-color: var(--red);
+  background: var(--red-bg);
+}
+
+.guidance-text {
+  margin: 0 0 0.6rem;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.guidance-text:only-child { margin-bottom: 0; }
+
+.guidance-command {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0.3rem 0.4rem 0.3rem 0.65rem;
+  margin-bottom: 0.4rem;
+}
+
+.guidance-cmd-text {
+  flex: 1;
+  min-width: 0;
+  font-family: ui-monospace, "Cascadia Code", "SF Mono", monospace;
+  font-size: 0.8rem;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guidance-copy-btn {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--raised);
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.1s ease, border-color 0.1s ease, background 0.1s ease;
+}
+
+.guidance-copy-btn:hover,
+.guidance-copy-btn:focus-visible {
+  color: var(--blue);
+  border-color: color-mix(in srgb, var(--blue) 40%, transparent);
+  background: var(--blue-bg);
+  outline: none;
+}
+
+.guidance-copy-btn.copied {
+  color: var(--green);
+  border-color: color-mix(in srgb, var(--green) 40%, transparent);
+  background: var(--green-bg);
+}
+
+.guidance-copy-btn .icon-copy { display: block; }
+.guidance-copy-btn .icon-check { display: none; }
+.guidance-copy-btn.copied .icon-copy { display: none; }
+.guidance-copy-btn.copied .icon-check { display: block; }
+
+.guidance-note {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+  line-height: 1.45;
+  font-style: italic;
+}
+
+/* Sheet action buttons */
+.sheet-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.1rem;
+}
+
+.sheet-action-btn {
+  min-height: 34px;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--raised);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ink-2);
+  transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease;
+}
+
+.sheet-action-btn:hover,
+.sheet-action-btn:focus-visible {
+  border-color: var(--blue);
+  color: var(--blue);
+  background: var(--blue-bg);
+  outline: none;
+}
+
+.sheet-action-btn--danger { color: var(--red); }
+.sheet-action-btn--danger:hover,
+.sheet-action-btn--danger:focus-visible {
+  border-color: var(--red);
+  color: var(--red);
+  background: var(--red-bg);
+}
+
+/* Icon-only buttons in sheet-top (edit / delete) */
+.sheet-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.sheet-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--raised);
+  color: var(--muted);
+  cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease;
+  flex-shrink: 0;
+}
+
+.sheet-icon-btn:hover,
+.sheet-icon-btn:focus-visible {
+  border-color: var(--blue);
+  color: var(--blue);
+  background: var(--blue-bg);
+  outline: none;
+}
+
+.sheet-icon-btn--danger:hover,
+.sheet-icon-btn--danger:focus-visible {
+  border-color: var(--red);
+  color: var(--red);
+  background: var(--red-bg);
+}
+
+/* Sheet sections */
+.sheet-section { margin-bottom: 1.25rem; }
+.sheet-section p { margin: 0; font-size: 0.9rem; line-height: 1.55; color: var(--ink); }
+
+/* Divergence banner */
+.divergence-banner {
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--amber);
+  background: var(--amber-bg);
+  font-size: 0.87rem;
+  line-height: 1.5;
+  margin-bottom: 1rem;
+  border: 1px solid color-mix(in srgb, var(--amber) 30%, transparent);
+  border-left: 3px solid var(--amber);
+}
+.divergence-banner p { margin: 0; color: var(--ink); }
+
+/* Section label */
+.section-label {
+  margin: 0 0 0.5rem;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: ui-monospace, "Cascadia Code", monospace;
+}
+

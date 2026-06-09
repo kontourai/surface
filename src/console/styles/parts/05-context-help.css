@@ -1,0 +1,104 @@
+/* ── 12. Contextual Help ─────────────────────────────────────── */
+.help-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.help-trigger {
+  display: inline-grid;
+  place-items: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--raised);
+  color: var(--muted);
+  font: 700 0.68rem/1 system-ui, sans-serif;
+  cursor: help;
+  transition: border-color 0.1s ease, color 0.1s ease;
+}
+
+.help-trigger:hover,
+.help-trigger:focus-visible,
+.help-wrap.help-open .help-trigger {
+  border-color: var(--blue);
+  color: var(--blue);
+  outline: none;
+}
+
+.help-popover {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 0.5rem);
+  left: 50%;
+  width: min(18rem, calc(100vw - 2rem));
+  transform: translateX(-50%) translateY(-0.25rem);
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-lg);
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1.5;
+  text-transform: none;
+  letter-spacing: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.14s ease, transform 0.14s ease;
+}
+
+.help-popover[data-floating="true"] {
+  position: fixed;
+  z-index: 10000;
+  top: 0;
+  left: 0;
+  width: var(--help-popover-width, min(18rem, calc(100vw - 2rem)));
+  max-width: calc(100vw - 1.5rem);
+  transform: translateY(-0.25rem);
+}
+
+.help-popover::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: calc(50% - 5px);
+  width: 10px;
+  height: 10px;
+  border-left: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+  transform: rotate(45deg);
+}
+
+.help-popover[data-floating="true"]::before {
+  left: calc(var(--help-arrow-left, 50%) - 5px);
+}
+
+.help-popover[data-floating="true"][data-placement="top"]::before {
+  top: auto;
+  bottom: -6px;
+  border-left: 0;
+  border-top: 0;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.help-wrap:hover .help-popover,
+.help-wrap:focus-within .help-popover,
+.help-wrap.help-open .help-popover {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+
+.help-wrap:hover .help-popover[data-floating="true"],
+.help-wrap:focus-within .help-popover[data-floating="true"],
+.help-wrap.help-open .help-popover[data-floating="true"] {
+  transform: translateY(0);
+}
+
