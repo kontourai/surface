@@ -28,7 +28,7 @@ The root module may re-export `startConsoleServer` and `SurfaceConsoleConfig` / 
 | Projections | `src/analytics.ts`, `src/linked.ts`, `src/derivation-drilldown.ts` | Public | Keep public | These are useful Builder, Verifier, and Agent Mode read models over reports. |
 | Builder helpers | `src/consumer-sdk.ts`, `src/claim-authoring.ts`, `src/store.ts`, `src/policy-helpers.ts`, `src/attestation.ts` | Public | Keep public, review before 1.0 | These are convenience interfaces. They carry more product opinion than the kernel, but they are documented and tested as package surface today. |
 | Extensions and adapters | `src/extension.ts`, `src/adapter.ts`, `src/adapters/` | Public | Keep public | Producers need a supported seam for vocabulary, claim types, and input adaptation. |
-| CLI implementation | `src/cli.ts` | Internal by convention | Keep internal | The package exposes `bin/surface.mjs`, not `src/cli.ts`. Tests may import it directly, but package consumers should use the CLI. |
+| CLI implementation | `src/cli.ts`, `src/commands/` | Internal by convention | Keep internal | The package exposes `bin/surface.mjs`, not source modules. `src/cli.ts` stays as the small command dispatcher; private command implementations live under `src/commands/`. Tests may import `runCli` directly, but package consumers should use the CLI. |
 | Surface Console runtime | `src/console/server.ts`, `src/console/projection.ts`, `src/console/types.ts` | Partly public through `startConsoleServer` and config types | Keep public entry minimal | `startConsoleServer` is currently exported. Routes and projection internals should stay Surface-owned until a real external embedding use case requires a deeper Console interface. |
 | Surface Console assets | `src/console/client/parts/`, `src/console/client/index.js`, `src/console/styles/parts/`, `src/console/styles/index.css`, `src/console/assets.generated.ts`, `src/console/script.ts`, `src/console/styles.ts`, `src/console/shell.ts` | Internal by convention | Keep internal, generated behind a build step | The editable browser script and stylesheet are split into ordered concern files. `assets.generated.ts`, `src/console/client/index.js`, and `src/console/styles/index.css` are checked-in generated files so builds and package output stay deterministic, while `script.ts` and `styles.ts` preserve the server imports. |
 
@@ -45,6 +45,8 @@ The root module may re-export `startConsoleServer` and `SurfaceConsoleConfig` / 
 | `src/types.ts` | ~600 lines | Broad portable contract file. | Keep together while schema versioning is active; split only if exported type groups gain independent lifecycle. |
 | `src/validate.ts` | Public entry | Orchestrates trust-input validation behind `validateTrustInput`. | Keep the exported function stable; move implementation-only helpers under `src/validation/`. |
 | `src/validation/` | Split source | Private validation constants, primitive guards, record validators, and cross-reference checks. | Keep private; add modules here when new schema families need locality. |
+| `src/cli.ts` | Public bin facade | Dispatches `surface` command names behind `bin/surface.mjs`. | Keep tiny and stable; add command branches here only when the CLI gains a new top-level command. |
+| `src/commands/` | Split source | Private CLI command implementations grouped by report, query, claim authoring, console startup, help text, and shared parsing/report loading. | Keep private; preserve command names, flags, defaults, and output when moving code across modules. |
 
 ## Guardrails Added
 

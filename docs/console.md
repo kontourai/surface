@@ -46,7 +46,7 @@ Surface keeps its own standalone Surface Console. Keep product-specific trust be
 
 | Area | Location | Purpose |
 |------|----------|---------|
-| CLI command | `src/cli.ts` | Parses `surface console` flags and starts the local server. |
+| CLI command | `src/cli.ts`, `src/commands/console.ts` | Parses `surface console` flags and starts the local server. |
 | Local server and API routes | `src/console/server.ts` | Serves the HTML shell, static assets, read model, projection, run list, and claim authoring endpoints. |
 | Projection contract | `src/console/projection.ts`, `src/console/types.ts` | Converts producer read models into the UI shape consumed by the Console. |
 | Standalone UI shell | `src/console/shell.ts` | Owns the dependency-free HTML shell served by `/`. |
