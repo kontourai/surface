@@ -1,4 +1,4 @@
-export const CONSOLE_CSS = `
+export const CONSOLE_CSS: string = `
 /* ============================================================
    SURFACE CONSOLE — Premium Design System
    Dark-first, brand-aligned, developer-tool aesthetic

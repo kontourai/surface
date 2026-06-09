@@ -1,12 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { stat, readFile } from "node:fs/promises";
 
 type PackageJson = {
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
+  exports?: Record<string, unknown>;
   files?: string[];
   peerDependencies?: Record<string, string>;
+  types?: string;
 };
 
 async function readPackageJson(): Promise<PackageJson> {
@@ -31,6 +33,26 @@ test("package files whitelist excludes generated example output", async () => {
   assert.equal(files.includes("dist/examples/"), false);
   assert.equal(files.includes("dist/bin/"), false);
   assert.equal(files.some((entry) => entry.includes("node_modules")), false);
+});
+
+test("package entrypoint exposes explicit ESM and TypeScript contracts", async () => {
+  const packageJson = await readPackageJson();
+
+  assert.equal(packageJson.types, "./dist/src/index.d.ts");
+  assert.deepEqual(packageJson.exports?.["."], {
+    types: "./dist/src/index.d.ts",
+    import: "./dist/src/index.js",
+  });
+});
+
+test("embedded console assets do not leak template literals into public declarations", async () => {
+  const [scriptDeclaration, stylesDeclaration] = await Promise.all([
+    stat("dist/src/console/script.d.ts"),
+    stat("dist/src/console/styles.d.ts"),
+  ]);
+
+  assert.ok(scriptDeclaration.size < 200, `script declaration is too large: ${scriptDeclaration.size}`);
+  assert.ok(stylesDeclaration.size < 200, `styles declaration is too large: ${stylesDeclaration.size}`);
 });
 
 test("Console Kit stays a development asset source, not a runtime dependency", async () => {
