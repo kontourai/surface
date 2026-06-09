@@ -40,6 +40,8 @@ These paths are local build, verification, cache, or workflow output and should 
 - `.flow-agents/`
 - `.surface/claims/`, `.surface/reports/`, `.surface/runs/`, `.surface/cache/`
 
+The same boundary applies when these artifact directories appear under examples. For example, `examples/external-adapter/dist/`, `examples/external-adapter/node_modules/`, and `examples/external-adapter/.flow-agents/` are local outputs from validating the package-shaped adapter example, not source.
+
 `.agents/` is different: it can hold durable agent bundle files and is intentionally not gitignored.
 
 ## Release Boundary

@@ -42,6 +42,17 @@ const ignoredGeneratedOrRuntimePaths = [
   ".surface/cache/",
 ];
 
+const generatedOrRuntimePathSegments = [
+  ".flow-agents",
+  ".npm-pack-cache",
+  ".omx",
+  "dist",
+  "docs-site",
+  "node_modules",
+  "playwright-report",
+  "test-results",
+];
+
 const trackedGeneratedOrRuntimePatterns = [
   /^dist\//,
   /^docs-site\//,
@@ -88,6 +99,8 @@ if (gitignore.split(/\r?\n/).some((line) => line.trim() === ".agents/")) {
 for (const file of trackedFiles) {
   const matched = trackedGeneratedOrRuntimePatterns.find((pattern) => pattern.test(file));
   if (matched) throw new Error(`Tracked generated/runtime artifact matched ${matched}: ${file}`);
+  const pathSegment = generatedOrRuntimePathSegments.find((segment) => file.split("/").includes(segment));
+  if (pathSegment) throw new Error(`Tracked generated/runtime artifact contains ${pathSegment}: ${file}`);
 }
 
 for (const fileEntry of packageFiles) {
