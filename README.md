@@ -56,14 +56,14 @@ The dependency direction is one-way: producers depend on Surface; Surface does n
 - `bin/` — package CLI launcher; `surface` resolves here before loading built code from `dist/`.
 - `src/` — TypeScript Surface library, CLI implementation, derivation kernel, reporting, adapters, and Console runtime.
 - `src/adapters/` — built-in adapter registry and native `surface` passthrough adapter.
-- `src/console/` — local Surface Console server, read-model projection, and static UI assets.
+- `src/console/` — local Surface Console server, read-model projection, and dependency-free UI assets.
 - `schemas/` — JSON schema contracts for Surface inputs, reports, policies, evidence, and events.
 - `examples/` — sample Surface inputs and package-shaped producer examples.
 - `examples/external-adapter/` — canonical external adapter example for product-owned producer logic.
 - `tests/` — Node test coverage for library, CLI, adapter, Console, and docs behavior.
-- `tests/browser/` — Playwright coverage for the generated docs site.
+- `tests/browser/` — Playwright coverage for the generated docs site and the standalone Surface Console.
 - `docs/` — source documentation. Some pages publish to the generated site; repo-only references stay here.
-- `scripts/` — repo maintenance, docs build, content-boundary, and hook setup scripts.
+- `scripts/` — repo maintenance, docs build, package-boundary, content-boundary, and hook setup scripts.
 - `.github/workflows/` — CI and GitHub Pages publishing workflow definitions.
 - `.githooks/` — repo-owned local Git hooks installed by `npm run setup:repo-hooks`.
 - `agents/` — tracked agent/runtime resources that are part of the repo.
