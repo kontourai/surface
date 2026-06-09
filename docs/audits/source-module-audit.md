@@ -57,6 +57,7 @@ The root module may re-export `startConsoleServer` and `SurfaceConsoleConfig` / 
 - Console asset constants are typed as `string` so generated declarations expose a small interface instead of embedded asset contents.
 - Package tests fail if the generated Console asset declarations grow beyond a small threshold.
 - `npm run typecheck` fails if `src/console/assets.generated.ts`, `src/console/client/index.js`, or `src/console/styles/index.css` is stale relative to `src/console/client/parts/` or `src/console/styles/parts/`.
+- `npm run check:generated-boundaries` fails if generated/runtime directories are tracked, package files publish source/runtime noise, generated Console files lose their markers, or `.agents/` is accidentally gitignored.
 
 ## Active Script Classification
 
@@ -76,6 +77,7 @@ Every `package.json` script is an active repo workflow, release guard, or contri
 | `sync:console-kit` | Build | Copies docs-site token assets from the installed public `@kontourai/console-kit` package. |
 | `check:console-kit-assets` | Guard | Fails when generated docs-site Console Kit assets are stale. |
 | `check:doc-links` | Guard | Fails when local relative Markdown links in repo docs do not resolve. |
+| `check:generated-boundaries` | Guard | Fails when generated/runtime artifacts blur source, gitignore, or package boundaries. |
 | `check:package-contents` | Release guard | Verifies the npm tarball includes only intended files. |
 | `surface:report` | Smoke test | Builds and runs the CLI report command. |
 | `surface:summary` | Smoke test | Builds and runs the CLI summary report used by `verify`. |

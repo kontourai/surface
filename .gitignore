@@ -1,4 +1,7 @@
 node_modules/
+
+# Generated build and verification output. Source lives in src/, docs/, schemas/,
+# examples/, scripts/, and tests/; these paths are regenerated locally.
 dist/
 docs-site/
 test-results/
@@ -6,7 +9,10 @@ playwright-report/
 .npm-pack-cache/
 *.tsbuildinfo
 
+# Local workflow/runtime telemetry. Durable agent bundle files may live in
+# .agents/ and are intentionally not ignored.
 .omx/
+.flow-agents/
 
 # Surface derived state — regenerated each run, never check in.
 # See SURFACE-PRIVACY.md for the input-vs-derived split.
@@ -14,5 +20,3 @@ playwright-report/
 .surface/reports/
 .surface/runs/
 .surface/cache/
-
-.flow-agents/

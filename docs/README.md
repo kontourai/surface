@@ -86,6 +86,7 @@ The public site is built from the page list in `scripts/build-pages-site.mjs`. C
 
 - [Releasing](maintenance/RELEASING.md) — npm publish checklist and trusted publishing setup
 - [Repo Hooks](maintenance/repo-hooks.md) — local contributor hook setup and validation
+- [Generated And Runtime Artifacts](maintenance/generated-artifacts.md) — what to edit, what is generated, and what stays local
 
 ## Package Boundary
 
