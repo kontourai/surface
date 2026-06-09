@@ -55,7 +55,7 @@
     "validate:repo-hooks": "node scripts/validate-repo-hooks.cjs"
   },
   "devDependencies": {
-    "@kontourai/console-kit": "^0.1.0",
+    "@kontourai/console-kit": "^0.1.1",
     "@playwright/test": "^1.60.0",
     "@types/node": "^25.6.0",
     "typescript": "^5.8.0"
