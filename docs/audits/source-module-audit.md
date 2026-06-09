@@ -75,6 +75,7 @@ Every `package.json` script is an active repo workflow, release guard, or contri
 | `docs:build` | Build | Syncs Console Kit docs assets and builds the static docs site. |
 | `sync:console-kit` | Build | Copies docs-site token assets from the installed public `@kontourai/console-kit` package. |
 | `check:console-kit-assets` | Guard | Fails when generated docs-site Console Kit assets are stale. |
+| `check:doc-links` | Guard | Fails when local relative Markdown links in repo docs do not resolve. |
 | `check:package-contents` | Release guard | Verifies the npm tarball includes only intended files. |
 | `surface:report` | Smoke test | Builds and runs the CLI report command. |
 | `surface:summary` | Smoke test | Builds and runs the CLI summary report used by `verify`. |
