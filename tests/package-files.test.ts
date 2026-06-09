@@ -94,6 +94,7 @@ test("package scripts are classified active repo workflows", async () => {
     "check:console-assets",
     "check:console-kit-assets",
     "check:content-boundary",
+    "check:doc-links",
     "check:package-contents",
     "docs:build",
     "prepare",
@@ -110,6 +111,7 @@ test("package scripts are classified active repo workflows", async () => {
     "verify",
   ]);
   assert.match(packageJson.scripts?.verify ?? "", /check-content-boundary/);
+  assert.match(packageJson.scripts?.verify ?? "", /check:doc-links/);
   assert.match(packageJson.scripts?.verify ?? "", /check:package-contents/);
   assert.match(packageJson.scripts?.verify ?? "", /test:browser/);
   assert.match(packageJson.scripts?.prepare ?? "", /npm run build/);
