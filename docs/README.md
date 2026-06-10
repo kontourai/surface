@@ -20,12 +20,13 @@ Keep new docs in the folder that matches the reader's intent. If a page is a dur
 
 ## Published Site Pages
 
-The public site is built from the grouped page list in `scripts/pages-site/pages.mjs`. It publishes the customer-facing docs: the product story (vision, concepts, use cases, principles), the builder guides (getting started, walkthrough, consumer SDK), the full reference set (CLI, Console, claim authoring, adapters, extension API, analytics, schemas, versioning, fixtures), the transparency specs, the architecture docs, and the roadmap.
+The public site is built from the grouped page list in `scripts/pages-site/pages.mjs`. Keep the index below aligned with that registry when adding, moving, or removing public pages; `tests/docs-site-pages.test.ts` verifies every published source page is linked here.
 
 Maintainer-only material stays repo-only: this index, brand language, ADRs, audits, and the `maintenance/` docs.
 
 ## Product Model
 
+- [Overview](index.md) — public homepage source for the generated docs site
 - [Concepts](product/concepts.md) — the trust model: claims, evidence traces, policies, Trust Snapshots, claim groups, status, and transparency gaps
 - [Use Cases](product/use-cases.md) — repo governance, public data trust, fact resolution, dependency audit
 - [Vision](product/vision.md) — product transparency thesis

@@ -5,6 +5,8 @@ This document is the operator checklist for cutting a release of `@kontourai/sur
 ## Preconditions
 
 - `npm run verify` passes
+- `npm run test:external-adapter` passes, proving the package-shaped producer example can consume the public SDK
+- `npm run test:package-smoke` passes, proving a fresh consumer can install the packed artifact, import the root entrypoint, and run the CLI
 - `npm run check:package-contents` passes, proving the packed file list matches the intended package boundary
 - package metadata in `package.json` is correct, including `types`, `exports`, `bin`, license, repository, and public access
 - vendored docs assets sourced from `@kontourai/console-kit` are limited to approved token CSS, or the upstream package declares explicit license metadata for any additional asset class
@@ -13,10 +15,11 @@ This document is the operator checklist for cutting a release of `@kontourai/sur
 ## Release Flow
 
 1. Update `package.json` version.
-2. Merge the release commit to `main`.
-3. Create and push a tag matching the package version, for example `v0.4.0`.
-4. Let `.github/workflows/publish-npm.yml` publish the package.
-5. Confirm the published tarball contents and README rendering on npm.
+2. Run `npm run verify` locally before opening the release PR.
+3. Merge the release commit to `main` after CI passes on Node 20 and Node 22.
+4. Create and push a tag matching the package version, for example `v0.5.1`.
+5. Confirm the `Publish NPM` workflow reruns verification, performs `npm pack --dry-run`, and either publishes with provenance or skips because the version already exists.
+6. Confirm the published tarball contents and README rendering on npm.
 
 ## Trusted Publishing
 
