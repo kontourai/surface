@@ -15,8 +15,8 @@ export function renderViewerPage() {
     <p>This viewer embeds the same read-only <code>&lt;surface-trust-panel&gt;</code> element any product can ship — see the <a href="trust-panel.html">Trust Panel embed guide</a>. To generate a report of your own, start with <a href="getting-started.html">Getting Started</a>.</p>
   </article>`;
 
-  const script = `<script src="surface-trust-panel.js"></script>
-<script>
+  const script = `<script type="module">
+import "./surface-trust-panel.js";
 (() => {
   const panel = document.getElementById("viewer-panel");
   const input = document.getElementById("viewer-input");

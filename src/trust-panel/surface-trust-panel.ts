@@ -5,17 +5,57 @@
 // and transparency gaps before relying on them. The element never mutates or
 // re-derives trust state; it only displays what the kernel derived.
 //
+// The compiled dist/src/trust-panel/surface-trust-panel.js is a self-contained
+// ES module with no imports — load it with <script type="module">. It reads
+// untrusted pasted JSON, so the local shapes below stay loose and every
+// rendered value is escaped.
+//
 // Usage:
-//   <script src="surface-trust-panel.js"></script>
+//   <script type="module" src="surface-trust-panel.js"></script>
 //   <surface-trust-panel></surface-trust-panel>
 //   document.querySelector("surface-trust-panel").report = reportJson;
 // or
 //   <surface-trust-panel src="./report.json"></surface-trust-panel>
 
+interface TrustPanelClaim {
+  id?: unknown;
+  status?: unknown;
+  subjectType?: unknown;
+  subjectId?: unknown;
+  surface?: unknown;
+  fieldOrBehavior?: unknown;
+  value?: unknown;
+  impactLevel?: unknown;
+  verificationPolicyId?: unknown;
+}
+
+interface TrustPanelEvidence {
+  claimId?: unknown;
+  evidenceType?: unknown;
+  method?: unknown;
+  sourceRef?: unknown;
+  excerptOrSummary?: unknown;
+}
+
+interface TrustPanelGap {
+  claimId?: unknown;
+  type?: unknown;
+  severity?: unknown;
+  message?: unknown;
+}
+
+interface TrustPanelReport {
+  source?: unknown;
+  generatedAt?: unknown;
+  claims?: unknown;
+  evidence?: unknown;
+  transparencyGaps?: unknown;
+}
+
 (() => {
   if (typeof customElements === "undefined" || customElements.get("surface-trust-panel")) return;
 
-  const STATUS_LABELS = {
+  const STATUS_LABELS: Record<string, string> = {
     unknown: "No evidence",
     proposed: "Pending review",
     assumed: "Assumed",
@@ -26,7 +66,7 @@
     rejected: "Rejected",
   };
 
-  const STATUS_KIND = {
+  const STATUS_KIND: Record<string, string> = {
     verified: "positive",
     stale: "caution",
     disputed: "negative",
@@ -99,36 +139,47 @@
   `;
 
   class SurfaceTrustPanel extends HTMLElement {
-    static get observedAttributes() {
+    static get observedAttributes(): string[] {
       return ["src"];
     }
 
-    #report = null;
+    #report: TrustPanelReport | null = null;
+    #shadow: ShadowRoot;
 
     constructor() {
       super();
-      this.attachShadow({ mode: "open" });
+      this.#shadow = this.attachShadow({ mode: "open" });
     }
 
-    connectedCallback() {
-      if (!this.#report && this.getAttribute("src")) this.#load(this.getAttribute("src"));
+    connectedCallback(): void {
+      // Re-apply a `report` set before the element was upgraded, so the
+      // property assignment reaches the class accessor instead of being
+      // shadowed by an own property.
+      if (Object.prototype.hasOwnProperty.call(this, "report")) {
+        const pending = (this as { report?: unknown }).report;
+        delete (this as { report?: unknown }).report;
+        this.report = pending;
+        return;
+      }
+      const src = this.getAttribute("src");
+      if (!this.#report && src) void this.#load(src);
       else this.#render();
     }
 
-    attributeChangedCallback(name, oldValue, newValue) {
-      if (name === "src" && newValue && newValue !== oldValue) this.#load(newValue);
+    attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void {
+      if (name === "src" && newValue && newValue !== oldValue) void this.#load(newValue);
     }
 
-    get report() {
+    get report(): TrustPanelReport | null {
       return this.#report;
     }
 
-    set report(value) {
-      this.#report = value ?? null;
+    set report(value: unknown) {
+      this.#report = (value as TrustPanelReport | null) ?? null;
       this.#render();
     }
 
-    async #load(src) {
+    async #load(src: string): Promise<void> {
       try {
         const response = await fetch(src);
         if (!response.ok) throw new Error(`Failed to load report: HTTP ${response.status}`);
@@ -138,7 +189,7 @@
       }
     }
 
-    #render() {
+    #render(): void {
       const report = this.#report;
       if (!report) {
         this.#renderShell('<p class="empty">No trust report loaded yet.</p>');
@@ -148,16 +199,17 @@
         this.#renderError("This JSON does not look like a trust report: no claims array.");
         return;
       }
-      if (report.claims.length > 0 && report.claims.every((claim) => !claim.status)) {
+      const claims = report.claims as TrustPanelClaim[];
+      if (claims.length > 0 && claims.every((claim) => !claim.status)) {
         this.#renderError(
           "This looks like a TrustInput rather than a derived report. Run `surface report --input <file>` first, then load the report output.",
         );
         return;
       }
 
-      const counts = new Map();
-      for (const claim of report.claims) {
-        const status = claim.status ?? "unknown";
+      const counts = new Map<string, number>();
+      for (const claim of claims) {
+        const status = typeof claim.status === "string" ? claim.status : "unknown";
         counts.set(status, (counts.get(status) ?? 0) + 1);
       }
       const chips = [...counts.entries()]
@@ -167,49 +219,49 @@
         )
         .join("");
 
-      const claims = report.claims.map((claim) => this.#renderClaim(claim, report)).join("");
+      const claimRows = claims.map((claim) => this.#renderClaim(claim, report)).join("");
 
       this.#renderShell(`
         <div class="panel-header">
           <p class="panel-title">Surface Transparency</p>
-          <p class="panel-meta">${escapeHtml(String(report.source ?? ""))}${report.generatedAt ? ` · ${escapeHtml(String(report.generatedAt))}` : ""}</p>
+          <p class="panel-meta">${escapeHtml(asText(report.source))}${report.generatedAt ? ` · ${escapeHtml(asText(report.generatedAt))}` : ""}</p>
         </div>
         <div class="chips">${chips}</div>
-        ${claims || '<p class="empty">The report contains no claims.</p>'}
+        ${claimRows || '<p class="empty">The report contains no claims.</p>'}
         <p class="footnote">Derived by Kontour Surface. Status is derived by construction — inspect the evidence and gaps before relying on a claim.</p>
       `);
     }
 
-    #renderClaim(claim, report) {
-      const status = claim.status ?? "unknown";
-      const evidence = (report.evidence ?? []).filter((item) => item.claimId === claim.id);
-      const gaps = (report.transparencyGaps ?? []).filter((item) => item.claimId === claim.id);
+    #renderClaim(claim: TrustPanelClaim, report: TrustPanelReport): string {
+      const status = typeof claim.status === "string" ? claim.status : "unknown";
+      const evidence = asArray<TrustPanelEvidence>(report.evidence).filter((item) => item.claimId === claim.id);
+      const gaps = asArray<TrustPanelGap>(report.transparencyGaps).filter((item) => item.claimId === claim.id);
       const evidenceList = evidence
         .map(
           (item) =>
-            `<li><strong>${escapeHtml(String(item.evidenceType ?? "evidence"))}</strong> via ${escapeHtml(String(item.method ?? "unknown method"))} — ${escapeHtml(String(item.excerptOrSummary ?? item.sourceRef ?? ""))}</li>`,
+            `<li><strong>${escapeHtml(asText(item.evidenceType, "evidence"))}</strong> via ${escapeHtml(asText(item.method, "unknown method"))} — ${escapeHtml(asText(item.excerptOrSummary ?? item.sourceRef))}</li>`,
         )
         .join("");
       const gapList = gaps
         .map(
           (item) =>
-            `<li class="gap" data-severity="${escapeHtml(String(item.severity ?? ""))}">${escapeHtml(String(item.type ?? "gap"))} — ${escapeHtml(String(item.message ?? ""))}</li>`,
+            `<li class="gap" data-severity="${escapeHtml(asText(item.severity))}">${escapeHtml(asText(item.type, "gap"))} — ${escapeHtml(asText(item.message))}</li>`,
         )
         .join("");
 
       return `<details class="claim">
         <summary>
           <span class="chip" data-kind="${STATUS_KIND[status] ?? "neutral"}">${escapeHtml(STATUS_LABELS[status] ?? status)}</span>
-          <span class="claim-field">${escapeHtml(String(claim.fieldOrBehavior ?? claim.id))}</span>
-          <span class="claim-subject">${escapeHtml(String(claim.subjectType ?? ""))}: ${escapeHtml(String(claim.subjectId ?? ""))}</span>
+          <span class="claim-field">${escapeHtml(asText(claim.fieldOrBehavior ?? claim.id))}</span>
+          <span class="claim-subject">${escapeHtml(asText(claim.subjectType))}: ${escapeHtml(asText(claim.subjectId))}</span>
         </summary>
         <div class="claim-body">
           <dl>
             <dt>Value</dt><dd>${escapeHtml(formatValue(claim.value))}</dd>
-            <dt>Claim</dt><dd>${escapeHtml(String(claim.id))}</dd>
-            <dt>Surface</dt><dd>${escapeHtml(String(claim.surface ?? ""))}</dd>
-            <dt>Impact</dt><dd>${escapeHtml(String(claim.impactLevel ?? "unspecified"))}</dd>
-            ${claim.verificationPolicyId ? `<dt>Policy</dt><dd>${escapeHtml(String(claim.verificationPolicyId))}</dd>` : ""}
+            <dt>Claim</dt><dd>${escapeHtml(asText(claim.id))}</dd>
+            <dt>Surface</dt><dd>${escapeHtml(asText(claim.surface))}</dd>
+            <dt>Impact</dt><dd>${escapeHtml(asText(claim.impactLevel, "unspecified"))}</dd>
+            ${claim.verificationPolicyId ? `<dt>Policy</dt><dd>${escapeHtml(asText(claim.verificationPolicyId))}</dd>` : ""}
           </dl>
           <h3>Evidence</h3>
           ${evidenceList ? `<ul>${evidenceList}</ul>` : '<p class="empty">No evidence recorded for this claim.</p>'}
@@ -218,21 +270,30 @@
       </details>`;
     }
 
-    #renderShell(body) {
-      this.shadowRoot.innerHTML = `<style>${PANEL_CSS}</style><div class="panel">${body}</div>`;
+    #renderShell(body: string): void {
+      this.#shadow.innerHTML = `<style>${PANEL_CSS}</style><div class="panel">${body}</div>`;
     }
 
-    #renderError(message) {
+    #renderError(message: string): void {
       this.#renderShell(`<p class="error">${escapeHtml(message)}</p>`);
     }
   }
 
-  function formatValue(value) {
+  function asArray<T>(value: unknown): T[] {
+    return Array.isArray(value) ? (value as T[]) : [];
+  }
+
+  function asText(value: unknown, fallback = ""): string {
+    if (value === undefined || value === null) return fallback;
+    return String(value);
+  }
+
+  function formatValue(value: unknown): string {
     if (value === undefined || value === null) return "—";
     return typeof value === "string" ? value : JSON.stringify(value);
   }
 
-  function escapeHtml(text) {
+  function escapeHtml(text: string): string {
     return text
       .replaceAll("&", "&amp;")
       .replaceAll("<", "&lt;")

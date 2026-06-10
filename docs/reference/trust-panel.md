@@ -6,20 +6,26 @@ Try it without installing anything in the hosted [Trust Snapshot Viewer](https:/
 
 ## Embed it
 
-The component is a single file with no dependencies and no build step: [`src/trust-panel/surface-trust-panel.js`](../../src/trust-panel/surface-trust-panel.js). Copy it into your product and load a derived report:
+The component is authored in TypeScript ([`src/trust-panel/surface-trust-panel.ts`](../../src/trust-panel/surface-trust-panel.ts)) and compiles to a single standalone script with no dependencies and no module loader. It ships in the npm package — copy or serve it from there and load a derived report:
+
+```bash
+cp node_modules/@kontourai/surface/dist/src/trust-panel/surface-trust-panel.js public/
+```
 
 ```html
-<script src="surface-trust-panel.js"></script>
+<script type="module" src="surface-trust-panel.js"></script>
 
 <!-- Fetch a report by URL -->
 <surface-trust-panel src="./report.json"></surface-trust-panel>
 
 <!-- Or assign the report object directly -->
 <surface-trust-panel id="panel"></surface-trust-panel>
-<script>
+<script type="module">
   document.getElementById("panel").report = myTrustReport;
 </script>
 ```
+
+The compiled file is a self-contained ES module with no imports, so `type="module"` is the only loading requirement.
 
 The input is the output of `surface report` or `buildTrustReport` — a derived `TrustReport`, not a raw `TrustInput`. If the JSON has claims but no derived statuses, the panel says so instead of guessing.
 

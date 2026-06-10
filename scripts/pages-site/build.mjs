@@ -22,7 +22,7 @@ export async function buildDocsSite() {
 
   await writeFile("docs-site/viewer.html", renderViewerPage());
   await writeFile("docs-site/built-with-surface.svg", buildBadgeSvg());
-  await copyFile("src/trust-panel/surface-trust-panel.js", "docs-site/surface-trust-panel.js");
+  await copyFile("dist/src/trust-panel/surface-trust-panel.js", "docs-site/surface-trust-panel.js");
   await copyFile("scripts/pages-site/assets/og-image.png", "docs-site/og-image.png");
   await writeSampleReport();
 
