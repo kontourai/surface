@@ -58,7 +58,7 @@
     "check:package-contents": "node scripts/check-package-contents.mjs",
     "surface:report": "npm run build && node bin/surface.mjs report",
     "surface:summary": "npm run build && node bin/surface.mjs report --format summary",
-    "verify": "node scripts/check-content-boundary.cjs && npm run check:doc-links && npm run check:generated-boundaries && npm run typecheck && npm test && npm run docs:build && npm run check:console-kit-assets && npm run check:package-contents && npm run test:package-smoke && npm run surface:summary && npm run test:browser",
+    "verify": "node scripts/check-content-boundary.cjs && npm run check:doc-links && npm run check:generated-boundaries && npm run typecheck && npm test && npm run docs:build && npm run check:console-kit-assets && npm run check:package-contents && npm run test:external-adapter && npm run test:package-smoke && npm run surface:summary && npm run test:browser",
     "prepare": "npm run build",
     "check:content-boundary": "node scripts/check-content-boundary.cjs",
     "setup:repo-hooks": "node scripts/setup-repo-hooks.cjs",
@@ -68,7 +68,7 @@
     "@kontourai/console-kit": "^0.1.1",
     "@playwright/test": "^1.60.0",
     "@types/node": "^25.9.2",
-    "typescript": "^5.8.0"
+    "typescript": "^6.0.3"
   },
   "engines": {
     "node": ">=20"
