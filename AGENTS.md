@@ -17,10 +17,22 @@ Surface is the canonical source for this repo. Treat generated agent bundles, se
 - Do not hand-edit generated Pages output in `docs-site/`.
 - Do not revert unrelated user or agent changes.
 
+## Pull More Context When Needed
+
+- Workflow and hook questions: read `docs/maintenance/repo-hooks.md`.
+- Generated output, ignored runtime state, `.agents/`, `.flow-agents/`, package contents, or checked generated Console assets: read `docs/maintenance/generated-artifacts.md`.
+- Public docs, published Pages inventory, or where a doc belongs: read `docs/README.md`.
+- Release, package, npm publish, provenance, or pre-release confidence checks: read `docs/maintenance/RELEASING.md`.
+- Public API, module boundaries, or future split candidates: read `docs/audits/source-module-audit.md`.
+- Product/runtime boundary questions between Surface and product layers: read `docs/architecture/surface-foundation.md` and `docs/architecture/developer-architecture.md`.
+
 ## Useful Commands
 
 - `npm run build`
 - `npm test`
+- `npm run check:doc-links`
+- `npm run check:generated-boundaries`
+- `npm run check:package-contents`
 - `npm run docs:build`
 - `npm run test:browser`
 - `npm run verify`
