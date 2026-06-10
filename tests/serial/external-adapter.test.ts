@@ -10,6 +10,12 @@ const execFileAsync = promisify(execFile);
 const root = process.cwd();
 const npmCache = path.join(root, ".npm-pack-cache");
 
+// This file lives in tests/serial/ and must not run concurrently with the
+// main suite: `npm pack` runs the `prepare` script even with
+// `--ignore-scripts` (npm/cli behavior), and `prepare` rebuilds dist/ with
+// `rm -rf`. Packing while parallel test processes are loading modules from
+// dist/ makes them fail with ENOENT mid-run.
+
 test("external adapter example builds and uses the public SDK", async () => {
   const workspace = await mkdtemp(path.join(tmpdir(), "surface-external-adapter-"));
   const packDestination = path.join(workspace, "pack");
