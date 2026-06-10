@@ -332,6 +332,18 @@ article {
   background: var(--surface-panel);
   overflow-wrap: break-word;
 }
+article img {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--k-line);
+  border-radius: 0.9rem;
+  box-shadow: var(--k-shadow);
+}
+article img[src$=".svg"] {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
 .hero + article {
   margin-top: 2rem;
 }

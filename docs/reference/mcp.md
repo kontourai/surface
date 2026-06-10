@@ -38,6 +38,29 @@ A typical MCP client configuration:
 
 `input` and `adapter` default to the values the server was started with. Every call re-derives the report from the input file, so agents always read current trust state — the same `TrustInput` produces the same answer on every call, on every machine.
 
+## A realistic session
+
+An agent asked to "use the latest verified pricing data" should not have to guess what "verified" means. With the server pointed at the producer's export, the agent calls `surface_stale_claims` before relying on anything. Against the repo's own fixture input, the actual tool result is:
+
+```json
+[
+  {
+    "claimId": "claim.field-attested-records.registration-status",
+    "surface": "field-attested-records.public-data",
+    "status": "stale",
+    "impactLevel": "high",
+    "claimType": "public-data-field",
+    "subject": {
+      "subjectType": "attested-record",
+      "subjectId": "field-attested-records:denver-example-record"
+    },
+    "policyId": "policy.public-data-field.short-lived"
+  }
+]
+```
+
+The registration status was verified once, but its 14-day freshness window expired — so instead of acting on it, the agent follows up with `surface_get_claim` for the evidence trace, asks the producer to reverify, or surfaces the uncertainty to the user. No prompt engineering decides this; the policy already did.
+
 ## Behavior contract
 
 - Tool results carry the same JSON shapes as the corresponding CLI commands (`surface report --format summary`, `surface stale`, `surface missing`, `surface get`, `surface policy`).

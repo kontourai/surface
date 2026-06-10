@@ -103,7 +103,11 @@ npx surface mcp --input my-export.json                       # serve trust state
 
 The full command surface, flags, and output contracts are in the [CLI reference](docs/reference/cli.md); the local Console is documented in the [Surface Console reference](docs/reference/console.md) and the agent tools in [Agents and MCP](docs/reference/mcp.md).
 
+![The Surface Console reviewing a producer run: verified claims, an attention band, and a stale rate-limit claim flagged for refresh](assets/screenshots/surface-console.png)
+
 ## Show it to your users
+
+![A product listing with the Built with Surface badge and an embedded trust panel disclosing a stale registration-status claim, its evidence, and the freshness gap](assets/screenshots/product-embed.png)
 
 - **Trust Panel embed** — ship the dependency-free [`<surface-trust-panel>`](docs/reference/trust-panel.md) element so viewers can inspect claims, evidence, freshness, and gaps inside your product.
 - **Snapshot Viewer** — paste any derived report into the [hosted viewer](https://kontourai.github.io/surface/viewer.html); parsing happens entirely in the browser.

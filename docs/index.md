@@ -31,6 +31,12 @@ Status is derived by construction — not summarized by a model, not hidden behi
 
 Each scenario ships as a runnable fixture in the repo. [See the full use cases.](product/use-cases.md)
 
+## See it
+
+The same fixture report, inspected three ways — in the browser-local [Snapshot Viewer](https://kontourai.github.io/surface/viewer.html), embedded in a product page, and in the operator Console:
+
+![The Trust Snapshot Viewer rendering the fixture report with status chips and an expanded claim showing its evidence](../assets/screenshots/snapshot-viewer.png)
+
 ## Four ways in
 
 - **Inspect** — open the trust state behind an answer, report, or agent output before you rely on it. Paste any derived report into the [Snapshot Viewer](https://kontourai.github.io/surface/viewer.html) — it parses in your browser and never leaves the page — or ship the [Trust Panel embed](reference/trust-panel.md) inside your product.

@@ -1,12 +1,12 @@
 import { execFile } from "node:child_process";
-import { copyFile, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
 import { pages } from "./pages.mjs";
 import { renderPage } from "./page.mjs";
 import { buildStyles } from "./styles.mjs";
-import { buildBadgeSvg, renderViewerPage } from "./viewer.mjs";
+import { renderViewerPage } from "./viewer.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -21,9 +21,11 @@ export async function buildDocsSite() {
   }
 
   await writeFile("docs-site/viewer.html", renderViewerPage());
-  await writeFile("docs-site/built-with-surface.svg", buildBadgeSvg());
   await copyFile("dist/src/trust-panel/surface-trust-panel.js", "docs-site/surface-trust-panel.js");
   await copyFile("scripts/pages-site/assets/og-image.png", "docs-site/og-image.png");
+  await rm("docs-site/assets", { recursive: true, force: true });
+  await cp("assets", "docs-site/assets", { recursive: true });
+  await copyFile("assets/built-with-surface.svg", "docs-site/built-with-surface.svg");
   await writeSampleReport();
 
   console.log(`Built ${pages.length + 1} docs pages in docs-site/`);

@@ -15,6 +15,12 @@ A product may show the badge when all of the following hold:
 
 ## The asset
 
+![Built with Surface badge](../../assets/built-with-surface.svg)
+
+In context — the badge as the entry point to an embedded Trust Panel on a product listing:
+
+![A product listing showing the Built with Surface badge next to an inspectable trust panel](../../assets/screenshots/product-embed.png)
+
 The badge ships as an SVG on the docs site at `built-with-surface.svg`:
 
 ```html

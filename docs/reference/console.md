@@ -2,6 +2,8 @@
 
 Surface ships a local Surface Console server for any producer that emits a Surface-format run snapshot. The current CLI, routes, and generated assets still use `console`; treat that as an implementation name, not product language.
 
+![The Surface Console over a producer run: status rollups, an attention band for the stale rate-limit claim, and a filterable claim feed](../../assets/screenshots/surface-console.png)
+
 ## Quick start
 
 From a Builder or producer project directory:
