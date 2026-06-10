@@ -2,13 +2,13 @@
 
 This guide is the Surface-local map for maintainers and integrators who need to understand how trust and evidence move through Surface and into products built on top of it. It is documentation-only: it does not migrate schemas, change claim evaluation, add runtime dependencies, or implement Flow, Flow Agents, Veritas, or Builder Kit behavior.
 
-Start here when you need the architecture in Surface vocabulary first. For the core vocabulary, see [Concepts](../product/concepts.md). For current JSON contracts, see [Schemas](../reference/schemas.md) and [Open Trust Format and Claim Package Shape](../specs/open-trust-format.md). For product-layer boundaries, see [Architecture](index.md), [Surface Foundation Boundary](surface-foundation.md), and [What builds on Surface](../product/built-on-surface.md). For future Resource Contract direction, see [Resource Contract Audit](../audits/resource-contract-audit.md).
+Start here when you need the architecture in Surface vocabulary first. For the core vocabulary, see [Concepts](../product/concepts.md). For current JSON contracts, see [Schemas](../reference/schemas.md) and [Open Trust Format and Claim Package Shape](../specs/open-trust-format.md). For product-layer boundaries, see [Architecture](index.md), [Surface Foundation Boundary](surface-foundation.md), and [What builds on Surface](../product/built-on-surface.md).
 
 ## Scope And Non-Goals
 
 **Current implementation:** Surface owns portable claims, evidence, verification policies, verification events, Authority Trace, trust derivation, Trust Reports, Trust Snapshots, analytics projections, and the Surface Console projection. Producers emit `TrustInput`; Surface validates and derives report-only trust state.
 
-**Future Resource Contract alignment:** future slices may wrap durable Surface packages, reports, run models, claim stores, or extension records in `surface.kontourai.io/v1alpha1` Resource Contract shapes. That direction is documented in the [Resource Contract Audit](../audits/resource-contract-audit.md). This guide does not implement those migrations.
+**Future Resource Contract alignment:** future slices may wrap durable Surface packages, reports, run models, claim stores, or extension records in `surface.kontourai.io/v1alpha1` Resource Contract shapes. That direction is tracked on the [Roadmap](../roadmap/index.md). This guide does not implement those migrations.
 
 Non-goals for this guide:
 
@@ -145,6 +145,6 @@ Use this order when you need to understand Surface without starting in cross-pro
 2. [Open Trust Format](../specs/open-trust-format.md) for the portable claim package commitment.
 3. [Schemas](../reference/schemas.md) for current `TrustInput`, `TrustReport`, and record shapes.
 4. [Surface Foundation Boundary](surface-foundation.md) for what belongs in Surface versus product layers.
-5. [Resource Contract Audit](../audits/resource-contract-audit.md) only when planning future Resource Contract migration work.
+5. [Roadmap](../roadmap/index.md) only when planning future Resource Contract migration work.
 
 If a statement says **Current implementation**, it describes behavior or artifacts that exist now. If it says **Future Resource Contract alignment**, it describes planned migration direction that needs its own implementation and verification.

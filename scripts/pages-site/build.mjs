@@ -10,9 +10,9 @@ export async function buildDocsSite() {
   await cleanDocsSite();
   await writeFile("docs-site/styles.css", buildStyles());
 
-  for (const [slug, source, title] of pages) {
+  for (const [slug, source, title, description] of pages) {
     const markdown = await readFile(source, "utf8");
-    await writeFile(join("docs-site", `${slug}.html`), renderPage({ slug, source, title, markdown }));
+    await writeFile(join("docs-site", `${slug}.html`), renderPage({ slug, source, title, description, markdown }));
   }
 
   console.log(`Built ${pages.length} docs pages in docs-site/`);

@@ -20,17 +20,9 @@ Keep new docs in the folder that matches the reader's intent. If a page is a dur
 
 ## Published Site Pages
 
-The public site is built from the page list in `scripts/build-pages-site.mjs`. Current published source docs include:
+The public site is built from the grouped page list in `scripts/pages-site/pages.mjs`. It publishes the customer-facing docs: the product story (vision, concepts, use cases, principles), the builder guides (getting started, walkthrough, consumer SDK), the full reference set (CLI, Console, claim authoring, adapters, extension API, analytics, schemas, versioning, fixtures), the transparency specs, the architecture docs, and the roadmap.
 
-- [Concepts](product/concepts.md) — the trust model: claims, evidence traces, policies, Trust Snapshots, claim groups, status, and transparency gaps
-- [What builds on Surface](product/built-on-surface.md) — when to build with Surface and what uses it
-- [Walkthrough](guides/walkthrough.md) — real session walkthrough with native Surface input
-- [Use Cases](product/use-cases.md) — repo governance, public data trust, fact resolution, dependency audit
-- [Vision](product/vision.md) — product transparency thesis
-- [Principles](product/principles.md) — kernel and adapter rules
-- [Brand Language](product/brand-language.md) — product language and positioning
-- [Architecture](architecture/index.md) — how the kernel, adapters, and product packages fit together
-- [CLI](reference/cli.md), [Schemas](reference/schemas.md), [Adapters](reference/adapters.md), specs, roadmap, audits, and ADR references listed below
+Maintainer-only material stays repo-only: this index, brand language, ADRs, audits, and the `maintenance/` docs.
 
 ## Product Model
 
@@ -75,10 +67,7 @@ The public site is built from the page list in `scripts/build-pages-site.mjs`. C
 ## Audits And Direction
 
 - [Source Module Audit](audits/source-module-audit.md) — public entrypoint, internal modules, and future split candidates
-- [Resource Contract Audit](audits/resource-contract-audit.md) — migration map for durable Surface contracts
-- [Grounding Audit](audits/grounding-audit.md) — terminology and grounding review
 - [Roadmap](roadmap/index.md) — what ships today and what comes next
-- [Linked Data Roadmap](roadmap/linked-data.md) — JSON-LD, SHACL, and ontology work
 - [Producers and the Surface Boundary](roadmap/integration-plan.md) — adapter and claim store patterns, boundary rules
 - [ADR 0001: Product Vocabulary Migration](adr/0001-vocabulary-migration.md) — target product language for Surface
 

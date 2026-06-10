@@ -1,52 +1,47 @@
 # Kontour Surface
 
-Every product makes claims. AI makes those claims faster, more polished, and harder to review. Surface gives a product one shape for the claim, the evidence behind it, how fresh that evidence is, and the gaps that should slow anyone down before they rely on it.
+Every product makes claims. AI makes those claims faster, more polished, and harder to review. Kontour Surface gives a product one shape for the claim, the evidence behind it, how fresh that evidence is, and the gaps that should slow anyone down before they rely on it.
 
 Veritas uses Surface underneath. So can your product.
 
 ## The problem
 
-AI makes plausible, polished product output cheap. But when agents route records, select facts, merge changes, or draft responses at scale, the informal trust layer disappears. There is no one to notice a stale number, a quiet contradiction, unsupported evidence, or a verification that was valid last month but not today.
+AI makes plausible, polished product output cheap. When agents route records, select facts, merge changes, or draft responses at scale, the informal trust layer disappears. There is no one to notice a stale number, a quiet contradiction, unsupported evidence, or a verification that was valid last month but not today.
 
-Trust state has to be derivable from the product contract itself: readable, deterministic, and the same answer for every Viewer, Operator, Builder, or agent that asks.
+Trust state has to be derivable from the product contract itself: readable, deterministic, and the same answer for every person, system, or agent that asks.
 
 ## How Surface works
 
-Surface connects evidence provenance to product claims through a portable trust format:
+Surface connects evidence provenance to product claims through a portable, open trust format:
 
 - **Subject** — what the claim is about, including when the same entity appears under different keys across systems
 - **Evidence Trace** — what supports the claim, who or what produced it, and how to trace it back to a source
 - **Freshness** — how long the verification is valid and what has changed since verification
 - **Transparency Gaps** — what is missing, stale, private, disputed, unavailable, or unsupported
-- **Trust Snapshot** — a point-in-time report that can drive a Trust Panel, Console, API, or agent resource
+- **Trust Snapshot** — a point-in-time report that can drive a Trust Panel, the Surface Console, an API, or an agent resource
 
 Status is derived by construction — not summarized by a model, not hidden behind a confidence score. If a claim is weak, stale, or disputed, the system makes that visible.
 
-## What you can build on it
+## Where teams use it
 
-**Veritas** — a repo and AI-agent governance product built with Surface. Veritas authors claims in a committed file, collects evidence per run, and projects trust state into Surface for derivation, Console display, and agent inspection.
+- **AI code governance** — reviewers and agents inspect which repo claims are actually supported by this run's evidence, and which went stale when the code changed.
+- **Field-attested public records** — a directory shows, field by field, what was crawled, what a human attested, and what has not been re-approved since the price changed.
+- **Fact resolution** — a financial workflow lets an agent proceed on user-verified facts while document-imported values that conflict with a worksheet stay visibly disputed.
+- **Dependency audits** — "safe to install" becomes a claim with a freshness window and a trace to the exact audit run, not a sentence in release notes.
 
-**Custom producers** — any product that needs to express claims, evidence, freshness, and conflict can build with Surface. Fitness tracking, financial records, marketplace listings, regulatory disclosures, agent output validation — same open trust format, same report shape.
+Each scenario ships as a runnable fixture in the repo. [See the full use cases.](product/use-cases.md)
 
-## Role paths
+## Three ways in
 
-- **Viewers** — Inspect the trust state behind a product answer, report, recommendation, or agent output before you rely on it. Surface shows you the claim, the evidence behind it, how current that evidence is, and what's still uncertain.
-- **Builders** — Emit claims, evidence, and policies from your product. Surface gives you a shared shape so the same trust state can be read by people, agents, and other systems downstream.
-- **Operators** — Manage the claims your product makes — ownership, evidence review, policies, transparency gaps, conflicts — from one workspace. Surface Console runs locally. No cloud, no login.
+- **Inspect** — open the trust state behind an answer, report, or agent output before you rely on it. Surface shows the claim, the evidence, how current it is, and what is still uncertain.
+- **Build** — emit claims, evidence, and policies from your product with the [TypeScript SDK](guides/consumer-sdk.md), then let Surface derive and serve the trust state to people, agents, and downstream systems.
+- **Operate** — manage the claims your product makes — ownership, evidence review, policies, gaps, conflicts — in the [Surface Console](reference/console.md). It runs locally. No cloud, no login.
 
-## Published Pages
+## Start here
 
-- [Vision](product/vision.md) — why product transparency matters now and what Surface is designed to answer
-- [Concepts](product/concepts.md) — the full vocabulary: claims, evidence traces, policies, claim groups, transparency gaps, status
-- [Use Cases](product/use-cases.md) — repo governance, field-attested records, fact resolution, dependency audit
-- [What builds on Surface](product/built-on-surface.md) — when to reach for Surface as your foundation
-- [Walkthrough](guides/walkthrough.md) — a real session with native Surface input
+1. [Getting Started](guides/getting-started.md) — install `@kontourai/surface`, run a fixture report, emit your first trust input.
+2. [Walkthrough](guides/walkthrough.md) — a real CLI session: derive a report, query stale claims, drill into a policy decision.
+3. [Concepts](product/concepts.md) — the full vocabulary: claims, evidence traces, policies, claim groups, transparency gaps, status.
+4. [What builds on Surface](product/built-on-surface.md) — when to reach for Surface as your foundation.
 
-## Repo References
-
-- [Getting Started](guides/getting-started.md) — install Surface, run a fixture report, and emit your first trust input
-- [Docs Index](README.md) — folder layout and full maintainer index
-
-## Docs Site Scope
-
-`docs-site/` is generated from selected source docs for the public Pages site. It is curated, not a mirror of every repo document, and includes selected specs, audits, planning, and reference docs. Remaining maintainer, release, and hook docs are browsable from [docs/README.md](README.md).
+Surface is open source under Apache-2.0. The trust format is schema-first and locally inspectable — no hosted service required to understand your own trust state.
