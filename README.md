@@ -173,6 +173,7 @@ Ignored local/generated directories such as `node_modules/`, `.surface/`, `.flow
 
 ## Documentation
 
+- [Published Documentation](https://kontourai.github.io/surface/)
 - [Getting Started](docs/guides/getting-started.md) — install Surface, run a fixture report, and build a first producer
 - [Walkthrough](docs/guides/walkthrough.md) — real session with native Surface input
 - [Use Cases](docs/product/use-cases.md) — real-world scenarios grounded in shipped fixtures
