@@ -85,6 +85,38 @@ const report = buildTrustReport(input);
 
 Claim groups are optional. The current API calls them `claimGroups`; use them when your product has a broader domain framework, compliance map, repo standards, checklist, or requirement set and you want users to start at the broader assertion while still drilling down to the exact claim and evidence.
 
+## What the derived report looks like
+
+The code above builds a release-gate claim, attaches test-output evidence, adds a policy that requires `test_output` evidence with a `validation` method, records a verification event, and wraps it in a claim group. Running `buildTrustReport(input)` produces a derived `TrustReport` with:
+
+```text
+{
+  summary: {
+    totalClaims: 1,
+    byStatus: { verified: 1, ... },
+    staleClaims: [],
+    disputedClaims: [],
+    highImpactUnsupported: [],
+    transparencyGapsByType: {}
+  },
+  claims: [{
+    id: "myproduct.run-1.policy",
+    status: "verified",
+    fieldOrBehavior: "gate",
+    value: "passed",
+    ...
+  }],
+  transparencyGaps: [],
+  claimGroupRollups: [{
+    title: "Release readiness",
+    status: "verified",
+    requirements: [{ status: "verified", ... }]
+  }]
+}
+```
+
+The claim is `verified` because the event records a `verified` status and the evidence satisfies the policy: it is `test_output` evidence collected via the `validation` method. If the evidence were missing, the claim would derive as `unknown` with a `provenance_gap` transparency gap. If the evidence method did not match the policy, a `policy_violation` transparency gap would appear. If the verification had aged past the policy's validity window, the claim would derive as `stale`.
+
 ## Veritas Mapping
 
 Veritas is the reference vertical product built with Surface. It maps a repo change run into:
