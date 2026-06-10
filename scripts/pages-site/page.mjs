@@ -1,4 +1,4 @@
-import { navGroups } from "./pages.mjs";
+import { navGroups, siteBaseUrl } from "./pages.mjs";
 import { escapeHtml } from "./inline.mjs";
 import { markdownToHtml } from "./markdown.mjs";
 
@@ -15,9 +15,19 @@ const logoMark = `<svg class="logo" viewBox="0 0 24 24" fill="none" stroke="curr
 const faviconSvg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2314a37a' stroke-width='1.7' stroke-linecap='round'><path d='M12 4.5c4.7 0 8 2.6 8 6.1 0 4.2-3.9 8.9-8 8.9s-8-4.7-8-8.9c0-3.5 3.3-6.1 8-6.1Z'/><path d='M12 8.1c2.8 0 4.8 1.4 4.8 3.4 0 2.4-2.2 5-4.8 5s-4.8-2.6-4.8-5c0-2 2-3.4 4.8-3.4Z'/><path d='M12 11.6c1 0 1.7.5 1.7 1.2 0 .9-.8 1.8-1.7 1.8s-1.7-.9-1.7-1.8c0-.7.7-1.2 1.7-1.2Z'/></svg>`;
 
 export function renderPage({ slug, source, title, description, markdown }) {
-  const navSections = renderNavSections(slug);
   const hasMermaid = /```mermaid\s/.test(markdown);
   const pageTitle = slug === "index" ? "Kontour Surface — Show your work. Earn trust." : `${title} | Kontour Surface`;
+  const body = `${slug === "index" ? hero() : ""}
+      <article>${markdownToHtml(markdown, source)}</article>`;
+  return renderShell({ slug, pageTitle, description, body, extraScripts: hasMermaid ? mermaidScript() : "" });
+}
+
+export function renderToolPage({ slug, title, description, body, extraScripts = "" }) {
+  return renderShell({ slug, pageTitle: `${title} | Kontour Surface`, description, body, extraScripts });
+}
+
+function renderShell({ slug, pageTitle, description, body, extraScripts }) {
+  const navSections = renderNavSections(slug);
   const safeDescription = escapeHtml(description);
   return `<!doctype html>
 <html lang="en" class="theme-surface">
@@ -26,11 +36,14 @@ export function renderPage({ slug, source, title, description, markdown }) {
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>${escapeHtml(pageTitle)}</title>
   <meta name="description" content="${safeDescription}">
+  <link rel="canonical" href="${siteBaseUrl}${slug === "index" ? "" : `${slug}.html`}">
   <meta property="og:title" content="${escapeHtml(pageTitle)}">
   <meta property="og:description" content="${safeDescription}">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Kontour Surface">
-  <meta name="twitter:card" content="summary">
+  <meta property="og:url" content="${siteBaseUrl}${slug === "index" ? "" : `${slug}.html`}">
+  <meta property="og:image" content="${siteBaseUrl}og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
   <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3efe3">
   <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#101511">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,${faviconSvg}">
@@ -42,7 +55,7 @@ export function renderPage({ slug, source, title, description, markdown }) {
   <div class="terrain"></div>
   <header>
     <a class="brand" href="index.html">${logoMark}<span>Kontour Surface</span></a>
-    <a class="repo-link" href="${githubRepoUrl}">GitHub</a>
+    <span class="header-links"><a class="repo-link" href="viewer.html">Snapshot Viewer</a><a class="repo-link" href="${githubRepoUrl}">GitHub</a></span>
   </header>
   <div class="layout">
     <details class="mobile-nav">
@@ -51,16 +64,15 @@ export function renderPage({ slug, source, title, description, markdown }) {
     </details>
     <nav class="site-nav" aria-label="Documentation">${navSections}</nav>
     <main id="content">
-      ${slug === "index" ? hero() : ""}
-      <article>${markdownToHtml(markdown, source)}</article>
+      ${body}
     </main>
   </div>
   <footer>
     <p class="footer-tagline">Bring trust to the surface.</p>
     <p>Kontour Surface — product transparency for humans and AI agents.</p>
-    <p class="footer-links"><a href="${githubRepoUrl}">GitHub</a><a href="${npmPackageUrl}">npm</a><a href="${githubRepoUrl}/blob/main/LICENSE">Apache-2.0</a></p>
+    <p class="footer-links"><a href="${githubRepoUrl}">GitHub</a><a href="${npmPackageUrl}">npm</a><a href="viewer.html">Snapshot Viewer</a><a href="${githubRepoUrl}/blob/main/LICENSE">Apache-2.0</a></p>
   </footer>
-  ${hasMermaid ? mermaidScript() : ""}
+  ${extraScripts}
 </body>
 </html>`;
 }

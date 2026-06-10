@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 3,
+  "source": "surface-conformance:invalid-missing-subject",
+  "claims": [
+    {
+      "id": "claim.api.rate-limit",
+      "subjectType": "api",
+      "surface": "api.guarantees",
+      "claimType": "software-evidence",
+      "fieldOrBehavior": "rate limit is enforced",
+      "value": "100 requests/minute",
+      "createdAt": "2026-04-25T00:00:00.000Z",
+      "updatedAt": "2026-04-25T00:05:00.000Z",
+      "impactLevel": "high",
+      "currentIntegrityRef": "commit:abc123",
+      "verificationPolicyId": "policy.software-evidence.commit"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "evidence.api.rate-limit.test",
+      "claimId": "claim.api.rate-limit",
+      "evidenceType": "test_output",
+      "method": "validation",
+      "sourceRef": "ci:1847",
+      "excerptOrSummary": "Rate-limit tests passed.",
+      "observedAt": "2026-04-25T00:05:00.000Z",
+      "collectedBy": "ci",
+      "integrityRef": "commit:abc123"
+    }
+  ],
+  "policies": [
+    {
+      "id": "policy.software-evidence.commit",
+      "claimType": "software-evidence",
+      "requiredEvidence": [
+        "test_output"
+      ],
+      "requiredMethods": [
+        "validation"
+      ],
+      "requiresCorroboration": false,
+      "acceptanceCriteria": [
+        "evidence check passes for the affected commit"
+      ],
+      "reviewAuthority": "repo policy",
+      "validityRule": {
+        "kind": "commit"
+      },
+      "stalenessTriggers": [
+        "new commit touches the same surface"
+      ],
+      "conflictRules": [],
+      "impactLevel": "high"
+    }
+  ],
+  "events": [
+    {
+      "id": "event.api.rate-limit.verified",
+      "claimId": "claim.api.rate-limit",
+      "status": "verified",
+      "actor": "ci",
+      "method": "npm test",
+      "evidenceIds": [
+        "evidence.api.rate-limit.test"
+      ],
+      "createdAt": "2026-04-25T00:05:00.000Z",
+      "verifiedAt": "2026-04-25T00:05:00.000Z"
+    }
+  ]
+}

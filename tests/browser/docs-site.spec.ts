@@ -97,6 +97,26 @@ test("maps repo-relative links to GitHub source and keeps hrefs safe", async ({ 
   expect(consoleErrors).toEqual([]);
 });
 
+test("snapshot viewer renders a sample report through the trust panel element", async ({ page }) => {
+  const consoleErrors = await loadDocsPage(page, "/viewer.html");
+
+  await expect(page.getByRole("heading", { name: "Trust Snapshot Viewer" })).toBeVisible();
+  await page.getByRole("button", { name: "Load sample report" }).click();
+
+  const panel = page.locator("surface-trust-panel");
+  await expect(panel.locator(".panel-title")).toHaveText("Surface Transparency");
+  await expect(panel.locator(".chip").first()).toBeVisible();
+  await expect(panel.locator("details.claim")).toHaveCount(4);
+
+  const firstClaim = panel.locator("details.claim").first();
+  await firstClaim.locator("summary").click();
+  await expect(firstClaim.locator(".claim-body")).toContainText("Evidence");
+
+  await page.locator("#viewer-input").fill('{"claims": "not-an-array"}');
+  await expect(panel.locator(".error")).toContainText("does not look like a trust report");
+  expect(consoleErrors).toEqual([]);
+});
+
 test("keeps docs navigation and primary content inside the mobile viewport", async ({ page }) => {
   test.skip(test.info().project.name !== "chromium-mobile", "mobile-only layout check");
   const consoleErrors = await loadDocsPage(page, "/index.html");
@@ -135,7 +155,7 @@ test("keeps docs navigation and primary content inside the mobile viewport", asy
 test("avoids horizontal overflow on table- and code-heavy pages at mobile width", async ({ page }) => {
   test.skip(test.info().project.name !== "chromium-mobile", "mobile-only layout check");
 
-  for (const path of ["/schemas.html", "/cli.html", "/use-cases.html"]) {
+  for (const path of ["/schemas.html", "/cli.html", "/use-cases.html", "/viewer.html"]) {
     const consoleErrors = await loadDocsPage(page, path);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow, `${path} horizontal overflow`).toBeLessThanOrEqual(1);

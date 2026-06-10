@@ -2,7 +2,7 @@
 
 This guide is the Surface-local map for maintainers and integrators who need to understand how trust and evidence move through Surface and into products built on top of it. It is documentation-only: it does not migrate schemas, change claim evaluation, add runtime dependencies, or implement Flow, Flow Agents, Veritas, or Builder Kit behavior.
 
-Start here when you need the architecture in Surface vocabulary first. For the core vocabulary, see [Concepts](../product/concepts.md). For current JSON contracts, see [Schemas](../reference/schemas.md) and [Open Trust Format and Claim Package Shape](../specs/open-trust-format.md). For product-layer boundaries, see [Architecture](index.md), [Surface Foundation Boundary](surface-foundation.md), and [What builds on Surface](../product/built-on-surface.md).
+Start here when you need the architecture in Surface vocabulary first. For the core vocabulary, see [Concepts](../product/concepts.md). For current JSON contracts, see [Schemas](../reference/schemas.md) and [Open Trust Format and Claim Package Shape](../specs/open-trust-format.md). For product-layer boundaries, see [Architecture](index.md), [Surface Foundation Boundary](surface-foundation.md).
 
 ## Scope And Non-Goals
 

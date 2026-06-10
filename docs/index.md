@@ -31,17 +31,18 @@ Status is derived by construction — not summarized by a model, not hidden behi
 
 Each scenario ships as a runnable fixture in the repo. [See the full use cases.](product/use-cases.md)
 
-## Three ways in
+## Four ways in
 
-- **Inspect** — open the trust state behind an answer, report, or agent output before you rely on it. Surface shows the claim, the evidence, how current it is, and what is still uncertain.
+- **Inspect** — open the trust state behind an answer, report, or agent output before you rely on it. Paste any derived report into the [Snapshot Viewer](https://kontourai.github.io/surface/viewer.html) — it parses in your browser and never leaves the page — or ship the [Trust Panel embed](reference/trust-panel.md) inside your product.
 - **Build** — emit claims, evidence, and policies from your product with the [TypeScript SDK](guides/consumer-sdk.md), then let Surface derive and serve the trust state to people, agents, and downstream systems.
 - **Operate** — manage the claims your product makes — ownership, evidence review, policies, gaps, conflicts — in the [Surface Console](reference/console.md). It runs locally. No cloud, no login.
+- **Automate** — point an agent at [`surface mcp`](reference/mcp.md) and it reads the same derived trust state over the Model Context Protocol: act on verified, reverify stale, escalate disputed.
 
 ## Start here
 
 1. [Getting Started](guides/getting-started.md) — install `@kontourai/surface`, run a fixture report, emit your first trust input.
 2. [Walkthrough](guides/walkthrough.md) — a real CLI session: derive a report, query stale claims, drill into a policy decision.
 3. [Concepts](product/concepts.md) — the full vocabulary: claims, evidence traces, policies, claim groups, transparency gaps, status.
-4. [What builds on Surface](product/built-on-surface.md) — when to reach for Surface as your foundation.
+4. [Use Cases](product/use-cases.md) — when to reach for Surface, what builds on it, and what it deliberately does not do.
 
 Surface is open source under Apache-2.0. The trust format is schema-first and locally inspectable — no hosted service required to understand your own trust state.

@@ -116,6 +116,48 @@ header {
   color: var(--k-text);
   background: var(--surface-panel);
 }
+.header-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+.viewer-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+}
+.viewer-file {
+  cursor: pointer;
+}
+.viewer-file input {
+  display: none;
+}
+.viewer-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+textarea {
+  width: 100%;
+  padding: 0.8rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--k-line);
+  background: var(--surface-code-bg);
+  color: var(--k-text);
+  font-family: var(--k-font-mono);
+  font-size: 0.85rem;
+  resize: vertical;
+}
+.viewer-error {
+  color: var(--k-negative);
+  font-weight: 600;
+}
+surface-trust-panel {
+  display: block;
+  margin: 1.5rem 0;
+}
 .layout {
   position: relative;
   display: grid;

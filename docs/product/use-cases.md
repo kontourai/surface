@@ -2,13 +2,24 @@
 
 Surface is useful when a product needs to turn domain-specific evidence into a portable Trust Snapshot without moving product workflow language into the kernel. Every scenario below follows the same pattern: the producer owns the domain — its sources, its review workflow, its policies — and emits claims, Evidence, and verification events. Surface validates the input, derives status, and makes the result inspectable by a reviewer, an operator, or an agent.
 
+## When to reach for Surface
+
+You are building a product (Kontour or otherwise) that has any of these jobs:
+
+- "Show that the data we are advertising is verified and valid."
+- "Show provenance: where did this claim come from, when was it last checked, who attested to it?"
+- "Reconcile multiple sources that may disagree about the same subject."
+- "Express that a fact is verified *but stale* — or verified by a weak source — without collapsing everything into a single confidence score."
+
+If you are doing any of that and you do not yet have a vocabulary for claims, evidence, freshness, and conflict, you want Surface as your product transparency layer.
+
 The scenarios are not hypothetical shapes. Each one is grounded in a fixture that ships in [`examples/`](../reference/fixtures.md) and runs through the same kernel as production input. They are also not the only places Surface fits: anything that needs to express claims, Evidence Trace, Freshness, and Conflict — marketplace listings, certifications, regulatory disclosures, agent output validation — can build on the same foundation.
 
 ## AI Code Governance — built and shipping
 
 **The situation.** An engineering team has AI agents opening dozens of pull requests a day. Every PR description says the tests passed and the standards were followed. The reviewers' real question is no longer "does this look right?" but "what actually supports this claim, and is that support current?"
 
-**Built with Surface.** [Veritas](built-on-surface.md) authors claims about repo areas in a committed claim store, collects evidence per run (test output, lint results, human attestations), and emits `TrustInput` through the public Surface SDK. Repo standards map into Surface claim groups, so a reviewer starts from a framework/requirement view and drills into the exact claim, the evidence command that supports it, and the integrity ref it was verified against.
+**Built with Surface.** [Veritas](https://github.com/kontourai/veritas) authors claims about repo areas in a committed claim store, collects evidence per run (test output, lint results, human attestations), and emits `TrustInput` through the public Surface SDK. Repo standards map into Surface claim groups, so a reviewer starts from a framework/requirement view and drills into the exact claim, the evidence command that supports it, and the integrity ref it was verified against.
 
 **What Surface derives.** A claim is `verified` only when a verification event and its policy-required evidence support it. When the verified commit changes, the claim surfaces as Changed Since Verified instead of silently staying green. The reviewer — human or agent — reads the same Trust Snapshot.
 
@@ -48,6 +59,13 @@ The scenarios are not hypothetical shapes. Each one is grounded in a fixture tha
 
 Each scenario doubles as an agent integration. An agent calls `surface stale`, `surface missing`, or reads the JSON report, and applies the same discipline a careful human would: act on `verified` claims, reverify `stale` ones, escalate `disputed` ones, and treat Transparency Gaps as a reason to ask before acting. The kernel does not ask the agent to be careful — it returns a status, the evidence behind it, and the gaps that make a claim unsafe to rely on.
 
+## What Surface deliberately does not do
+
+- Surface does not gather evidence. You bring the input.
+- Surface does not run policies against external systems. Policies declare what makes a claim valid; events record what was observed.
+- Surface does not write back. Trust Snapshots and current `TrustReport` API outputs are the output; viewers, operators, agents, and downstream systems decide what to do with them.
+- Surface does not own product workflow vocabulary. Each product built with Surface keeps its own terms (Veritas calls them "rules" and "evidence checks"; another product might call them "records" and "supporting documents"). Those project *into* Surface claims and evidence at the boundary.
+
 ## Where the adapters live
 
-Surface ships only the native `surface` passthrough adapter. Domain mappings like the ones above belong with the products that own the data — see [Producers and the Surface Boundary](../roadmap/integration-plan.md) and the [external adapter example](https://github.com/kontourai/surface/blob/main/examples/external-adapter/README.md) for the canonical package shape.
+Surface ships only the native `surface` passthrough adapter. Domain mappings like the ones above belong with the products that own the data — see [Adapters and the Producer Boundary](../reference/adapters.md) and the [external adapter example](https://github.com/kontourai/surface/blob/main/examples/external-adapter/README.md) for the canonical package shape. If you are building with Surface, start with the [Consumer SDK guide](../guides/consumer-sdk.md).

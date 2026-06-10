@@ -27,6 +27,14 @@ surface get --claim-id claim.field-attested-records.registration-status
 surface policy --claim-id claim.field-attested-records.registration-status
 ```
 
+Serve trust state to AI agents over the Model Context Protocol:
+
+```bash
+surface mcp --input producer-export.json
+```
+
+`surface mcp` exposes the same query contract (`surface_summary`, `surface_stale_claims`, `surface_missing_evidence`, `surface_get_claim`, `surface_policy`) as MCP tools over stdio. See [Agents and MCP](mcp.md).
+
 Author claims in a local claim store:
 
 ```bash
@@ -86,4 +94,4 @@ The `derivation` field starts at the requested claim and exposes `directInputs`,
 - `surface adapters` for listing registered custom adapters and their expected input shapes.
 - `surface publish` for writing static reports to Pages or artifact storage.
 
-The `analytics` format is the local evidence-intelligence contract that future query commands, MCP resources, and the Surface Console should consume. It is derived from the report; it is not a hosted store or generic BI surface.
+The `analytics` format is the local evidence-intelligence contract that query commands, the MCP server, and the Surface Console consume. It is derived from the report; it is not a hosted store or generic BI surface.

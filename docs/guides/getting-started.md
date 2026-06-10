@@ -1,11 +1,6 @@
 # Getting Started
 
-Surface is the shared foundation under Kontour's products and any product that needs to show its work. Use it when a product needs to show:
-
-- what is being claimed
-- what evidence supports the claim
-- what policy decides whether the claim is verified
-- whether the claim is current, stale, disputed, or unsupported
+This guide takes you from install to your first derived trust report: what is claimed, what evidence supports it, what policy decides verification, and whether the claim is current, stale, disputed, or unsupported.
 
 Surface does not collect domain evidence by itself. Your producer, such as Veritas or a custom adapter, emits a `TrustInput`. Surface validates that input and derives a portable `TrustReport`, which product docs may describe as a Trust Snapshot.
 

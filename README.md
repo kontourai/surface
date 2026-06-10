@@ -14,11 +14,11 @@ The result is a point-in-time **Trust Snapshot** that a person, another system, 
 
 ## Who builds with it
 
-- **AI code governance** — [Veritas](docs/product/built-on-surface.md) authors claims about repo areas, collects evidence per run, and lets reviewers (and agents) see exactly which claims this run's evidence supports — and which went stale when the code changed.
+- **AI code governance** — [Veritas](https://github.com/kontourai/veritas) authors claims about repo areas, collects evidence per run, and lets reviewers (and agents) see exactly which claims this run's evidence supports — and which went stale when the code changed.
 - **Field-attested public records** — a data directory maps crawled fields and human attestations into per-field claims, so "verified" means *this field, this source, this date* instead of a badge on the whole record.
 - **Fact resolution** — a financial workflow keeps user-verified facts and document-imported values in the same report, with conflicts visibly disputed instead of averaged into a confidence score.
 - **Dependency audits** — `npm audit` output becomes evidence behind a "safe to install" claim with a freshness window and a trace to the exact run.
-- **Agent guardrails** — agents query stale claims, missing evidence, and policy gaps through the CLI or JSON report, and apply the discipline the kernel derives: act on verified, reverify stale, escalate disputed.
+- **Agent guardrails** — agents query stale claims, missing evidence, and policy gaps through the CLI, the JSON report, or the built-in [MCP server](docs/reference/mcp.md), and apply the discipline the kernel derives: act on verified, reverify stale, escalate disputed.
 
 Each of these ships as a runnable fixture in [`examples/`](docs/reference/fixtures.md). The deeper narratives are in [Use Cases](docs/product/use-cases.md).
 
@@ -98,9 +98,17 @@ npx surface stale  --input my-export.json                    # claims whose veri
 npx surface missing --input my-export.json                   # claims missing required evidence
 npx surface policy --claim-id claim.api.rate-limit --input my-export.json
 npx surface console                                          # local operator workspace, no cloud, no login
+npx surface mcp --input my-export.json                       # serve trust state to agents over MCP (stdio)
 ```
 
-The full command surface, flags, and output contracts are in the [CLI reference](docs/reference/cli.md); the local Console is documented in the [Surface Console reference](docs/reference/console.md).
+The full command surface, flags, and output contracts are in the [CLI reference](docs/reference/cli.md); the local Console is documented in the [Surface Console reference](docs/reference/console.md) and the agent tools in [Agents and MCP](docs/reference/mcp.md).
+
+## Show it to your users
+
+- **Trust Panel embed** — ship the dependency-free [`<surface-trust-panel>`](docs/reference/trust-panel.md) element so viewers can inspect claims, evidence, freshness, and gaps inside your product.
+- **Snapshot Viewer** — paste any derived report into the [hosted viewer](https://kontourai.github.io/surface/viewer.html); parsing happens entirely in the browser.
+- **Built with Surface badge** — the [inspectability signal](docs/specs/built-with-surface-badge.md): your product exposes inspectable trust state, with no certification implied.
+- **Conformance** — alternate implementations of the [Open Trust Format](docs/specs/open-trust-format.md) can verify they derive the same trust state with the [conformance suite](docs/specs/conformance.md).
 
 ## Public package surface
 
@@ -120,7 +128,7 @@ The package also ships the `surface` CLI, JSON schemas under `schemas/`, example
 
 Surface is a foundation product. Anything that needs to answer "what claims are visible, what supports them, and what gaps remain?" can build with it.
 
-**Veritas** — a repo-local governance product built with Surface for AI-assisted code changes. Veritas authors and projects claims, collects evidence per run, and maps repo standards into Surface claim groups so a reviewer can start from a framework/requirement view and drill into the exact claim and evidence. See [What builds on Surface](docs/product/built-on-surface.md).
+**Veritas** — a repo-local governance product built with Surface for AI-assisted code changes. Veritas authors and projects claims, collects evidence per run, and maps repo standards into Surface claim groups so a reviewer can start from a framework/requirement view and drill into the exact claim and evidence. See [Use Cases](docs/product/use-cases.md).
 
 **Custom producers** — any system that emits `TrustInput` can use Surface for report generation, status derivation, and the Surface Console. Product artifacts may embed `surface.input` directly; Surface remains responsible for generated report fields. Start with the [external adapter example](examples/external-adapter/README.md).
 
@@ -165,10 +173,11 @@ Ignored local/generated directories such as `node_modules/`, `.surface/`, `.flow
 - [Walkthrough](docs/guides/walkthrough.md) — real session with native Surface input
 - [Use Cases](docs/product/use-cases.md) — real-world scenarios grounded in shipped fixtures
 - [Concepts](docs/product/concepts.md) — trust vocabulary, claim groups, transparency gaps, and status model
-- [What builds on Surface](docs/product/built-on-surface.md) — when to reach for Surface and what consumes it
 - [Consumer SDK](docs/guides/consumer-sdk.md) — fluent helpers for emitting valid `TrustInput`
 - [CLI](docs/reference/cli.md) — shipped report, query, and claim commands
+- [Agents and MCP](docs/reference/mcp.md) — trust-state tools over the Model Context Protocol
 - [Surface Console](docs/reference/console.md) — local operator workspace reference
+- [Trust Panel Embed](docs/reference/trust-panel.md) — read-only web component for derived reports
 - [Claim Authoring](docs/reference/claim-authoring.md) — authored claim stores and `surface claim` write commands
 - [Extension API](docs/reference/extension-api.md) — producer branding, vocabulary, and claim type definitions
 - [Schemas](docs/reference/schemas.md) — claim, evidence, policy, event, and report contracts

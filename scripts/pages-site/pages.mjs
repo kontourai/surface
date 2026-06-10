@@ -48,12 +48,6 @@ export const navGroups = [
         "Where teams put Kontour Surface to work: AI code governance, field-attested public records, fact resolution, dependency audits, and agent guardrails.",
       ],
       [
-        "built-on-surface",
-        "docs/product/built-on-surface.md",
-        "What Builds on Surface",
-        "When to reach for Kontour Surface as your transparency foundation and what already builds on it today.",
-      ],
-      [
         "principles",
         "docs/product/principles.md",
         "Principles",
@@ -81,6 +75,18 @@ export const navGroups = [
         "docs/reference/console.md",
         "Surface Console",
         "Run the local Surface Console: a zero-cloud operator workspace for reviewing claims, evidence, policies, and transparency gaps.",
+      ],
+      [
+        "mcp",
+        "docs/reference/mcp.md",
+        "Agents and MCP",
+        "Serve portable trust state to AI agents over the Model Context Protocol: stale claims, missing evidence, policy drilldowns, and claim inspection as MCP tools.",
+      ],
+      [
+        "trust-panel",
+        "docs/reference/trust-panel.md",
+        "Trust Panel Embed",
+        "Embed the dependency-free surface-trust-panel web component so viewers can inspect claims, evidence, freshness, and gaps inside your product.",
       ],
       [
         "claim-authoring",
@@ -165,6 +171,18 @@ export const navGroups = [
         "Producer Extension Limits",
         "The customization boundary: producer extensions adapt vocabulary and branding but never redefine core trust semantics.",
       ],
+      [
+        "conformance",
+        "docs/specs/conformance.md",
+        "Conformance",
+        "The conformance suite for the Open Trust Format: fixed inputs with the statuses and transparency gaps a conforming implementation must derive.",
+      ],
+      [
+        "built-with-surface-badge",
+        "docs/specs/built-with-surface-badge.md",
+        "Built with Surface Badge",
+        "The inspectability signal: what the Built with Surface badge means, what it does not, and the requirements for showing it.",
+      ],
     ],
   },
   {
@@ -197,13 +215,7 @@ export const navGroups = [
         "roadmap",
         "docs/roadmap/index.md",
         "Roadmap",
-        "What ships in Kontour Surface today and what comes next: MCP resources, hosted snapshot sinks, and linked-data export.",
-      ],
-      [
-        "integration-plan",
-        "docs/roadmap/integration-plan.md",
-        "Producer Integration",
-        "Patterns for integrating producers with Kontour Surface: authored claim stores, adapters, and the producer boundary.",
+        "What ships in Kontour Surface today and what comes next: hosted snapshot sinks, linked-data export, and resource contract alignment.",
       ],
     ],
   },
@@ -211,4 +223,7 @@ export const navGroups = [
 
 export const pages = navGroups.flatMap((group) => group.pages);
 export const githubSourceBaseUrl = "https://github.com/kontourai/surface/blob/main/";
+// Public base URL for canonical links, Open Graph URLs, and cross-page assets.
+// Update here (one place) if the site moves to a custom domain.
+export const siteBaseUrl = "https://kontourai.github.io/surface/";
 export const pageSlugBySource = new Map(pages.map(([slug, source]) => [normalize(source), slug]));
