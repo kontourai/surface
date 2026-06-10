@@ -2,7 +2,7 @@
 
 Every product makes claims. AI makes those claims faster, more polished, and harder to review. Kontour Surface gives a product one shape for the claim, the evidence behind it, how fresh that evidence is, and the gaps that should slow anyone down before they rely on it.
 
-Veritas uses Surface underneath. So can your product.
+The Kontour products build on it — [Survey](https://kontourai.io/survey) projects producer review records into Surface, [Flow](https://kontourai.io/flow) gates consume Surface-shaped evidence, [Veritas](https://kontourai.io/veritas) authors repo claims through it, and [Console](https://kontourai.io/console) operates across all of them. So can your product.
 
 ## The problem
 
