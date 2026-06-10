@@ -1,6 +1,6 @@
 # Consumer SDK
 
-Use the consumer SDK when a producer needs to emit Surface input without hand-assembling every top-level array. The package name keeps the current API terminology, but product-facing docs should prefer Builder, Producer, Viewer, Operator, Verifier, or downstream system.
+Use the consumer SDK when a producer needs to emit Surface input without hand-assembling every top-level array.
 
 ```ts
 import {

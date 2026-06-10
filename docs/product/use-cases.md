@@ -61,10 +61,9 @@ Each scenario doubles as an agent integration. An agent calls `surface stale`, `
 
 ## What Surface deliberately does not do
 
-- Surface does not gather evidence. You bring the input.
-- Surface does not run policies against external systems. Policies declare what makes a claim valid; events record what was observed.
-- Surface does not write back. Trust Snapshots and current `TrustReport` API outputs are the output; viewers, operators, agents, and downstream systems decide what to do with them.
 - Surface does not own product workflow vocabulary. Each product built with Surface keeps its own terms (Veritas calls them "rules" and "evidence checks"; another product might call them "records" and "supporting documents"). Those project *into* Surface claims and evidence at the boundary.
+
+For the full list of what Surface does not do — including evidence collection, policy execution against external systems, and write-back — see [What Surface is not](../../README.md#what-surface-is-not) in the README.
 
 ## Where the adapters live
 

@@ -27,7 +27,7 @@ Transparency gaps: 3
 Each line answers a different question:
 
 - **Claims** — total count and the derived status breakdown.
-- **Surfaces** — where claims live (e.g. `field-attested-records.public-data`). Useful when you have many claim types and want to see the spread.
+- **Surfaces** — where claims live (e.g. `field-attested-records.public-data`). This is a producer-defined namespace for grouping related claims — not the Surface product name. Useful when you have many claim types and want to see the spread.
 - **High-impact unsupported** — claims where impact is high but evidence is missing or weak. The first thing to look at.
 - **Stale** — claims whose verification has expired against their policy. Need re-verification before acting on them.
 - **Disputed** — claims contradicted by an event or another claim.

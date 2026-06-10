@@ -23,7 +23,22 @@ npm test
 npx surface report --input examples/surface-fixtures.json --format summary
 ```
 
-That command validates the fixture input, derives trust status for each claim, and prints a human-readable summary.
+That command validates the fixture input, derives trust status for each claim, and prints a human-readable summary:
+
+```text
+Kontour Surface report surface-1779196544815
+Source: kontour-surface-validation-fixtures
+Claims: 4 (unknown: 1, verified: 2, stale: 1)
+Surfaces: repo-governance.developer-evidence: 1, field-attested-records.public-data: 1, fact-resolution.financial-facts: 1, surface.roadmap: 1
+High-impact unsupported: none
+Stale: claim.field-attested-records.registration-status
+Recompute needed: none
+Disputed: none
+Claim groups: 0
+Transparency gaps: 3
+```
+
+The fixture includes four claims with mixed evidence quality. Two are verified (supported by evidence and a verification event), one is stale (its 14-day freshness window expired), and one is unknown (no evidence supplied). The three transparency gaps show missing attestations, a freshness breach, and missing evidence for an unverified claim.
 
 ## 3. Build Your First Producer
 
@@ -65,7 +80,7 @@ const input = new TrustInputBuilder({ source: "my-producer:local" })
   .build();
 ```
 
-The important part is the shape, not this exact domain. Claims, evidence, policies, and events should be concrete enough that a reviewer can see why a status was derived.
+The important part is the shape, not this exact domain. Claims, evidence, policies, and events should be concrete enough that a reviewer can see why a status was derived. Note: the `surface` field on each claim (e.g. `"api"`) is a producer-defined namespace for grouping related claims — it is not the same as the Surface product name.
 
 ## 4. Open The Surface Console
 
