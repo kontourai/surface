@@ -26,6 +26,15 @@ Surface is the canonical source for this repo. Treat generated agent bundles, se
 - Public API, module boundaries, or future split candidates: read `docs/audits/source-module-audit.md`.
 - Product/runtime boundary questions between Surface and product layers: read `docs/architecture/surface-foundation.md` and `docs/architecture/developer-architecture.md`.
 
+## Match Checks To Change Type
+
+- Docs-only changes: run `npm run check:doc-links`; run `npm run docs:build` when published Pages output or navigation can change.
+- Generated/source-boundary changes: run `npm run check:generated-boundaries`.
+- Public API, package metadata, exports, or files changes: run `npm run check:package-contents`, `npm run test:package-smoke`, and `npm run test:external-adapter`.
+- CLI, trust derivation, schemas, adapters, or Console runtime changes: run `npm test`; prefer `npm run verify` before pushing.
+- Browser-visible Console or docs-site changes: run `npm run test:browser`.
+- Release or publish changes: run `npm run verify` and read `docs/maintenance/RELEASING.md`.
+
 ## Useful Commands
 
 - `npm run build`

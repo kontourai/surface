@@ -96,6 +96,7 @@ npx surface report --input my-export.json --format summary   # human-readable ro
 npx surface report --input my-export.json --format analytics # provenance-aware analytics projection
 npx surface stale  --input my-export.json                    # claims whose verification aged out
 npx surface missing --input my-export.json                   # claims missing required evidence
+npx surface get --claim-id claim.api.rate-limit --input my-export.json
 npx surface policy --claim-id claim.api.rate-limit --input my-export.json
 npx surface console                                          # local operator workspace, no cloud, no login
 npx surface mcp --input my-export.json                       # serve trust state to agents over MCP (stdio)
