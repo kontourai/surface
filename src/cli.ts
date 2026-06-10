@@ -8,6 +8,7 @@ import {
   runPolicyQuery,
   runStaleQuery,
 } from "./commands/query.js";
+import { runMcp } from "./commands/mcp.js";
 import { runReport } from "./commands/report.js";
 
 export async function runCli(args: string[]): Promise<void> {
@@ -31,6 +32,8 @@ export async function runCli(args: string[]): Promise<void> {
     await runClaimCommand(rest);
   } else if (command === "get") {
     await runGetQuery(rest);
+  } else if (command === "mcp") {
+    await runMcp(rest);
   } else {
     throw new Error(`Unknown command: ${command}`);
   }

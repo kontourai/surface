@@ -1,0 +1,42 @@
+{
+  "suite": "kontour-surface-conformance",
+  "version": 1,
+  "description": "Deterministic conformance cases for the Kontour Surface trust derivation. An alternate implementation of the Open Trust Format conforms when it accepts the valid inputs, rejects the invalid ones, and derives the same claim statuses and transparency gap types.",
+  "cases": [
+    {
+      "name": "verified-commit-evidence",
+      "input": "cases/verified-commit-evidence.json",
+      "expect": {
+        "valid": true,
+        "statusByClaimId": { "claim.api.rate-limit": "verified" },
+        "transparencyGapTypesByClaimId": { "claim.api.rate-limit": [] }
+      }
+    },
+    {
+      "name": "unknown-no-evidence",
+      "input": "cases/unknown-no-evidence.json",
+      "expect": {
+        "valid": true,
+        "statusByClaimId": { "claim.api.rate-limit": "unknown" },
+        "transparencyGapTypesByClaimId": { "claim.api.rate-limit": ["policy_violation", "provenance_gap"] }
+      }
+    },
+    {
+      "name": "stale-expired-window",
+      "input": "cases/stale-expired-window.json",
+      "expect": {
+        "valid": true,
+        "statusByClaimId": { "claim.api.rate-limit": "stale" },
+        "transparencyGapTypesByClaimId": { "claim.api.rate-limit": ["freshness_breach"] }
+      }
+    },
+    {
+      "name": "invalid-missing-subject",
+      "input": "cases/invalid-missing-subject.json",
+      "expect": {
+        "valid": false,
+        "errorIncludes": "Missing required string field: subjectId"
+      }
+    }
+  ]
+}

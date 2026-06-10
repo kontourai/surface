@@ -26,7 +26,7 @@ export async function runGetQuery(args: string[]): Promise<void> {
   console.log(JSON.stringify(projectClaimQuery(report, options.claimId), null, 2));
 }
 
-function projectClaimQuery(report: TrustReport, claimId: string): unknown {
+export function projectClaimQuery(report: TrustReport, claimId: string): unknown {
   const claim = report.claims.find((item) => item.id === claimId);
   if (!claim) throw new Error(`Unknown claim: ${claimId}`);
   const policy = claim.verificationPolicyId
@@ -44,7 +44,7 @@ function projectClaimQuery(report: TrustReport, claimId: string): unknown {
   };
 }
 
-function projectPolicyQuery(report: TrustReport, options: QueryOptions): unknown {
+export function projectPolicyQuery(report: TrustReport, options: QueryOptions): unknown {
   const projection = buildTrustAnalyticsProjection(report);
   const policyId = options.policyId ?? policyIdForClaim(report, options.claimId);
   if (policyId) {

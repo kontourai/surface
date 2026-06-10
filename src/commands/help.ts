@@ -14,7 +14,9 @@ Usage:
   surface stale [--input path] [--adapter name]
   surface missing [--input path] [--adapter name]
   surface policy [--policy-id <policy-id> | --claim-id <claim-id>] [--input path] [--adapter name]
+  surface mcp [--input path] [--adapter name]
 
 Surface reports map product claims to evidence, freshness, and trust status.
+surface mcp serves trust state to agents over the Model Context Protocol (stdio).
 `);
 }

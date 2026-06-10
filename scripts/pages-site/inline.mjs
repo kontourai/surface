@@ -4,7 +4,12 @@ import { githubSourceBaseUrl, pageSlugBySource } from "./pages.mjs";
 
 export function renderInline(text, source) {
   const placeholders = [];
-  const withPlaceholders = text.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_match, label, href) => {
+  const withImagePlaceholders = text.replace(/!\[([^\]]+)\]\(([^)\s]+)\)/g, (_match, alt, src) => {
+    const token = `\u0000${placeholders.length}\u0000`;
+    placeholders.push(`<img src="${escapeAttribute(resolveImageSrc(src, source))}" alt="${escapeAttribute(alt)}" loading="lazy">`);
+    return token;
+  });
+  const withPlaceholders = withImagePlaceholders.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_match, label, href) => {
     const safeLabel = renderInline(label, source);
     const safeHref = escapeAttribute(resolveHref(href, source));
     const token = `\u0000${placeholders.length}\u0000`;
@@ -49,6 +54,18 @@ function resolveHref(href, source) {
 
   if (!hasFileExtension(pathPart) && !pathPart.includes("/")) return href;
   return githubSourceUrl(target, fragment);
+}
+
+// Screenshot and badge assets live in the repo-level assets/ directory, which
+// the docs build copies to docs-site/assets/. Anything else falls back to the
+// GitHub source URL like other non-page links.
+function resolveImageSrc(src, source) {
+  if (/^https?:/i.test(src)) return src;
+  if (!isConservativeRelativePath(src)) return "#";
+  const target = normalize(join(dirname(source), src));
+  if (target.startsWith("..") || target.startsWith("/")) return "#";
+  if (target.startsWith("assets/")) return target;
+  return githubSourceUrl(target, "");
 }
 
 function isConservativeRelativePath(pathPart) {
