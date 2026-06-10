@@ -1,6 +1,6 @@
 # Walkthrough
 
-This is a real session against the shipped fixtures. Every command and every output below is paste from `node bin/surface.mjs`.
+This is a real session against the shipped fixtures. Every command below runs against the repo fixtures. The output matches what `node bin/surface.mjs` produces (timestamps vary between runs).
 
 ## 1. Install and report against the default fixture
 
@@ -13,13 +13,15 @@ The default fixture is a small set of mixed-quality claims. Running the command 
 
 ```text
 Kontour Surface report surface-1778389263721
-Source: surface-fixtures
-Claims: ... (proposed: ..., verified: ..., stale: ...)
-Surfaces: ...
-High-impact unsupported: ...
-Stale: ...
-Disputed: ...
-Transparency gaps: ...
+Source: kontour-surface-validation-fixtures
+Claims: 4 (unknown: 1, verified: 2, stale: 1)
+Surfaces: repo-governance.developer-evidence: 1, field-attested-records.public-data: 1, fact-resolution.financial-facts: 1, surface.roadmap: 1
+High-impact unsupported: none
+Stale: claim.field-attested-records.registration-status
+Recompute needed: none
+Disputed: none
+Claim groups: 0
+Transparency gaps: 3
 ```
 
 Each line answers a different question:
@@ -61,8 +63,6 @@ For the schema, see [Schemas](../reference/schemas.md). For the minimal adapter 
 
 ## What you do not get from Surface
 
-- Surface does not gather evidence. You bring the input.
-- Surface does not run policies against external systems. Policies declare what makes a claim valid; events record what was observed.
-- Surface does not write back. Reports are the output; producers, products, and downstream systems decide what to do with them.
+Surface does not gather evidence, run policies against external systems, or write back into product systems. For the full list, see [What Surface is not](../../README.md#what-surface-is-not) in the README.
 
 If you want to *produce* `surface.input` from AI-assisted code-change runs, see [Veritas](https://github.com/kontourai/veritas).

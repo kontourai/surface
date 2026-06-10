@@ -32,10 +32,12 @@ Surface is not a promise of perfect truth, a certification business, or a hosted
 
 ```bash
 npm install -D @kontourai/surface
-npx surface report --format summary
+npx surface report --input examples/surface-fixtures.json --format summary
 ```
 
-The default report reads [examples/surface-fixtures.json](examples/surface-fixtures.json), derives claim statuses, and emits a local trust report — the basis for a point-in-time Trust Snapshot:
+The command reads a Surface trust input, derives claim statuses, and emits a local trust report — the basis for a point-in-time Trust Snapshot. In this repo the fixture ships at `examples/surface-fixtures.json`; after installing the package in another project, pass `--input` pointing at your own trust input file.
+
+The output from the shipped fixture looks like this:
 
 ```text
 Kontour Surface report surface-1779196544815
@@ -43,9 +45,16 @@ Source: kontour-surface-validation-fixtures
 Claims: 4 (unknown: 1, verified: 2, stale: 1)
 Surfaces: repo-governance.developer-evidence: 1, field-attested-records.public-data: 1, fact-resolution.financial-facts: 1, surface.roadmap: 1
 High-impact unsupported: none
+Stale: claim.field-attested-records.registration-status
+Recompute needed: none
+Disputed: none
+Claim groups: 0
+Transparency gaps: 3
 ```
 
-For a step-by-step tour of the output, see the [Walkthrough](docs/guides/walkthrough.md).
+Each line answers a different question: **Claims** gives the total and derived status breakdown. **Surfaces** shows where claims live by producer namespace. **High-impact unsupported** flags claims where impact is high but evidence is missing or weak — the first thing to look at. **Stale** lists claims whose verification has expired. **Disputed** lists claims contradicted by an event or another claim. **Transparency gaps** counts discoverable conflicts, missing support, and supersede chains across the input.
+
+For a step-by-step tour, see the [Walkthrough](docs/guides/walkthrough.md).
 
 ## Emit your first claims
 
@@ -85,9 +94,24 @@ const input = new TrustInputBuilder({ source: "my-producer:local" })
   .build();
 
 const report = buildTrustReport(input);
+
+console.log(report.summary);
 ```
 
-A claim is only `verified` when a verification event and its policy-required evidence support it. When the integrity ref changes, the claim surfaces as changed-since-verified instead of silently staying green. See the [Consumer SDK guide](docs/guides/consumer-sdk.md).
+The derived report for this input looks like:
+
+```text
+{
+  totalClaims: 1,
+  byStatus: { verified: 1, unknown: 0, ... },
+  highImpactUnsupported: [],
+  staleClaims: [],
+  disputedClaims: [],
+  transparencyGapsByType: { ... }
+}
+```
+
+The claim is `verified` because the verification event and its policy-required evidence support it at the current integrity ref. If that integrity ref changed — say a new commit landed — the claim would surface as changed-since-verified instead of silently staying green. See the [Consumer SDK guide](docs/guides/consumer-sdk.md).
 
 ## Query trust state
 
