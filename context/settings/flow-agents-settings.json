@@ -4,6 +4,7 @@
     "enabled": true,
     "mode": "report",
     "extractor": "anthropic",
-    "agentId": "surface-agent"
+    "agentId": "surface-agent",
+    "bundlePath": ".kontour/trust-bundle.json"
   }
 }

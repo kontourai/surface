@@ -1,0 +1,386 @@
+{
+  "schemaVersion": 3,
+  "source": "kontourai-surface-release",
+  "claims": [
+    {
+      "id": "claim.release.test-suite-passes",
+      "subjectType": "npm-package",
+      "subjectId": "@kontourai/surface@0.9.0",
+      "surface": "kontourai-surface.release",
+      "claimType": "release-quality",
+      "fieldOrBehavior": "test-suite-passes",
+      "value": true,
+      "status": "verified",
+      "createdAt": "2026-06-11T17:15:32.343Z",
+      "updatedAt": "2026-06-11T17:15:32.343Z",
+      "impactLevel": "high",
+      "verificationPolicyId": "policy.release.test-suite-passes",
+      "currentIntegrityRef": "git:bbcd5ecd2a13799b4dc0d2e27ff4a488142afdbc",
+      "confidenceBasis": {
+        "sourceQuality": "strong",
+        "reviewerAuthority": "system",
+        "evidenceStrength": "strong",
+        "impactLevel": "high"
+      }
+    },
+    {
+      "id": "claim.release.spec-conformance-passes",
+      "subjectType": "npm-package",
+      "subjectId": "hachure@0.2.0",
+      "surface": "kontourai-surface.release",
+      "claimType": "release-quality",
+      "fieldOrBehavior": "spec-conformance-passes",
+      "value": true,
+      "status": "verified",
+      "createdAt": "2026-06-11T17:15:32.343Z",
+      "updatedAt": "2026-06-11T17:15:32.343Z",
+      "impactLevel": "high",
+      "verificationPolicyId": "policy.release.spec-conformance",
+      "currentIntegrityRef": "git:bbcd5ecd2a13799b4dc0d2e27ff4a488142afdbc",
+      "confidenceBasis": {
+        "sourceQuality": "strong",
+        "reviewerAuthority": "system",
+        "evidenceStrength": "strong",
+        "impactLevel": "high"
+      }
+    },
+    {
+      "id": "claim.release.status-function-version",
+      "subjectType": "npm-package",
+      "subjectId": "@kontourai/surface@0.9.0",
+      "surface": "kontourai-surface.release",
+      "claimType": "release-quality",
+      "fieldOrBehavior": "statusFunctionVersion",
+      "value": "1",
+      "status": "verified",
+      "createdAt": "2026-06-11T17:15:32.343Z",
+      "updatedAt": "2026-06-11T17:15:32.343Z",
+      "impactLevel": "high",
+      "verificationPolicyId": "policy.release.status-function-version",
+      "currentIntegrityRef": "git:bbcd5ecd2a13799b4dc0d2e27ff4a488142afdbc",
+      "confidenceBasis": {
+        "sourceQuality": "strong",
+        "reviewerAuthority": "system",
+        "evidenceStrength": "strong",
+        "impactLevel": "high"
+      }
+    },
+    {
+      "id": "claim.release.package-identity",
+      "subjectType": "npm-package",
+      "subjectId": "@kontourai/surface@0.9.0",
+      "surface": "kontourai-surface.release",
+      "claimType": "release-identity",
+      "fieldOrBehavior": "version",
+      "value": "0.9.0",
+      "status": "verified",
+      "createdAt": "2026-06-11T17:15:32.343Z",
+      "updatedAt": "2026-06-11T17:15:32.343Z",
+      "impactLevel": "high",
+      "verificationPolicyId": "policy.release.package-identity",
+      "currentIntegrityRef": "git:bbcd5ecd2a13799b4dc0d2e27ff4a488142afdbc",
+      "currentIntegrityAnchor": {
+        "id": "anchor.release.commit.bbcd5ecd",
+        "kind": "external_ref",
+        "algorithm": "git-sha1",
+        "value": "bbcd5ecd2a13799b4dc0d2e27ff4a488142afdbc",
+        "sourceRef": "git rev-parse HEAD",
+        "observedAt": "2026-06-11T17:15:32.343Z",
+        "verificationStatus": "verified",
+        "verifiedAt": "2026-06-11T17:15:32.343Z",
+        "verifiedBy": "kontourai-surface-release",
+        "metadata": {
+          "gitTag": "v0.9.0-1-gbbcd5ec"
+        }
+      },
+      "confidenceBasis": {
+        "sourceQuality": "strong",
+        "reviewerAuthority": "system",
+        "evidenceStrength": "strong",
+        "impactLevel": "high"
+      }
+    }
+  ],
+  "evidence": [
+    {
+      "id": "evidence.release.test-output",
+      "claimId": "claim.release.test-suite-passes",
+      "supportStrength": "entails",
+      "evidenceType": "test_output",
+      "method": "validation",
+      "sourceRef": "npm test",
+      "sourceLocator": "stdout+stderr of npm test",
+      "excerptOrSummary": "npm test passed: 248 tests passed, 0 failed",
+      "observedAt": "2026-06-11T17:15:32.343Z",
+      "collectedBy": "kontourai-surface-release",
+      "integrityRef": "git:bbcd5ecd2a13799b4dc0d2e27ff4a488142afdbc",
+      "passing": true,
+      "blocking": false,
+      "execution": {
+        "runner": "bash",
+        "label": "npm test",
+        "exitCode": 0,
+        "durationMs": null
+      }
+    },
+    {
+      "id": "evidence.release.spec-vector.0",
+      "claimId": "claim.release.spec-conformance-passes",
+      "supportStrength": "entails",
+      "evidenceType": "test_output",
+      "method": "validation",
+      "sourceRef": "node_modules/hachure/conformance/sf-authority-resolved.json",
+      "sourceLocator": "sf-authority-resolved.json",
+      "excerptOrSummary": "PASS sf-authority-resolved.json — 1 claim(s) all matched expected statuses",
+      "observedAt": "2026-06-11T17:15:32.343Z",
+      "collectedBy": "kontourai-surface-release",
+      "integrityRef": "git:bbcd5ecd2a13799b4dc0d2e27ff4a488142afdbc",
+      "passing": true,
+      "blocking": false
+    },
+    {
+      "id": "evidence.release.spec-vector.1",
+      "claimId": "claim.release.spec-conformance-passes",
+      "supportStrength": "entails",
+      "evidenceType": "test_output",
+      "method": "validation",
+      "sourceRef": "node_modules/hachure/conformance/sf-disputed-blocking.json",
+      "sourceLocator": "sf-disputed-blocking.json",
+      "excerptOrSummary": "PASS sf-disputed-blocking.json — 1 claim(s) all matched expected statuses",
+      "observedAt": "2026-06-11T17:15:32.343Z",
+      "collectedBy": "kontourai-surface-release",
+      "integrityRef": "git:bbcd5ecd2a13799b4dc0d2e27ff4a488142afdbc",
+      "passing": true,
+      "blocking": false
+    },
+    {
+      "id": "evidence.release.spec-vector.2",
+      "claimId": "claim.release.spec-conformance-passes",
+      "supportStrength": "entails",
+      "evidenceType": "test_output",
+      "method": "validation",
+      "sourceRef": "node_modules/hachure/conformance/sf-reference-bundle-snapshot.json",
+      "sourceLocator": "sf-reference-bundle-snapshot.json",
+      "excerptOrSummary": "PASS sf-reference-bundle-snapshot.json — 4 claim(s) all matched expected statuses",
+      "observedAt": "2026-06-11T17:15:32.343Z",
+      "collectedBy": "kontourai-surface-release",
+      "integrityRef": "git:bbcd5ecd2a13799b4dc0d2e27ff4a488142afdbc",
+      "passing": true,
+      "blocking": false
+    },
+    {
+      "id": "evidence.release.spec-vector.3",
+      "claimId": "claim.release.spec-conformance-passes",
+      "supportStrength": "entails",
+      "evidenceType": "test_output",
+      "method": "validation",
+      "sourceRef": "node_modules/hachure/conformance/sf-stale-duration.json",
+      "sourceLocator": "sf-stale-duration.json",
+      "excerptOrSummary": "PASS sf-stale-duration.json — 1 claim(s) all matched expected statuses",
+      "observedAt": "2026-06-11T17:15:32.343Z",
+      "collectedBy": "kontourai-surface-release",
+      "integrityRef": "git:bbcd5ecd2a13799b4dc0d2e27ff4a488142afdbc",
+      "passing": true,
+      "blocking": false
+    },
+    {
+      "id": "evidence.release.spec-vector.4",
+      "claimId": "claim.release.spec-conformance-passes",
+      "supportStrength": "entails",
+      "evidenceType": "test_output",
+      "method": "validation",
+      "sourceRef": "node_modules/hachure/conformance/sf-verified-commit.json",
+      "sourceLocator": "sf-verified-commit.json",
+      "excerptOrSummary": "PASS sf-verified-commit.json — 1 claim(s) all matched expected statuses",
+      "observedAt": "2026-06-11T17:15:32.343Z",
+      "collectedBy": "kontourai-surface-release",
+      "integrityRef": "git:bbcd5ecd2a13799b4dc0d2e27ff4a488142afdbc",
+      "passing": true,
+      "blocking": false
+    },
+    {
+      "id": "evidence.release.status-function-version",
+      "claimId": "claim.release.status-function-version",
+      "supportStrength": "entails",
+      "evidenceType": "source_excerpt",
+      "method": "extraction",
+      "sourceRef": "src/status.ts + node_modules/hachure/index.mjs",
+      "sourceLocator": "statusFunctionVersion export",
+      "excerptOrSummary": "statusFunctionVersion \"1\" matches hachure@0.2.0 spec (value: \"1\")",
+      "observedAt": "2026-06-11T17:15:32.343Z",
+      "collectedBy": "kontourai-surface-release",
+      "integrityRef": "git:bbcd5ecd2a13799b4dc0d2e27ff4a488142afdbc",
+      "passing": true,
+      "blocking": false
+    },
+    {
+      "id": "evidence.release.git-tag",
+      "claimId": "claim.release.package-identity",
+      "supportStrength": "entails",
+      "evidenceType": "source_excerpt",
+      "method": "anchoring",
+      "sourceRef": "git describe --tags",
+      "sourceLocator": "git tag",
+      "excerptOrSummary": "git describe --tags → v0.9.0-1-gbbcd5ec; git rev-parse HEAD → bbcd5ecd2a13799b4dc0d2e27ff4a488142afdbc",
+      "observedAt": "2026-06-11T17:15:32.343Z",
+      "collectedBy": "kontourai-surface-release",
+      "integrityRef": "git:bbcd5ecd2a13799b4dc0d2e27ff4a488142afdbc",
+      "passing": true,
+      "blocking": false
+    }
+  ],
+  "policies": [
+    {
+      "id": "policy.release.test-suite-passes",
+      "claimType": "release-quality",
+      "requiredEvidence": [
+        "test_output"
+      ],
+      "requiredMethods": [
+        "validation"
+      ],
+      "requiresCorroboration": false,
+      "acceptanceCriteria": [
+        "npm test exits 0 with 0 failing tests"
+      ],
+      "reviewAuthority": "system",
+      "validityRule": {
+        "kind": "commit"
+      },
+      "stalenessTriggers": [
+        "new commit"
+      ],
+      "conflictRules": [],
+      "impactLevel": "high"
+    },
+    {
+      "id": "policy.release.spec-conformance",
+      "claimType": "release-quality",
+      "requiredEvidence": [
+        "test_output"
+      ],
+      "requiredMethods": [
+        "validation"
+      ],
+      "requiresCorroboration": false,
+      "acceptanceCriteria": [
+        "all hachure spec conformance vectors pass"
+      ],
+      "reviewAuthority": "system",
+      "validityRule": {
+        "kind": "commit"
+      },
+      "stalenessTriggers": [
+        "new commit",
+        "hachure package update"
+      ],
+      "conflictRules": [],
+      "impactLevel": "high"
+    },
+    {
+      "id": "policy.release.status-function-version",
+      "claimType": "release-quality",
+      "requiredEvidence": [
+        "source_excerpt"
+      ],
+      "requiredMethods": [
+        "extraction"
+      ],
+      "requiresCorroboration": false,
+      "acceptanceCriteria": [
+        "statusFunctionVersion in impl matches spec package"
+      ],
+      "reviewAuthority": "system",
+      "validityRule": {
+        "kind": "commit"
+      },
+      "stalenessTriggers": [
+        "hachure package update",
+        "new commit"
+      ],
+      "conflictRules": [],
+      "impactLevel": "high"
+    },
+    {
+      "id": "policy.release.package-identity",
+      "claimType": "release-identity",
+      "requiredEvidence": [
+        "source_excerpt"
+      ],
+      "requiredMethods": [
+        "anchoring"
+      ],
+      "requiresCorroboration": false,
+      "acceptanceCriteria": [
+        "git tag and commit captured as integrity anchors"
+      ],
+      "reviewAuthority": "system",
+      "validityRule": {
+        "kind": "commit"
+      },
+      "stalenessTriggers": [
+        "new commit"
+      ],
+      "conflictRules": [],
+      "impactLevel": "high"
+    }
+  ],
+  "events": [
+    {
+      "id": "event.release.test-suite-passes",
+      "claimId": "claim.release.test-suite-passes",
+      "status": "verified",
+      "actor": "kontourai-surface-release",
+      "method": "automated-validation",
+      "evidenceIds": [
+        "evidence.release.test-output"
+      ],
+      "createdAt": "2026-06-11T17:15:32.343Z",
+      "verifiedAt": "2026-06-11T17:15:32.343Z",
+      "notes": "npm test passed: 248 tests passed, 0 failed"
+    },
+    {
+      "id": "event.release.spec-conformance-passes",
+      "claimId": "claim.release.spec-conformance-passes",
+      "status": "verified",
+      "actor": "kontourai-surface-release",
+      "method": "automated-validation",
+      "evidenceIds": [
+        "evidence.release.spec-vector.0",
+        "evidence.release.spec-vector.1",
+        "evidence.release.spec-vector.2",
+        "evidence.release.spec-vector.3",
+        "evidence.release.spec-vector.4"
+      ],
+      "createdAt": "2026-06-11T17:15:32.343Z",
+      "verifiedAt": "2026-06-11T17:15:32.343Z",
+      "notes": "5/5 vectors passed"
+    },
+    {
+      "id": "event.release.status-function-version",
+      "claimId": "claim.release.status-function-version",
+      "status": "verified",
+      "actor": "kontourai-surface-release",
+      "method": "automated-validation",
+      "evidenceIds": [
+        "evidence.release.status-function-version"
+      ],
+      "createdAt": "2026-06-11T17:15:32.343Z",
+      "verifiedAt": "2026-06-11T17:15:32.343Z",
+      "notes": "statusFunctionVersion \"1\" matches hachure@0.2.0 spec (value: \"1\")"
+    },
+    {
+      "id": "event.release.package-identity",
+      "claimId": "claim.release.package-identity",
+      "status": "verified",
+      "actor": "kontourai-surface-release",
+      "method": "automated-validation",
+      "evidenceIds": [
+        "evidence.release.git-tag"
+      ],
+      "createdAt": "2026-06-11T17:15:32.343Z",
+      "verifiedAt": "2026-06-11T17:15:32.343Z",
+      "notes": "Package @kontourai/surface@0.9.0 at git v0.9.0-1-gbbcd5ec (bbcd5ecd)"
+    }
+  ]
+}
