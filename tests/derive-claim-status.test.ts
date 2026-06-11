@@ -13,7 +13,7 @@ import {
   buildTrustReport,
   deriveClaimStatus,
   validateTrustBundle,
-  STATUS_FUNCTION_VERSION,
+  statusFunctionVersion,
 } from "../src/index.js";
 
 test("deriveClaimStatus matches buildTrustReport per-claim status for all example bundle claims", async () => {
@@ -39,9 +39,9 @@ test("deriveClaimStatus matches buildTrustReport per-claim status for all exampl
   }
 });
 
-test("STATUS_FUNCTION_VERSION is a non-empty string", () => {
-  assert.equal(typeof STATUS_FUNCTION_VERSION, "string");
-  assert.ok(STATUS_FUNCTION_VERSION.length > 0);
+test("statusFunctionVersion is a non-empty string", () => {
+  assert.equal(typeof statusFunctionVersion, "string");
+  assert.ok(statusFunctionVersion.length > 0);
 });
 
 test("deriveClaimStatus includes the resolved policyId", async () => {

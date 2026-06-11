@@ -719,7 +719,7 @@ export interface InquiryRecord {
    * Frozen so that future policy changes cannot silently rewrite history.
    */
   inputSnapshot: Array<{ claimId: string; status: TrustStatus }>;
-  /** Which version of the status function was used (STATUS_FUNCTION_VERSION). */
+  /** Which version of the status function was used (statusFunctionVersion). */
   statusFunctionVersion: string;
   /** ISO 8601 timestamp of when resolution was computed. */
   resolvedAt: string;

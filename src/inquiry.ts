@@ -19,7 +19,7 @@ import type {
 } from "./types.js";
 import type { CanonicalClaimTarget } from "./canonical.js";
 import { canonicalClaimKey } from "./canonical.js";
-import { deriveClaimStatus, STATUS_FUNCTION_VERSION } from "./status.js";
+import { deriveClaimStatus, statusFunctionVersion } from "./status.js";
 import { weakerStatus } from "./derivation.js";
 
 // ---------------------------------------------------------------------------
@@ -48,7 +48,7 @@ export function resolveInquiry(
       outcome: "unsupported",
       resolutionPath: { claimIds: [] },
       inputSnapshot: [],
-      statusFunctionVersion: STATUS_FUNCTION_VERSION,
+      statusFunctionVersion: statusFunctionVersion,
       resolvedAt,
     };
   }
@@ -74,7 +74,7 @@ export function resolveInquiry(
         resolutionPath: { claimIds: [claim.id] },
         answer: { value: claim.value, status },
         inputSnapshot: [{ claimId: claim.id, status }],
-        statusFunctionVersion: STATUS_FUNCTION_VERSION,
+        statusFunctionVersion: statusFunctionVersion,
         resolvedAt,
       };
     }
@@ -100,7 +100,7 @@ export function resolveInquiry(
       },
       answer: { value: result.satisfied, status: result.satisfied ? "verified" : "proposed" },
       inputSnapshot,
-      statusFunctionVersion: STATUS_FUNCTION_VERSION,
+      statusFunctionVersion: statusFunctionVersion,
       resolvedAt,
     };
   }
@@ -121,7 +121,7 @@ export function resolveInquiry(
         },
         answer: { value: mappingResult.value, status: mappingResult.status },
         inputSnapshot: [{ claimId: mappingResult.claimId, status: mappingResult.rawStatus }],
-        statusFunctionVersion: STATUS_FUNCTION_VERSION,
+        statusFunctionVersion: statusFunctionVersion,
         resolvedAt,
       };
     }
@@ -134,7 +134,7 @@ export function resolveInquiry(
     outcome: "unsupported",
     resolutionPath: { claimIds: [] },
     inputSnapshot: [],
-    statusFunctionVersion: STATUS_FUNCTION_VERSION,
+    statusFunctionVersion: statusFunctionVersion,
     resolvedAt,
   };
 }

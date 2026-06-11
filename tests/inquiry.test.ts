@@ -8,7 +8,7 @@ import {
   evaluateDerivationRule,
   resolveInquiry,
   validateTrustBundle,
-  STATUS_FUNCTION_VERSION,
+  statusFunctionVersion,
 } from "../src/index.js";
 import type {
   Claim,
@@ -117,7 +117,7 @@ test("resolveInquiry returns 'matched' when canonical key matches a bundle claim
   assert.equal(record.answer?.status, "verified");
   assert.equal(record.inputSnapshot.length, 1);
   assert.equal(record.inputSnapshot[0].claimId, "claim-1");
-  assert.equal(record.statusFunctionVersion, STATUS_FUNCTION_VERSION);
+  assert.equal(record.statusFunctionVersion, statusFunctionVersion);
   assert.ok(record.resolvedAt.startsWith("2026-06-03"));
 });
 

@@ -5,7 +5,7 @@
  * implementation (deriveClaimStatus via buildTrustReport) produces the expected
  * per-claim statuses at the test vector's fixed `now` timestamp.
  *
- * Any conforming independent implementation of STATUS_FUNCTION_VERSION "1" must
+ * Any conforming independent implementation of status function version "1" must
  * produce the same outputs for these inputs.
  */
 import test from "node:test";
@@ -14,7 +14,7 @@ import { readFile } from "node:fs/promises";
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 
-import { buildTrustReport, validateTrustBundle, STATUS_FUNCTION_VERSION } from "../src/index.js";
+import { buildTrustReport, validateTrustBundle, statusFunctionVersion } from "../src/index.js";
 
 interface SpecTestVector {
   now: string;
@@ -37,14 +37,14 @@ test("hachure package contains at least five test vector files", () => {
   );
 });
 
-test("STATUS_FUNCTION_VERSION is '1'", () => {
-  assert.equal(STATUS_FUNCTION_VERSION, "1");
+test("statusFunctionVersion is '1'", () => {
+  assert.equal(statusFunctionVersion, "1");
 });
 
-test("implementation STATUS_FUNCTION_VERSION matches the hachure spec package", async () => {
+test("implementation statusFunctionVersion matches the hachure spec package", async () => {
   // @ts-expect-error — the hachure package ships no TypeScript types
-  const spec = (await import("hachure")) as { STATUS_FUNCTION_VERSION: string };
-  assert.equal(STATUS_FUNCTION_VERSION, spec.STATUS_FUNCTION_VERSION);
+  const spec = (await import("hachure")) as { statusFunctionVersion: string };
+  assert.equal(statusFunctionVersion, spec.statusFunctionVersion);
 });
 
 for (const fileName of vectorFiles) {

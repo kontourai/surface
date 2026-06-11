@@ -176,7 +176,7 @@ function isResolutionAuthorized(
  * Increment when the algorithm changes so that stored InquiryRecords can be
  * re-evaluated if needed.
  */
-export const STATUS_FUNCTION_VERSION = "1";
+export const statusFunctionVersion = "1";
 
 /**
  * The result shape returned by deriveClaimStatus.
