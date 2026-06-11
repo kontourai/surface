@@ -21,7 +21,7 @@ Version 3 covers everything v2 covers plus:
 - Additive optional fields can ship in minor releases.
 - Required fields need a major schema version or a migration helper.
 - Enum additions are version-sensitive because older validators may reject them.
-- Removed fields require a documented replacement and fixture coverage.
+- Removed fields require a documented replacement and example coverage.
 - Adapter-specific records should stay outside the core schema unless the concept is portable across products.
 
 ## v1 to v2 migration
@@ -63,7 +63,7 @@ Version 3 is opt-in. To adopt it:
 
 - bump the top-level field to `"schemaVersion": 3`
 - start using any of the new optional fields (aliases, parent types, incompatibility rules, derived claims, linked export)
-- nothing else has to change — existing fixtures, policies, and adapters remain valid
+- nothing else has to change — existing examples, policies, and adapters remain valid
 
 When the kernel validates a v3 input, every v3-only field passes through the
 same strict validation as v2 fields: structural checks reject malformed shapes
@@ -75,6 +75,6 @@ Every schema change should include:
 
 - updated JSON schema
 - updated TypeScript types
-- fixture demonstrating the new shape
+- example demonstrating the new shape
 - report-generation test coverage
 - docs note explaining why the new field belongs in the trust model

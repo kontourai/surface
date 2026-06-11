@@ -17,17 +17,17 @@ npm install
 npm test
 ```
 
-## 2. Run The Fixture Report
+## 2. Run The Example Report
 
 ```bash
-npx surface report --input examples/surface-fixtures.json --format summary
+npx surface report --input examples/surface-example-bundle.json --format summary
 ```
 
-That command validates the fixture input, derives trust status for each claim, and prints a human-readable summary:
+That command validates the example input, derives trust status for each claim, and prints a human-readable summary:
 
 ```text
 Kontour Surface report surface-1779196544815
-Source: kontour-surface-validation-fixtures
+Source: kontour-surface-validation-examples
 Claims: 4 (unknown: 1, verified: 2, stale: 1)
 Surfaces: repo-governance.developer-evidence: 1, field-attested-records.public-data: 1, fact-resolution.financial-facts: 1, surface.roadmap: 1
 High-impact unsupported: none
@@ -38,7 +38,7 @@ Claim groups: 0
 Transparency gaps: 3
 ```
 
-The fixture includes four claims with mixed evidence quality. Two are verified (supported by evidence and a verification event), one is stale (its 14-day freshness window expired), and one is unknown (no evidence supplied). The three transparency gaps show missing attestations, a freshness breach, and missing evidence for an unverified claim.
+The example bundle includes four claims with mixed evidence quality. Two are verified (supported by evidence and a verification event), one is stale (its 14-day freshness window expired), and one is unknown (no evidence supplied). The three transparency gaps show missing attestations, a freshness breach, and missing evidence for an unverified claim.
 
 ## 3. Build Your First Producer
 

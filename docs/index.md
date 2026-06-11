@@ -29,13 +29,13 @@ Status is derived by construction — not summarized by a model, not hidden behi
 - **Fact resolution** — a financial workflow lets an agent proceed on user-verified facts while document-imported values that conflict with a worksheet stay visibly disputed.
 - **Dependency audits** — "safe to install" becomes a claim with a freshness window and a trace to the exact audit run, not a sentence in release notes.
 
-Each scenario ships as a runnable fixture in the repo. [See the full use cases.](product/use-cases.md)
+Each scenario ships as a runnable example in the repo. [See the full use cases.](product/use-cases.md)
 
 ## See it
 
-The same fixture report, inspected three ways — in the browser-local [Snapshot Viewer](https://kontourai.github.io/surface/viewer.html), embedded in a product page, and in the operator Console:
+The same example report, inspected three ways — in the browser-local [Snapshot Viewer](https://kontourai.github.io/surface/viewer.html), embedded in a product page, and in the operator Console:
 
-![The Trust Snapshot Viewer rendering the fixture report with status chips and an expanded claim showing its evidence](../assets/screenshots/snapshot-viewer.png)
+![The Trust Snapshot Viewer rendering the example report with status chips and an expanded claim showing its evidence](../assets/screenshots/snapshot-viewer.png)
 
 ## Four ways in
 
@@ -46,7 +46,7 @@ The same fixture report, inspected three ways — in the browser-local [Snapshot
 
 ## Start here
 
-1. [Getting Started](guides/getting-started.md) — install `@kontourai/surface`, run a fixture report, emit your first trust input.
+1. [Getting Started](guides/getting-started.md) — install `@kontourai/surface`, run an example report, emit your first trust input.
 2. [Walkthrough](guides/walkthrough.md) — a real CLI session: derive a report, query stale claims, drill into a policy decision.
 3. [Concepts](product/concepts.md) — the full vocabulary: claims, evidence traces, policies, claim groups, transparency gaps, status.
 4. [Use Cases](product/use-cases.md) — when to reach for Surface, what builds on it, and what it deliberately does not do.

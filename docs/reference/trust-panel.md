@@ -2,7 +2,7 @@
 
 `<surface-trust-panel>` is a dependency-free, read-only web component that renders a derived trust report so a viewer can inspect claims, evidence, freshness, and transparency gaps before relying on them. It is the reference implementation of the [Minimum Trust Panel](../specs/minimum-trust-panel.md) disclosure baseline for derived reports.
 
-![The surface-trust-panel element rendering the fixture report: status chips, expandable claims, evidence, and policy context](../../assets/screenshots/trust-panel.png)
+![The surface-trust-panel element rendering the example report: status chips, expandable claims, evidence, and policy context](../../assets/screenshots/trust-panel.png)
 
 Here is the intended integration, end to end: a product listing shows the Built with Surface badge as the entry point, and the embedded panel discloses — claim by claim — that the registration status was verified from a source excerpt and a human attestation, but needs refresh because its 14-day freshness window expired:
 

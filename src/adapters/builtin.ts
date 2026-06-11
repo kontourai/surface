@@ -3,7 +3,7 @@ import type { TrustBundle } from "../types.js";
 
 registerAdapter({
   name: "surface",
-  defaultFixture: "examples/surface-fixtures.json",
+  defaultExample: "examples/surface-example-bundle.json",
   adapt(record: unknown): TrustBundle {
     return record as TrustBundle;
   },

@@ -179,7 +179,7 @@ test("resolveInquiry returns 'unsupported' for natural-language-only inquiry (no
 // ---------------------------------------------------------------------------
 
 test("inputSnapshot captures status at resolution time — freshness boundary changes status", async () => {
-  const raw = await readFile("examples/surface-fixtures.json", "utf8");
+  const raw = await readFile("examples/surface-example-bundle.json", "utf8");
   const bundle = validateTrustBundle(JSON.parse(raw));
 
   // The field-attested-records claim is stale by 2026-04-25 (14-day window from 2026-04-01)

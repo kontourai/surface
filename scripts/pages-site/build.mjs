@@ -35,7 +35,7 @@ export async function buildDocsSite() {
 // matches current kernel behavior. `npm install` builds dist/ via prepare, so
 // the binary is available wherever the docs build runs.
 async function writeSampleReport() {
-  const { stdout } = await execFileAsync("node", ["bin/surface.mjs", "report", "--input", "examples/surface-fixtures.json"]);
+  const { stdout } = await execFileAsync("node", ["bin/surface.mjs", "report", "--input", "examples/surface-example-bundle.json"]);
   await writeFile("docs-site/sample-report.json", stdout);
 }
 

@@ -1,19 +1,19 @@
 # Walkthrough
 
-This is a real session against the shipped fixtures. Every command below runs against the repo fixtures. The output matches what `node bin/surface.mjs` produces (timestamps vary between runs).
+This is a real session against the shipped examples. Every command below runs against the repo examples. The output matches what `node bin/surface.mjs` produces (timestamps vary between runs).
 
-## 1. Install and report against the default fixture
+## 1. Install and report against the default example
 
 ```bash
 npm install -D @kontourai/surface
 npx surface report --format summary
 ```
 
-The default fixture is a small set of mixed-quality claims. Running the command emits a one-screen summary derived from `claims`, `evidence`, `policies`, and `events`:
+The default example bundle is a small set of mixed-quality claims. Running the command emits a one-screen summary derived from `claims`, `evidence`, `policies`, and `events`:
 
 ```text
 Kontour Surface report surface-1778389263721
-Source: kontour-surface-validation-fixtures
+Source: kontour-surface-validation-examples
 Claims: 4 (unknown: 1, verified: 2, stale: 1)
 Surfaces: repo-governance.developer-evidence: 1, field-attested-records.public-data: 1, fact-resolution.financial-facts: 1, surface.roadmap: 1
 High-impact unsupported: none
@@ -38,7 +38,7 @@ Each line answers a different question:
 Surface ships the `surface` passthrough adapter for already formatted `TrustBundle` JSON. It is the default for `surface report`.
 
 ```bash
-npx surface report --adapter surface --input examples/surface-fixtures.json --format summary
+npx surface report --adapter surface --input examples/surface-example-bundle.json --format summary
 ```
 
 Custom producers can register their own adapters, but Surface no longer ships domain adapters for npm audit, field-attested records, or fact resolution. Producers that use authored claim stores should emit evidence per run or use a Veritas plugin.
@@ -46,7 +46,7 @@ Custom producers can register their own adapters, but Surface no longer ships do
 ## 3. Switch to JSON when piping to another system
 
 ```bash
-npx surface report --input examples/surface-fixtures.json --format json
+npx surface report --input examples/surface-example-bundle.json --format json
 ```
 
 The JSON output is the full `TrustReport`: per-claim derived status, per-claim `confidenceBasis`, current `transparencyGaps` annotations, summary, and `evidenceRequirementsByClaimId`. Consume this when you need the structured shape; consume `summary` when a human is reading.

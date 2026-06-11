@@ -9,7 +9,7 @@ test("CLI help keeps documented command surface stable", async () => {
   const help = await execFileAsync("node", ["bin/surface.mjs", "--help"]);
 
   assert.match(help.stdout, /Usage:/);
-  assert.match(help.stdout, /surface report \[--input examples\/surface-fixtures\.json\]/);
+  assert.match(help.stdout, /surface report \[--input examples\/surface-example-bundle\.json\]/);
   assert.match(help.stdout, /surface console \[--read-model \.surface\/runs\/latest\.json\]/);
   assert.match(help.stdout, /surface claim add --type <claim-type>/);
   assert.match(help.stdout, /surface get --claim-id <claim-id>/);

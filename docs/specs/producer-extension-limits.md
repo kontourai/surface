@@ -43,7 +43,7 @@ When adding extension behavior to Surface core, prefer:
 - schema-shaped optional fields
 - producer-specific metadata for non-portable concepts
 - documented mappings from producer terms to Surface terms
-- fixtures that prove core semantics are unchanged
+- examples that prove core semantics are unchanged
 
 If a producer concept changes claim status, evidence meaning, freshness, conflicts, or disclosure semantics, it belongs in a spec or schema proposal before implementation.
 

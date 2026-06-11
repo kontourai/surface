@@ -11,7 +11,7 @@ surface mcp --input path/to/trust-bundle.json
 surface mcp --input path/to/export.json --adapter my-producer
 ```
 
-`--input` defaults to `examples/surface-fixtures.json` and `--adapter` to the native `surface` passthrough, matching `surface report`.
+`--input` defaults to `examples/surface-example-bundle.json` and `--adapter` to the native `surface` passthrough, matching `surface report`.
 
 A typical MCP client configuration:
 
@@ -40,7 +40,7 @@ A typical MCP client configuration:
 
 ## A realistic session
 
-An agent asked to "use the latest verified pricing data" should not have to guess what "verified" means. With the server pointed at the producer's export, the agent calls `surface_stale_claims` before relying on anything. Against the repo's own fixture input, the actual tool result is:
+An agent asked to "use the latest verified pricing data" should not have to guess what "verified" means. With the server pointed at the producer's export, the agent calls `surface_stale_claims` before relying on anything. Against the repo's own example input, the actual tool result is:
 
 ```json
 [

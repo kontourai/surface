@@ -22,7 +22,7 @@ export function parseReportArgs(args: string[]): {
   runId?: string;
   adapter: string;
 } {
-  let input = resolve("examples/surface-fixtures.json");
+  let input = resolve("examples/surface-example-bundle.json");
   let format: "json" | "summary" | "linked" | "analytics" = "json";
   let runId: string | undefined;
   let adapter = "surface";
@@ -55,7 +55,7 @@ export function parseReportArgs(args: string[]): {
 }
 
 export function parseQueryArgs(args: string[]): QueryOptions {
-  let input = resolve("examples/surface-fixtures.json");
+  let input = resolve("examples/surface-example-bundle.json");
   let runId: string | undefined;
   let adapter = "surface";
   let inputExplicit = false;
@@ -107,7 +107,7 @@ function defaultInputForAdapter(adapterName: string): string {
   if (!adapter) {
     throw new Error(`Unknown adapter: ${adapterName}. Registered adapters: ${registeredAdapterNames()}`);
   }
-  return adapter.defaultFixture ?? "examples/surface-fixtures.json";
+  return adapter.defaultExample ?? "examples/surface-example-bundle.json";
 }
 
 function registeredAdapterNames(): string {

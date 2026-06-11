@@ -1,10 +1,10 @@
-# Fixtures
+# Examples
 
-Fixtures are the first evidence that Surface is not just a concept document. They show how different products can map into one trust model without pretending every domain verifies truth the same way.
+Examples are the first evidence that Surface is not just a concept document. They show how different products can map into one trust model without pretending every domain verifies truth the same way.
 
-## Native fixture
+## Native example bundle
 
-`examples/surface-fixtures.json` is a canonical Surface trust input. It includes claims inspired by:
+`examples/surface-example-bundle.json` is a canonical Surface trust input. It includes claims inspired by:
 
 - repo-governance evidence checks
 - field-attested public-data freshness
@@ -12,18 +12,18 @@ Fixtures are the first evidence that Surface is not just a concept document. The
 
 It uses `schemaVersion: 2`, required evidence methods, structured policy method requirements, report-derived requirement fields, and typed transparency gap output through the current `transparencyGaps` field.
 
-## Field-Attested Records Fixture
+## Field-Attested Records Example
 
 `examples/field-attested-records-export.json` includes approved field sources, active and stale attestations, an open review flag, completed and failed crawls, and pending/rejected proposals. It shows public-data trust can use the same statuses as developer evidence without losing domain context.
 
-## Fact Resolution Fixture
+## Fact Resolution Example
 
 `examples/fact-resolution-export.json` includes verified facts, resolved facts needing verification, return-package citations, unresolved fields, assumptions, comparison gaps, and review signals. It shows high-stakes truth needs provenance and review state, not a single confidence score.
 
-## Reputation integrity fixture
+## Reputation Integrity Example
 
 `examples/reputation-integrity-trust-export.json` distinguishes observed popularity signals, heuristic suspicion, and unsupported owner-intent accusations. It shows Surface can make a verification gap visible without converting weak evidence into a stronger claim.
 
-## Fixture rule
+## Example contract
 
-A fixture is not just sample data. It is a regression contract for what the company means by trust: source, evidence, freshness, failure mode, and reviewability must remain visible.
+An example is not just sample data. It is a regression contract for what the company means by trust: source, evidence, freshness, failure mode, and reviewability must remain visible.

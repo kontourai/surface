@@ -26,7 +26,7 @@ function minimalInput(source: string): TrustBundle {
 test("adapter registry supports register, get, and list", () => {
   const adapter: Adapter = {
     name: "registry-test-adapter",
-    defaultFixture: "examples/registry-test.json",
+    defaultExample: "examples/registry-test.json",
     adapt() {
       return minimalInput("registry-test");
     },

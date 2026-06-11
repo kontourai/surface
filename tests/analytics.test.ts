@@ -13,7 +13,7 @@ import {
 const execFileAsync = promisify(execFile);
 
 test("builds a deterministic trust analytics projection from a report", async () => {
-  const raw = await readFile("examples/surface-fixtures.json", "utf8");
+  const raw = await readFile("examples/surface-example-bundle.json", "utf8");
   const input = validateTrustBundle(JSON.parse(raw));
   const report = buildTrustReport(input, {
     id: "analytics-report",
@@ -41,7 +41,7 @@ test("builds a deterministic trust analytics projection from a report", async ()
 });
 
 test("surfaces weak attestations without changing trust report status", async () => {
-  const raw = await readFile("examples/surface-fixtures.json", "utf8");
+  const raw = await readFile("examples/surface-example-bundle.json", "utf8");
   const input = validateTrustBundle(JSON.parse(raw));
   const report = buildTrustReport(input, {
     id: "analytics-report",

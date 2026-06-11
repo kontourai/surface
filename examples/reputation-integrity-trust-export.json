@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "source": "kontour-surface-reputation-integrity-fixture",
+  "source": "kontour-surface-reputation-integrity-example",
   "claims": [
     {
       "id": "claim.reputation.raw-star-count",
@@ -54,7 +54,7 @@
       "sourceLocator": "repository.stargazers_count",
       "excerptOrSummary": "GitHub API snapshot observed 12,000 stars.",
       "observedAt": "2026-04-25T00:00:00.000Z",
-      "collectedBy": "reputation-integrity-fixture"
+      "collectedBy": "reputation-integrity-example"
     },
     {
       "id": "evidence.reputation.burst-heuristic",
@@ -65,7 +65,7 @@
       "sourceLocator": "star growth model",
       "excerptOrSummary": "Star velocity and follower overlap indicate an anomaly that needs corroboration.",
       "observedAt": "2026-04-25T00:05:00.000Z",
-      "collectedBy": "reputation-integrity-fixture",
+      "collectedBy": "reputation-integrity-example",
       "metadata": {
         "transparencyGapHints": [
           {
@@ -123,7 +123,7 @@
       "id": "event.reputation.raw-star-count.verified",
       "claimId": "claim.reputation.raw-star-count",
       "status": "verified",
-      "actor": "reputation-integrity-fixture",
+      "actor": "reputation-integrity-example",
       "method": "source snapshot",
       "evidenceIds": ["evidence.reputation.star-count"],
       "createdAt": "2026-04-25T00:00:00.000Z",

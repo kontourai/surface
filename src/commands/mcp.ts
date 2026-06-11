@@ -218,7 +218,7 @@ function stringArg(args: Record<string, unknown>, key: string): string | undefin
 }
 
 function parseMcpArgs(args: string[]): McpServerOptions {
-  let input = resolve("examples/surface-fixtures.json");
+  let input = resolve("examples/surface-example-bundle.json");
   let adapter = "surface";
 
   for (let index = 0; index < args.length; index += 1) {

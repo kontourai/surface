@@ -43,7 +43,7 @@ Trace analysis is implemented by `analyzeTrustTraces(report)`. Analytics uses th
 ## CLI
 
 ```bash
-surface report --input examples/surface-fixtures.json --format analytics
+surface report --input examples/surface-example-bundle.json --format analytics
 ```
 
 The command emits projection JSON. The existing `json`, `summary`, and `linked` report formats are unchanged.

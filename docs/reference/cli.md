@@ -7,7 +7,7 @@ The first Surface interface is a local CLI. It should be boring, inspectable, an
 Generate a report from a native Surface trust input:
 
 ```bash
-surface report --input examples/surface-fixtures.json --format summary
+surface report --input examples/surface-example-bundle.json --format summary
 ```
 
 Generate reports from a custom registered adapter:

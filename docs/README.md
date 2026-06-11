@@ -8,7 +8,7 @@ The generated `docs-site/` output is a curated public site built from selected s
 
 - `product/` — product thesis, vocabulary, positioning, use cases, and what builds on Surface.
 - `guides/` — task-oriented walkthroughs for builders and consumers.
-- `reference/` — CLI, schemas, adapters, Console, extension API, analytics, fixtures, and versioning reference.
+- `reference/` — CLI, schemas, adapters, Console, extension API, analytics, examples, and versioning reference.
 - `architecture/` — current system architecture and foundation boundaries.
 - `specs/` — portable trust format and product capability specs.
 - `audits/` — point-in-time audits and migration maps.
@@ -35,7 +35,7 @@ Maintainer-only material stays repo-only: this index, brand language, ADRs, audi
 
 ## Building With Surface
 
-- [Getting Started](guides/getting-started.md) — install Surface, run a fixture report, and build a first producer
+- [Getting Started](guides/getting-started.md) — install Surface, run an example report, and build a first producer
 - [Consumer SDK](guides/consumer-sdk.md) — fluent helpers for emitting valid `TrustBundle`
 - [Walkthrough](guides/walkthrough.md) — real session walkthrough with native Surface input
 - [External Adapter Example](../examples/external-adapter/README.md) — minimal package-shaped producer
@@ -47,7 +47,7 @@ Maintainer-only material stays repo-only: this index, brand language, ADRs, audi
 - [Extension API](reference/extension-api.md) — producer branding, vocabulary, claim types, and policy templates
 - [Adapters](reference/adapters.md) — adapter registry and producer-owned input mapping
 - [Schemas](reference/schemas.md) — JSON contracts for adapter authors and downstream systems
-- [Fixtures](reference/fixtures.md) — examples used by tests and docs
+- [Examples](reference/examples.md) — examples used by tests and docs
 - [Schema Versioning](reference/schema-versioning.md) — versioning rules for contract changes
 - [Trust Analytics Projection](reference/analytics.md) — evidence intelligence derived from `TrustReport`
 - [Surface Console](reference/console.md) — local Console server over producer read models

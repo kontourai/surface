@@ -1,6 +1,6 @@
 {
   "name": "@kontourai/surface",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Shared transparency foundation under Kontour's products. Claims, evidence, freshness, and gaps in one inspectable shape.",
   "license": "Apache-2.0",
   "type": "module",
@@ -32,7 +32,7 @@
     "schemas/",
     "examples/*.json",
     "examples/external-adapter/README.md",
-    "examples/external-adapter/fixture.json",
+    "examples/external-adapter/example-input.json",
     "examples/external-adapter/package.json",
     "examples/external-adapter/src/",
     "examples/external-adapter/tsconfig.json",

@@ -36,7 +36,7 @@ The appropriate pattern for one-shot analysis or for producers that own their ow
 The only built-in adapter is `surface`, a passthrough for already formatted Surface input:
 
 ```bash
-surface report --input examples/surface-fixtures.json
+surface report --input examples/surface-example-bundle.json
 surface report --adapter surface --input path/to/trust-bundle.json
 ```
 

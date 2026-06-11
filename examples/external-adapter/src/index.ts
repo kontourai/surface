@@ -20,7 +20,7 @@ interface TicketRecord {
 
 const ticketAdapter: Adapter<TicketRecord> = {
   name: "external-ticket-system",
-  defaultFixture: "fixture.json",
+  defaultExample: "example-input.json",
   adapt(record): TrustBundle {
     const claimId = `external-ticket.${record.id}.status`;
     const evidenceId = `${claimId}.evidence`;
@@ -77,8 +77,8 @@ const ticketAdapter: Adapter<TicketRecord> = {
 
 registerAdapter(ticketAdapter);
 
-const fixturePath = resolve(dirname(fileURLToPath(import.meta.url)), "../fixture.json");
-const raw = JSON.parse(readFileSync(fixturePath, "utf8")) as TicketRecord;
+const exampleInputPath = resolve(dirname(fileURLToPath(import.meta.url)), "../example-input.json");
+const raw = JSON.parse(readFileSync(exampleInputPath, "utf8")) as TicketRecord;
 const adapter = getAdapter("external-ticket-system");
 if (!adapter) throw new Error("external-ticket-system adapter was not registered");
 

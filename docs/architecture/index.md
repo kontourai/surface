@@ -45,4 +45,4 @@ The current CLI and routes still use `console`, including `surface console` and 
 
 ## Local-first first
 
-The first milestone should run locally with fixtures and static docs. Hosted sinks and hosted Console experiences come after the schema and report contract prove useful.
+The first milestone should run locally with examples and static docs. Hosted sinks and hosted Console experiences come after the schema and report contract prove useful.

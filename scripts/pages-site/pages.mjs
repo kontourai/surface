@@ -16,7 +16,7 @@ export const navGroups = [
         "getting-started",
         "docs/guides/getting-started.md",
         "Getting Started",
-        "Install Kontour Surface, run your first trust report from fixtures, and emit your first producer claims with the TypeScript SDK.",
+        "Install Kontour Surface, run your first trust report from example data, and emit your first producer claims with the TypeScript SDK.",
       ],
       [
         "walkthrough",
@@ -125,9 +125,9 @@ export const navGroups = [
         "How Kontour Surface versions its schema contracts and how to migrate trust input between schema versions.",
       ],
       [
-        "fixtures",
-        "docs/reference/fixtures.md",
-        "Fixtures",
+        "examples",
+        "docs/reference/examples.md",
+        "Examples",
         "The example trust inputs that double as regression contracts for the Kontour Surface kernel.",
       ],
     ],

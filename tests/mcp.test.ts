@@ -12,7 +12,7 @@ interface JsonRpcResponse {
 }
 
 test("surface mcp serves trust state over the Model Context Protocol", async () => {
-  const server = spawn("node", ["bin/surface.mjs", "mcp", "--input", "examples/surface-fixtures.json"], {
+  const server = spawn("node", ["bin/surface.mjs", "mcp", "--input", "examples/surface-example-bundle.json"], {
     stdio: ["pipe", "pipe", "inherit"],
   });
   const responses = collectResponses(server.stdout);

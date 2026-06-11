@@ -2,7 +2,7 @@ import type { TrustBundle } from "./types.js";
 
 export interface Adapter<Input = unknown> {
   name: string;
-  defaultFixture?: string;
+  defaultExample?: string;
   adapt(record: Input): TrustBundle;
 }
 

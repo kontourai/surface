@@ -20,7 +20,7 @@ The result is a point-in-time **Trust Snapshot** that a person, another system, 
 - **Dependency audits** — `npm audit` output becomes evidence behind a "safe to install" claim with a freshness window and a trace to the exact run.
 - **Agent guardrails** — agents query stale claims, missing evidence, and policy gaps through the CLI, the JSON report, or the built-in [MCP server](docs/reference/mcp.md), and apply the discipline the kernel derives: act on verified, reverify stale, escalate disputed.
 
-Each of these ships as a runnable fixture in [`examples/`](docs/reference/fixtures.md). The deeper narratives are in [Use Cases](docs/product/use-cases.md).
+Each of these ships as a runnable example in [`examples/`](docs/reference/examples.md). The deeper narratives are in [Use Cases](docs/product/use-cases.md).
 
 ## What Surface is not
 
@@ -46,16 +46,16 @@ Each product stands alone; Surface requires none of them.
 
 ```bash
 npm install -D @kontourai/surface
-npx surface report --input examples/surface-fixtures.json --format summary
+npx surface report --input examples/surface-example-bundle.json --format summary
 ```
 
-The command reads a Surface trust input, derives claim statuses, and emits a local trust report — the basis for a point-in-time Trust Snapshot. In this repo the fixture ships at `examples/surface-fixtures.json`; after installing the package in another project, pass `--input` pointing at your own trust input file.
+The command reads a Surface trust input, derives claim statuses, and emits a local trust report — the basis for a point-in-time Trust Snapshot. In this repo the example bundle ships at `examples/surface-example-bundle.json`; after installing the package in another project, pass `--input` pointing at your own trust input file.
 
-The output from the shipped fixture looks like this:
+The output from the shipped example bundle looks like this:
 
 ```text
 Kontour Surface report surface-1779196544815
-Source: kontour-surface-validation-fixtures
+Source: kontour-surface-validation-examples
 Claims: 4 (unknown: 1, verified: 2, stale: 1)
 Surfaces: repo-governance.developer-evidence: 1, field-attested-records.public-data: 1, fact-resolution.financial-facts: 1, surface.roadmap: 1
 High-impact unsupported: none
@@ -213,9 +213,9 @@ Ignored local/generated directories such as `node_modules/`, `.surface/`, `.flow
 ## Documentation
 
 - [Published Documentation](https://kontourai.github.io/surface/)
-- [Getting Started](docs/guides/getting-started.md) — install Surface, run a fixture report, and build a first producer
+- [Getting Started](docs/guides/getting-started.md) — install Surface, run an example report, and build a first producer
 - [Walkthrough](docs/guides/walkthrough.md) — real session with native Surface input
-- [Use Cases](docs/product/use-cases.md) — real-world scenarios grounded in shipped fixtures
+- [Use Cases](docs/product/use-cases.md) — real-world scenarios grounded in shipped examples
 - [Concepts](docs/product/concepts.md) — trust vocabulary, claim groups, transparency gaps, and status model
 - [Consumer SDK](docs/guides/consumer-sdk.md) — fluent helpers for emitting valid `TrustBundle`
 - [CLI](docs/reference/cli.md) — shipped report, query, and claim commands

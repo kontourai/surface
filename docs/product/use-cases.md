@@ -13,7 +13,7 @@ You are building a product (Kontour or otherwise) that has any of these jobs:
 
 If you are doing any of that and you do not yet have a vocabulary for claims, evidence, freshness, and conflict, you want Surface as your product transparency layer.
 
-The scenarios are not hypothetical shapes. Each one is grounded in a fixture that ships in [`examples/`](../reference/fixtures.md) and runs through the same kernel as production input. They are also not the only places Surface fits: anything that needs to express claims, Evidence Trace, Freshness, and Conflict — marketplace listings, certifications, regulatory disclosures, agent output validation — can build on the same foundation.
+The scenarios are not hypothetical shapes. Each one is grounded in an example that ships in [`examples/`](../reference/examples.md) and runs through the same kernel as production input. They are also not the only places Surface fits: anything that needs to express claims, Evidence Trace, Freshness, and Conflict — marketplace listings, certifications, regulatory disclosures, agent output validation — can build on the same foundation.
 
 ## AI Code Governance — built and shipping
 
@@ -27,7 +27,7 @@ The scenarios are not hypothetical shapes. Each one is grounded in a fixture tha
 
 **The situation.** A public-data directory lists community organizations: registration status, locations, pricing, contacts. Some fields come from crawls, some from human attestations, some from the organizations themselves. Users act on this data, so "where did this field come from and how current is it?" is the product.
 
-**The mapping.** The product's adapter (owned by the product, not by Surface) maps each sourced field to a claim, each crawl excerpt and approved attestation to Evidence with a source URL and timestamps, and each editorial approval to a verification event. The [field-attested records fixture](https://github.com/kontourai/surface/blob/main/examples/field-attested-records-export.json) shows the shape: an attested `city` field stays `verified`, while a pricing value observed months ago and never re-approved derives as `stale` under its freshness policy.
+**The mapping.** The product's adapter (owned by the product, not by Surface) maps each sourced field to a claim, each crawl excerpt and approved attestation to Evidence with a source URL and timestamps, and each editorial approval to a verification event. The [field-attested records example](https://github.com/kontourai/surface/blob/main/examples/field-attested-records-export.json) shows the shape: an attested `city` field stays `verified`, while a pricing value observed months ago and never re-approved derives as `stale` under its freshness policy.
 
 **Why it matters.** The directory can show a Trust Panel per record — claim by claim, source by source — instead of a single "verified" badge that hides which fields are actually supported.
 
@@ -35,7 +35,7 @@ The scenarios are not hypothetical shapes. Each one is grounded in a fixture tha
 
 **The situation.** A financial workflow extracts facts from documents, reconciles them against manual entries and prior-period values, and selects one value per fact. The selected number drives downstream calculations. When an imported figure conflicts with a worksheet value, that conflict must slow someone down — especially when the "someone" is an agent.
 
-**The mapping.** Each resolved fact becomes a claim; extraction candidates, confidence context, and review rationale become Evidence and metadata; explicit human verification becomes a verification event. The [fact resolution fixture](https://github.com/kontourai/surface/blob/main/examples/fact-resolution-export.json) shows a user-verified filing status deriving as `verified` while a document-imported capital gain that conflicts with a worksheet derives with the conflict visible and `needsVerification` preserved — not averaged away into a confidence score.
+**The mapping.** Each resolved fact becomes a claim; extraction candidates, confidence context, and review rationale become Evidence and metadata; explicit human verification becomes a verification event. The [fact resolution example](https://github.com/kontourai/surface/blob/main/examples/fact-resolution-export.json) shows a user-verified filing status deriving as `verified` while a document-imported capital gain that conflicts with a worksheet derives with the conflict visible and `needsVerification` preserved — not averaged away into a confidence score.
 
 **Why it matters.** Status is derived by construction. The workflow can let an agent proceed on verified facts and route disputed ones to a human, using the same report.
 
@@ -43,7 +43,7 @@ The scenarios are not hypothetical shapes. Each one is grounded in a fixture tha
 
 **The situation.** A platform team asserts "our published packages are safe to install" in release notes. That claim is only as good as the latest audit run, and audit results age fast.
 
-**The mapping.** A producer maps `npm audit --json` output into Evidence supporting (or challenging) authored package-safety claims. The [npm audit fixture](https://github.com/kontourai/surface/blob/main/examples/npm-audit-export.json) shows a high-severity finding becoming evidence that challenges the claim instead of a buried CI log line. A freshness policy keeps the claim from staying `verified` on the strength of last month's scan.
+**The mapping.** A producer maps `npm audit --json` output into Evidence supporting (or challenging) authored package-safety claims. The [npm audit example](https://github.com/kontourai/surface/blob/main/examples/npm-audit-export.json) shows a high-severity finding becoming evidence that challenges the claim instead of a buried CI log line. A freshness policy keeps the claim from staying `verified` on the strength of last month's scan.
 
 **Why it matters.** "Safe to install" stops being a static sentence and becomes a claim with a current status, a trace to the exact audit run, and a visible gap when the audit is stale or missing.
 
@@ -51,7 +51,7 @@ The scenarios are not hypothetical shapes. Each one is grounded in a fixture tha
 
 **The situation.** A team evaluating open-source dependencies looks at stars, contributor counts, and adoption signals — all of which can be inflated. The honest position is rarely "this repo is fraudulent"; it is "this signal is observed, and this anomaly is proposed but unconfirmed."
 
-**The mapping.** The [reputation integrity fixture](https://github.com/kontourai/surface/blob/main/examples/reputation-integrity-trust-export.json) models exactly that: a raw star count as an observed claim, and a suspicious growth pattern as a high-impact `proposed` claim under an anomaly policy that requires corroboration before it hardens into anything stronger.
+**The mapping.** The [reputation integrity example](https://github.com/kontourai/surface/blob/main/examples/reputation-integrity-trust-export.json) models exactly that: a raw star count as an observed claim, and a suspicious growth pattern as a high-impact `proposed` claim under an anomaly policy that requires corroboration before it hardens into anything stronger.
 
 **Why it matters.** Unverified is not denied. Surface keeps the suspicion visible without letting a heuristic masquerade as a finding — the difference between a useful signal and a false accusation.
 

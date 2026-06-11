@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { buildTrustReport, formatTrustReportSummary, validateTrustBundle } from "../src/index.js";
 
-test("builds a canonical trust report from validation fixtures", async () => {
-  const raw = await readFile("examples/surface-fixtures.json", "utf8");
+test("builds a canonical trust report from the validation example bundle", async () => {
+  const raw = await readFile("examples/surface-example-bundle.json", "utf8");
   const input = validateTrustBundle(JSON.parse(raw));
   const report = buildTrustReport(input, {
     id: "test-report",
@@ -560,7 +560,7 @@ test("non-blocking evidence failures create non-blocking transparency gaps while
   assert.equal(transparencyGap?.blocking, false);
 });
 
-test("reputation integrity fixture keeps suspicion distinct from accusation", async () => {
+test("reputation integrity example keeps suspicion distinct from accusation", async () => {
   const raw = await readFile("examples/reputation-integrity-trust-export.json", "utf8");
   const input = validateTrustBundle(JSON.parse(raw));
   const report = buildTrustReport(input, {

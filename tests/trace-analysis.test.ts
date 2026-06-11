@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { analyzeTrustTraces, buildTrustReport, validateTrustBundle } from "../src/index.js";
 
 test("analyzeTrustTraces classifies Evidence Trace and Authority Trace gaps", async () => {
-  const raw = await readFile("examples/surface-fixtures.json", "utf8");
+  const raw = await readFile("examples/surface-example-bundle.json", "utf8");
   const input = validateTrustBundle(JSON.parse(raw));
   const report = buildTrustReport(input, {
     id: "trace-analysis",
