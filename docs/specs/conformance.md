@@ -17,7 +17,7 @@ Conformance covers derivation semantics, not presentation. A conforming implemen
 The suite lives in [`conformance/`](https://github.com/kontourai/surface/tree/main/conformance) in the Surface repo:
 
 - `manifest.json` — the case list with expected outcomes.
-- `cases/*.json` — one `TrustInput` per case.
+- `cases/*.json` — one `TrustBundle` per case.
 
 Current cases cover the core derivation contract:
 

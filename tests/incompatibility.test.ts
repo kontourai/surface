@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildTrustReport, validateTrustInput } from "../src/index.js";
-import type { Claim, TrustInput, VerificationPolicy } from "../src/index.js";
+import { buildTrustReport, validateTrustBundle } from "../src/index.js";
+import type { Claim, TrustBundle, VerificationPolicy } from "../src/index.js";
 
 const baseClaim: Omit<Claim, "id" | "value" | "fieldOrBehavior"> = {
   subjectType: "repo-governance.repo",
@@ -22,7 +22,7 @@ const basePolicy: Omit<VerificationPolicy, "id" | "claimType"> = {
   impactLevel: "medium",
 };
 
-function makeInput(overrides: Partial<TrustInput>): TrustInput {
+function makeInput(overrides: Partial<TrustBundle>): TrustBundle {
   return {
     schemaVersion: 3,
     source: "incompat-test",
@@ -35,7 +35,7 @@ function makeInput(overrides: Partial<TrustInput>): TrustInput {
 }
 
 test("incompatibleValues fires a contradiction for same-subject claim pair", () => {
-  const input = validateTrustInput(makeInput({
+  const input = validateTrustBundle(makeInput({
     claims: [
       { ...baseClaim, id: "claim-a", fieldOrBehavior: "channel", value: "ga" },
       { ...baseClaim, id: "claim-b", fieldOrBehavior: "channel", value: "withdrawn" },
@@ -61,7 +61,7 @@ test("incompatibleValues fires a contradiction for same-subject claim pair", () 
 });
 
 test("incompatibleStatuses fires a contradiction across same-subject claim pair", () => {
-  const input = validateTrustInput(makeInput({
+  const input = validateTrustBundle(makeInput({
     claims: [
       { ...baseClaim, id: "claim-a", fieldOrBehavior: "shipped", value: true },
       { ...baseClaim, id: "claim-b", fieldOrBehavior: "shipped", value: true },
@@ -106,7 +106,7 @@ test("incompatibleStatuses fires a contradiction across same-subject claim pair"
 });
 
 test("incompatibleValues fires across canonical subjects linked via identityLinks", () => {
-  const input = validateTrustInput(makeInput({
+  const input = validateTrustBundle(makeInput({
     claims: [
       {
         ...baseClaim,
@@ -152,7 +152,7 @@ test("incompatibleValues fires across canonical subjects linked via identityLink
 });
 
 test("incompatibleValues does not fire when subjects are unrelated", () => {
-  const input = validateTrustInput(makeInput({
+  const input = validateTrustBundle(makeInput({
     claims: [
       {
         ...baseClaim,
@@ -187,7 +187,7 @@ test("incompatibleValues does not fire when subjects are unrelated", () => {
 test("validator rejects incompatibleValues entries without exactly two values", () => {
   assert.throws(
     () =>
-      validateTrustInput(makeInput({
+      validateTrustBundle(makeInput({
         policies: [
           {
             ...basePolicy,
@@ -204,7 +204,7 @@ test("validator rejects incompatibleValues entries without exactly two values", 
 test("validator rejects incompatibleStatuses entries with unsupported status", () => {
   assert.throws(
     () =>
-      validateTrustInput(makeInput({
+      validateTrustBundle(makeInput({
         policies: [
           {
             ...basePolicy,
@@ -221,7 +221,7 @@ test("validator rejects incompatibleStatuses entries with unsupported status", (
 test("validator rejects incompatibleStatuses entries without exactly two statuses", () => {
   assert.throws(
     () =>
-      validateTrustInput(makeInput({
+      validateTrustBundle(makeInput({
         policies: [
           {
             ...basePolicy,

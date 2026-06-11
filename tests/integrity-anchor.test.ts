@@ -4,9 +4,9 @@ import { readFile } from "node:fs/promises";
 import {
   buildTrustAnalyticsProjection,
   buildTrustReport,
-  validateTrustInput,
+  validateTrustBundle,
   type IntegrityAnchor,
-  type TrustInput,
+  type TrustBundle,
 } from "../src/index.js";
 
 const evidenceAnchor: IntegrityAnchor = {
@@ -30,7 +30,7 @@ const authorityAnchor: IntegrityAnchor = {
   verificationStatus: "unverified",
 };
 
-function makeInput(overrides: Partial<TrustInput> = {}): TrustInput {
+function makeInput(overrides: Partial<TrustBundle> = {}): TrustBundle {
   return {
     schemaVersion: 3,
     source: "integrity-anchor-test",
@@ -106,7 +106,7 @@ function makeInput(overrides: Partial<TrustInput> = {}): TrustInput {
 }
 
 test("legacy string integrity refs and missing structured anchors remain valid", () => {
-  const input = validateTrustInput(makeInput());
+  const input = validateTrustBundle(makeInput());
   const report = buildTrustReport(input, {
     id: "legacy-integrity-ref",
     now: new Date("2026-05-02T00:00:00.000Z"),
@@ -122,7 +122,7 @@ test("legacy string integrity refs and missing structured anchors remain valid",
 
 test("structured anchors in examples validate beside legacy refs", async () => {
   const raw = await readFile("examples/authority-trace-export.json", "utf8");
-  const input = validateTrustInput(JSON.parse(raw));
+  const input = validateTrustBundle(JSON.parse(raw));
 
   assert.equal(input.evidence[0].integrityRef, "sha256:attestation");
   assert.equal(input.evidence[0].integrityAnchor?.verificationStatus, "unverified");
@@ -131,7 +131,7 @@ test("structured anchors in examples validate beside legacy refs", async () => {
 });
 
 test("trust input schema uses strict claim and evidence item schemas", async () => {
-  const raw = await readFile("schemas/trust-input.schema.json", "utf8");
+  const raw = await readFile("schemas/trust-bundle.schema.json", "utf8");
   const schema = JSON.parse(raw) as {
     properties: {
       claims: { items: { $ref?: string; type?: string } };
@@ -144,7 +144,7 @@ test("trust input schema uses strict claim and evidence item schemas", async () 
 });
 
 test("unverified structured anchors validate and project as inspectable metadata", () => {
-  const input = validateTrustInput(makeInput({
+  const input = validateTrustBundle(makeInput({
     evidence: [{ ...makeInput().evidence[0], integrityAnchor: evidenceAnchor }],
     authorityTrace: [{ ...makeInput().authorityTrace![0], integrityAnchor: authorityAnchor }],
   }));
@@ -162,7 +162,7 @@ test("unverified structured anchors validate and project as inspectable metadata
 });
 
 test("structured anchors alone do not satisfy attestation integrity or alter claim truth", () => {
-  const input = validateTrustInput(makeInput({
+  const input = validateTrustBundle(makeInput({
     claims: [{
       ...makeInput().claims[0],
       currentIntegrityRef: undefined,
@@ -242,8 +242,8 @@ test("malformed present anchors fail validation with useful errors", () => {
 
   for (const { name, integrityAnchor, message } of cases) {
     assert.throws(
-      () => validateTrustInput(makeInput({
-        evidence: [{ ...baseEvidence, integrityAnchor } as TrustInput["evidence"][number]],
+      () => validateTrustBundle(makeInput({
+        evidence: [{ ...baseEvidence, integrityAnchor } as TrustBundle["evidence"][number]],
       })),
       message,
       name,

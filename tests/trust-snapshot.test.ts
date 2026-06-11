@@ -1,11 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { buildTrustReport, deriveTrustSnapshot, validateTrustInput } from "../src/index.js";
+import { buildTrustReport, deriveTrustSnapshot, validateTrustBundle } from "../src/index.js";
 
 test("deriveTrustSnapshot returns the Trust Snapshot pieces used by reports", async () => {
   const raw = await readFile("examples/surface-fixtures.json", "utf8");
-  const input = validateTrustInput(JSON.parse(raw));
+  const input = validateTrustBundle(JSON.parse(raw));
   const now = new Date("2026-04-25T00:00:00.000Z");
   const snapshot = deriveTrustSnapshot(input, { now });
   const report = buildTrustReport(input, { id: "snapshot-test", now });

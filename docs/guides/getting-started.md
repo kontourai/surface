@@ -2,7 +2,7 @@
 
 This guide takes you from install to your first derived trust report: what is claimed, what evidence supports it, what policy decides verification, and whether the claim is current, stale, disputed, or unsupported.
 
-Surface does not collect domain evidence by itself. Your producer, such as Veritas or a custom adapter, emits a `TrustInput`. Surface validates that input and derives a portable `TrustReport`, which product docs may describe as a Trust Snapshot.
+Surface does not collect domain evidence by itself. Your producer, such as Veritas or a custom adapter, emits a `TrustBundle`. Surface validates that input and derives a portable `TrustReport`, which product docs may describe as a Trust Snapshot.
 
 ## 1. Install
 
@@ -42,14 +42,14 @@ The fixture includes four claims with mixed evidence quality. Two are verified (
 
 ## 3. Build Your First Producer
 
-A producer is any system that can emit a `TrustInput`.
+A producer is any system that can emit a `TrustBundle`.
 
 Start with the fluent SDK when writing TypeScript:
 
 ```ts
-import { TrustInputBuilder } from "@kontourai/surface";
+import { TrustBundleBuilder } from "@kontourai/surface";
 
-const input = new TrustInputBuilder({ source: "my-producer:local" })
+const input = new TrustBundleBuilder({ source: "my-producer:local" })
   .addClaim({
     id: "claim.api.rate-limit",
     subjectType: "api",

@@ -65,7 +65,7 @@ The portability principle that Surface trust state should be schema-first, expor
 _Avoid_: Proprietary handshake, hosted-only trust
 
 **Kontour Resource Shape**:
-The shared convention for new portable Kontour records: `apiVersion`, `kind`, `metadata`, `spec`, optional `status`, and optional `proof`. Canonical doc: https://github.com/kontourai/kontourai.io/blob/main/docs/kontour-resource-shape.md. Surface-specific use: keep existing `TrustInput`, claim, evidence, and report contracts stable, and use the resource shape additively for portable records such as integrity anchors, trust snapshots, and exported history. A Surface proof or integrity anchor proves provenance and tamper evidence; it does not prove the underlying domain claim is true.
+The shared convention for new portable Kontour records: `apiVersion`, `kind`, `metadata`, `spec`, optional `status`, and optional `proof`. Canonical doc: https://github.com/kontourai/kontourai.io/blob/main/docs/kontour-resource-shape.md. Surface-specific use: keep existing `TrustBundle`, claim, evidence, and report contracts stable, and use the resource shape additively for portable records such as integrity anchors, trust snapshots, and exported history. A Surface proof or integrity anchor proves provenance and tamper evidence; it does not prove the underlying domain claim is true.
 _Avoid_: Breaking all Surface inputs into a new envelope, storing trust semantics in metadata, treating `proof` as a truth guarantee
 
 **Interoperability Target**:

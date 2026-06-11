@@ -42,7 +42,7 @@ Authority Trace records why an actor or system had authority to create, approve,
 
 Authority Trace is reserved for portable actor or system authority. Producer-declared source authority from Survey observations belongs in `Evidence.metadata.sourceAuthority` unless and until it can be represented as a neutral authority record.
 
-The current API field is `authorityTrace?: AuthorityTrace[]` on `TrustInput` and `TrustReport`. Each record links an `actorRef` and `authorityRef` to a `subject`, `sourceRef`, observation timestamp, and optional claim or evidence IDs. Optional validity windows, revocation timestamps, integrity references, and metadata let consumers distinguish active authority from expired, revoked, or weak authority evidence.
+The current API field is `authorityTrace?: AuthorityTrace[]` on `TrustBundle` and `TrustReport`. Each record links an `actorRef` and `authorityRef` to a `subject`, `sourceRef`, observation timestamp, and optional claim or evidence IDs. Optional validity windows, revocation timestamps, integrity references, and metadata let consumers distinguish active authority from expired, revoked, or weak authority evidence.
 
 Example:
 
@@ -100,13 +100,29 @@ Examples:
 - A compliance product can project a regulatory framework as a claim group of requirements backed by document, attestation, and monitoring claims.
 - A data quality product can project a publish-readiness checklist as a claim group of field-level claims.
 
+## Trust Bundle
+
+A Trust Bundle is a portable, point-in-time package of trust state from a single producer — claims, the evidence and verification events behind them, and the policies the producer played by — packed so it can cross a product boundary without the receiver needing access to the producer's internals. Think of it as a briefcase of receipts: claims are what is asserted, evidence and events are the receipts, policies are the rules the producer played by, and `source` says whose briefcase it is.
+
+Survey emits a bundle, Surface evaluates one, Veritas embeds one in its evidence artifacts, and Flow queries one. Bundles from multiple producers fold into one ledger; when two bundles disagree about the same subject, the conflict surfaces as a `disputed` claim rather than last-write-wins.
+
+The API type is `TrustBundle` (renamed from `TrustInput` per [ADR 0002](../adr/0002-trust-bundle.md), which also supersedes the earlier "Claim Package" vocabulary).
+
+## Inquiry
+
+An Inquiry is a question posed against the ledger: "is this statement trustworthy?" — including statements nobody pre-registered as claims. It resolves to exactly one of three outcomes: **matched** (an existing claim answers it, at its live status), **derived** (a named, versioned derivation rule over existing claims answers it), or **unsupported gap** (nothing answers it, reported honestly).
+
+A resolved inquiry leaves an Inquiry record: the question, the resolution path, the answer, the statuses of every input at that moment, the timestamp, and the asker. Records are append-only testimony and never go stale; the live claim status is shown alongside. Equivalence between a question and a claim is never silently decided by a model — it is proposed, reviewed, and recorded.
+
+A Trust Bundle is how trust state arrives at the ledger; an Inquiry is how questions arrive. See [ADR 0003](../adr/0003-inquiry-and-resolution.md) for the full design.
+
 ## Trust Snapshot
 
 A Trust Snapshot is product language for the point-in-time trust state behind a product output, workflow, or package. It can drive a Trust Panel, Surface Console, API response, MCP resource, or export.
 
-`buildTrustReport(input, options?)` is the stable public API that turns a validated `TrustInput` into a `TrustReport`. The report carries claims, evidence, policies, events, current `claimGroups`, and current `authorityTrace` field data, then adds derived status, freshness outcomes, requirement fields, `transparencyGaps` annotations, derivation `changeRecords`, subject groups, claim group rollups, and summary counts.
+`buildTrustReport(input, options?)` is the stable public API that turns a validated Trust Bundle (API type `TrustBundle`) into a `TrustReport`. The report carries claims, evidence, policies, events, current `claimGroups`, and current `authorityTrace` field data, then adds derived status, freshness outcomes, requirement fields, `transparencyGaps` annotations, derivation `changeRecords`, subject groups, claim group rollups, and summary counts.
 
-Producers should project product-specific workflow data into `TrustInput`, call `validateTrustInput`, and then call `buildTrustReport`. Product layers may persist a compact report summary, but Surface remains responsible for deriving statuses such as `verified`, `assumed`, `stale`, `disputed`, and `rejected`.
+Producers should project product-specific workflow data into `TrustBundle`, call `validateTrustBundle`, and then call `buildTrustReport`. Product layers may persist a compact report summary, but Surface remains responsible for deriving statuses such as `verified`, `assumed`, `stale`, `disputed`, and `rejected`.
 
 ## Trust Panel
 

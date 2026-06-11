@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildTrustReport, toLinkedReport, validateTrustInput, SURFACE_LINKED_VOCAB } from "../src/index.js";
-import type { TrustInput } from "../src/index.js";
+import { buildTrustReport, toLinkedReport, validateTrustBundle, SURFACE_LINKED_VOCAB } from "../src/index.js";
+import type { TrustBundle } from "../src/index.js";
 
 const baseClaim = {
   id: "claim-base",
@@ -15,7 +15,7 @@ const baseClaim = {
   updatedAt: "2026-04-25T00:00:00.000Z",
 };
 
-function makeInput(overrides: Partial<TrustInput>): TrustInput {
+function makeInput(overrides: Partial<TrustBundle>): TrustBundle {
   return {
     schemaVersion: 3,
     source: "linked-test",
@@ -28,7 +28,7 @@ function makeInput(overrides: Partial<TrustInput>): TrustInput {
 }
 
 test("toLinkedReport wraps a trust report with the Surface @context", () => {
-  const input = validateTrustInput(makeInput({ claims: [{ ...baseClaim }] }));
+  const input = validateTrustBundle(makeInput({ claims: [{ ...baseClaim }] }));
   const report = buildTrustReport(input, { id: "report-linked", now: new Date("2026-04-26T00:00:00.000Z") });
   const linked = toLinkedReport(report);
 
@@ -44,7 +44,7 @@ test("Surface vocab is versioned and stable", () => {
 });
 
 test("Surface @context declares JSON-LD 1.1 and aliases derivedFrom to PROV-O", () => {
-  const input = validateTrustInput(makeInput({ claims: [{ ...baseClaim }] }));
+  const input = validateTrustBundle(makeInput({ claims: [{ ...baseClaim }] }));
   const report = buildTrustReport(input, { id: "report-prov", now: new Date("2026-04-26T00:00:00.000Z") });
   const linked = toLinkedReport(report);
   const ctx = linked["@context"] as Record<string, unknown>;
@@ -58,7 +58,7 @@ test("Surface @context declares JSON-LD 1.1 and aliases derivedFrom to PROV-O", 
 });
 
 test("linked report preserves all original report fields", () => {
-  const input = validateTrustInput(makeInput({ claims: [{ ...baseClaim }] }));
+  const input = validateTrustBundle(makeInput({ claims: [{ ...baseClaim }] }));
   const report = buildTrustReport(input, { id: "report-preserve", now: new Date("2026-04-26T00:00:00.000Z") });
   const linked = toLinkedReport(report);
 

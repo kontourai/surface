@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { getAdapter, listAdapters } from "../adapter.js";
 import { buildTrustReport } from "../report.js";
-import { validateTrustInput } from "../validate.js";
+import { validateTrustBundle } from "../validate.js";
 import type { TrustReport } from "../types.js";
 
 export interface CommonReportOptions {
@@ -92,7 +92,7 @@ export async function loadReport(options: CommonReportOptions): Promise<TrustRep
   if (!adapter) {
     throw new Error(`Unknown adapter: ${options.adapter}. Registered adapters: ${registeredAdapterNames()}`);
   }
-  const input = validateTrustInput(adapter.adapt(parsed));
+  const input = validateTrustBundle(adapter.adapt(parsed));
   return buildTrustReport(input, { id: options.runId });
 }
 

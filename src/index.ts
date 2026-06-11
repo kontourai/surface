@@ -22,3 +22,5 @@ export * from "./trace-analysis.js";
 export * from "./adapters/index.js";
 export { startConsoleServer } from "./console/server.js";
 export type { SurfaceConsoleConfig, SurfaceConsoleTheme, SurfaceConsoleVocab } from "./console/types.js";
+export * from "./canonical.js";
+export * from "./inquiry.js";

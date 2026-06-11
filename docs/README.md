@@ -36,7 +36,7 @@ Maintainer-only material stays repo-only: this index, brand language, ADRs, audi
 ## Building With Surface
 
 - [Getting Started](guides/getting-started.md) — install Surface, run a fixture report, and build a first producer
-- [Consumer SDK](guides/consumer-sdk.md) — fluent helpers for emitting valid `TrustInput`
+- [Consumer SDK](guides/consumer-sdk.md) — fluent helpers for emitting valid `TrustBundle`
 - [Walkthrough](guides/walkthrough.md) — real session walkthrough with native Surface input
 - [External Adapter Example](../examples/external-adapter/README.md) — minimal package-shaped producer
 

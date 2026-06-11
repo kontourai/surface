@@ -78,7 +78,7 @@ Schema: `schemas/verification-event.schema.json`
 
 A trust input packages claims, evidence, policies, events, optional claimGroups, optional identity links, and optional Authority Trace records before Surface generates report-only fields.
 
-Schema: `schemas/trust-input.schema.json`
+Schema: `schemas/trust-bundle.schema.json`
 
 ## Authority Trace
 
@@ -105,7 +105,7 @@ interface AuthorityTrace {
 }
 ```
 
-`evidenceIds` and `claimIds` must reference records in the same `TrustInput` when present. Surface validates timestamps, enum values, known references, and unknown fields. Producers own the identity provider, directory, credential registry, policy engine, and signature checks behind these references; Surface records and projects the resulting authority context.
+`evidenceIds` and `claimIds` must reference records in the same `TrustBundle` when present. Surface validates timestamps, enum values, known references, and unknown fields. Producers own the identity provider, directory, credential registry, policy engine, and signature checks behind these references; Surface records and projects the resulting authority context.
 
 ## Claim Groups
 

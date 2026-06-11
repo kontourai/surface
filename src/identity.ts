@@ -1,7 +1,7 @@
-import type { Claim, IdentityLink, SubjectGroup, SubjectRef, TrustInput } from "./types.js";
+import type { Claim, IdentityLink, SubjectGroup, SubjectRef, TrustBundle } from "./types.js";
 
 /**
- * Builds an index of co-referent subjects across a TrustInput.
+ * Builds an index of co-referent subjects across a TrustBundle.
  *
  * A claim's primary subject (subjectType, subjectId) and any subjectAliases
  * declare that those refs point at the same real entity. Top-level identityLinks
@@ -19,7 +19,7 @@ export interface IdentityIndex {
   claimIdsByCanonicalKey: Map<string, string[]>;
 }
 
-export function buildIdentityIndex(input: TrustInput): IdentityIndex {
+export function buildIdentityIndex(input: TrustBundle): IdentityIndex {
   const parent = new Map<string, string>();
   const ensure = (key: string): string => {
     if (!parent.has(key)) parent.set(key, key);
@@ -137,6 +137,6 @@ function dedupeRefs(refs: SubjectRef[]): SubjectRef[] {
   return out;
 }
 
-export function describeIdentityLinks(input: TrustInput): IdentityLink[] {
+export function describeIdentityLinks(input: TrustBundle): IdentityLink[] {
   return Array.isArray(input.identityLinks) ? input.identityLinks : [];
 }

@@ -33,7 +33,7 @@ cp node_modules/@kontourai/surface/dist/src/trust-panel/surface-trust-panel.js p
 
 The compiled file is a self-contained ES module with no imports, so `type="module"` is the only loading requirement.
 
-The input is the output of `surface report` or `buildTrustReport` — a derived `TrustReport`, not a raw `TrustInput`. If the JSON has claims but no derived statuses, the panel says so instead of guessing.
+The input is the output of `surface report` or `buildTrustReport` — a derived `TrustReport`, not a raw `TrustBundle`. If the JSON has claims but no derived statuses, the panel says so instead of guessing.
 
 ## What it renders
 

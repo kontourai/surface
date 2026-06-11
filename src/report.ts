@@ -2,7 +2,7 @@ import type {
   Claim,
   TransparencyGap,
   TransparencyGapType,
-  TrustInput,
+  TrustBundle,
   TrustReport,
   TrustReportSummary,
   TrustStatus,
@@ -19,7 +19,7 @@ const TRANSPARENCY_GAP_TYPES: TransparencyGapType[] = [
   "unsupported_inference",
 ];
 
-export function buildTrustReport(input: TrustInput, options: { now?: Date; id?: string } = {}): TrustReport {
+export function buildTrustReport(input: TrustBundle, options: { now?: Date; id?: string } = {}): TrustReport {
   const now = options.now ?? new Date();
   const snapshot = deriveTrustSnapshot(input, { now });
 

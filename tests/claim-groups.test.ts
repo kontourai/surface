@@ -1,11 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildTrustReport, validateTrustInput } from "../src/index.js";
+import { buildTrustReport, validateTrustBundle } from "../src/index.js";
 
 const now = "2026-04-25T00:00:00.000Z";
 
 test("derives claimGroup rollups from validated claims and requirements", () => {
-  const input = validateTrustInput({
+  const input = validateTrustBundle({
     schemaVersion: 3,
     source: "claimGroup-test",
     claims: [{
@@ -116,7 +116,7 @@ test("derives claimGroup rollups from validated claims and requirements", () => 
 });
 
 test("rejects claimGroup references to unknown claims and requirements", () => {
-  assert.throws(() => validateTrustInput({
+  assert.throws(() => validateTrustBundle({
     schemaVersion: 3,
     source: "bad-claimGroup",
     claims: [],

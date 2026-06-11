@@ -7,7 +7,7 @@ The server is dependency-free and speaks MCP over stdio, so any MCP-capable clie
 ## Start the server
 
 ```bash
-surface mcp --input path/to/trust-input.json
+surface mcp --input path/to/trust-bundle.json
 surface mcp --input path/to/export.json --adapter my-producer
 ```
 
@@ -20,7 +20,7 @@ A typical MCP client configuration:
   "mcpServers": {
     "surface": {
       "command": "npx",
-      "args": ["surface", "mcp", "--input", ".surface/trust-input.json"]
+      "args": ["surface", "mcp", "--input", ".surface/trust-bundle.json"]
     }
   }
 }
@@ -36,7 +36,7 @@ A typical MCP client configuration:
 | `surface_get_claim` | `claimId`, `input?`, `adapter?` | One claim with evidence, events, policy, authority trace, transparency gaps, and derivation drilldown |
 | `surface_policy` | `policyId?`, `claimId?`, `input?`, `adapter?` | Policy drilldown, or all policies with claim ids and gap counts when called without arguments |
 
-`input` and `adapter` default to the values the server was started with. Every call re-derives the report from the input file, so agents always read current trust state — the same `TrustInput` produces the same answer on every call, on every machine.
+`input` and `adapter` default to the values the server was started with. Every call re-derives the report from the input file, so agents always read current trust state — the same `TrustBundle` produces the same answer on every call, on every machine.
 
 ## A realistic session
 

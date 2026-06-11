@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { applyDerivation, buildTrustReport, validateTrustInput, weakerStatus } from "../src/index.js";
-import type { Claim, TrustInput } from "../src/index.js";
+import { applyDerivation, buildTrustReport, validateTrustBundle, weakerStatus } from "../src/index.js";
+import type { Claim, TrustBundle } from "../src/index.js";
 
 const baseClaim: Omit<Claim, "id" | "value" | "fieldOrBehavior"> = {
   subjectType: "repo-governance.repo",
@@ -12,7 +12,7 @@ const baseClaim: Omit<Claim, "id" | "value" | "fieldOrBehavior"> = {
   updatedAt: "2026-04-25T00:00:00.000Z",
 };
 
-function makeInput(overrides: Partial<TrustInput>): TrustInput {
+function makeInput(overrides: Partial<TrustBundle>): TrustBundle {
   return {
     schemaVersion: 3,
     source: "derivation-test",
@@ -32,7 +32,7 @@ test("weakerStatus orders rejected below verified", () => {
 });
 
 test("derived claim inherits the weakest input status", () => {
-  const input = validateTrustInput(makeInput({
+  const input = validateTrustBundle(makeInput({
     claims: [
       { ...baseClaim, id: "input-1", fieldOrBehavior: "passes", value: true },
       { ...baseClaim, id: "input-2", fieldOrBehavior: "passes", value: true },
@@ -82,7 +82,7 @@ test("derived claim inherits the weakest input status", () => {
 });
 
 test("derived claim inherits stale freshness from inputs", () => {
-  const input = validateTrustInput(makeInput({
+  const input = validateTrustBundle(makeInput({
     claims: [
       { ...baseClaim, id: "input-stale", fieldOrBehavior: "passes", value: true },
       {
@@ -141,7 +141,7 @@ test("derived claim inherits stale freshness from inputs", () => {
 });
 
 test("structured derivation edges drive status ceiling and recompute records", () => {
-  const input = validateTrustInput(makeInput({
+  const input = validateTrustBundle(makeInput({
     claims: [
       { ...baseClaim, id: "wages", fieldOrBehavior: "w2.wages", value: 82000 },
       { ...baseClaim, id: "withholding", fieldOrBehavior: "w2.federalIncomeTaxWithheld", value: 9100 },
@@ -209,7 +209,7 @@ test("structured derivation edges drive status ceiling and recompute records", (
 });
 
 test("assumed inputs downgrade derived claims and create review records", () => {
-  const input = validateTrustInput(makeInput({
+  const input = validateTrustBundle(makeInput({
     claims: [
       { ...baseClaim, id: "assumption", fieldOrBehavior: "filingStatus", value: "single", status: "assumed" },
       {
@@ -251,7 +251,7 @@ test("assumed inputs downgrade derived claims and create review records", () => 
 });
 
 test("derived chains propagate transitively", () => {
-  const input = validateTrustInput(makeInput({
+  const input = validateTrustBundle(makeInput({
     claims: [
       { ...baseClaim, id: "leaf", fieldOrBehavior: "passes", value: true },
       {
@@ -291,7 +291,7 @@ test("derived chains propagate transitively", () => {
 });
 
 test("derivedFrom cycles are detected and emit unsupported_inference", () => {
-  const input = validateTrustInput(makeInput({
+  const input = validateTrustBundle(makeInput({
     claims: [
       {
         ...baseClaim,
@@ -320,7 +320,7 @@ test("derivedFrom cycles are detected and emit unsupported_inference", () => {
 });
 
 test("derivedFrom cycle gaps omit materiality when the claim has none", () => {
-  const input = validateTrustInput(makeInput({
+  const input = validateTrustBundle(makeInput({
     claims: [
       {
         ...baseClaim,
@@ -374,7 +374,7 @@ test("missing derivation input gaps inherit claim materiality", () => {
 test("validator rejects derivedFrom referencing the claim itself", () => {
   assert.throws(
     () =>
-      validateTrustInput(makeInput({
+      validateTrustBundle(makeInput({
         claims: [
           {
             ...baseClaim,
@@ -392,7 +392,7 @@ test("validator rejects derivedFrom referencing the claim itself", () => {
 test("validator rejects derivedFrom referencing unknown claim", () => {
   assert.throws(
     () =>
-      validateTrustInput(makeInput({
+      validateTrustBundle(makeInput({
         claims: [
           {
             ...baseClaim,
@@ -410,7 +410,7 @@ test("validator rejects derivedFrom referencing unknown claim", () => {
 test("validator rejects derivationEdges referencing unknown claim", () => {
   assert.throws(
     () =>
-      validateTrustInput(makeInput({
+      validateTrustBundle(makeInput({
         claims: [
           {
             ...baseClaim,

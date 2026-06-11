@@ -7,12 +7,12 @@ import {
   listAdapters,
   registerAdapter,
   type Adapter,
-  type TrustInput,
+  type TrustBundle,
 } from "../src/index.js";
 
 const execFileAsync = promisify(execFile);
 
-function minimalInput(source: string): TrustInput {
+function minimalInput(source: string): TrustBundle {
   return {
     schemaVersion: 2,
     source,

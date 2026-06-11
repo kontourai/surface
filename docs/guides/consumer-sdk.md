@@ -4,14 +4,14 @@ Use the consumer SDK when a producer needs to emit Surface input without hand-as
 
 ```ts
 import {
-  TrustInputBuilder,
+  TrustBundleBuilder,
   buildTrustReport,
 } from "@kontourai/surface";
 
 const claimId = "myproduct.run-1.policy";
 const evidenceId = `${claimId}.evidence`;
 
-const builder = new TrustInputBuilder({ source: "myproduct:run-1" });
+const builder = new TrustBundleBuilder({ source: "myproduct:run-1" });
 
 builder.addClaim({
   id: claimId,
@@ -81,7 +81,7 @@ const input = builder.build();
 const report = buildTrustReport(input);
 ```
 
-`build()` calls `validateTrustInput` before returning, so malformed timestamps, broken references, unsupported enum values, and missing required fields fail before the product stores or publishes the input.
+`build()` calls `validateTrustBundle` before returning, so malformed timestamps, broken references, unsupported enum values, and missing required fields fail before the product stores or publishes the input.
 
 Claim groups are optional. The current API calls them `claimGroups`; use them when your product has a broader domain framework, compliance map, repo standards, checklist, or requirement set and you want users to start at the broader assertion while still drilling down to the exact claim and evidence.
 
@@ -131,4 +131,4 @@ Veritas validates the builder output, calls `buildTrustReport`, and consumes der
 
 ## Smaller Adapter
 
-The external adapter example under `examples/external-adapter` shows the minimum producer pattern: register an adapter, use `TrustInputBuilder` in `adapt(record)`, call `builder.build()`, then pass the result to `buildTrustReport`.
+The external adapter example under `examples/external-adapter` shows the minimum producer pattern: register an adapter, use `TrustBundleBuilder` in `adapt(record)`, call `builder.build()`, then pass the result to `buildTrustReport`.

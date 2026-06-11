@@ -62,6 +62,7 @@ export const CLAIM_KEYS = new Set([
   "subjectAliases",
   "derivedFrom",
   "derivationEdges",
+  "qualifiers",
   "metadata",
 ]);
 export const DERIVATION_EDGE_KEYS = new Set(["inputClaimId", "method", "role", "supportStrength", "rationale", "metadata"]);

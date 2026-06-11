@@ -12,7 +12,7 @@ Surface ships the Surface library, CLI, local Surface Console, and claim authori
 
 **Extension API** — producers register vocabulary, theme, and claim type definitions. The Console adapts to the producer's language without changes to Surface.
 
-**Consumer SDK** — fluent helpers for producers and builders emitting valid `TrustInput`.
+**Consumer SDK** — fluent helpers for producers and builders emitting valid `TrustBundle`.
 
 **Analytics projection** — evidence intelligence derived from `TrustReport`: coverage by producer namespace, stale areas, disputed claims, high-impact unsupported claims, transparency gap rollups, attestation validity, and action queues.
 
@@ -28,4 +28,4 @@ Surface ships the Surface library, CLI, local Surface Console, and claim authori
 
 **Linked data** — a resolvable vocabulary, SHACL shapes for validation without running Surface TypeScript, optional Turtle/N-Quads output, and eventual Verifiable Credentials alignment.
 
-**Resource Contract alignment** — wrapping durable Surface records such as integrity anchors, trust snapshots, and exported history in the shared Kontour resource shape (`apiVersion`, `kind`, `metadata`, `spec`, `status`, `proof`) without breaking existing `TrustInput` and `TrustReport` contracts.
+**Resource Contract alignment** — wrapping durable Surface records such as integrity anchors, trust snapshots, and exported history in the shared Kontour resource shape (`apiVersion`, `kind`, `metadata`, `spec`, `status`, `proof`) without breaking existing `TrustBundle` and `TrustReport` contracts.

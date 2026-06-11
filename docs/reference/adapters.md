@@ -6,16 +6,16 @@ Surface owns portable trust primitives and report generation. Producers own the 
 
 Surface owns:
 
-- `TrustInput` and report schemas.
+- `TrustBundle` and report schemas.
 - Claims, evidence, policies, events, freshness, status, identity links, and transparency gaps through the current `transparencyGaps` field.
-- The adapter registry for producers that emit `TrustInput`.
+- The adapter registry for producers that emit `TrustBundle`.
 - Claim store read/write for producers that use authored claim definitions.
 - Extension registration for producer branding and vocabulary.
 
 Producers own:
 
 - Domain-specific extraction from their databases, services, or tool output.
-- Adapter or evidence collection code that emits `TrustInput`.
+- Adapter or evidence collection code that emits `TrustBundle`.
 - Product UI and runtime query wiring.
 - Documentation explaining how their users should interpret trust state.
 
@@ -31,23 +31,23 @@ Claims are stable across runs. A claim with no evidence collected in the current
 
 ### Adapter
 
-The appropriate pattern for one-shot analysis or for producers that own their own claim generation. The adapter receives raw product output and returns a complete `TrustInput` — claims, evidence, policies, and events — in one pass.
+The appropriate pattern for one-shot analysis or for producers that own their own claim generation. The adapter receives raw product output and returns a complete `TrustBundle` — claims, evidence, policies, and events — in one pass.
 
 The only built-in adapter is `surface`, a passthrough for already formatted Surface input:
 
 ```bash
 surface report --input examples/surface-fixtures.json
-surface report --adapter surface --input path/to/trust-input.json
+surface report --adapter surface --input path/to/trust-bundle.json
 ```
 
 Custom adapters are registered explicitly through the public registry:
 
 ```ts
-import { registerAdapter, type Adapter, type TrustInput } from "@kontourai/surface";
+import { registerAdapter, type Adapter, type TrustBundle } from "@kontourai/surface";
 
 const adapter: Adapter<MyExport> = {
   name: "my-product",
-  adapt(record): TrustInput {
+  adapt(record): TrustBundle {
     return {
       schemaVersion: 2,
       source: "my-product:demo",

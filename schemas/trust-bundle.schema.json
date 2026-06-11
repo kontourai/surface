@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://kontourai.io/schemas/surface/trust-input.schema.json",
-  "title": "Surface TrustInput",
+  "$id": "https://kontourai.io/schemas/surface/trust-bundle.schema.json",
+  "title": "Surface TrustBundle",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "source", "claims", "evidence", "policies", "events"],

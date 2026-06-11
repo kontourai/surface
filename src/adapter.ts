@@ -1,9 +1,9 @@
-import type { TrustInput } from "./types.js";
+import type { TrustBundle } from "./types.js";
 
 export interface Adapter<Input = unknown> {
   name: string;
   defaultFixture?: string;
-  adapt(record: Input): TrustInput;
+  adapt(record: Input): TrustBundle;
 }
 
 const REGISTRY = new Map<string, Adapter>();

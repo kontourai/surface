@@ -1,10 +1,10 @@
 import { registerAdapter } from "../adapter.js";
-import type { TrustInput } from "../types.js";
+import type { TrustBundle } from "../types.js";
 
 registerAdapter({
   name: "surface",
   defaultFixture: "examples/surface-fixtures.json",
-  adapt(record: unknown): TrustInput {
-    return record as TrustInput;
+  adapt(record: unknown): TrustBundle {
+    return record as TrustBundle;
   },
 });

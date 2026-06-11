@@ -25,7 +25,7 @@ A minimum Claim Package contains:
 - optional producer extension reference
 - optional transparency capabilities
 
-In the current implementation, this shape is represented primarily through `TrustInput` and generated into `TrustReport`. Product language may call the evaluated projection a Trust Snapshot.
+In the current implementation, this shape is represented primarily through `TrustBundle` and generated into `TrustReport`. Product language may call the evaluated projection a Trust Snapshot.
 
 ## Core Records
 
@@ -39,7 +39,7 @@ For Survey-produced source-of-authority observations, producer-declared source a
 
 ## Authority Trace
 
-Authority Trace is the portable authority context for evidence, attestations, and claims. The current field name is `authorityTrace`, available on both `TrustInput` and `TrustReport`.
+Authority Trace is the portable authority context for evidence, attestations, and claims. The current field name is `authorityTrace`, available on both `TrustBundle` and `TrustReport`.
 
 Reserve `authorityTrace` for portable actor or system authority. Do not use it as a bucket for Survey source-authority declarations that only describe how the producer interpreted a source.
 
@@ -89,7 +89,7 @@ An Open Trust Format package must be:
 
 Use current field names only where exact technical reference requires them:
 
-- `TrustInput` is the current claim package input contract.
+- `TrustBundle` is the current claim package input contract.
 - `TrustReport` is the current derived report contract.
 - `schemaVersion: 2` and `schemaVersion: 3` remain accepted.
 - `evidence.execution` remains the current structured execution trace field.

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildCommitValidityPolicy, buildHumanAttestationEvidence, validateTrustInput } from "../src/index.js";
+import { buildCommitValidityPolicy, buildHumanAttestationEvidence, validateTrustBundle } from "../src/index.js";
 
 test("buildCommitValidityPolicy creates a commit-scoped verification policy", () => {
   const policy = buildCommitValidityPolicy({
@@ -29,7 +29,7 @@ test("buildHumanAttestationEvidence creates schema-valid attestation evidence", 
     validUntil: "2026-08-08T00:00:00.000Z",
     contentHash: "sha256:abc123",
   });
-  const input = validateTrustInput({
+  const input = validateTrustBundle({
     schemaVersion: 2,
     source: "surface:test",
     claims: [{

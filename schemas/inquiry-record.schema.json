@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kontourai.io/schemas/surface/inquiry-record.schema.json",
+  "title": "Surface InquiryRecord",
+  "description": "Append-only record capturing the resolution of an Inquiry against a TrustBundle (ADR 0003 §6).",
+  "type": "object",
+  "required": ["id", "inquiry", "outcome", "resolutionPath", "inputSnapshot", "statusFunctionVersion", "resolvedAt"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string" },
+    "inquiry": { "$ref": "#/$defs/inquiry" },
+    "outcome": { "enum": ["matched", "derived", "unsupported"] },
+    "resolutionPath": {
+      "type": "object",
+      "required": ["claimIds"],
+      "additionalProperties": false,
+      "properties": {
+        "claimIds": { "type": "array", "items": { "type": "string" } },
+        "ruleId": { "type": "string" },
+        "ruleVersion": { "type": "string" }
+      }
+    },
+    "answer": {
+      "type": "object",
+      "required": ["value", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "value": {},
+        "status": { "enum": ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected"] }
+      }
+    },
+    "inputSnapshot": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["claimId", "status"],
+        "additionalProperties": false,
+        "properties": {
+          "claimId": { "type": "string" },
+          "status": { "enum": ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected"] }
+        }
+      }
+    },
+    "statusFunctionVersion": { "type": "string" },
+    "resolvedAt": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "canonicalClaimTarget": {
+      "type": "object",
+      "required": ["subjectType", "subjectId", "fieldOrBehavior"],
+      "additionalProperties": false,
+      "properties": {
+        "subjectType": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "fieldOrBehavior": { "type": "string" },
+        "qualifiers": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "inquiry": {
+      "type": "object",
+      "required": ["id", "question", "askedBy", "askedAt"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "question": { "type": "string" },
+        "target": { "$ref": "#/$defs/canonicalClaimTarget" },
+        "askedBy": { "type": "string" },
+        "askedAt": { "type": "string", "format": "date-time" },
+        "metadata": { "type": "object" }
+      }
+    }
+  }
+}

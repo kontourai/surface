@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  TrustInputBuilder,
+  TrustBundleBuilder,
   buildClaim,
   buildEvidence,
   buildEvent,
@@ -9,10 +9,10 @@ import {
   buildTrustReport,
 } from "../src/index.js";
 
-test("TrustInputBuilder creates validated input and links evidence fluently", () => {
+test("TrustBundleBuilder creates validated input and links evidence fluently", () => {
   const claimId = "sdk.ticket-1.status";
   const evidenceId = `${claimId}.evidence`;
-  const input = new TrustInputBuilder({ source: "sdk:test" })
+  const input = new TrustBundleBuilder({ source: "sdk:test" })
     .addClaim(buildClaim({
       id: claimId,
       subjectType: "ticket",
@@ -66,10 +66,10 @@ test("TrustInputBuilder creates validated input and links evidence fluently", ()
   assert.equal(buildTrustReport(built).summary.byStatus.verified, 1);
 });
 
-test("TrustInputBuilder preserves legacy entailing default and cited support behavior", () => {
+test("TrustBundleBuilder preserves legacy entailing default and cited support behavior", () => {
   const claimId = "sdk.ticket-2.status";
   const evidenceId = `${claimId}.evidence`;
-  const base = new TrustInputBuilder({ source: "sdk:support-strength" })
+  const base = new TrustBundleBuilder({ source: "sdk:support-strength" })
     .addClaim(buildClaim({
       id: claimId,
       subjectType: "ticket",
@@ -122,7 +122,7 @@ test("TrustInputBuilder preserves legacy entailing default and cited support beh
   assert.equal(citedReport.summary.byStatus.proposed, 1);
   assert.equal(citedReport.summary.transparencyGapsByType.unsupported_inference, 1);
 
-  const legacy = new TrustInputBuilder({ source: "sdk:support-strength-legacy" })
+  const legacy = new TrustBundleBuilder({ source: "sdk:support-strength-legacy" })
     .addClaim(citedReport.claims[0])
     .addPolicy(citedReport.policies[0])
     .addEvent(citedReport.events[0]);
@@ -135,9 +135,9 @@ test("TrustInputBuilder preserves legacy entailing default and cited support beh
   assert.equal(buildTrustReport(legacy.build()).summary.byStatus.verified, 1);
 });
 
-test("TrustInputBuilder validates before returning input", () => {
+test("TrustBundleBuilder validates before returning input", () => {
   assert.throws(
-    () => new TrustInputBuilder({ source: "sdk:invalid" })
+    () => new TrustBundleBuilder({ source: "sdk:invalid" })
       .addClaim({
         id: "missing-date",
         subjectType: "ticket",

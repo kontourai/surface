@@ -14,7 +14,7 @@ Closing-world shortcuts (no row in a table → not a customer, null field → no
 
 ## Deterministic by default
 
-Status, freshness, transparency gaps, and evidence requirements are derived from the inputs by code. They are not produced by a model at query time, and they are not negotiated between the Viewer and the producer. The same `TrustInput` produces the same `TrustReport` every time, on any machine, including in CI.
+Status, freshness, transparency gaps, and evidence requirements are derived from the inputs by code. They are not produced by a model at query time, and they are not negotiated between the Viewer and the producer. The same `TrustBundle` produces the same `TrustReport` every time, on any machine, including in CI.
 
 Models are welcome at the evidence edge — they can extract, summarize, observe, and attest. They are not welcome inside the trust derivation. Reasoning about what counts as verified happens once, in the kernel, and every downstream system reads the same answer.
 

@@ -6,7 +6,7 @@ Every adapter does three things:
 
 1. Define the product input shape it accepts.
 2. Map that input into Surface claims, evidence, policies, and verification events.
-3. Emit valid `TrustInput` so Surface can build the same report shape as every other adapter.
+3. Emit valid `TrustBundle` so Surface can build the same report shape as every other adapter.
 
 The adapter is intentionally explicit. Surface does not discover adapters from `node_modules`; product packages register the adapters they want to expose.
 

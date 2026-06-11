@@ -15,11 +15,11 @@
     "events": { "type": "array", "items": { "$ref": "verification-event.schema.json" } },
     "claimGroups": {
       "type": "array",
-      "items": { "$ref": "trust-input.schema.json#/$defs/claimGroup" }
+      "items": { "$ref": "trust-bundle.schema.json#/$defs/claimGroup" }
     },
     "authorityTrace": {
       "type": "array",
-      "items": { "$ref": "trust-input.schema.json#/$defs/authorityTrace" }
+      "items": { "$ref": "trust-bundle.schema.json#/$defs/authorityTrace" }
     },
     "evidenceRequirementsByClaimId": {
       "type": "object",
@@ -161,7 +161,7 @@
                 "disputedClaims": { "type": "array", "items": { "type": "string" } },
                 "unsupportedClaims": { "type": "array", "items": { "type": "string" } },
                 "missingClaimIds": { "type": "array", "items": { "type": "string" } },
-                "validationStrategy": { "$ref": "trust-input.schema.json#/$defs/validationStrategy" },
+                "validationStrategy": { "$ref": "trust-bundle.schema.json#/$defs/validationStrategy" },
                 "metadata": { "type": "object" }
               },
               "additionalProperties": false

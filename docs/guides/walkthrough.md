@@ -35,7 +35,7 @@ Each line answers a different question:
 
 ## 2. Run against native Surface input
 
-Surface ships the `surface` passthrough adapter for already formatted `TrustInput` JSON. It is the default for `surface report`.
+Surface ships the `surface` passthrough adapter for already formatted `TrustBundle` JSON. It is the default for `surface report`.
 
 ```bash
 npx surface report --adapter surface --input examples/surface-fixtures.json --format summary
@@ -53,7 +53,7 @@ The JSON output is the full `TrustReport`: per-claim derived status, per-claim `
 
 ## 4. Build your own input
 
-The `--input` flag accepts any file matching the `TrustInput` schema:
+The `--input` flag accepts any file matching the `TrustBundle` schema:
 
 ```bash
 npx surface report --input my-claims.json --format summary

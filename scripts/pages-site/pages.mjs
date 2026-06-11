@@ -62,7 +62,7 @@ export const navGroups = [
         "consumer-sdk",
         "docs/guides/consumer-sdk.md",
         "Consumer SDK",
-        "Emit valid TrustInput from TypeScript with the fluent TrustInputBuilder: claims, evidence, policies, events, and claim groups.",
+        "Emit valid TrustBundle from TypeScript with the fluent TrustBundleBuilder: claims, evidence, policies, events, and claim groups.",
       ],
       [
         "cli",

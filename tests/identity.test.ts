@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildIdentityIndex, buildTrustReport, validateTrustInput } from "../src/index.js";
-import type { TrustInput } from "../src/index.js";
+import { buildIdentityIndex, buildTrustReport, validateTrustBundle } from "../src/index.js";
+import type { TrustBundle } from "../src/index.js";
 
 const baseClaim = {
   id: "claim-base",
@@ -15,7 +15,7 @@ const baseClaim = {
   updatedAt: "2026-04-25T00:00:00.000Z",
 };
 
-function makeInput(overrides: Partial<TrustInput>): TrustInput {
+function makeInput(overrides: Partial<TrustBundle>): TrustBundle {
   return {
     schemaVersion: 3,
     source: "identity-test",
@@ -28,7 +28,7 @@ function makeInput(overrides: Partial<TrustInput>): TrustInput {
 }
 
 test("subjectAliases on a claim group co-referent subjects", () => {
-  const input = validateTrustInput(makeInput({
+  const input = validateTrustBundle(makeInput({
     claims: [
       {
         ...baseClaim,
@@ -44,7 +44,7 @@ test("subjectAliases on a claim group co-referent subjects", () => {
 });
 
 test("identityLinks merge subjects across claims transitively", () => {
-  const input = validateTrustInput(makeInput({
+  const input = validateTrustBundle(makeInput({
     claims: [
       { ...baseClaim, id: "claim-a", subjectId: "repo-A" },
       { ...baseClaim, id: "claim-b", subjectId: "repo-B" },
@@ -84,7 +84,7 @@ test("identityLinks merge subjects across claims transitively", () => {
 });
 
 test("trust report carries identityLinks and computed subjectGroups", () => {
-  const input = validateTrustInput(makeInput({
+  const input = validateTrustBundle(makeInput({
     claims: [
       { ...baseClaim, id: "claim-a", subjectId: "repo-A" },
       { ...baseClaim, id: "claim-b", subjectId: "repo-B" },
@@ -109,8 +109,8 @@ test("trust report carries identityLinks and computed subjectGroups", () => {
 test("validator rejects identityLinks with fewer than two subjects", () => {
   assert.throws(
     () =>
-      validateTrustInput(makeInput({
-        identityLinks: [{ subjects: [{ subjectType: "x", subjectId: "y" }] }] as TrustInput["identityLinks"],
+      validateTrustBundle(makeInput({
+        identityLinks: [{ subjects: [{ subjectType: "x", subjectId: "y" }] }] as TrustBundle["identityLinks"],
       })),
     /at least two/,
   );
@@ -119,7 +119,7 @@ test("validator rejects identityLinks with fewer than two subjects", () => {
 test("validator rejects subjectAliases with extra fields", () => {
   assert.throws(
     () =>
-      validateTrustInput(makeInput({
+      validateTrustBundle(makeInput({
         claims: [
           {
             ...baseClaim,

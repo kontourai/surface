@@ -31,7 +31,7 @@ const requiredFiles = [
   "dist/src/console/script.js",
   "dist/src/console/styles.js",
   "dist/src/trust-panel/surface-trust-panel.js",
-  "schemas/trust-input.schema.json",
+  "schemas/trust-bundle.schema.json",
   "schemas/trust-report.schema.json",
   "docs/reference/console.md",
   "examples/external-adapter/src/index.ts",

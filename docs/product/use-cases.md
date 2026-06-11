@@ -19,7 +19,7 @@ The scenarios are not hypothetical shapes. Each one is grounded in a fixture tha
 
 **The situation.** An engineering team has AI agents opening dozens of pull requests a day. Every PR description says the tests passed and the standards were followed. The reviewers' real question is no longer "does this look right?" but "what actually supports this claim, and is that support current?"
 
-**Built with Surface.** [Veritas](https://github.com/kontourai/veritas) authors claims about repo areas in a committed claim store, collects evidence per run (test output, lint results, human attestations), and emits `TrustInput` through the public Surface SDK. Repo standards map into Surface claim groups, so a reviewer starts from a framework/requirement view and drills into the exact claim, the evidence command that supports it, and the integrity ref it was verified against.
+**Built with Surface.** [Veritas](https://github.com/kontourai/veritas) authors claims about repo areas in a committed claim store, collects evidence per run (test output, lint results, human attestations), and emits `TrustBundle` through the public Surface SDK. Repo standards map into Surface claim groups, so a reviewer starts from a framework/requirement view and drills into the exact claim, the evidence command that supports it, and the integrity ref it was verified against.
 
 **What Surface derives.** A claim is `verified` only when a verification event and its policy-required evidence support it. When the verified commit changes, the claim surfaces as Changed Since Verified instead of silently staying green. The reviewer — human or agent — reads the same Trust Snapshot.
 

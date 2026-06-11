@@ -7,7 +7,7 @@ import type {
   SubjectGroup,
   TransparencyGap,
   TransparencyGapType,
-  TrustInput,
+  TrustBundle,
   TrustStatus,
   VerificationPolicy,
 } from "./types.js";
@@ -36,7 +36,7 @@ export interface TrustSnapshotDerivation {
   claimGroupRollups: ClaimGroupRollup[];
 }
 
-export function deriveTrustSnapshot(input: TrustInput, options: { now?: Date } = {}): TrustSnapshotDerivation {
+export function deriveTrustSnapshot(input: TrustBundle, options: { now?: Date } = {}): TrustSnapshotDerivation {
   const now = options.now ?? new Date();
   const evidenceRequirementsByClaimId: Record<string, EvidenceRequirement> = {};
   const transparencyGaps: TransparencyGap[] = [];

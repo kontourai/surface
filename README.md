@@ -72,12 +72,12 @@ For a step-by-step tour, see the [Walkthrough](docs/guides/walkthrough.md).
 
 ## Emit your first claims
 
-Any system that can emit a `TrustInput` is a producer. The fluent SDK keeps the shape honest:
+Any system that can emit a `TrustBundle` is a producer. The fluent SDK keeps the shape honest:
 
 ```ts
-import { TrustInputBuilder, buildTrustReport } from "@kontourai/surface";
+import { TrustBundleBuilder, buildTrustReport } from "@kontourai/surface";
 
-const input = new TrustInputBuilder({ source: "my-producer:local" })
+const input = new TrustBundleBuilder({ source: "my-producer:local" })
   .addClaim({
     id: "claim.api.rate-limit",
     subjectType: "api",
@@ -159,9 +159,9 @@ The npm package exposes one stable module entrypoint:
 
 ```ts
 import {
-  TrustInputBuilder,
+  TrustBundleBuilder,
   buildTrustReport,
-  validateTrustInput,
+  validateTrustBundle,
 } from "@kontourai/surface";
 ```
 
@@ -173,7 +173,7 @@ Surface is a foundation product. Anything that needs to answer "what claims are 
 
 **Veritas** — a repo-local governance product built with Surface for AI-assisted code changes. Veritas authors and projects claims, collects evidence per run, and maps repo standards into Surface claim groups so a reviewer can start from a framework/requirement view and drill into the exact claim and evidence. See [Use Cases](docs/product/use-cases.md).
 
-**Custom producers** — any system that emits `TrustInput` can use Surface for report generation, status derivation, and the Surface Console. Product artifacts may embed `surface.input` directly; Surface remains responsible for generated report fields. Start with the [external adapter example](examples/external-adapter/README.md).
+**Custom producers** — any system that emits `TrustBundle` can use Surface for report generation, status derivation, and the Surface Console. Product artifacts may embed `trust.bundle` directly; Surface remains responsible for generated report fields. Start with the [external adapter example](examples/external-adapter/README.md).
 
 The dependency direction is one-way: producers depend on Surface; Surface does not depend on any producer's runtime.
 
@@ -217,7 +217,7 @@ Ignored local/generated directories such as `node_modules/`, `.surface/`, `.flow
 - [Walkthrough](docs/guides/walkthrough.md) — real session with native Surface input
 - [Use Cases](docs/product/use-cases.md) — real-world scenarios grounded in shipped fixtures
 - [Concepts](docs/product/concepts.md) — trust vocabulary, claim groups, transparency gaps, and status model
-- [Consumer SDK](docs/guides/consumer-sdk.md) — fluent helpers for emitting valid `TrustInput`
+- [Consumer SDK](docs/guides/consumer-sdk.md) — fluent helpers for emitting valid `TrustBundle`
 - [CLI](docs/reference/cli.md) — shipped report, query, and claim commands
 - [Agents and MCP](docs/reference/mcp.md) — trust-state tools over the Model Context Protocol
 - [Surface Console](docs/reference/console.md) — local operator workspace reference

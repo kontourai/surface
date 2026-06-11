@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { buildTrustReport, validateTrustInput } from "../src/index.js";
+import { buildTrustReport, validateTrustBundle } from "../src/index.js";
 
 interface ConformanceExpectation {
   valid: boolean;
@@ -39,7 +39,7 @@ for (const conformanceCase of manifest.cases) {
 
     if (!conformanceCase.expect.valid) {
       assert.throws(
-        () => validateTrustInput(raw),
+        () => validateTrustBundle(raw),
         (error: unknown) => {
           assert.ok(error instanceof Error);
           assert.ok(
@@ -52,7 +52,7 @@ for (const conformanceCase of manifest.cases) {
       return;
     }
 
-    const report = buildTrustReport(validateTrustInput(raw));
+    const report = buildTrustReport(validateTrustBundle(raw));
 
     for (const [claimId, expectedStatus] of Object.entries(conformanceCase.expect.statusByClaimId ?? {})) {
       const claim = report.claims.find((candidate) => candidate.id === claimId);

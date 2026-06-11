@@ -1,6 +1,6 @@
-import type { TrustInput } from "../types.js";
+import type { TrustBundle } from "../types.js";
 
-export function validateReferences(input: TrustInput): void {
+export function validateReferences(input: TrustBundle): void {
   const claimIds = new Set(input.claims.map((claim) => claim.id));
   const evidenceIds = new Set(input.evidence.map((evidence) => evidence.id));
   const policyIds = new Set(input.policies.map((policy) => policy.id));

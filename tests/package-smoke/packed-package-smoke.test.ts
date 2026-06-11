@@ -45,10 +45,10 @@ test("packed npm artifact installs, imports, and exposes the CLI from a fresh co
         "--input-type=module",
         "--eval",
         [
-          "import { TrustInputBuilder, buildTrustReport, validateTrustInput } from '@kontourai/surface';",
-          "if (typeof TrustInputBuilder !== 'function') throw new Error('TrustInputBuilder missing');",
+          "import { TrustBundleBuilder, buildTrustReport, validateTrustBundle } from '@kontourai/surface';",
+          "if (typeof TrustBundleBuilder !== 'function') throw new Error('TrustBundleBuilder missing');",
           "if (typeof buildTrustReport !== 'function') throw new Error('buildTrustReport missing');",
-          "if (typeof validateTrustInput !== 'function') throw new Error('validateTrustInput missing');",
+          "if (typeof validateTrustBundle !== 'function') throw new Error('validateTrustBundle missing');",
           "try {",
           "  await import('@kontourai/surface/dist/src/console/projection.js');",
           "  throw new Error('deep import unexpectedly resolved');",
@@ -75,9 +75,9 @@ test("packed npm artifact installs, imports, and exposes the CLI from a fresh co
       readFile(path.join(consumer, "node_modules", "@kontourai", "surface", "dist", "src", "report.d.ts"), "utf8"),
       readFile(path.join(consumer, "node_modules", "@kontourai", "surface", "dist", "src", "validate.d.ts"), "utf8"),
     ]);
-    assert.match(consumerSdkDeclaration, /TrustInputBuilder/);
+    assert.match(consumerSdkDeclaration, /TrustBundleBuilder/);
     assert.match(reportDeclaration, /buildTrustReport/);
-    assert.match(validateDeclaration, /validateTrustInput/);
+    assert.match(validateDeclaration, /validateTrustBundle/);
 
     const cli = await execFileAsync(
       path.join(consumer, "node_modules", ".bin", "surface"),

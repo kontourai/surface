@@ -18,7 +18,7 @@ Adopt the following product vocabulary in human-facing docs and specs:
 - Trust Panel: Viewer-facing inspection surface
 - Surface Console: Operator-facing management workspace
 - Trust Snapshot: product-language projection of current trust state
-- Claim Package: portable package of claims, evidence, policies, traces, and related context
+- Claim Package: portable package of claims, evidence, policies, traces, and related context (superseded by Trust Bundle, see ADR 0002)
 - Transparency Gap: missing, weak, stale, disputed, private, unavailable, unverifiable, or unmapped trust element
 - Conflict: contradictory or disputed trust state
 - Claim Group: related claims grouped by producer or framework

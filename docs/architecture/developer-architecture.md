@@ -6,13 +6,13 @@ Start here when you need the architecture in Surface vocabulary first. For the c
 
 ## Scope And Non-Goals
 
-**Current implementation:** Surface owns portable claims, evidence, verification policies, verification events, Authority Trace, trust derivation, Trust Reports, Trust Snapshots, analytics projections, and the Surface Console projection. Producers emit `TrustInput`; Surface validates and derives report-only trust state.
+**Current implementation:** Surface owns portable claims, evidence, verification policies, verification events, Authority Trace, trust derivation, Trust Reports, Trust Snapshots, analytics projections, and the Surface Console projection. Producers emit `TrustBundle`; Surface validates and derives report-only trust state.
 
 **Future Resource Contract alignment:** future slices may wrap durable Surface packages, reports, run models, claim stores, or extension records in `surface.kontourai.io/v1alpha1` Resource Contract shapes. That direction is tracked on the [Roadmap](../roadmap/index.md). This guide does not implement those migrations.
 
 Non-goals for this guide:
 
-- changing `TrustInput`, `TrustReport`, or schema behavior
+- changing `TrustBundle`, `TrustReport`, or schema behavior
 - changing status derivation, transparency gap generation, or claim evaluation
 - moving Veritas, Flow, Flow Agents, or Builder Kit workflow semantics into Surface
 - replacing the existing schema, CLI, Console, or Open Trust Format references
@@ -30,7 +30,7 @@ flowchart LR
   end
 
   subgraph Kernel["Surface kernel"]
-    TrustInput["TrustInput\nclaims, evidence, policies, events,\nclaim groups, Authority Trace"]
+    TrustBundle["TrustBundle\nclaims, evidence, policies, events,\nclaim groups, Authority Trace"]
     Derivation["Status and gap derivation"]
     TrustReport["TrustReport / Trust Snapshot\nsummary, gaps, rollups, change records"]
   end
@@ -44,8 +44,8 @@ flowchart LR
 
   Product --> Adapter
   Extension --> Adapter
-  Adapter --> TrustInput
-  TrustInput --> Derivation
+  Adapter --> TrustBundle
+  TrustBundle --> Derivation
   Derivation --> TrustReport
   TrustReport --> CLI
   TrustReport --> Analytics
@@ -53,7 +53,7 @@ flowchart LR
   TrustReport --> Linked
 ```
 
-**Current implementation:** this flow is available locally through the TypeScript API and CLI. `TrustInput` is the current claim package input contract, and `TrustReport` is the current derived report contract.
+**Current implementation:** this flow is available locally through the TypeScript API and CLI. `TrustBundle` is the current claim package input contract, and `TrustReport` is the current derived report contract.
 
 **Future Resource Contract alignment:** Resource wrappers can give durable packages and generated outputs stable `apiVersion`, `kind`, `metadata`, `spec`, `status`, and `status.conditions[]` fields. The native claim/evidence graph remains the portable content inside those records.
 
@@ -65,7 +65,7 @@ The lifecycle is intentionally local-first and producer-neutral. Surface does no
 sequenceDiagram
   autonumber
   participant Producer as Producer or Adapter
-  participant Input as TrustInput
+  participant Input as TrustBundle
   participant Kernel as Surface Kernel
   participant Report as TrustReport / Trust Snapshot
   participant Projection as CLI / Analytics / Console
@@ -87,7 +87,7 @@ sequenceDiagram
 
 | System | Owns | Consumes from Surface | Does not own |
 | --- | --- | --- | --- |
-| Surface | Portable claims, evidence, policies, events, Authority Trace, status derivation, Trust Reports, Trust Snapshots, analytics, linked output, and Surface Console projection | Producer-emitted `TrustInput` and extension metadata | Product workflow enforcement, repo governance semantics, Flow gates, or Builder Kit lifecycle |
+| Surface | Portable claims, evidence, policies, events, Authority Trace, status derivation, Trust Reports, Trust Snapshots, analytics, linked output, and Surface Console projection | Producer-emitted `TrustBundle` and extension metadata | Product workflow enforcement, repo governance semantics, Flow gates, or Builder Kit lifecycle |
 | Veritas | Repo governance, repo standards, readiness semantics, evidence checks, exceptions, and repo-local run artifacts | Surface trust state for portable evidence projection and inspection | Surface trust derivation or generic transparency gap semantics |
 | Flow | Flow Definition steps, transitions, gates, and process semantics | Surface or Veritas evidence as gate input when integrations choose to use it | Surface claim evaluation or producer evidence collection |
 | Flow Agents | Local agent workflow coordination, planning, verification, release, learning, and Builder Kit orchestration | Surface reports or Veritas readiness evidence for workflow evidence | Surface schemas, trust derivation, or product truth semantics |
@@ -103,7 +103,7 @@ flowchart TD
   BuilderKit["Builder Kit\nbuild flow and gate consumption"]
   Flow["Flow\nprocess and gate semantics"]
 
-  Veritas -->|"emits TrustInput / consumes TrustReport"| Surface
+  Veritas -->|"emits TrustBundle / consumes TrustReport"| Surface
   FlowAgents -->|"reads evidence and reports"| Surface
   BuilderKit -->|"uses evidence as gate input"| FlowAgents
   FlowAgents -->|"coordinates product build work"| BuilderKit
@@ -143,7 +143,7 @@ Use this order when you need to understand Surface without starting in cross-pro
 
 1. [Concepts](../product/concepts.md) for claim, evidence, Authority Trace, Trust Snapshot, Transparency Gap, and Surface Console language.
 2. [Open Trust Format](../specs/open-trust-format.md) for the portable claim package commitment.
-3. [Schemas](../reference/schemas.md) for current `TrustInput`, `TrustReport`, and record shapes.
+3. [Schemas](../reference/schemas.md) for current `TrustBundle`, `TrustReport`, and record shapes.
 4. [Surface Foundation Boundary](surface-foundation.md) for what belongs in Surface versus product layers.
 5. [Roadmap](../roadmap/index.md) only when planning future Resource Contract migration work.
 

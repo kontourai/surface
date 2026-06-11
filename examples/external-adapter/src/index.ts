@@ -3,11 +3,11 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   buildTrustReport,
-  TrustInputBuilder,
+  TrustBundleBuilder,
   getAdapter,
   registerAdapter,
   type Adapter,
-  type TrustInput,
+  type TrustBundle,
 } from "@kontourai/surface";
 
 interface TicketRecord {
@@ -21,10 +21,10 @@ interface TicketRecord {
 const ticketAdapter: Adapter<TicketRecord> = {
   name: "external-ticket-system",
   defaultFixture: "fixture.json",
-  adapt(record): TrustInput {
+  adapt(record): TrustBundle {
     const claimId = `external-ticket.${record.id}.status`;
     const evidenceId = `${claimId}.evidence`;
-    const builder = new TrustInputBuilder({ source: record.source });
+    const builder = new TrustBundleBuilder({ source: record.source });
     builder.addClaim({
       id: claimId,
       subjectType: "ticket",

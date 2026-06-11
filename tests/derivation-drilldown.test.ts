@@ -3,9 +3,9 @@ import assert from "node:assert/strict";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { buildDerivationDrilldown, buildTrustReport, validateTrustInput } from "../src/index.js";
+import { buildDerivationDrilldown, buildTrustReport, validateTrustBundle } from "../src/index.js";
 import { runCli } from "../src/cli.js";
-import type { Claim, Evidence, TrustInput, TrustReport, VerificationEvent } from "../src/index.js";
+import type { Claim, Evidence, TrustBundle, TrustReport, VerificationEvent } from "../src/index.js";
 
 const baseClaim: Omit<Claim, "id" | "value" | "fieldOrBehavior"> = {
   subjectType: "repo-governance.repo",
@@ -16,7 +16,7 @@ const baseClaim: Omit<Claim, "id" | "value" | "fieldOrBehavior"> = {
   updatedAt: "2026-04-25T00:00:00.000Z",
 };
 
-function makeInput(overrides: Partial<TrustInput>): TrustInput {
+function makeInput(overrides: Partial<TrustBundle>): TrustBundle {
   return {
     schemaVersion: 3,
     source: "derivation-drilldown-test",
@@ -109,7 +109,7 @@ function minimalReport(claims: TrustReport["claims"]): TrustReport {
 }
 
 test("drilldown exposes one-hop structured derivation methods and leaf evidence", () => {
-  const input = validateTrustInput(makeInput({
+  const input = validateTrustBundle(makeInput({
     claims: [
       { ...baseClaim, id: "build-score", fieldOrBehavior: "build.score", value: 82 },
       { ...baseClaim, id: "release-exception", fieldOrBehavior: "release.exception-count", value: 2 },
@@ -156,7 +156,7 @@ test("drilldown exposes one-hop structured derivation methods and leaf evidence"
 });
 
 test("drilldown walks two-hop derivations mixing derivedFrom and derivationEdges", () => {
-  const input = validateTrustInput(makeInput({
+  const input = validateTrustBundle(makeInput({
     claims: [
       { ...baseClaim, id: "leaf", fieldOrBehavior: "unit.pass", value: true },
       {
@@ -224,7 +224,7 @@ test("drilldown does not promote a parent to leaf when all child inputs are miss
 });
 
 test("drilldown does not promote a parent to leaf when all child inputs are cyclic", () => {
-  const input = validateTrustInput(makeInput({
+  const input = validateTrustBundle(makeInput({
     claims: [
       {
         ...baseClaim,
@@ -255,7 +255,7 @@ test("drilldown does not promote a parent to leaf when all child inputs are cycl
 });
 
 test("non-derived claim remains ordinary and has an empty derivation drilldown", () => {
-  const input = validateTrustInput(makeInput({
+  const input = validateTrustBundle(makeInput({
     claims: [{ ...baseClaim, id: "leaf", fieldOrBehavior: "unit.pass", value: true }],
     evidence: [evidence("evd-leaf", "leaf")],
     events: [verifiedEvent("event-leaf", "leaf", ["evd-leaf"])],

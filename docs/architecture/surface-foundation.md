@@ -53,7 +53,7 @@ A concept should move into Surface only when it repeats across more than one pro
 Every product layer built on Surface should make the boundary explicit:
 
 1. Product artifacts may include native workflow fields.
-2. Product artifacts should expose portable truth through Surface `TrustInput` records or an adapter that produces them.
+2. Product artifacts should expose portable truth through Surface `TrustBundle` records or an adapter that produces them.
 3. Surface generates report-only fields after validation.
 4. Product-specific lifecycle language should stay outside Surface until it repeats across domains.
 

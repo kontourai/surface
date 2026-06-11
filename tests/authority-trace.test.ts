@@ -3,12 +3,12 @@ import assert from "node:assert/strict";
 import {
   buildTrustAnalyticsProjection,
   buildTrustReport,
-  validateTrustInput,
+  validateTrustBundle,
   type AuthorityTrace,
-  type TrustInput,
+  type TrustBundle,
 } from "../src/index.js";
 
-function makeInput(overrides: Partial<TrustInput> = {}): TrustInput {
+function makeInput(overrides: Partial<TrustBundle> = {}): TrustBundle {
   return {
     schemaVersion: 3,
     source: "authority-trace-test",
@@ -83,8 +83,8 @@ const validAuthorityTrace: AuthorityTrace = {
   metadata: { directoryTenant: "records" },
 };
 
-test("validates and preserves authorityTrace from TrustInput to TrustReport", () => {
-  const input = validateTrustInput(makeInput({ authorityTrace: [{ ...validAuthorityTrace }] }));
+test("validates and preserves authorityTrace from TrustBundle to TrustReport", () => {
+  const input = validateTrustBundle(makeInput({ authorityTrace: [{ ...validAuthorityTrace }] }));
   const report = buildTrustReport(input, {
     id: "authority-report",
     now: new Date("2026-05-02T00:00:00.000Z"),
@@ -95,7 +95,7 @@ test("validates and preserves authorityTrace from TrustInput to TrustReport", ()
 });
 
 test("reports an empty authorityTrace for inputs that omit the field", () => {
-  const input = validateTrustInput(makeInput());
+  const input = validateTrustBundle(makeInput());
   const report = buildTrustReport(input, {
     id: "authority-empty-report",
     now: new Date("2026-05-02T00:00:00.000Z"),
@@ -106,33 +106,33 @@ test("reports an empty authorityTrace for inputs that omit the field", () => {
 
 test("rejects malformed authorityTrace records", () => {
   assert.throws(
-    () => validateTrustInput({ ...makeInput(), authorityTrace: [{ ...validAuthorityTrace, actorRef: "" }] }),
+    () => validateTrustBundle({ ...makeInput(), authorityTrace: [{ ...validAuthorityTrace, actorRef: "" }] }),
     /Missing required string field: actorRef/,
   );
   assert.throws(
-    () => validateTrustInput({ ...makeInput(), authorityTrace: [{ ...validAuthorityTrace, authorityType: "readiness" }] }),
+    () => validateTrustBundle({ ...makeInput(), authorityTrace: [{ ...validAuthorityTrace, authorityType: "readiness" }] }),
     /authorityType contains unsupported value/,
   );
   assert.throws(
-    () => validateTrustInput({ ...makeInput(), authorityTrace: [{ ...validAuthorityTrace, observedAt: "today" }] }),
+    () => validateTrustBundle({ ...makeInput(), authorityTrace: [{ ...validAuthorityTrace, observedAt: "today" }] }),
     /observedAt must be an ISO-8601 UTC date-time/,
   );
   assert.throws(
-    () => validateTrustInput({ ...makeInput(), authorityTrace: [{ ...validAuthorityTrace, extra: true }] }),
+    () => validateTrustBundle({ ...makeInput(), authorityTrace: [{ ...validAuthorityTrace, extra: true }] }),
     /contains unsupported field: extra/,
   );
   assert.throws(
-    () => validateTrustInput({ ...makeInput(), authorityTrace: [{ ...validAuthorityTrace, evidenceIds: ["missing-evidence"] }] }),
+    () => validateTrustBundle({ ...makeInput(), authorityTrace: [{ ...validAuthorityTrace, evidenceIds: ["missing-evidence"] }] }),
     /Authority trace authority.record-steward-1 references unknown evidence missing-evidence/,
   );
   assert.throws(
-    () => validateTrustInput({ ...makeInput(), authorityTrace: [{ ...validAuthorityTrace, claimIds: ["missing-claim"] }] }),
+    () => validateTrustBundle({ ...makeInput(), authorityTrace: [{ ...validAuthorityTrace, claimIds: ["missing-claim"] }] }),
     /Authority trace authority.record-steward-1 references unknown claim missing-claim/,
   );
 });
 
 test("first-class authorityTrace satisfies attestation authority without metadata authoritySource", () => {
-  const input = validateTrustInput(makeInput({ authorityTrace: [{ ...validAuthorityTrace }] }));
+  const input = validateTrustBundle(makeInput({ authorityTrace: [{ ...validAuthorityTrace }] }));
   const report = buildTrustReport(input, {
     id: "authority-backed-attestation",
     now: new Date("2026-05-02T00:00:00.000Z"),
@@ -147,7 +147,7 @@ test("first-class authorityTrace satisfies attestation authority without metadat
 });
 
 test("authorityTrace must match policy reviewAuthority to satisfy attestation authority", () => {
-  const input = validateTrustInput(makeInput({
+  const input = validateTrustBundle(makeInput({
     authorityTrace: [{
       ...validAuthorityTrace,
       id: "authority.unrelated-role",

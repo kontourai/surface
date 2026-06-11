@@ -1,11 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { buildTrustReport, formatTrustReportSummary, validateTrustInput } from "../src/index.js";
+import { buildTrustReport, formatTrustReportSummary, validateTrustBundle } from "../src/index.js";
 
 test("builds a canonical trust report from validation fixtures", async () => {
   const raw = await readFile("examples/surface-fixtures.json", "utf8");
-  const input = validateTrustInput(JSON.parse(raw));
+  const input = validateTrustBundle(JSON.parse(raw));
   const report = buildTrustReport(input, {
     id: "test-report",
     now: new Date("2026-04-25T00:00:00.000Z"),
@@ -25,14 +25,14 @@ test("builds a canonical trust report from validation fixtures", async () => {
 });
 
 test("rejects malformed trust input", () => {
-  assert.throws(() => validateTrustInput({ source: "bad", claims: [] }), /Missing required schemaVersion/);
-  assert.throws(() => validateTrustInput({ schemaVersion: 1, source: "bad", claims: [] }), /v1-to-v2 migration/);
-  assert.throws(() => validateTrustInput({ schemaVersion: 2, source: "bad", claims: [] }), /Missing required array field: evidence/);
+  assert.throws(() => validateTrustBundle({ source: "bad", claims: [] }), /Missing required schemaVersion/);
+  assert.throws(() => validateTrustBundle({ schemaVersion: 1, source: "bad", claims: [] }), /v1-to-v2 migration/);
+  assert.throws(() => validateTrustBundle({ schemaVersion: 2, source: "bad", claims: [] }), /Missing required array field: evidence/);
 });
 
 test("rejects malformed policy and event records", () => {
   assert.throws(
-    () => validateTrustInput({
+    () => validateTrustBundle({
       schemaVersion: 2,
       source: "bad-policy",
       claims: [],
@@ -44,7 +44,7 @@ test("rejects malformed policy and event records", () => {
   );
 
   assert.throws(
-    () => validateTrustInput({
+    () => validateTrustBundle({
       schemaVersion: 2,
       source: "bad-event",
       claims: [],
@@ -58,7 +58,7 @@ test("rejects malformed policy and event records", () => {
 
 test("rejects unsupported enum values, bad timestamps, and extra fields", () => {
   assert.throws(
-    () => validateTrustInput({
+    () => validateTrustBundle({
       schemaVersion: 2,
       source: "bad-enum",
       claims: [{
@@ -81,7 +81,7 @@ test("rejects unsupported enum values, bad timestamps, and extra fields", () => 
   );
 
   assert.throws(
-    () => validateTrustInput({
+    () => validateTrustBundle({
       schemaVersion: 2,
       source: "bad-date",
       claims: [{
@@ -103,7 +103,7 @@ test("rejects unsupported enum values, bad timestamps, and extra fields", () => 
   );
 
   assert.throws(
-    () => validateTrustInput({
+    () => validateTrustBundle({
       schemaVersion: 2,
       source: "extra",
       claims: [{
@@ -128,7 +128,7 @@ test("rejects unsupported enum values, bad timestamps, and extra fields", () => 
 
 test("rejects broken claim, evidence, and event references", () => {
   assert.throws(
-    () => validateTrustInput({
+    () => validateTrustBundle({
       schemaVersion: 2,
       source: "bad-ref",
       claims: [],
@@ -151,7 +151,7 @@ test("rejects broken claim, evidence, and event references", () => {
 
 test("requires evidence methods in schema v2 inputs", () => {
   assert.throws(
-    () => validateTrustInput({
+    () => validateTrustBundle({
       schemaVersion: 2,
       source: "missing-method",
       claims: [{
@@ -182,7 +182,7 @@ test("requires evidence methods in schema v2 inputs", () => {
 });
 
 test("accepts optional evidence passing and blocking fields", () => {
-  const input = validateTrustInput({
+  const input = validateTrustBundle({
     schemaVersion: 3,
     source: "evidence-eval",
     claims: [{
@@ -236,26 +236,26 @@ test("validates optional ordinal claim materiality", () => {
     events: [],
   };
 
-  assert.equal(validateTrustInput(baseInput).claims[0].materiality, undefined);
+  assert.equal(validateTrustBundle(baseInput).claims[0].materiality, undefined);
   for (const materiality of ["low", "medium", "high"]) {
-    const input = validateTrustInput({
+    const input = validateTrustBundle({
       ...baseInput,
       claims: [{ ...baseInput.claims[0], id: `claim-${materiality}`, materiality }],
     });
     assert.equal(input.claims[0].materiality, materiality);
   }
   assert.throws(
-    () => validateTrustInput({ ...baseInput, claims: [{ ...baseInput.claims[0], materiality: "critical" }] }),
+    () => validateTrustBundle({ ...baseInput, claims: [{ ...baseInput.claims[0], materiality: "critical" }] }),
     /materiality contains unsupported value: critical/,
   );
   assert.throws(
-    () => validateTrustInput({ ...baseInput, claims: [{ ...baseInput.claims[0], materiality: 3 }] }),
+    () => validateTrustBundle({ ...baseInput, claims: [{ ...baseInput.claims[0], materiality: 3 }] }),
     /Missing required string field: materiality/,
   );
 });
 
 test("carries ordinal materiality from claims to generated transparency gaps", () => {
-  const input = validateTrustInput({
+  const input = validateTrustBundle({
     schemaVersion: 3,
     source: "materiality-report",
     claims: [{
@@ -308,7 +308,7 @@ test("carries ordinal materiality from claims to generated transparency gaps", (
 });
 
 test("contradiction gaps use only the owning claim materiality", () => {
-  const input = validateTrustInput({
+  const input = validateTrustBundle({
     schemaVersion: 3,
     source: "materiality-contradictions",
     claims: [{
@@ -362,7 +362,7 @@ test("contradiction gaps use only the owning claim materiality", () => {
 });
 
 test("evidence transparency-gap hints inherit owning claim materiality", () => {
-  const input = validateTrustInput({
+  const input = validateTrustBundle({
     schemaVersion: 3,
     source: "materiality-evidence-hints",
     claims: [{
@@ -414,7 +414,7 @@ test("evidence transparency-gap hints inherit owning claim materiality", () => {
 });
 
 test("producerStatus is only emitted when derived status diverges", () => {
-  const input = validateTrustInput({
+  const input = validateTrustBundle({
     schemaVersion: 3,
     source: "producer-status",
     claims: [{
@@ -500,7 +500,7 @@ test("producerStatus is only emitted when derived status diverges", () => {
 });
 
 test("non-blocking evidence failures create non-blocking transparency gaps while preserving verified status", () => {
-  const input = validateTrustInput({
+  const input = validateTrustBundle({
     schemaVersion: 3,
     source: "non-blocking-failure",
     claims: [{
@@ -562,7 +562,7 @@ test("non-blocking evidence failures create non-blocking transparency gaps while
 
 test("reputation integrity fixture keeps suspicion distinct from accusation", async () => {
   const raw = await readFile("examples/reputation-integrity-trust-export.json", "utf8");
-  const input = validateTrustInput(JSON.parse(raw));
+  const input = validateTrustBundle(JSON.parse(raw));
   const report = buildTrustReport(input, {
     id: "reputation-integrity",
     now: new Date("2026-04-25T01:00:00.000Z"),

@@ -6,15 +6,15 @@ import { promisify } from "node:util";
 import {
   buildTrustAnalyticsProjection,
   buildTrustReport,
-  validateTrustInput,
-  type TrustInput,
+  validateTrustBundle,
+  type TrustBundle,
 } from "../src/index.js";
 
 const execFileAsync = promisify(execFile);
 
 test("builds a deterministic trust analytics projection from a report", async () => {
   const raw = await readFile("examples/surface-fixtures.json", "utf8");
-  const input = validateTrustInput(JSON.parse(raw));
+  const input = validateTrustBundle(JSON.parse(raw));
   const report = buildTrustReport(input, {
     id: "analytics-report",
     now: new Date("2026-04-25T00:00:00.000Z"),
@@ -42,7 +42,7 @@ test("builds a deterministic trust analytics projection from a report", async ()
 
 test("surfaces weak attestations without changing trust report status", async () => {
   const raw = await readFile("examples/surface-fixtures.json", "utf8");
-  const input = validateTrustInput(JSON.parse(raw));
+  const input = validateTrustBundle(JSON.parse(raw));
   const report = buildTrustReport(input, {
     id: "analytics-report",
     now: new Date("2026-04-25T00:00:00.000Z"),
@@ -66,7 +66,7 @@ test("surfaces weak attestations without changing trust report status", async ()
 });
 
 test("recognizes actor-backed attestations with identity, authority, freshness, and integrity", () => {
-  const input: TrustInput = {
+  const input: TrustBundle = {
     schemaVersion: 3,
     source: "analytics:attestation",
     claims: [{
@@ -127,7 +127,7 @@ test("recognizes actor-backed attestations with identity, authority, freshness, 
     }],
   };
 
-  const report = buildTrustReport(validateTrustInput(input), {
+  const report = buildTrustReport(validateTrustBundle(input), {
     id: "valid-attestation",
     now: new Date("2026-05-02T00:00:00.000Z"),
   });
@@ -140,7 +140,7 @@ test("recognizes actor-backed attestations with identity, authority, freshness, 
 });
 
 test("orders and filters review queue items by ordinal materiality", () => {
-  const input: TrustInput = {
+  const input: TrustBundle = {
     schemaVersion: 3,
     source: "analytics:materiality",
     claims: [{
@@ -185,7 +185,7 @@ test("orders and filters review queue items by ordinal materiality", () => {
     events: [],
   };
 
-  const report = buildTrustReport(validateTrustInput(input), {
+  const report = buildTrustReport(validateTrustBundle(input), {
     id: "materiality-queues",
     now: new Date("2026-05-02T00:00:00.000Z"),
   });
@@ -206,7 +206,7 @@ test("orders and filters review queue items by ordinal materiality", () => {
 });
 
 test("analytics carries materiality on generated derived-claim gaps", () => {
-  const input: TrustInput = {
+  const input: TrustBundle = {
     schemaVersion: 3,
     source: "analytics:derived-materiality",
     claims: [{
@@ -241,7 +241,7 @@ test("analytics carries materiality on generated derived-claim gaps", () => {
     events: [],
   };
 
-  const report = buildTrustReport(validateTrustInput(input), {
+  const report = buildTrustReport(validateTrustBundle(input), {
     id: "derived-materiality-analytics",
     now: new Date("2026-05-02T00:00:00.000Z"),
   });
@@ -259,7 +259,7 @@ test("analytics carries materiality on generated derived-claim gaps", () => {
 });
 
 test("analytics sorts and filters contradiction gaps by owning claim materiality only", () => {
-  const input: TrustInput = {
+  const input: TrustBundle = {
     schemaVersion: 3,
     source: "analytics:contradiction-materiality",
     claims: [{
@@ -332,7 +332,7 @@ test("analytics sorts and filters contradiction gaps by owning claim materiality
     events: [],
   };
 
-  const report = buildTrustReport(validateTrustInput(input), {
+  const report = buildTrustReport(validateTrustBundle(input), {
     id: "contradiction-materiality-analytics",
     now: new Date("2026-05-02T00:00:00.000Z"),
   });

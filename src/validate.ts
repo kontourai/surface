@@ -1,4 +1,4 @@
-import type { TrustInput } from "./types.js";
+import type { TrustBundle } from "./types.js";
 import {
   CLAIM_KEYS,
   DERIVATION_EDGE_KEYS,
@@ -31,8 +31,8 @@ import {
 import { validateReferences } from "./validation/references.js";
 import { validateAuthorityTrace, validateClaimGroup, validateIntegrityAnchor } from "./validation/records.js";
 
-export function validateTrustInput(input: unknown): TrustInput {
-  if (!isObject(input)) throw new Error("Trust input must be an object");
+export function validateTrustBundle(input: unknown): TrustBundle {
+  if (!isObject(input)) throw new Error("Trust bundle must be an object");
   const schemaVersion = requireSchemaVersion(input);
   const source = requireString(input, "source");
   const claims = requireArray(input, "claims");
@@ -88,6 +88,12 @@ export function validateTrustInput(input: unknown): TrustInput {
         if (edge.supportStrength !== undefined) requireEnum(edge, "supportStrength", SUPPORT_STRENGTHS);
         if (edge.rationale !== undefined) requireString(edge, "rationale");
         if (edge.metadata !== undefined) requireObject(edge.metadata, "derivationEdge.metadata");
+      }
+    }
+    if (claim.qualifiers !== undefined) {
+      requireObject(claim.qualifiers, "claim.qualifiers");
+      for (const [k, v] of Object.entries(claim.qualifiers as Record<string, unknown>)) {
+        if (typeof v !== "string") throw new Error(`Claim ${claim.id} qualifier ${k} must be a string`);
       }
     }
     if (claim.metadata !== undefined) requireObject(claim.metadata, "claim.metadata");
@@ -210,11 +216,11 @@ export function validateTrustInput(input: unknown): TrustInput {
     }
   }
 
-  validateReferences({ claims, evidence, policies, events, claimGroups, authorityTrace } as TrustInput);
+  validateReferences({ claims, evidence, policies, events, claimGroups, authorityTrace } as TrustBundle);
 
-  const result: TrustInput = { schemaVersion, source, claims, evidence, policies, events } as TrustInput;
-  if (identityLinks !== undefined) (result as TrustInput).identityLinks = identityLinks as TrustInput["identityLinks"];
-  if (claimGroups !== undefined) (result as TrustInput).claimGroups = claimGroups as TrustInput["claimGroups"];
-  if (authorityTrace !== undefined) (result as TrustInput).authorityTrace = authorityTrace as TrustInput["authorityTrace"];
+  const result: TrustBundle = { schemaVersion, source, claims, evidence, policies, events } as TrustBundle;
+  if (identityLinks !== undefined) (result as TrustBundle).identityLinks = identityLinks as TrustBundle["identityLinks"];
+  if (claimGroups !== undefined) (result as TrustBundle).claimGroups = claimGroups as TrustBundle["claimGroups"];
+  if (authorityTrace !== undefined) (result as TrustBundle).authorityTrace = authorityTrace as TrustBundle["authorityTrace"];
   return result;
 }

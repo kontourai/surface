@@ -46,7 +46,7 @@ Use current command and field names only where exact technical reference require
 
 - `surface console` and console routes are current command/API names. Product docs should call the operator product surface the Surface Console.
 - `.surface/runs/*.console.json` remains the current local read-model convention.
-- `TrustInput` remains the current producer input contract.
+- `TrustBundle` remains the current producer input contract.
 - `TrustReport` remains the current generated report contract.
 - `collectWhen` remains a policy signal for producers; Surface does not collect evidence itself.
 

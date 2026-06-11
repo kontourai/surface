@@ -4,24 +4,24 @@ import type {
   IdentityLink,
   SchemaVersion,
   ClaimGroup,
-  TrustInput,
+  TrustBundle,
   VerificationEvent,
   VerificationPolicy,
 } from "./types.js";
-import { validateTrustInput } from "./validate.js";
+import { validateTrustBundle } from "./validate.js";
 
 export type ClaimDraft = Claim;
 export type EvidenceDraft = Omit<Evidence, "claimId"> & Partial<Pick<Evidence, "claimId">>;
 export type VerificationEventDraft = VerificationEvent;
 export type VerificationPolicyDraft = VerificationPolicy;
 
-export interface TrustInputBuilderArgs {
+export interface TrustBundleBuilderArgs {
   source: string;
   schemaVersion?: SchemaVersion;
 }
 
 export interface EvidenceLink {
-  linkTo(claimId: string): TrustInputBuilder;
+  linkTo(claimId: string): TrustBundleBuilder;
 }
 
 export function buildClaim(claim: ClaimDraft): Claim {
@@ -40,7 +40,7 @@ export function buildPolicy(policy: VerificationPolicyDraft): VerificationPolicy
   return policy;
 }
 
-export class TrustInputBuilder {
+export class TrustBundleBuilder {
   readonly source: string;
   readonly schemaVersion: SchemaVersion;
   private readonly claims: Claim[] = [];
@@ -50,7 +50,7 @@ export class TrustInputBuilder {
   private readonly identityLinks: IdentityLink[] = [];
   private readonly claimGroups: ClaimGroup[] = [];
 
-  constructor(args: TrustInputBuilderArgs) {
+  constructor(args: TrustBundleBuilderArgs) {
     this.source = args.source;
     this.schemaVersion = args.schemaVersion ?? 2;
   }
@@ -92,8 +92,8 @@ export class TrustInputBuilder {
     return this;
   }
 
-  build(): TrustInput {
-    const input: TrustInput = {
+  build(): TrustBundle {
+    const input: TrustBundle = {
       schemaVersion: this.schemaVersion,
       source: this.source,
       claims: [...this.claims],
@@ -103,7 +103,7 @@ export class TrustInputBuilder {
     };
     if (this.identityLinks.length > 0) input.identityLinks = [...this.identityLinks];
     if (this.claimGroups.length > 0) input.claimGroups = [...this.claimGroups];
-    return validateTrustInput(input);
+    return validateTrustBundle(input);
   }
 
   private upsertEvidence(evidence: Evidence): void {

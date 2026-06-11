@@ -148,6 +148,7 @@ export interface Claim {
   surface: string;
   claimType: string;
   fieldOrBehavior: string;
+  qualifiers?: Record<string, string>;
   value: unknown;
   status?: TrustStatus;
   createdAt: string;
@@ -362,7 +363,7 @@ export interface VerificationEvent {
   notes?: string;
 }
 
-export interface TrustInput {
+export interface TrustBundle {
   schemaVersion: SchemaVersion;
   source: string;
   claims: Claim[];
@@ -461,7 +462,7 @@ export interface SubjectGroup {
   claimIds: string[];
 }
 
-export interface TrustReport extends TrustInput {
+export interface TrustReport extends TrustBundle {
   schemaVersion: SchemaVersion;
   id: string;
   generatedAt: string;
@@ -609,4 +610,105 @@ export interface AttestationValidityItem {
   revokedAt?: string;
   integrityRef?: string;
   integrityAnchor?: IntegrityAnchor;
+}
+
+// ---------------------------------------------------------------------------
+// ADR 0003 steps 3 & 4 — Inquiry, InquiryRecord, DerivationRule
+// ---------------------------------------------------------------------------
+
+// Re-export the canonical target type from canonical.ts — placed here so all
+// types live in one imported module for consumers.
+export type { CanonicalClaimTarget } from "./canonical.js";
+
+/**
+ * A consumer-side question posed against the ledger (ADR 0003 §2).
+ */
+export interface Inquiry {
+  /** Stable identifier for this inquiry instance. */
+  id: string;
+  /** The question as the consumer asked it. */
+  question: string;
+  /**
+   * If the consumer could express the question in canonical claim grammar,
+   * this is the resolved target.  Natural-language-only inquiries leave this
+   * undefined; they resolve to "unsupported" in this release.
+   */
+  target?: import("./canonical.js").CanonicalClaimTarget;
+  /** Who asked the question (actor ref or user identifier). */
+  askedBy: string;
+  /** ISO 8601 timestamp of when the inquiry was submitted. */
+  askedAt: string;
+  /** Optional free-form context or metadata the consumer attached. */
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Append-only record capturing the resolution of an Inquiry (ADR 0003 §6).
+ * Never updated after creation; the caller is responsible for persistence.
+ */
+export interface InquiryRecord {
+  /** Identifier for this resolution record (may match inquiry.id or be distinct). */
+  id: string;
+  /** The original inquiry. */
+  inquiry: Inquiry;
+  /** How the inquiry was resolved. */
+  outcome: "matched" | "derived" | "unsupported";
+  /**
+   * The claims and rule that produced the answer.
+   * claimIds lists every claim whose status fed into the answer.
+   */
+  resolutionPath: {
+    claimIds: string[];
+    ruleId?: string;
+    ruleVersion?: string;
+  };
+  /** The answer, if the outcome is "matched" or "derived". */
+  answer?: {
+    value: unknown;
+    status: TrustStatus;
+  };
+  /**
+   * Snapshot of the status of each input claim at the time of resolution.
+   * Frozen so that future policy changes cannot silently rewrite history.
+   */
+  inputSnapshot: Array<{ claimId: string; status: TrustStatus }>;
+  /** Which version of the status function was used (STATUS_FUNCTION_VERSION). */
+  statusFunctionVersion: string;
+  /** ISO 8601 timestamp of when resolution was computed. */
+  resolvedAt: string;
+}
+
+/**
+ * A single requirement within a derivation rule (ADR 0003 §5).
+ */
+export interface DerivationRequirement {
+  /** The canonical claim that must exist and satisfy the requirement. */
+  target: import("./canonical.js").CanonicalClaimTarget;
+  /** The statuses the matched claim's derived status must be in. */
+  acceptedStatuses: TrustStatus[];
+  /** Optional structural predicate over the claim value. */
+  predicate?: {
+    op: "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "in" | "exists";
+    /** The operand value.  For "in", this should be an array.  For "exists", omitted. */
+    value?: unknown;
+  };
+}
+
+/**
+ * A named, versioned rule that derives a boolean answer from existing claims
+ * (ADR 0003 §5).  Promoted from Flow's gate-expectation language.
+ */
+export interface DerivationRule {
+  /** Stable identifier for this rule. */
+  id: string;
+  /** Semver or opaque version string. */
+  version: string;
+  /** Human-readable name. */
+  name: string;
+  /** The canonical claim the rule answers.  Its value will be the boolean satisfied flag. */
+  target: import("./canonical.js").CanonicalClaimTarget;
+  /** The input claims that must be satisfied. */
+  requirements: DerivationRequirement[];
+  /** How multiple requirements are combined. */
+  combinator: "all" | "any";
 }

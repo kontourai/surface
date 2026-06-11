@@ -202,7 +202,7 @@ interface TrustPanelReport {
       const claims = report.claims as TrustPanelClaim[];
       if (claims.length > 0 && claims.every((claim) => !claim.status)) {
         this.#renderError(
-          "This looks like a TrustInput rather than a derived report. Run `surface report --input <file>` first, then load the report output.",
+          "This looks like a TrustBundle rather than a derived report. Run `surface report --input <file>` first, then load the report output.",
         );
         return;
       }

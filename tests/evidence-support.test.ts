@@ -5,9 +5,9 @@ import {
   evidenceEntailsClaim,
   evidenceSupportStrength,
   partitionEvidenceBySupport,
-  validateTrustInput,
+  validateTrustBundle,
 } from "../src/index.js";
-import type { Claim, Evidence, TrustInput, VerificationEvent, VerificationPolicy } from "../src/types.js";
+import type { Claim, Evidence, TrustBundle, VerificationEvent, VerificationPolicy } from "../src/types.js";
 
 const claim: Claim = {
   id: "claim.support-strength",
@@ -61,7 +61,7 @@ function evidence(overrides: Partial<Evidence> = {}): Evidence {
   };
 }
 
-function inputWith(evidenceRecord: Evidence): TrustInput {
+function inputWith(evidenceRecord: Evidence): TrustBundle {
   return {
     schemaVersion: 2,
     source: "support-strength:test",
@@ -88,21 +88,21 @@ test("evidence support helper defaults omitted strength to entails", () => {
 });
 
 test("validator accepts omitted, cited, and entails evidence support strength", () => {
-  assert.equal(validateTrustInput(inputWith(evidence())).evidence[0].supportStrength, undefined);
-  assert.equal(validateTrustInput(inputWith(evidence({ supportStrength: "cited" }))).evidence[0].supportStrength, "cited");
-  assert.equal(validateTrustInput(inputWith(evidence({ supportStrength: "entails" }))).evidence[0].supportStrength, "entails");
+  assert.equal(validateTrustBundle(inputWith(evidence())).evidence[0].supportStrength, undefined);
+  assert.equal(validateTrustBundle(inputWith(evidence({ supportStrength: "cited" }))).evidence[0].supportStrength, "cited");
+  assert.equal(validateTrustBundle(inputWith(evidence({ supportStrength: "entails" }))).evidence[0].supportStrength, "entails");
 });
 
 test("validator rejects unsupported evidence support strength", () => {
   assert.throws(
-    () => validateTrustInput(inputWith(evidence({ supportStrength: "weak" as Evidence["supportStrength"] }))),
+    () => validateTrustBundle(inputWith(evidence({ supportStrength: "weak" as Evidence["supportStrength"] }))),
     /Evidence evidence\.support-strength supportStrength contains unsupported value: weak/,
   );
 });
 
 test("cited-only evidence produces unsupported inference and does not verify", () => {
   const now = new Date("2026-05-01T00:10:00.000Z");
-  const snapshot = deriveTrustSnapshot(validateTrustInput(inputWith(evidence({ supportStrength: "cited" }))), { now });
+  const snapshot = deriveTrustSnapshot(validateTrustBundle(inputWith(evidence({ supportStrength: "cited" }))), { now });
   const gap = snapshot.transparencyGaps.find((item) => item.type === "unsupported_inference");
 
   assert.equal(snapshot.claims[0].status, "proposed");
@@ -116,8 +116,8 @@ test("cited-only evidence produces unsupported inference and does not verify", (
 
 test("entailing and legacy evidence satisfy policy support", () => {
   const now = new Date("2026-05-01T00:10:00.000Z");
-  const explicit = deriveTrustSnapshot(validateTrustInput(inputWith(evidence({ supportStrength: "entails" }))), { now });
-  const legacy = deriveTrustSnapshot(validateTrustInput(inputWith(evidence())), { now });
+  const explicit = deriveTrustSnapshot(validateTrustBundle(inputWith(evidence({ supportStrength: "entails" }))), { now });
+  const legacy = deriveTrustSnapshot(validateTrustBundle(inputWith(evidence())), { now });
 
   assert.equal(explicit.claims[0].status, "verified");
   assert.equal(explicit.transparencyGaps.some((item) => item.type === "unsupported_inference"), false);
@@ -130,7 +130,7 @@ test("corroboration requires two entailing evidence records", () => {
   const entailing = evidence({ id: "evidence.entails", supportStrength: "entails" });
   const cited = evidence({ id: "evidence.cited", supportStrength: "cited" });
   const snapshot = deriveTrustSnapshot(
-    validateTrustInput({
+    validateTrustBundle({
       schemaVersion: 2,
       source: "support-strength:test",
       claims: [claim],
