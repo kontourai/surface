@@ -224,3 +224,12 @@ asserts that the reference implementation derives the expected statuses, making 
 specification executable.
 
 See [conformance/README.md](conformance/README.md) for the test vector inventory.
+
+---
+
+## Canonical home
+
+The canonical home of this specification is
+[`hachure-org/spec`](https://github.com/hachure-org/spec). This directory is
+the reference implementation's working copy; until the extraction settles,
+changes land in both together, and `hachure-org/spec` wins on conflict.
