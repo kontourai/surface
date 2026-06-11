@@ -1,14 +1,14 @@
-# Spec Conformance Fixtures
+# Spec Conformance Test vectors
 
 This directory contains input bundles and expected per-claim statuses that make
 the [Status Derivation specification](../status-function.md) executable.
 
-Each fixture is a JSON file with an `input` (a valid TrustBundle) and an `expect`
+Each test vector is a JSON file with an `input` (a valid TrustBundle) and an `expect`
 object listing expected per-claim statuses at a fixed `now` timestamp. The test at
-`tests/spec-conformance.test.ts` loads every fixture and asserts that the reference
+`tests/spec-conformance.test.ts` loads every test vector and asserts that the reference
 implementation derives the expected statuses.
 
-## Fixture inventory
+## Test vector inventory
 
 | File | Scenario | Now |
 |---|---|---|
@@ -18,7 +18,7 @@ implementation derives the expected statuses.
 | `sf-authority-resolved.json` | Disputed claim resolved by authority-gated event | 2026-06-10T00:00:00.000Z |
 | `sf-surface-fixtures-snapshot.json` | Full surface-fixtures.json at fixed now — four claims | 2026-06-10T00:00:00.000Z |
 
-## Fixture format
+## Test vector format
 
 ```json
 {

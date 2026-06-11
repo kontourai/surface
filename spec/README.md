@@ -218,9 +218,9 @@ fields or constraints. They do not modify the core record shapes.
 
 ## Executable conformance
 
-`spec/conformance/` contains fixture bundles and expected per-claim statuses at a
-fixed `now`. The test at `tests/spec-conformance.test.ts` loads every fixture and
+`spec/conformance/` contains test vector bundles and expected per-claim statuses at a
+fixed `now`. The test at `tests/spec-conformance.test.ts` loads every test vector and
 asserts that the reference implementation derives the expected statuses, making this
 specification executable.
 
-See [conformance/README.md](conformance/README.md) for the fixture inventory.
+See [conformance/README.md](conformance/README.md) for the test vector inventory.

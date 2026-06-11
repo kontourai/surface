@@ -1,9 +1,9 @@
 /**
  * Spec Conformance Test — makes spec/status-function.md executable.
  *
- * Loads each fixture from spec/conformance/ and asserts that the reference
+ * Loads each test vector from spec/conformance/ and asserts that the reference
  * implementation (deriveClaimStatus via buildTrustReport) produces the expected
- * per-claim statuses at the fixture's fixed `now` timestamp.
+ * per-claim statuses at the test vector's fixed `now` timestamp.
  *
  * Any conforming independent implementation of STATUS_FUNCTION_VERSION "1" must
  * produce the same outputs for these inputs.
@@ -16,7 +16,7 @@ import { join } from "node:path";
 
 import { buildTrustReport, validateTrustBundle, STATUS_FUNCTION_VERSION } from "../src/index.js";
 
-interface SpecFixture {
+interface SpecTestVector {
   now: string;
   input: unknown;
   expect: {
@@ -26,14 +26,14 @@ interface SpecFixture {
 
 const CONFORMANCE_DIR = "spec/conformance";
 
-const fixtureFiles = (await readdir(CONFORMANCE_DIR))
+const vectorFiles = (await readdir(CONFORMANCE_DIR))
   .filter((name) => name.startsWith("sf-") && name.endsWith(".json"))
   .sort();
 
-test("spec/conformance/ contains at least five fixture files", () => {
+test("spec/conformance/ contains at least five test vector files", () => {
   assert.ok(
-    fixtureFiles.length >= 5,
-    `Expected at least 5 fixture files, found ${fixtureFiles.length}: ${fixtureFiles.join(", ")}`,
+    vectorFiles.length >= 5,
+    `Expected at least 5 test vector files, found ${vectorFiles.length}: ${vectorFiles.join(", ")}`,
   );
 });
 
@@ -41,9 +41,9 @@ test("STATUS_FUNCTION_VERSION is '1'", () => {
   assert.equal(STATUS_FUNCTION_VERSION, "1");
 });
 
-for (const fileName of fixtureFiles) {
+for (const fileName of vectorFiles) {
   test(`spec conformance: ${fileName}`, async () => {
-    const raw: SpecFixture = JSON.parse(
+    const raw: SpecTestVector = JSON.parse(
       await readFile(join(CONFORMANCE_DIR, fileName), "utf8"),
     );
 
@@ -54,7 +54,7 @@ for (const fileName of fixtureFiles) {
     const statusByClaimId = raw.expect.statusByClaimId;
     assert.ok(
       Object.keys(statusByClaimId).length > 0,
-      `${fileName}: fixture must specify at least one expected status`,
+      `${fileName}: test vector must specify at least one expected status`,
     );
 
     for (const [claimId, expectedStatus] of Object.entries(statusByClaimId)) {
