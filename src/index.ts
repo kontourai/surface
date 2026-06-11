@@ -26,3 +26,4 @@ export * from "./canonical.js";
 export * from "./inquiry.js";
 export * from "./dispute.js";
 export * from "./interop/in-toto.js";
+export * from "./verification-endpoint.js";
