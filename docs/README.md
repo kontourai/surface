@@ -61,7 +61,7 @@ Maintainer-only material stays repo-only: this index, brand language, ADRs, audi
 - [Surface Foundation Boundary](architecture/surface-foundation.md) — one-way dependency rule for product layers
 - [Minimum Trust Panel Spec](specs/minimum-trust-panel.md) — Viewer-facing inspection requirements
 - [Minimum Surface Console Spec](specs/minimum-surface-console.md) — Operator-facing workspace requirements
-- [Hachure Spec](../spec/README.md) — product-neutral format specification: record shapes, status semantics, and executable conformance
+- [Hachure Spec](https://github.com/hachure-org/spec) — product-neutral format specification: record shapes, status semantics, and executable conformance
 - [Open Trust Format and Claim Package Shape](specs/open-trust-format.md) — portable trust state shape
 - [Disclosure Requirements](specs/disclosure-requirements.md) — required claim, evidence, visibility, and gap disclosure
 - [Transparency Capabilities](specs/transparency-capabilities.md) — producer-owned reverification, access, and dispute affordances

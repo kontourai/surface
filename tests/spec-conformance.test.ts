@@ -1,7 +1,7 @@
 /**
- * Spec Conformance Test — makes spec/status-function.md executable.
+ * Spec Conformance Test — makes the Hachure spec's status-function.md executable.
  *
- * Loads each test vector from spec/conformance/ and asserts that the reference
+ * Loads each test vector from the published `hachure` package and asserts that the reference
  * implementation (deriveClaimStatus via buildTrustReport) produces the expected
  * per-claim statuses at the test vector's fixed `now` timestamp.
  *
@@ -24,13 +24,13 @@ interface SpecTestVector {
   };
 }
 
-const CONFORMANCE_DIR = "spec/conformance";
+const CONFORMANCE_DIR = "node_modules/hachure/conformance";
 
 const vectorFiles = (await readdir(CONFORMANCE_DIR))
   .filter((name) => name.startsWith("sf-") && name.endsWith(".json"))
   .sort();
 
-test("spec/conformance/ contains at least five test vector files", () => {
+test("hachure package contains at least five test vector files", () => {
   assert.ok(
     vectorFiles.length >= 5,
     `Expected at least 5 test vector files, found ${vectorFiles.length}: ${vectorFiles.join(", ")}`,
@@ -39,6 +39,12 @@ test("spec/conformance/ contains at least five test vector files", () => {
 
 test("STATUS_FUNCTION_VERSION is '1'", () => {
   assert.equal(STATUS_FUNCTION_VERSION, "1");
+});
+
+test("implementation STATUS_FUNCTION_VERSION matches the hachure spec package", async () => {
+  // @ts-expect-error — the hachure package ships no TypeScript types
+  const spec = (await import("hachure")) as { STATUS_FUNCTION_VERSION: string };
+  assert.equal(STATUS_FUNCTION_VERSION, spec.STATUS_FUNCTION_VERSION);
 });
 
 for (const fileName of vectorFiles) {
