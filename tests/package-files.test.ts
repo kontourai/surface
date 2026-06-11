@@ -92,6 +92,7 @@ test("package scripts are classified active repo workflows", async () => {
     "check:package-contents",
     "docs:build",
     "prepare",
+    "release:trust-bundle",
     "setup:repo-hooks",
     "surface:report",
     "surface:summary",

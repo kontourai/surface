@@ -85,6 +85,7 @@ Every `package.json` script is an active repo workflow, release guard, or contri
 | `surface:summary` | Smoke test | Builds and runs the CLI summary report used by `verify`. |
 | `verify` | Release guard | Runs the full local CI lane. |
 | `prepare` | npm lifecycle | Builds the package before npm packaging/install lifecycle hooks need `dist/`. |
+| `release:trust-bundle` | Release guard | Generates a TrustBundle and TrustReport for the current release commit by running real checks and capturing evidence. |
 | `check:content-boundary` | Guard | Prevents terminology and content-boundary regressions. |
 | `setup:repo-hooks` | Contributor utility | Installs repo-owned local Git hooks. |
 | `validate:repo-hooks` | Guard | Verifies the repo hook wiring and docs stay aligned. |
