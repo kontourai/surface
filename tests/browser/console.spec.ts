@@ -20,7 +20,7 @@ test("renders standalone Surface Console with embedded Console Kit tokens", asyn
     await expect(page.locator("#consoleMetrics [data-metric-filter='all']")).toContainText("Claims");
     await expect(page.locator("#claimFeed .claim-card")).toHaveCount(2);
     await expect(page.locator("#claimFeed")).toContainText("npm test");
-    await expect(page.locator("#attentionBand")).toBeVisible();
+    await expect(page.locator("#attentionChip")).toBeVisible();
 
     const tokenState = await page.evaluate(() => {
       const styles = getComputedStyle(document.body);

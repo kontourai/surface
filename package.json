@@ -58,12 +58,14 @@
     "check:package-contents": "node scripts/check-package-contents.mjs",
     "surface:report": "npm run build && node bin/surface.mjs report",
     "surface:summary": "npm run build && node bin/surface.mjs report --format summary",
-    "verify": "node scripts/check-content-boundary.cjs && npm run check:doc-links && npm run check:generated-boundaries && npm run typecheck && npm test && npm run docs:build && npm run check:console-kit-assets && npm run check:package-contents && npm run test:external-adapter && npm run test:package-smoke && npm run surface:summary && npm run test:browser",
+    "verify": "node scripts/check-content-boundary.cjs && npm run check:doc-links && npm run check:generated-boundaries && npm run typecheck && npm test && npm run docs:build && npm run check:console-kit-assets && npm run check:console-token-drift && npm run check:package-contents && npm run test:external-adapter && npm run test:package-smoke && npm run surface:summary && npm run test:browser",
     "prepare": "npm run build",
     "check:content-boundary": "node scripts/check-content-boundary.cjs",
     "setup:repo-hooks": "node scripts/setup-repo-hooks.cjs",
     "validate:repo-hooks": "node scripts/validate-repo-hooks.cjs",
-    "release:trust-bundle": "node scripts/release-trust-bundle.mjs"
+    "release:trust-bundle": "node scripts/release-trust-bundle.mjs",
+    "check:console-token-drift": "node scripts/check-console-token-drift.mjs",
+    "verify:trust-bundle": "node scripts/verify-trust-bundle.mjs"
   },
   "devDependencies": {
     "@kontourai/console-kit": "^0.1.1",
@@ -74,5 +76,9 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "optionalDependencies": {
+    "@sigstore/sign": "^4.1.1",
+    "@sigstore/verify": "^3.1.1"
   }
 }

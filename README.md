@@ -6,11 +6,7 @@
 [![CI](https://github.com/kontourai/surface/actions/workflows/ci.yml/badge.svg)](https://github.com/kontourai/surface/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-Every product makes claims: *this record is current, this number came from a verified source, this code change passed the required checks.* AI makes those claims faster, more polished, and harder to review — and lets agents act on them at a speed no human review layer can match.
-
-Surface is the shared foundation under Kontour's products — and any product that needs to show its work. Surface connects evidence provenance to the claims products ask users and agents to trust. It gives products a portable way to expose material claims, evidence traces, freshness, conflicts, and transparency gaps without collapsing them into a trust score.
-
-The result is a point-in-time **Trust Snapshot** that a person, another system, or an AI agent can inspect before relying on a claim: what is asserted, what supports it, how current that support is, and what is still missing or in dispute.
+Surface is the shared transparency foundation for Kontour products and any product that needs to show its work. It connects evidence provenance to claims, derives portable trust state — verified, stale, disputed, missing — and makes that state inspectable through reports, a local console, APIs, and agent-readable resources. See [Vision](docs/product/vision.md) for the fuller narrative.
 
 ## Who builds with it
 
@@ -138,6 +134,22 @@ npx surface get --claim-id claim.api.rate-limit --input my-export.json
 npx surface policy --claim-id claim.api.rate-limit --input my-export.json
 npx surface console                                          # local operator workspace, no cloud, no login
 npx surface mcp --input my-export.json                       # serve trust state to agents over MCP (stdio)
+```
+
+Programmatic consumers that only need to read trust state can call `buildTrustReport` directly on any valid `TrustBundle` JSON:
+
+```ts
+import { readFileSync } from "node:fs";
+import { buildTrustReport, validateTrustBundle } from "@kontourai/surface";
+
+const bundle = validateTrustBundle(
+  JSON.parse(readFileSync("my-export.json", "utf8"))
+);
+const report = buildTrustReport(bundle);
+
+// inspect high-impact gaps and stale claims
+console.log(report.summary.highImpactUnsupported);
+console.log(report.summary.staleClaims);
 ```
 
 The full command surface, flags, and output contracts are in the [CLI reference](docs/reference/cli.md); the local Console is documented in the [Surface Console reference](docs/reference/console.md) and the agent tools in [Agents and MCP](docs/reference/mcp.md).

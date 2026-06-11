@@ -2,7 +2,7 @@
 .sheet-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.42);
+  background: color-mix(in srgb, var(--k-bg) 42%, transparent);
   z-index: 99;
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
@@ -26,7 +26,7 @@
   background: var(--surface);
   border: 1px solid var(--line);
   border-bottom: none;
-  box-shadow: 0 -8px 48px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 -8px 48px color-mix(in srgb, var(--k-bg) 78%, var(--k-negative));
   transform: translateY(100%);
   transition: transform 0.3s var(--ease-out);
 }
@@ -51,13 +51,13 @@
 .sheet-drag:active { cursor: grabbing; }
 .detail-sheet:hover .sheet-drag { background: var(--muted); }
 
-/* Close button */
+/* Close button — ≥44px touch target */
 .sheet-close {
   position: absolute;
   top: 0.875rem;
   right: 0.875rem;
-  width: 30px;
-  height: 30px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: var(--raised);
   border: 1px solid var(--line);
@@ -73,6 +73,11 @@
   color: var(--ink);
   background: var(--soft);
   border-color: color-mix(in srgb, var(--ink) 20%, transparent);
+}
+
+.sheet-close:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
 }
 
 /* Scrollable content area */
@@ -92,12 +97,12 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.75rem;
-  padding-right: 2.6rem;
+  margin-bottom: 0.5rem;
+  padding-right: 3.4rem;
   flex-wrap: wrap;
 }
 
-/* Status badge (sheet header) */
+/* (a) Big status badge — prominent in the header */
 .status-badge {
   display: inline-flex;
   align-items: center;
@@ -110,6 +115,12 @@
   background: var(--soft);
   color: var(--muted);
   border: 1px solid var(--line);
+}
+
+.detail-badge-lg {
+  padding: 0.3rem 0.8rem;
+  font-size: 0.76rem;
+  letter-spacing: 0.1em;
 }
 
 .badge-good  {
@@ -144,6 +155,15 @@
   font-family: ui-monospace, "Cascadia Code", monospace;
 }
 
+/* Freshness line — "verified at / evidence from" framing below the badge */
+.detail-freshness {
+  margin: 0 0 0.5rem;
+  font-size: 0.74rem;
+  color: var(--k-text-muted);
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  line-height: 1.4;
+}
+
 /* Sheet typography */
 .sheet-title {
   margin: 0 0 0.25rem;
@@ -156,7 +176,7 @@
 }
 
 .sheet-subtitle {
-  margin: 0 0 1.1rem;
+  margin: 0 0 0.6rem;
   font-size: 0.74rem;
   color: var(--muted);
   font-family: ui-monospace, "Cascadia Code", monospace;
@@ -227,8 +247,8 @@
 .guidance-copy-btn {
   display: grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
+  width: 44px;
+  height: 44px;
   flex-shrink: 0;
   border: 1px solid var(--line);
   border-radius: 4px;
@@ -274,7 +294,7 @@
 }
 
 .sheet-action-btn {
-  min-height: 34px;
+  min-height: 44px;
   padding: 0.4rem 0.8rem;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
@@ -301,7 +321,7 @@
   background: var(--red-bg);
 }
 
-/* Icon-only buttons in sheet-top (edit / delete) */
+/* Icon-only buttons in sheet-top (edit / delete) — ≥44px touch targets */
 .sheet-top-actions {
   display: flex;
   align-items: center;
@@ -313,8 +333,8 @@
 .sheet-icon-btn {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 44px;
+  height: 44px;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--raised);
@@ -342,6 +362,16 @@
 /* Sheet sections */
 .sheet-section { margin-bottom: 1.25rem; }
 .sheet-section p { margin: 0; font-size: 0.9rem; line-height: 1.55; color: var(--ink); }
+
+/* (c) Gap alert section — visually distinct */
+.detail-gap-alert {
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--k-negative) 22%, transparent);
+  border-left: 3px solid var(--red);
+  background: color-mix(in srgb, var(--red-bg) 55%, var(--surface));
+  margin-bottom: 1.25rem;
+}
 
 /* Divergence banner */
 .divergence-banner {
@@ -371,3 +401,63 @@
   font-family: ui-monospace, "Cascadia Code", monospace;
 }
 
+/* (d) Collapsed <details> accordions for secondary content */
+.sheet-accordion {
+  margin-bottom: 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.sheet-accordion > summary {
+  padding: 0.65rem 0.9rem;
+  font-size: 0.79rem;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+  background: var(--raised);
+  transition: color 0.1s ease, background 0.1s ease;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 44px;
+}
+
+.sheet-accordion > summary::-webkit-details-marker { display: none; }
+.sheet-accordion > summary::before {
+  content: "▶";
+  font-size: 0.55rem;
+  flex-shrink: 0;
+  transition: transform 0.14s ease;
+}
+.sheet-accordion[open] > summary::before { transform: rotate(90deg); }
+
+.sheet-accordion > summary:hover { color: var(--ink); }
+
+.sheet-accordion > summary:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: -2px;
+}
+
+.sheet-accordion-body {
+  padding: 0.75rem 0.9rem;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+
+/* "What was checked" unified evidence section */
+.checked-summary {
+  margin: 0 0 0.6rem;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.checked-empty {
+  margin: 0;
+  color: var(--muted);
+  font-style: italic;
+  font-size: 0.86rem;
+}

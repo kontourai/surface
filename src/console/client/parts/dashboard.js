@@ -3,7 +3,7 @@ function renderConsole() {
   renderProjectChrome(d);
   if (d.claims?.length) renderDonut(d);
   renderMetrics(d);
-  renderAttentionBand(d);
+  renderAttentionChip(d);
   renderSurfaceChips(d);
   renderFeed(d);
   buildClaimTypeOptions();
@@ -59,30 +59,41 @@ function renderMetrics(d) {
   metricsEl.querySelectorAll("[data-count]").forEach(span => animateCount(span, span.dataset.count));
 }
 
-function renderAttentionBand(d) {
+// ── attention chip ─────────────────────────────────────
+// Compact alert badge injected next to the metrics chips.
+// The full narrative is exposed as a tooltip/aria-label for
+// screen-reader users and keyboard-hover sighted users.
+function renderAttentionChip(d) {
+  const metricsEl = el("consoleMetrics");
+  if (!metricsEl) return;
+
+  // Remove any previously-rendered chip first so re-renders are idempotent.
+  metricsEl.querySelector(".attention-chip")?.remove();
+
   const attention = (d.claims ?? []).filter(c =>
     ["disputed","stale","rejected","unknown"].includes(c.status)
   );
-  if (attention.length) {
-    const isAttentionActive = filters.status === "attention";
-    el("attentionTitle").innerHTML =
-      esc(attention.length + " claim" + (attention.length !== 1 ? "s" : "") +
-      " need" + (attention.length === 1 ? "s" : "") + " attention") +
-      `<span class="band-action">${isAttentionActive ? "✓ Filtered" : "Show all →"}</span>`;
-    el("priorityNarrative").textContent = d.narrative;
-    const band = el("attentionBand");
-    band.onclick = () => {
-      setStatusFilter(filters.status === "attention" ? "all" : "attention", d);
-      const nowActive = filters.status === "attention";
-      el("attentionTitle").innerHTML =
-        esc(attention.length + " claim" + (attention.length !== 1 ? "s" : "") +
-        " need" + (attention.length === 1 ? "s" : "") + " attention") +
-        `<span class="band-action">${nowActive ? "✓ Filtered" : "Show all →"}</span>`;
-    };
-    show("attentionBand");
-  } else {
-    hide("attentionBand");
-  }
+  if (!attention.length) return;
+
+  const count = attention.length;
+  const narrative = d.narrative ?? (count + " claim" + (count !== 1 ? "s" : "") + " need" + (count !== 1 ? "" : "s") + " attention");
+  const isActive = filters.status === "attention";
+
+  const chip = document.createElement("button");
+  chip.type = "button";
+  chip.id = "attentionChip";
+  chip.className = "attention-chip" + (isActive ? " attention-chip-active" : "");
+  chip.setAttribute("aria-label", narrative);
+  chip.title = narrative;
+  chip.innerHTML = `<span class="attention-chip-icon" aria-hidden="true">!</span><span class="attention-chip-count">${esc(String(count))}</span>`;
+
+  chip.addEventListener("click", () => {
+    setStatusFilter(filters.status === "attention" ? "all" : "attention", d);
+    // Update active state in-place.
+    chip.classList.toggle("attention-chip-active", filters.status === "attention");
+  });
+
+  metricsEl.appendChild(chip);
 }
 
 function bindConsoleFilters(d) {
@@ -158,27 +169,31 @@ function filterClaims(claims) {
 function claimCard(claim, index, visibleIndex = 0) {
   const isAttention = ["disputed","stale","rejected"].includes(claim.status);
   const label  = claim.fieldOrBehavior || claim.claimType || claim.id;
-  const val    = formatValue(claim.value);
   const surface = surfaceLabel(claim.surface);
   const gaps = claim.transparencyGapIds?.length ?? 0;
   const color  = statusColor(claim.status);
+  const impact = claim.impactLevel;
+  const showImpact = impact === "medium" || impact === "high" || impact === "critical";
 
+  // claim.id is removed from the card face but preserved for findability via
+  // title attribute (tooltip on hover) and aria-label.
   return `<button type="button" class="claim-card${confidenceTier(claim)}${isAttention ? " card-attention" : ""}"
-      data-claim-index="${index}" aria-label="${esc(label)}" style="--card-i:${Math.min(visibleIndex, 14)}">
-    <span class="card-dot dot-${color}" aria-label="${esc(claim.status)}"></span>
+      data-claim-index="${index}" aria-label="${esc(label + " — " + statusLabel(claim.status, claimEvidenceCount(claim)))}"
+      title="${esc(claim.id)}" style="--card-i:${Math.min(visibleIndex, 14)}">
+    <span class="card-dot dot-${color}" aria-hidden="true"></span>
     <span class="card-body">
       <strong class="card-title">${esc(label)}</strong>
       <span class="card-meta">
-        <span class="card-surface">${esc(surface)}</span>
         <span class="card-status-text status-${esc(claim.status)}">${esc(statusLabel(claim.status, claimEvidenceCount(claim)))}</span>
+        <span class="card-surface card-surface--narrow-hide">${esc(surface)}</span>
+        ${showImpact ? `<span class="card-impact card-impact--${esc(impact)}">${esc(impact)}</span>` : ""}
         ${claim.producerStatus
           ? `<span class="card-divergence" title="Producer declared ${esc(claim.producerStatus)}">! was ${esc(claim.producerStatus)}</span>`
           : ""}
         ${gaps ? `<span class="card-gaps">${gaps} gap${gaps !== 1 ? "s" : ""}</span>` : ""}
       </span>
-      ${val ? `<span class="card-value">${esc(val.length > 70 ? val.slice(0,67) + "\u2026" : val)}</span>` : ""}
     </span>
-    <span class="card-chevron" aria-hidden="true">\u203a</span>
+    <span class="card-chevron" aria-hidden="true">›</span>
   </button>`;
 }
 

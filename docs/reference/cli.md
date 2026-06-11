@@ -16,7 +16,7 @@ Generate reports from a custom registered adapter:
 surface report --adapter my-producer --input producer-export.json --format summary
 ```
 
-Custom producer packages can register adapters explicitly through the public registry; those registered adapters are available by name with `--adapter`.
+Custom producer packages can register adapters explicitly through the public registry; those registered adapters are available by name with `--adapter`. See [Adapters and the Producer Boundary](adapters.md) for the registration API and an external adapter example.
 
 Query local trust state from the same report contract:
 

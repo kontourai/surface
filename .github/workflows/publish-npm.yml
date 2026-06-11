@@ -115,6 +115,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      # id-token: write is required for Sigstore keyless signing via ambient OIDC.
+      # The release script uses it to obtain a Fulcio certificate and record a
+      # Rekor transparency log entry.  Signing is fail-open: if the credential is
+      # absent the script proceeds and marks the assurance level as unsigned.
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -131,7 +136,7 @@ jobs:
         run: npm ci --no-fund --no-audit
         working-directory: surface
 
-      - name: Generate Trust Bundle
+      - name: Generate and Sign Trust Bundle
         run: node scripts/release-trust-bundle.mjs --out /tmp/surface-trust-bundle
         working-directory: surface
 
@@ -144,9 +149,23 @@ jobs:
           gh release view "${TAG}" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
             || gh release create "${TAG}" --repo "$GITHUB_REPOSITORY" \
                --title "${TAG}" --notes "Release ${TAG}" --verify-tag
+          # Always upload the core bundle and report.
           gh release upload "${TAG}" \
             /tmp/surface-trust-bundle/trust-bundle.json \
             /tmp/surface-trust-bundle/trust-report.json \
             --repo "$GITHUB_REPOSITORY" \
             --clobber
+          # Upload signed artifacts only when signing succeeded (files exist).
+          if [ -f /tmp/surface-trust-bundle/trust-bundle.dsse.json ]; then
+            gh release upload "${TAG}" \
+              /tmp/surface-trust-bundle/trust-bundle.dsse.json \
+              --repo "$GITHUB_REPOSITORY" \
+              --clobber
+          fi
+          if [ -f /tmp/surface-trust-bundle/trust-bundle.sigstore.json ]; then
+            gh release upload "${TAG}" \
+              /tmp/surface-trust-bundle/trust-bundle.sigstore.json \
+              --repo "$GITHUB_REPOSITORY" \
+              --clobber
+          fi
         working-directory: surface
