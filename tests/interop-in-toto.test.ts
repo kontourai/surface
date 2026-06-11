@@ -62,7 +62,7 @@ test("toInTotoStatement: _type is Statement v1 URI", () => {
 
 test("toInTotoStatement: predicateType is kontour bundle URI", () => {
   const stmt = toInTotoStatement(MINIMAL_BUNDLE, { subjects: SUBJECTS });
-  assert.equal(stmt.predicateType, "https://trust.kontour.ai/v1/bundle");
+  assert.equal(stmt.predicateType, "https://hachure.org/v1/bundle");
 });
 
 test("toInTotoStatement: predicate is the bundle verbatim", () => {
@@ -141,7 +141,7 @@ test("toDsseEnvelope: payload is base64 of JSON statement", async () => {
   const decoded = Buffer.from(env.payload, "base64").toString("utf8");
   const parsed = JSON.parse(decoded) as Record<string, unknown>;
   assert.equal(parsed["_type"], "https://in-toto.io/Statement/v1");
-  assert.equal(parsed["predicateType"], "https://trust.kontour.ai/v1/bundle");
+  assert.equal(parsed["predicateType"], "https://hachure.org/v1/bundle");
 });
 
 test("toDsseEnvelope: signer is called with PAE bytes", async () => {

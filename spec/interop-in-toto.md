@@ -27,7 +27,7 @@ cryptographic operations are injected via a caller-supplied `Signer`.
       "digest": { "sha256": "<hex>" }
     }
   ],
-  "predicateType": "https://trust.kontour.ai/v1/bundle",
+  "predicateType": "https://hachure.org/v1/bundle",
   "predicate": { /* the TrustBundle verbatim */ }
 }
 ```
@@ -36,10 +36,10 @@ cryptographic operations are injected via a caller-supplied `Signer`.
 |---|---|---|
 | `_type` | `https://in-toto.io/Statement/v1` | Fixed; identifies the in-toto spec version. |
 | `subject` | caller-supplied `[{ name, digest }]` | At least one required. The producer knows which artifact digests are relevant; Surface does not infer them. |
-| `predicateType` | `https://trust.kontour.ai/v1/bundle` | Stable URI identifying Kontour trust bundles. |
+| `predicateType` | `https://hachure.org/v1/bundle` | Stable URI identifying Kontour trust bundles. |
 | `predicate` | the TrustBundle | The full bundle becomes the predicate; no fields are stripped or remapped. |
 
-The `predicateType` URI is stable for the lifetime of `trust.kontour.ai/v1`.  If the
+The `predicateType` URI is stable for the lifetime of `hachure.org/v1`.  If the
 TrustBundle schema is broken (a new `apiVersion`), a new predicate type URI will be
 registered rather than reusing this one.
 

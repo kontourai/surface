@@ -38,7 +38,7 @@ export interface InTotoSubject {
 export interface InTotoStatement {
   _type: "https://in-toto.io/Statement/v1";
   subject: InTotoSubject[];
-  predicateType: "https://trust.kontour.ai/v1/bundle";
+  predicateType: "https://hachure.org/v1/bundle";
   predicate: TrustBundle;
 }
 
@@ -102,7 +102,7 @@ export function toInTotoStatement(
   return {
     _type: "https://in-toto.io/Statement/v1",
     subject: options.subjects,
-    predicateType: "https://trust.kontour.ai/v1/bundle",
+    predicateType: "https://hachure.org/v1/bundle",
     predicate: bundle,
   };
 }

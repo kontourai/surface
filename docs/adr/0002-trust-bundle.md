@@ -34,7 +34,7 @@ The `source` field identifies the producer. A bundle is the supply side of the l
 
 ### Resource envelope
 
-Trust Bundles adopt the Kontour Resource Shape (`apiVersion`, `kind`, `metadata`, `spec`, optional `proof`) with `kind: TrustBundle` and `apiVersion: trust.kontour.ai/v1`. The current interface contents become `spec`; integrity anchors belong in `proof`. This makes the bundle a peer of other trust-bearing Kontour records instead of a loose TypeScript interface.
+Trust Bundles adopt the Kontour Resource Shape (`apiVersion`, `kind`, `metadata`, `spec`, optional `proof`) with `kind: TrustBundle` and `apiVersion: hachure.org/v1`. The current interface contents become `spec`; integrity anchors belong in `proof`. This makes the bundle a peer of other trust-bearing Kontour records instead of a loose TypeScript interface.
 
 ### Merge semantics
 

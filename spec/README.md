@@ -1,22 +1,33 @@
-# Kontour Trust Format — Specification
+# Hachure — an open trust format
 
-**Namespace:** `trust.kontour.ai/v1`
+**Namespace:** `hachure.org/v1`
 **Reference implementation:** `@kontourai/surface`
 **Status:** pre-1.0, hard versioning, no compatibility promises yet
+**Originally developed by:** [Kontour AI](https://kontour.ai)
 
 ---
 
 ## What this is
 
-The Kontour Trust Format is a product-neutral, open format for portable trust state.
-It defines how claims about real-world subjects — and the evidence, policies, verification
-events, authority records, and derivation rules behind them — are represented so they
-can cross product boundaries without the receiver needing access to the producer's
-internals.
+Hachure is an open format for portable trust state. It defines how claims about
+real-world subjects — and the evidence, policies, verification events, authority
+records, and derivation rules behind them — are represented so they can cross
+product and vendor boundaries without the receiver needing access to the
+producer's internals.
 
-The format is deliberately not named after any product. `@kontourai/surface` is its
-reference implementation. Producers outside the Kontour suite can emit and consume
-these records without adopting a product name into their wire format.
+Hachures are the short strokes on hand-drawn maps that show the shape and
+steepness of terrain. This format does the same for trust: it shows the contours
+of what is supported, what is stale, what is disputed, and what is simply
+asserted.
+
+The format is deliberately not named after any company or product.
+`@kontourai/surface` is its reference implementation. Producers outside the
+Kontour suite can emit and consume these records without adopting a vendor name
+into their wire format.
+
+**Governance intent:** Hachure is currently developed by Kontour AI, which holds
+the name to protect it. We intend to move the specification to neutral
+governance as adoption warrants.
 
 The Kontour products build on top: Survey emits Trust Bundles, Veritas authors claims
 through it, Flow consumes Surface-shaped evidence at gates, and Console operates across
@@ -26,7 +37,7 @@ all of them. Each product stands alone; the format requires none of them.
 
 ## Namespace and versioning
 
-All core trust-format records use `apiVersion: trust.kontour.ai/v1` in the Kontour
+All core trust-format records use `apiVersion: hachure.org/v1` in the Kontour
 Resource Shape envelope. Product-specific records use product-scoped namespaces
 (`surface.kontour.ai/v1alpha1`, `survey.kontour.ai/v1alpha1`, etc.).
 
