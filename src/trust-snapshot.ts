@@ -53,7 +53,7 @@ export function deriveTrustSnapshot(input: TrustBundle, options: { now?: Date } 
     const policy = resolvePolicyForClaim(claim, input.policies);
     if (policy) policyByClaimId.set(claim.id, policy);
     const producerStatus = claim.status;
-    const ownStatus = deriveTrustStatus({ claim, evidence: entailingEvidence, policy, events: input.events, now });
+    const ownStatus = deriveTrustStatus({ claim, evidence: entailingEvidence, policy, events: input.events, now, authorityTrace: input.authorityTrace });
     ownStatusByClaimId.set(claim.id, ownStatus);
     if (policy) {
       evidenceRequirementsByClaimId[claim.id] = evidenceRequirementFromPolicy(policy);

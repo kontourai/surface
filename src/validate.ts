@@ -185,6 +185,10 @@ export function validateTrustBundle(input: unknown): TrustBundle {
     requireDateTime(event, "createdAt");
     if (event.verifiedAt !== undefined) requireDateTime(event, "verifiedAt");
     if (event.notes !== undefined) requireString(event, "notes");
+    if (event.resolvesDispute !== undefined && event.resolvesDispute !== true) {
+      throw new Error(`event ${String(event.id)} resolvesDispute must be true when present`);
+    }
+    if (event.authorityRef !== undefined) requireString(event, "authorityRef");
   }
 
   if (identityLinks !== undefined) {

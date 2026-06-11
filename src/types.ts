@@ -361,6 +361,14 @@ export interface VerificationEvent {
   createdAt: string;
   verifiedAt?: string;
   notes?: string;
+  /** ADR 0003 §8: marks this event as a dispute-resolution decision. */
+  resolvesDispute?: true;
+  /**
+   * ADR 0003 §8: the authorityRef from the AuthorityTrace record that
+   * establishes the actor's mandate to decide.  Required when
+   * resolvesDispute is true; ignored otherwise.
+   */
+  authorityRef?: string;
 }
 
 export interface TrustBundle {

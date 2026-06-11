@@ -13,7 +13,16 @@
     "evidenceIds": { "type": "array", "items": { "type": "string" } },
     "createdAt": { "type": "string", "format": "date-time" },
     "verifiedAt": { "type": "string", "format": "date-time" },
-    "notes": { "type": "string" }
+    "notes": { "type": "string" },
+    "resolvesDispute": {
+      "description": "ADR 0003 §8: marks this event as an authority-weighted dispute-resolution decision.",
+      "type": "boolean",
+      "enum": [true]
+    },
+    "authorityRef": {
+      "description": "ADR 0003 §8: the AuthorityTrace.authorityRef the deciding actor invokes.",
+      "type": "string"
+    }
   },
   "additionalProperties": false
 }

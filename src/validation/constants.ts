@@ -99,7 +99,7 @@ export const POLICY_KEYS = new Set([
   "incompatibleValues",
   "incompatibleStatuses",
 ]);
-export const EVENT_KEYS = new Set(["id", "claimId", "status", "actor", "method", "evidenceIds", "createdAt", "verifiedAt", "notes"]);
+export const EVENT_KEYS = new Set(["id", "claimId", "status", "actor", "method", "evidenceIds", "createdAt", "verifiedAt", "notes", "resolvesDispute", "authorityRef"]);
 export const CLAIM_GROUP_KEYS = new Set(["id", "title", "kind", "description", "claimIds", "requirements", "rollupPolicy", "metadata"]);
 export const REQUIREMENT_KEYS = new Set(["id", "title", "claimIds", "required", "severity", "validationStrategy", "metadata"]);
 export const ROLLUP_POLICY_KEYS = new Set(["mode", "requiredRequirementIds", "optionalRequirementIds"]);

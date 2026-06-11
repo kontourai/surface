@@ -1,4 +1,4 @@
-import type { Claim, Evidence, TrustStatus, VerificationEvent, VerificationPolicy } from "./types.js";
+import type { AuthorityTrace, Claim, Evidence, TrustStatus, VerificationEvent, VerificationPolicy } from "./types.js";
 import { evidenceEntailsClaim, partitionEvidenceBySupport } from "./evidence-support.js";
 import { resolvePolicyForClaim } from "./policy-resolver.js";
 
@@ -10,12 +10,31 @@ export function deriveTrustStatus(input: {
   policy?: VerificationPolicy;
   events: VerificationEvent[];
   now?: Date;
+  authorityTrace?: AuthorityTrace[];
 }): TrustStatus {
   const now = input.now ?? new Date();
   const claimEvents = input.events
     .filter((event) => event.claimId === input.claim.id)
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
   const latestEvent = claimEvents[0];
+
+  // ADR 0003 §8: check for an authority-gated dispute-resolution event.
+  // The most-recent resolution event whose actor has an active AuthorityTrace
+  // covering the subject supersedes the normal fold — unless newer blocking
+  // evidence re-opens the dispute.
+  const resolutionEvent = findLatestResolutionEvent(claimEvents, input.authorityTrace ?? []);
+  if (resolutionEvent !== undefined) {
+    const hasNewerBlockingFailure = input.evidence.some(
+      (ev) =>
+        ev.passing === false &&
+        ev.blocking !== false &&
+        Date.parse(ev.observedAt) > Date.parse(resolutionEvent.createdAt),
+    );
+    if (hasNewerBlockingFailure) {
+      return "disputed";
+    }
+    return resolutionEvent.status;
+  }
 
   if (latestEvent && TERMINAL_EVENT_STATUSES.has(latestEvent.status)) {
     return latestEvent.status;
@@ -108,6 +127,46 @@ function isVerifiedEventStale(
   return expiresAt < now.getTime();
 }
 
+
+// ---------------------------------------------------------------------------
+// ADR 0003 §8 — authority-gated dispute resolution helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the most-recent dispute-resolution event whose actor has an active
+ * AuthorityTrace covering the claim's subject at the given instant.
+ * Returns undefined if no such event exists.
+ */
+function findLatestResolutionEvent(
+  claimEventsMostRecentFirst: VerificationEvent[],
+  authorityTrace: AuthorityTrace[],
+): VerificationEvent | undefined {
+  for (const event of claimEventsMostRecentFirst) {
+    if (event.resolvesDispute !== true) continue;
+    if (isResolutionAuthorized(event, authorityTrace)) return event;
+  }
+  return undefined;
+}
+
+function isResolutionAuthorized(
+  event: VerificationEvent,
+  authorityTrace: AuthorityTrace[],
+): boolean {
+  if (authorityTrace.length === 0) return false;
+  return authorityTrace.some((trace) => {
+    // Actor must match
+    if (trace.actorRef !== event.actor) return false;
+    // The trace must be active at the time of the decision (use event.createdAt as the moment)
+    const atDecision = event.createdAt;
+    if (trace.revokedAt && trace.revokedAt <= atDecision) return false;
+    if (trace.validFrom && trace.validFrom > atDecision) return false;
+    if (trace.validUntil && trace.validUntil < atDecision) return false;
+    // AuthorityRef must match if the event specifies one
+    if (event.authorityRef !== undefined && trace.authorityRef !== event.authorityRef) return false;
+    return true;
+  });
+}
+
 // ---------------------------------------------------------------------------
 // ADR 0003 step 2 — versioned pure status function
 // ---------------------------------------------------------------------------
@@ -143,6 +202,7 @@ export function deriveClaimStatus(args: {
   events: VerificationEvent[];
   policies: VerificationPolicy[];
   now?: Date;
+  authorityTrace?: AuthorityTrace[];
 }): ClaimStatusResult {
   const now = args.now ?? new Date();
   const policy = resolvePolicyForClaim(args.claim, args.policies);
@@ -153,6 +213,7 @@ export function deriveClaimStatus(args: {
     policy,
     events: args.events,
     now,
+    authorityTrace: args.authorityTrace,
   });
   return { status, policyId: policy?.id };
 }
