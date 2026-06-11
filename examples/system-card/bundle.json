@@ -1,0 +1,349 @@
+{
+  "schemaVersion": 3,
+  "source": "acme-ai/model-governance",
+  "claims": [
+    {
+      "id": "claim.acme-support-agent.training-data-cutoff",
+      "subjectType": "model",
+      "subjectId": "acme-support-agent-v2",
+      "surface": "model.governance",
+      "claimType": "model-property",
+      "fieldOrBehavior": "training-data-cutoff",
+      "value": "2024-09-30",
+      "createdAt": "2025-11-01T09:00:00.000Z",
+      "updatedAt": "2025-11-01T09:00:00.000Z",
+      "impactLevel": "high",
+      "verificationPolicyId": "policy.model-property.manual",
+      "confidenceBasis": {
+        "sourceQuality": "strong",
+        "reviewerAuthority": "domain_expert",
+        "evidenceStrength": "strong"
+      }
+    },
+    {
+      "id": "claim.acme-support-agent.intent-accuracy",
+      "subjectType": "model",
+      "subjectId": "acme-support-agent-v2",
+      "surface": "model.evals",
+      "claimType": "eval-score",
+      "fieldOrBehavior": "intent-classification-accuracy",
+      "value": 0.934,
+      "createdAt": "2025-11-01T09:00:00.000Z",
+      "updatedAt": "2025-11-01T09:00:00.000Z",
+      "impactLevel": "high",
+      "verificationPolicyId": "policy.eval-score.duration-30d",
+      "confidenceBasis": {
+        "sourceQuality": "strong",
+        "reviewerAuthority": "system",
+        "evidenceStrength": "strong",
+        "extractionConfidence": 0.99
+      }
+    },
+    {
+      "id": "claim.acme-support-agent.red-team-review",
+      "subjectType": "model",
+      "subjectId": "acme-support-agent-v2",
+      "surface": "model.safety",
+      "claimType": "review-completion",
+      "fieldOrBehavior": "red-team-review-completed",
+      "value": true,
+      "createdAt": "2025-11-01T09:00:00.000Z",
+      "updatedAt": "2025-11-01T09:00:00.000Z",
+      "impactLevel": "critical",
+      "verificationPolicyId": "policy.review-completion.manual",
+      "confidenceBasis": {
+        "sourceQuality": "strong",
+        "reviewerAuthority": "domain_expert",
+        "evidenceStrength": "strong",
+        "corroborationCount": 2
+      }
+    },
+    {
+      "id": "claim.acme-support-agent.pii-filtering",
+      "subjectType": "model",
+      "subjectId": "acme-support-agent-v2",
+      "surface": "model.safety",
+      "claimType": "capability",
+      "fieldOrBehavior": "pii-filtering-enabled",
+      "value": true,
+      "createdAt": "2025-11-01T09:00:00.000Z",
+      "updatedAt": "2025-11-01T09:00:00.000Z",
+      "impactLevel": "critical",
+      "verificationPolicyId": "policy.capability.manual",
+      "confidenceBasis": {
+        "sourceQuality": "strong",
+        "reviewerAuthority": "domain_expert",
+        "evidenceStrength": "strong"
+      }
+    },
+    {
+      "id": "claim.acme-support-agent.human-oversight-policy",
+      "subjectType": "model",
+      "subjectId": "acme-support-agent-v2",
+      "surface": "model.governance",
+      "claimType": "policy-compliance",
+      "fieldOrBehavior": "human-oversight-policy",
+      "value": "active",
+      "createdAt": "2025-11-01T09:00:00.000Z",
+      "updatedAt": "2025-11-01T09:00:00.000Z",
+      "impactLevel": "critical",
+      "verificationPolicyId": "policy.model-property.manual",
+      "confidenceBasis": {
+        "sourceQuality": "weak",
+        "reviewerAuthority": "none",
+        "evidenceStrength": "none"
+      }
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev.training-cutoff.datasheet",
+      "claimId": "claim.acme-support-agent.training-data-cutoff",
+      "supportStrength": "entails",
+      "evidenceType": "document_citation",
+      "method": "observation",
+      "sourceRef": "https://internal.acme.ai/model-datasheets/support-agent-v2",
+      "sourceLocator": "section-3-training-data",
+      "excerptOrSummary": "Training corpus snapshot taken 2024-09-30. All public web crawl data, support-ticket corpus, and product-manual embeddings reflect state as of that date. No data collected after 2024-09-30 was included.",
+      "observedAt": "2025-10-28T14:30:00.000Z",
+      "collectedBy": "acme-ai/model-governance-bot",
+      "passing": true
+    },
+    {
+      "id": "ev.training-cutoff.attestation",
+      "claimId": "claim.acme-support-agent.training-data-cutoff",
+      "supportStrength": "entails",
+      "evidenceType": "attestation",
+      "method": "attestation",
+      "sourceRef": "https://internal.acme.ai/attestations/training-cutoff-v2",
+      "excerptOrSummary": "I, Dr. Priya Nair (ML Platform Lead), attest that the acme-support-agent-v2 training pipeline ingested no data with an observation timestamp after 2024-09-30T23:59:59Z.",
+      "observedAt": "2025-10-29T10:00:00.000Z",
+      "collectedBy": "dr-priya-nair",
+      "passing": true,
+      "metadata": {
+        "authorityTrace": "trace.model-governance.priya-nair"
+      }
+    },
+    {
+      "id": "ev.intent-accuracy.eval-run-2025-10",
+      "claimId": "claim.acme-support-agent.intent-accuracy",
+      "supportStrength": "entails",
+      "evidenceType": "test_output",
+      "method": "validation",
+      "sourceRef": "https://ci.acme.ai/eval-runs/support-agent-v2/run-20251028-0412",
+      "sourceLocator": "results.json#intent_classification",
+      "excerptOrSummary": "Eval run 20251028-0412 — intent classification on 10,000-sample hold-out set: accuracy=0.934, precision=0.941, recall=0.927, f1=0.934. Threshold 0.90 PASSED. Runtime: 4m 12s. Runner: eval-harness v3.1.0.",
+      "observedAt": "2025-10-28T04:16:00.000Z",
+      "collectedBy": "acme-ai/eval-harness",
+      "passing": true
+    },
+    {
+      "id": "ev.red-team.report-2025-10",
+      "claimId": "claim.acme-support-agent.red-team-review",
+      "supportStrength": "entails",
+      "evidenceType": "human_attestation",
+      "method": "attestation",
+      "sourceRef": "https://internal.acme.ai/red-team/reports/support-agent-v2-oct-2025",
+      "sourceLocator": "executive-summary",
+      "excerptOrSummary": "Red-team exercise (5 testers, 3 days) completed 2025-10-25. Coverage: prompt injection, data-exfiltration probes, social engineering scripts, PII-leakage scenarios. 12 findings: 8 closed, 4 accepted-as-low. No critical or high findings remain open. Sign-off: Marcus Webb (Security Lead).",
+      "observedAt": "2025-10-25T18:00:00.000Z",
+      "collectedBy": "marcus-webb",
+      "passing": true
+    },
+    {
+      "id": "ev.red-team.corroboration-security-officer",
+      "claimId": "claim.acme-support-agent.red-team-review",
+      "supportStrength": "entails",
+      "evidenceType": "attestation",
+      "method": "corroboration",
+      "sourceRef": "https://internal.acme.ai/attestations/red-team-sign-off-v2",
+      "excerptOrSummary": "CISO Rosa Fuentes countersigns the October 2025 red-team report for acme-support-agent-v2. All critical paths reviewed; no blocking findings.",
+      "observedAt": "2025-10-26T09:15:00.000Z",
+      "collectedBy": "rosa-fuentes-ciso",
+      "passing": true
+    },
+    {
+      "id": "ev.pii-filtering.config-attestation",
+      "claimId": "claim.acme-support-agent.pii-filtering",
+      "supportStrength": "entails",
+      "evidenceType": "policy_rule",
+      "method": "observation",
+      "sourceRef": "https://internal.acme.ai/config/inference/support-agent-v2/prod",
+      "sourceLocator": "pii_filter.enabled",
+      "excerptOrSummary": "Inference config snapshot (prod, 2025-10-30): pii_filter.enabled=true, pii_filter.mode=block, pii_filter.entities=[SSN,CC,DOB,EMAIL,PHONE]. Config hash: sha256:a3f8c1... Verified by deployment pipeline.",
+      "observedAt": "2025-10-30T11:00:00.000Z",
+      "collectedBy": "acme-ai/deploy-pipeline",
+      "passing": true
+    },
+    {
+      "id": "ev.pii-filtering.conflicting-incident",
+      "claimId": "claim.acme-support-agent.pii-filtering",
+      "supportStrength": "entails",
+      "evidenceType": "test_output",
+      "method": "observation",
+      "sourceRef": "https://internal.acme.ai/incidents/INC-2025-1104",
+      "sourceLocator": "timeline",
+      "excerptOrSummary": "Incident INC-2025-1104 (2025-11-04): prod canary detected 3 responses containing partial email addresses in model output. PII filter reported enabled in config but post-incident analysis shows filter was bypassed for inputs with HTML-encoded payloads. Severity: HIGH.",
+      "observedAt": "2025-11-04T22:00:00.000Z",
+      "collectedBy": "acme-ai/incident-response",
+      "passing": false,
+      "blocking": true
+    }
+  ],
+  "policies": [
+    {
+      "id": "policy.model-property.manual",
+      "claimType": "model-property",
+      "requiredEvidence": ["document_citation", "attestation"],
+      "requiredMethods": ["observation", "attestation"],
+      "requiresCorroboration": false,
+      "acceptanceCriteria": ["authoritative datasheet reference", "ML platform lead attestation"],
+      "reviewAuthority": "role:ml-platform-lead",
+      "validityRule": { "kind": "manual" },
+      "stalenessTriggers": ["model retrain", "data pipeline change"],
+      "conflictRules": ["later-observed evidence supersedes for model-property claims"],
+      "impactLevel": "high"
+    },
+    {
+      "id": "policy.eval-score.duration-30d",
+      "claimType": "eval-score",
+      "requiredEvidence": ["test_output"],
+      "requiredMethods": ["validation"],
+      "requiresCorroboration": false,
+      "acceptanceCriteria": ["automated eval run with threshold met"],
+      "reviewAuthority": "role:ml-platform-lead",
+      "validityRule": { "kind": "duration", "durationDays": 30 },
+      "stalenessTriggers": ["model update", "eval dataset change", "30 days elapsed"],
+      "conflictRules": ["newer eval run supersedes older run for same metric"],
+      "impactLevel": "high"
+    },
+    {
+      "id": "policy.review-completion.manual",
+      "claimType": "review-completion",
+      "requiredEvidence": ["human_attestation", "attestation"],
+      "requiredMethods": ["attestation", "corroboration"],
+      "requiresCorroboration": true,
+      "acceptanceCriteria": ["security lead sign-off", "CISO countersignature"],
+      "reviewAuthority": "role:ciso",
+      "validityRule": { "kind": "manual" },
+      "stalenessTriggers": ["model capability update", "new attack surface identified"],
+      "conflictRules": ["new red-team finding reopens review"],
+      "impactLevel": "critical"
+    },
+    {
+      "id": "policy.capability.manual",
+      "claimType": "capability",
+      "requiredEvidence": ["policy_rule"],
+      "requiredMethods": ["observation"],
+      "requiresCorroboration": false,
+      "acceptanceCriteria": ["config snapshot with deployment pipeline verification"],
+      "reviewAuthority": "role:deploy-pipeline",
+      "validityRule": { "kind": "manual" },
+      "stalenessTriggers": ["config change", "incident report", "deployment update"],
+      "conflictRules": ["incident evidence with blocking=true triggers disputed"],
+      "impactLevel": "critical"
+    },
+    {
+      "id": "policy.policy-compliance.manual",
+      "claimType": "policy-compliance",
+      "requiredEvidence": ["document_citation"],
+      "requiredMethods": ["observation"],
+      "requiresCorroboration": false,
+      "acceptanceCriteria": ["policy document reference"],
+      "reviewAuthority": "role:compliance",
+      "validityRule": { "kind": "manual" },
+      "stalenessTriggers": ["policy update", "audit finding"],
+      "conflictRules": [],
+      "impactLevel": "critical"
+    }
+  ],
+  "events": [
+    {
+      "id": "event.training-cutoff.verified",
+      "claimId": "claim.acme-support-agent.training-data-cutoff",
+      "status": "verified",
+      "actor": "dr-priya-nair",
+      "method": "attestation",
+      "evidenceIds": ["ev.training-cutoff.datasheet", "ev.training-cutoff.attestation"],
+      "createdAt": "2025-10-29T10:05:00.000Z",
+      "verifiedAt": "2025-10-29T10:05:00.000Z"
+    },
+    {
+      "id": "event.intent-accuracy.verified",
+      "claimId": "claim.acme-support-agent.intent-accuracy",
+      "status": "verified",
+      "actor": "acme-ai/eval-harness",
+      "method": "validation",
+      "evidenceIds": ["ev.intent-accuracy.eval-run-2025-10"],
+      "createdAt": "2025-10-28T04:18:00.000Z",
+      "verifiedAt": "2025-10-28T04:18:00.000Z"
+    },
+    {
+      "id": "event.red-team.verified",
+      "claimId": "claim.acme-support-agent.red-team-review",
+      "status": "verified",
+      "actor": "rosa-fuentes-ciso",
+      "method": "attestation",
+      "evidenceIds": ["ev.red-team.report-2025-10", "ev.red-team.corroboration-security-officer"],
+      "createdAt": "2025-10-26T09:20:00.000Z",
+      "verifiedAt": "2025-10-26T09:20:00.000Z"
+    },
+    {
+      "id": "event.pii-filtering.verified",
+      "claimId": "claim.acme-support-agent.pii-filtering",
+      "status": "verified",
+      "actor": "acme-ai/deploy-pipeline",
+      "method": "observation",
+      "evidenceIds": ["ev.pii-filtering.config-attestation"],
+      "createdAt": "2025-10-30T11:05:00.000Z",
+      "verifiedAt": "2025-10-30T11:05:00.000Z"
+    }
+  ],
+  "authorityTrace": [
+    {
+      "id": "trace.model-governance.priya-nair",
+      "subject": {
+        "subjectType": "model",
+        "subjectId": "acme-support-agent-v2"
+      },
+      "actorRef": "dr-priya-nair",
+      "authorityType": "role",
+      "authorityRef": "role:ml-platform-lead",
+      "sourceRef": "https://internal.acme.ai/iam/roles/ml-platform-lead",
+      "observedAt": "2025-01-15T00:00:00.000Z",
+      "validFrom": "2025-01-15T00:00:00.000Z",
+      "evidenceIds": [],
+      "claimIds": []
+    },
+    {
+      "id": "trace.model-governance.rosa-fuentes",
+      "subject": {
+        "subjectType": "model",
+        "subjectId": "acme-support-agent-v2"
+      },
+      "actorRef": "rosa-fuentes-ciso",
+      "authorityType": "role",
+      "authorityRef": "role:ciso",
+      "sourceRef": "https://internal.acme.ai/iam/roles/ciso",
+      "observedAt": "2024-03-01T00:00:00.000Z",
+      "validFrom": "2024-03-01T00:00:00.000Z",
+      "evidenceIds": [],
+      "claimIds": []
+    },
+    {
+      "id": "trace.model-governance.incident-review-board",
+      "subject": {
+        "subjectType": "model",
+        "subjectId": "acme-support-agent-v2"
+      },
+      "actorRef": "acme-ai/incident-review-board",
+      "authorityType": "role",
+      "authorityRef": "role:incident-arbiter",
+      "sourceRef": "https://internal.acme.ai/iam/roles/incident-arbiter",
+      "observedAt": "2025-01-01T00:00:00.000Z",
+      "validFrom": "2025-01-01T00:00:00.000Z",
+      "evidenceIds": [],
+      "claimIds": []
+    }
+  ]
+}
