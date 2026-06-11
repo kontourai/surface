@@ -1,0 +1,78 @@
+{
+  "now": "2026-06-10T00:00:00.000Z",
+  "input": {
+    "schemaVersion": 3,
+    "source": "spec-conformance:disputed-blocking",
+    "claims": [
+      {
+        "id": "claim.fee.value",
+        "subjectType": "data-field",
+        "subjectId": "dataset:registration-fee",
+        "surface": "public-data.fees",
+        "claimType": "public-data-field",
+        "fieldOrBehavior": "registrationFee",
+        "value": 150,
+        "createdAt": "2026-06-01T00:00:00.000Z",
+        "updatedAt": "2026-06-01T00:00:00.000Z",
+        "impactLevel": "medium",
+        "verificationPolicyId": "policy.public-data-field.basic"
+      }
+    ],
+    "evidence": [
+      {
+        "id": "evidence.fee.passing",
+        "claimId": "claim.fee.value",
+        "evidenceType": "source_excerpt",
+        "method": "observation",
+        "sourceRef": "source A: example.org/fees",
+        "excerptOrSummary": "Registration fee is $150.",
+        "observedAt": "2026-06-01T00:00:00.000Z",
+        "collectedBy": "crawler"
+      },
+      {
+        "id": "evidence.fee.conflicting",
+        "claimId": "claim.fee.value",
+        "evidenceType": "source_excerpt",
+        "method": "observation",
+        "sourceRef": "source B: fees.example.org",
+        "excerptOrSummary": "Registration fee is $200 — conflicts with $150 in source A.",
+        "observedAt": "2026-06-05T00:00:00.000Z",
+        "collectedBy": "crawler",
+        "passing": false,
+        "blocking": true
+      }
+    ],
+    "policies": [
+      {
+        "id": "policy.public-data-field.basic",
+        "claimType": "public-data-field",
+        "requiredEvidence": ["source_excerpt"],
+        "requiredMethods": ["observation"],
+        "requiresCorroboration": false,
+        "acceptanceCriteria": ["field verified from source"],
+        "reviewAuthority": "operator",
+        "validityRule": { "kind": "duration", "durationDays": 30 },
+        "stalenessTriggers": ["source page changes"],
+        "conflictRules": [],
+        "impactLevel": "medium"
+      }
+    ],
+    "events": [
+      {
+        "id": "event.fee.verified",
+        "claimId": "claim.fee.value",
+        "status": "verified",
+        "actor": "operator",
+        "method": "attestation",
+        "evidenceIds": ["evidence.fee.passing"],
+        "createdAt": "2026-06-01T00:00:00.000Z",
+        "verifiedAt": "2026-06-01T00:00:00.000Z"
+      }
+    ]
+  },
+  "expect": {
+    "statusByClaimId": {
+      "claim.fee.value": "disputed"
+    }
+  }
+}

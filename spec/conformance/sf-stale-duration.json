@@ -1,0 +1,76 @@
+{
+  "now": "2026-06-10T00:00:00.000Z",
+  "input": {
+    "schemaVersion": 3,
+    "source": "spec-conformance:stale-duration",
+    "claims": [
+      {
+        "id": "claim.public.field",
+        "subjectType": "data-field",
+        "subjectId": "dataset:registration-status",
+        "surface": "public-data.status",
+        "claimType": "public-data-field",
+        "fieldOrBehavior": "registrationStatus",
+        "value": "OPEN",
+        "createdAt": "2026-04-01T00:00:00.000Z",
+        "updatedAt": "2026-04-01T00:00:00.000Z",
+        "impactLevel": "high",
+        "verificationPolicyId": "policy.public-data-field.short-lived"
+      }
+    ],
+    "evidence": [
+      {
+        "id": "evidence.public.source-excerpt",
+        "claimId": "claim.public.field",
+        "evidenceType": "source_excerpt",
+        "method": "observation",
+        "sourceRef": "https://example.org/register",
+        "excerptOrSummary": "Registration is open for summer sessions.",
+        "observedAt": "2026-04-01T00:00:00.000Z",
+        "collectedBy": "crawler"
+      },
+      {
+        "id": "evidence.public.human-attestation",
+        "claimId": "claim.public.field",
+        "evidenceType": "human_attestation",
+        "method": "attestation",
+        "sourceRef": "record-steward review",
+        "excerptOrSummary": "Admin approved registration status from source excerpt.",
+        "observedAt": "2026-04-01T00:10:00.000Z",
+        "collectedBy": "record-steward"
+      }
+    ],
+    "policies": [
+      {
+        "id": "policy.public-data-field.short-lived",
+        "claimType": "public-data-field",
+        "requiredEvidence": ["source_excerpt", "human_attestation"],
+        "requiredMethods": ["observation", "attestation"],
+        "requiresCorroboration": true,
+        "acceptanceCriteria": ["field-level review or crawl approval"],
+        "reviewAuthority": "operator",
+        "validityRule": { "kind": "duration", "durationDays": 14 },
+        "stalenessTriggers": ["validity window expires"],
+        "conflictRules": [],
+        "impactLevel": "high"
+      }
+    ],
+    "events": [
+      {
+        "id": "event.public.verified",
+        "claimId": "claim.public.field",
+        "status": "verified",
+        "actor": "record-steward",
+        "method": "field-attestation",
+        "evidenceIds": ["evidence.public.source-excerpt", "evidence.public.human-attestation"],
+        "createdAt": "2026-04-01T00:10:00.000Z",
+        "verifiedAt": "2026-04-01T00:10:00.000Z"
+      }
+    ]
+  },
+  "expect": {
+    "statusByClaimId": {
+      "claim.public.field": "stale"
+    }
+  }
+}
