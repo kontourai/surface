@@ -14,7 +14,7 @@ The result is a point-in-time **Trust Snapshot** that a person, another system, 
 
 ## Who builds with it
 
-- **AI code governance** — [Veritas](https://github.com/kontourai/veritas) authors claims about repo areas, collects evidence per run, and lets reviewers (and agents) see exactly which claims this run's evidence supports — and which went stale when the code changed.
+- **AI code governance** — [Veritas](https://kontourai.io/veritas) authors claims about repo areas, collects evidence per run, and lets reviewers (and agents) see exactly which claims this run's evidence supports — and which went stale when the code changed.
 - **Field-attested public records** — a data directory maps crawled fields and human attestations into per-field claims, so "verified" means *this field, this source, this date* instead of a badge on the whole record.
 - **Fact resolution** — a financial workflow keeps user-verified facts and document-imported values in the same report, with conflicts visibly disputed instead of averaged into a confidence score.
 - **Dependency audits** — `npm audit` output becomes evidence behind a "safe to install" claim with a freshness window and a trace to the exact run.
@@ -25,6 +25,20 @@ Each of these ships as a runnable fixture in [`examples/`](docs/reference/fixtur
 ## What Surface is not
 
 Surface is not a promise of perfect truth, a certification business, or a hosted-only evidence collector. Producers collect domain evidence and make domain decisions. Surface defines the open trust format, derives portable trust state, and makes that state inspectable through reports, a Trust Panel, the Surface Console, APIs, and agent-readable resources. If a claim is weak, stale, or disputed, Surface makes that obvious instead of papering over it.
+
+## Where Surface fits
+
+Kontour AI shows the work behind AI. Surface is the foundation the rest of the family builds on:
+
+| Product | Owns |
+| --- | --- |
+| **Surface** | Portable trust state: claims, evidence, policies, trust snapshots |
+| **[Survey](https://kontourai.io/survey)** | Producer evidence: source → extraction → candidate → review → claim, projected into Surface |
+| **[Flow](https://kontourai.io/flow)** | Process transparency: steps, gates, transitions — gates consume Surface-shaped evidence |
+| **[Veritas](https://kontourai.io/veritas)** | Code/change transparency: repo standards and merge readiness, authored as Surface claims |
+| **[Flow Agents](https://kontourai.io/flow-agents)** | Agent-facing distribution: skills, kits, runtime adapters, hooks |
+
+Each product stands alone; Surface requires none of them.
 
 ---
 
