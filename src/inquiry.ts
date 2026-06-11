@@ -11,6 +11,7 @@ import type {
   Claim,
   DerivationRequirement,
   DerivationRule,
+  IdentityLink,
   Inquiry,
   InquiryRecord,
   TrustBundle,
@@ -19,6 +20,7 @@ import type {
 import type { CanonicalClaimTarget } from "./canonical.js";
 import { canonicalClaimKey } from "./canonical.js";
 import { deriveClaimStatus, STATUS_FUNCTION_VERSION } from "./status.js";
+import { weakerStatus } from "./derivation.js";
 
 // ---------------------------------------------------------------------------
 // Public API — Step 3: exact-match resolution
@@ -103,6 +105,28 @@ export function resolveInquiry(
     };
   }
 
+  // --- Identity-link (mapping) resolution ---
+  // Consult identityLinks with relation "equivalent" or "converts" to find a
+  // co-referent claim that can answer the inquiry.
+  if (Array.isArray(bundle.identityLinks)) {
+    const mappingResult = resolveViaIdentityLinks(bundle, inquiry.target, inquiryKey, now);
+    if (mappingResult !== null) {
+      return {
+        id: inquiry.id,
+        inquiry,
+        outcome: "matched",
+        resolutionPath: {
+          claimIds: [mappingResult.claimId],
+          identityLinkIds: [mappingResult.linkId],
+        },
+        answer: { value: mappingResult.value, status: mappingResult.status },
+        inputSnapshot: [{ claimId: mappingResult.claimId, status: mappingResult.rawStatus }],
+        statusFunctionVersion: STATUS_FUNCTION_VERSION,
+        resolvedAt,
+      };
+    }
+  }
+
   // --- Unsupported ---
   return {
     id: inquiry.id,
@@ -113,6 +137,117 @@ export function resolveInquiry(
     statusFunctionVersion: STATUS_FUNCTION_VERSION,
     resolvedAt,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Mapping resolution helpers
+// ---------------------------------------------------------------------------
+
+interface MappingResolution {
+  claimId: string;
+  linkId: string;
+  value: unknown;
+  /** The (possibly capped) answer status. */
+  status: TrustStatus;
+  /** The raw claim status before mapping-claim capping. */
+  rawStatus: TrustStatus;
+}
+
+/**
+ * Walk identityLinks to find a claim that co-refers to the inquiry target.
+ * Handles "equivalent" (direct value forwarding) and "converts" (numeric
+ * factor/offset transformation).  The mapping claim's status is applied as a
+ * weakest-link ceiling when mappingClaimId is set.
+ */
+function resolveViaIdentityLinks(
+  bundle: TrustBundle,
+  target: CanonicalClaimTarget,
+  inquiryKey: string,
+  now: Date,
+): MappingResolution | null {
+  const links = bundle.identityLinks ?? [];
+
+  for (const link of links) {
+    // Only process equivalent and converts relations (subsumes is asymmetric).
+    const relation = link.relation ?? "equivalent";
+    if (relation !== "equivalent" && relation !== "converts") continue;
+
+    if (!Array.isArray(link.subjects) || link.subjects.length < 2) continue;
+
+    // Check whether any subject in this link matches the inquiry target
+    // (same subjectType + subjectId).
+    const matchIdx = link.subjects.findIndex(
+      (s) => s.subjectType === target.subjectType && s.subjectId === target.subjectId,
+    );
+    if (matchIdx === -1) continue;
+
+    // The co-referent subjects are the other members of the link.
+    for (let i = 0; i < link.subjects.length; i++) {
+      if (i === matchIdx) continue;
+      const coRef = link.subjects[i];
+
+      // Look for a claim matching the co-referent subject with the same field.
+      const coRefKey = canonicalClaimKey({
+        subjectType: coRef.subjectType,
+        subjectId: coRef.subjectId,
+        fieldOrBehavior: target.fieldOrBehavior,
+        qualifiers: target.qualifiers,
+      });
+
+      for (const claim of bundle.claims) {
+        const claimKey = canonicalClaimKey(claimToTarget(claim));
+        if (claimKey !== coRefKey) continue;
+
+        // Found a co-referent claim.
+        const evidence = bundle.evidence.filter((e) => e.claimId === claim.id);
+        const { status: rawStatus } = deriveClaimStatus({
+          claim,
+          evidence,
+          events: bundle.events,
+          policies: bundle.policies,
+          now,
+        });
+
+        // Compute the answer value (apply conversion if needed).
+        let value: unknown = claim.value;
+        if (relation === "converts" && link.conversion) {
+          const num = toNumber(claim.value);
+          if (num !== null) {
+            const factor = link.conversion.factor ?? 1;
+            const offset = link.conversion.offset ?? 0;
+            value = num * factor + offset;
+          }
+        }
+
+        // Apply weakest-link: if the link cites a mapping claim, cap by its status.
+        let answerStatus: TrustStatus = rawStatus;
+        if (link.mappingClaimId) {
+          const mappingClaim = bundle.claims.find((c) => c.id === link.mappingClaimId);
+          if (mappingClaim) {
+            const mappingEvidence = bundle.evidence.filter((e) => e.claimId === mappingClaim.id);
+            const { status: mappingStatus } = deriveClaimStatus({
+              claim: mappingClaim,
+              evidence: mappingEvidence,
+              events: bundle.events,
+              policies: bundle.policies,
+              now,
+            });
+            answerStatus = weakerStatus(rawStatus, mappingStatus);
+          }
+        }
+
+        return {
+          claimId: claim.id,
+          linkId: link.id ?? `link:${link.subjects.map((s) => `${s.subjectType}::${s.subjectId}`).join(",")}`,
+          value,
+          status: answerStatus,
+          rawStatus,
+        };
+      }
+    }
+  }
+
+  return null;
 }
 
 // ---------------------------------------------------------------------------

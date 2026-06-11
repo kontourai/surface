@@ -194,7 +194,7 @@ export function validateTrustBundle(input: unknown): TrustBundle {
   if (identityLinks !== undefined) {
     for (const link of identityLinks) {
       requireObject(link, "identityLink");
-      rejectUnknownKeys(link, new Set(["subjects", "reason", "attestedBy"]), "identityLink");
+      rejectUnknownKeys(link, new Set(["id", "subjects", "reason", "attestedBy", "relation", "conversion", "mappingClaimId"]), "identityLink");
       const subjects = requireArray(link, "subjects");
       if (subjects.length < 2) throw new Error("identityLink.subjects must contain at least two entries");
       for (const ref of subjects) {
@@ -203,8 +203,29 @@ export function validateTrustBundle(input: unknown): TrustBundle {
         requireString(ref, "subjectType");
         requireString(ref, "subjectId");
       }
+      if (link.id !== undefined) requireString(link, "id");
       if (link.reason !== undefined) requireString(link, "reason");
       if (link.attestedBy !== undefined) requireString(link, "attestedBy");
+      if (link.relation !== undefined) {
+        const validRelations = ["equivalent", "subsumes", "converts"];
+        if (!validRelations.includes(link.relation as string)) {
+          throw new Error("identityLink.relation must be 'equivalent', 'subsumes', or 'converts'");
+        }
+      }
+      if (link.conversion !== undefined) {
+        requireObject(link.conversion, "identityLink.conversion");
+        rejectUnknownKeys(link.conversion as Record<string, unknown>, new Set(["factor", "offset", "note"]), "identityLink.conversion");
+        if ((link.conversion as Record<string, unknown>).factor !== undefined && typeof (link.conversion as Record<string, unknown>).factor !== "number") {
+          throw new Error("identityLink.conversion.factor must be a number");
+        }
+        if ((link.conversion as Record<string, unknown>).offset !== undefined && typeof (link.conversion as Record<string, unknown>).offset !== "number") {
+          throw new Error("identityLink.conversion.offset must be a number");
+        }
+        if ((link.conversion as Record<string, unknown>).note !== undefined && typeof (link.conversion as Record<string, unknown>).note !== "string") {
+          throw new Error("identityLink.conversion.note must be a string");
+        }
+      }
+      if (link.mappingClaimId !== undefined) requireString(link, "mappingClaimId");
     }
   }
 

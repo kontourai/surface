@@ -59,6 +59,17 @@ Plain-language definition (ADR 0002):
 The `source` field identifies the producer. Bundles from multiple producers can be
 merged; conflicts surface as `disputed` status (never last-write-wins).
 
+An optional `identityLinks` array declares co-referent subjects — real-world entities
+known under more than one identifier.  Each link carries a stable optional `id`, a
+`subjects` array (two or more `{ subjectType, subjectId }` refs), and an optional
+`relation` field: `"equivalent"` (default — the subjects denote the same entity),
+`"subsumes"` (the first subject is a superset of the others), or `"converts"` (the
+subjects are related by a unit or scale transformation, parameterised by an optional
+`conversion: { factor, offset, note }` object).  A link may additionally carry a
+`mappingClaimId` pointing to the Claim that evidences the mapping assertion itself;
+when set, inquiry resolution through that link is subject to a weakest-link status cap —
+a disputed mapping claim cannot yield a verified answer.
+
 ### Claim
 
 An assertion about a real-world subject. A claim has a stable `id`, a `subjectType`

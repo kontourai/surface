@@ -25,3 +25,4 @@ export type { SurfaceConsoleConfig, SurfaceConsoleTheme, SurfaceConsoleVocab } f
 export * from "./canonical.js";
 export * from "./inquiry.js";
 export * from "./dispute.js";
+export * from "./interop/in-toto.js";

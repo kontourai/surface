@@ -92,10 +92,44 @@ export interface AuthorityTrace {
   metadata?: Record<string, unknown>;
 }
 
+/**
+ * Optional unit-conversion parameters for an IdentityLink with relation "converts".
+ */
+export interface IdentityLinkConversion {
+  /** Multiplicative factor: target_value = source_value * factor + offset */
+  factor?: number;
+  /** Additive offset applied after factor multiplication. */
+  offset?: number;
+  /** Human-readable note describing the conversion (e.g. unit names). */
+  note?: string;
+}
+
 export interface IdentityLink {
+  /** Stable identifier for this link (optional but strongly recommended). */
+  id?: string;
   subjects: SubjectRef[];
   reason?: string;
   attestedBy?: string;
+  /**
+   * Semantic relation between the subjects.  Default semantics: "equivalent"
+   * (co-reference — the subjects denote the same real-world entity).
+   * "subsumes" — the first subject is a superset of / contains the others.
+   * "converts" — the subjects are related by a unit or scale conversion;
+   *   use the companion  field to provide factor/offset.
+   */
+  relation?: "equivalent" | "subsumes" | "converts";
+  /**
+   * Unit-conversion parameters.  Only meaningful when relation = "converts".
+   * Describes how to transform a numeric value on one subject to the other.
+   */
+  conversion?: IdentityLinkConversion;
+  /**
+   * Optional reference to the Claim whose value evidences this mapping.
+   * When set, the answer status is capped by the mapping claim's derived
+   * status (weakest-link rule): a disputed mapping cannot yield a verified
+   * answer.
+   */
+  mappingClaimId?: string;
 }
 
 export type SchemaVersion = 2 | 3;
@@ -669,6 +703,11 @@ export interface InquiryRecord {
     claimIds: string[];
     ruleId?: string;
     ruleVersion?: string;
+    /**
+     * The ids of any IdentityLink records consulted to resolve the inquiry
+     * through a co-referent subject (mapping-based resolution).
+     */
+    identityLinkIds?: string[];
   };
   /** The answer, if the outcome is "matched" or "derived". */
   answer?: {
