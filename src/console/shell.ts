@@ -40,6 +40,7 @@ export function buildConsoleHtml(config: SurfaceConsoleRuntimeConfig = {}): stri
     <div class="dash-metrics-row">
       <canvas id="statusDonut" class="status-donut" width="52" height="52" aria-hidden="true"></canvas>
       <div id="consoleMetrics" class="dash-metrics"></div>
+      <span class="live-indicator" id="liveIndicator" data-live-state="connecting" aria-label="Connecting to live refresh…" title="Connecting to live refresh…"></span>
       <button type="button" class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark theme">
         <svg class="icon-moon" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
           <path d="M12.5 9A6 6 0 015 1.5a6 6 0 100 11 6 6 0 007.5-3.5z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>

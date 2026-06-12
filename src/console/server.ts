@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { watch } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 import { cwd } from "node:process";
@@ -19,6 +20,82 @@ import { listExtensions } from "../extension.js";
 import type { SurfaceConsoleConfig } from "./types.js";
 
 const SURFACE_RUNS_DEFAULT = ".surface/runs/latest.json";
+
+// ── SSE broadcaster — emits "model" events when watched files change ──────────
+// Uses fs.watch + 250 ms debounce for fast notification; a 2 s polling interval
+// acts as a fallback for environments where fs.watch is unreliable.
+class SseBroadcaster {
+  private clients: Set<ServerResponse> = new Set();
+  private debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private pollTimer: ReturnType<typeof setInterval> | null = null;
+  private lastMtime: number = 0;
+
+  constructor(private watchedPaths: string[]) {}
+
+  start(): void {
+    // fs.watch listeners — one per path, errors are silently ignored
+    for (const p of this.watchedPaths) {
+      try {
+        const watcher = watch(p, () => this.scheduleEmit());
+        watcher.on("error", () => { /* ignored */ });
+      } catch {
+        // Path may not exist yet; polling will catch it
+      }
+    }
+
+    // 2 s polling fallback: check mtime and emit if changed
+    this.pollTimer = setInterval(() => {
+      void this.pollCheck();
+    }, 2000);
+    // Keep the interval unreffed so it does not prevent process exit
+    this.pollTimer.unref?.();
+  }
+
+  private scheduleEmit(): void {
+    if (this.debounceTimer) clearTimeout(this.debounceTimer);
+    this.debounceTimer = setTimeout(() => {
+      this.debounceTimer = null;
+      this.emit();
+    }, 250);
+  }
+
+  private async pollCheck(): Promise<void> {
+    try {
+      const { stat } = await import("node:fs/promises");
+      for (const p of this.watchedPaths) {
+        try {
+          const s = await stat(p);
+          const mtime = s.mtimeMs;
+          if (mtime !== this.lastMtime && this.lastMtime !== 0) {
+            this.lastMtime = mtime;
+            this.scheduleEmit();
+            return;
+          }
+          if (this.lastMtime === 0) this.lastMtime = mtime;
+        } catch { /* path missing */ }
+      }
+    } catch { /* ignore */ }
+  }
+
+  addClient(res: ServerResponse): void {
+    this.clients.add(res);
+    res.on("close", () => this.clients.delete(res));
+    res.on("error", () => this.clients.delete(res));
+  }
+
+  emit(): void {
+    const payload = `event: model\ndata: {}\n\n`;
+    for (const client of this.clients) {
+      try { client.write(payload); } catch { this.clients.delete(client); }
+    }
+  }
+
+  stop(): void {
+    if (this.debounceTimer) { clearTimeout(this.debounceTimer); this.debounceTimer = null; }
+    if (this.pollTimer) { clearInterval(this.pollTimer); this.pollTimer = null; }
+  }
+}
+
 
 async function loadReadModel(indexPath: string): Promise<unknown> {
   const absoluteIndexPath = resolve(indexPath);
@@ -48,6 +125,11 @@ export async function startConsoleServer(config: SurfaceConsoleConfig = {}): Pro
   const readModelPath = config.readModelPath ?? SURFACE_RUNS_DEFAULT;
   const storePath = config.storePath ?? "veritas.claims.json";
 
+  // Instantiate the SSE broadcaster, watching the configured read-model path
+  // (and the store file so claim mutations also trigger a refresh).
+  const broadcaster = new SseBroadcaster([resolve(readModelPath), resolve(storePath)]);
+  broadcaster.start();
+
   const server = createServer(async (req, res) => {
     const requestUrl = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
     const url = requestUrl.pathname;
@@ -61,6 +143,20 @@ export async function startConsoleServer(config: SurfaceConsoleConfig = {}): Pro
     if (url === "/console.css") {
       res.writeHead(200, { "Content-Type": "text/css; charset=utf-8" });
       res.end(CONSOLE_CSS);
+      return;
+    }
+
+    if (url === "/api/stream") {
+      res.writeHead(200, {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",
+      });
+      // Send an initial ping so the client knows the connection is live
+      res.write(": connected\n\n");
+      broadcaster.addClient(res);
+      req.on("close", () => res.end());
       return;
     }
 
@@ -205,6 +301,7 @@ export async function startConsoleServer(config: SurfaceConsoleConfig = {}): Pro
   });
 
   await new Promise<void>((resolveListen) => server.listen(port, resolveListen));
+  server.on("close", () => broadcaster.stop());
   console.log(`Surface console running at http://localhost:${port}`);
 }
 

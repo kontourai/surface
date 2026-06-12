@@ -59,6 +59,7 @@ test("Surface Console client source is split into ordered concern files", async 
     "routing-help.js",
     "authoring.js",
     "runs.js",
+    "live.js",
   ];
   const [buildScript, ...partSources] = await Promise.all([
     readFile("scripts/build-console-assets.mjs", "utf8"),
@@ -75,6 +76,7 @@ test("Surface Console client source is split into ordered concern files", async 
   assert.match(partSources[4], /function showClaimDetail/);
   assert.match(partSources[6], /function openClaimModal/);
   assert.match(partSources[7], /function renderRunPicker/);
+  assert.match(partSources[8], /EventSource/);
 });
 
 test("Surface Console CSS source is split into ordered concern files", async () => {
