@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.1](https://github.com/kontourai/surface/compare/v0.12.0...v0.12.1) (2026-06-12)
+
+
+### Fixes
+
+* **mcp-ui:** escape script-closing sequences in inlined trust panel module ([#71](https://github.com/kontourai/surface/issues/71)) ([f2e24bc](https://github.com/kontourai/surface/commit/f2e24bc27d962d54efcca2a9baf76ad3b3b3cee1))
+
 ## [0.12.0](https://github.com/kontourai/surface/compare/v0.11.0...v0.12.0) (2026-06-12)
 
 
