@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/kontourai/surface/compare/v0.13.0...v0.14.0) (2026-06-12)
+
+
+### Features
+
+* **console:** UX polish, theming toggle, live read-model refresh ([#76](https://github.com/kontourai/surface/issues/76)) ([699327f](https://github.com/kontourai/surface/commit/699327f0dfff7f074fe35a572539e0b3883c3945))
+
 ## [0.13.0](https://github.com/kontourai/surface/compare/v0.12.2...v0.13.0) (2026-06-12)
 
 
