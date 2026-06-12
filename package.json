@@ -1,6 +1,6 @@
 {
   "name": "@kontourai/surface",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "description": "Shared transparency foundation under Kontour's products. Claims, evidence, freshness, and gaps in one inspectable shape.",
   "license": "Apache-2.0",
   "type": "module",
@@ -41,10 +41,12 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "npm run build:console-assets && rm -rf dist && tsc",
+    "build": "npm run build:console-assets && rm -rf dist && tsc && npm run build:trust-panel-module",
     "build:console-assets": "node scripts/build-console-assets.mjs",
+    "build:trust-panel-module": "node scripts/build-trust-panel-module.mjs",
     "check:console-assets": "node scripts/build-console-assets.mjs --check",
-    "typecheck": "npm run check:console-assets && tsc --noEmit",
+    "check:trust-panel-module": "node scripts/build-trust-panel-module.mjs --check",
+    "typecheck": "npm run check:console-assets && npm run check:trust-panel-module && tsc --noEmit",
     "test": "npm run build && node --test dist/tests/*.test.js && node --test dist/tests/serial/*.test.js",
     "test:external-adapter": "npm run build && node --test dist/tests/serial/external-adapter.test.js",
     "test:package-smoke": "npm run build && node --test dist/tests/package-smoke/*.test.js",

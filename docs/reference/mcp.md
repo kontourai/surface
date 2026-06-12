@@ -61,6 +61,12 @@ An agent asked to "use the latest verified pricing data" should not have to gues
 
 The registration status was verified once, but its 14-day freshness window expired — so instead of acting on it, the agent follows up with `surface_get_claim` for the evidence trace, asks the producer to reverify, or surfaces the uncertainty to the user. No prompt engineering decides this; the policy already did.
 
+## Interactive trust panel (MCP UI)
+
+`surface_summary` and `surface_get_claim` results also carry an embedded [MCP UI](https://mcpui.dev) resource — a `ui://surface/trust-panel/…` entry with MIME type `text/html;profile=mcp-app`. Hosts that render MCP UI show the report as an interactive `<surface-trust-panel>` directly in the conversation; hosts that don't simply ignore the entry and read the text content, which always comes first and is complete on its own.
+
+The embedded document is fully self-contained: the trust panel module and the report data are inlined, no network requests are made, and theming follows the host's light/dark preference through the standard `--k-*` token contract. Pass `--no-ui` to `surface mcp` to omit UI resources entirely.
+
 ## Behavior contract
 
 - Tool results carry the same JSON shapes as the corresponding CLI commands (`surface report --format summary`, `surface stale`, `surface missing`, `surface get`, `surface policy`).

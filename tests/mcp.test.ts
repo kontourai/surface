@@ -57,8 +57,20 @@ test("surface mcp serves trust state over the Model Context Protocol", async () 
     send(server, { jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "surface_summary", arguments: {} } });
     const summary = await responses.next(4);
     assert.equal(summary.result.isError, false);
+    // First content entry must be the text summary
+    assert.equal(summary.result.content[0].type, "text");
     assert.match(summary.result.content[0].text, /Kontour Surface report/);
     assert.match(summary.result.content[0].text, /Claims: 4/);
+    // Second content entry is the MCP UI resource
+    assert.equal(summary.result.content.length, 2);
+    const summaryUiResource = summary.result.content[1];
+    assert.equal(summaryUiResource.type, "resource");
+    assert.equal(summaryUiResource.resource.uri, "ui://surface/trust-panel/summary");
+    assert.equal(summaryUiResource.resource.mimeType, "text/html;profile=mcp-app");
+    assert.ok(summaryUiResource.resource.text.includes("<surface-trust-panel>"));
+    assert.ok(summaryUiResource.resource.text.includes("surface-trust-panel"));
+    // Report data is embedded in the HTML
+    assert.ok(summaryUiResource.resource.text.includes("field-attested-records"));
 
     send(server, { jsonrpc: "2.0", id: 5, method: "tools/call", params: { name: "surface_stale_claims", arguments: {} } });
     const stale = await responses.next(5);
@@ -75,10 +87,24 @@ test("surface mcp serves trust state over the Model Context Protocol", async () 
     });
     const drilldown = await responses.next(6);
     assert.equal(drilldown.result.isError, false);
+    // First content entry must be the text drilldown
+    assert.equal(drilldown.result.content[0].type, "text");
     const claimView = JSON.parse(drilldown.result.content[0].text);
     assert.equal(claimView.claim.id, "claim.field-attested-records.registration-status");
     assert.ok(Array.isArray(claimView.evidence));
     assert.ok(claimView.derivation);
+    // Second content entry is the MCP UI resource
+    assert.equal(drilldown.result.content.length, 2);
+    const claimUiResource = drilldown.result.content[1];
+    assert.equal(claimUiResource.type, "resource");
+    assert.equal(
+      claimUiResource.resource.uri,
+      "ui://surface/trust-panel/claim-claim.field-attested-records.registration-status",
+    );
+    assert.equal(claimUiResource.resource.mimeType, "text/html;profile=mcp-app");
+    assert.ok(claimUiResource.resource.text.includes("<surface-trust-panel>"));
+    // Report data containing the claim is embedded
+    assert.ok(claimUiResource.resource.text.includes("field-attested-records"));
 
     send(server, {
       jsonrpc: "2.0",
@@ -98,6 +124,53 @@ test("surface mcp serves trust state over the Model Context Protocol", async () 
     send(server, { jsonrpc: "2.0", id: 9, method: "resources/list" });
     const unknownMethod = await responses.next(9);
     assert.equal(unknownMethod.error?.code, -32601);
+  } finally {
+    server.stdin.end();
+    await once(server, "exit");
+  }
+});
+
+test("surface mcp --no-ui omits the UI resource entry", async () => {
+  const server = spawn(
+    "node",
+    ["bin/surface.mjs", "mcp", "--input", "examples/surface-example-bundle.json", "--no-ui"],
+    { stdio: ["pipe", "pipe", "inherit"] },
+  );
+  const responses = collectResponses(server.stdout);
+
+  try {
+    send(server, {
+      jsonrpc: "2.0",
+      id: 1,
+      method: "initialize",
+      params: {
+        protocolVersion: "2025-06-18",
+        capabilities: {},
+        clientInfo: { name: "surface-tests", version: "0.0.0" },
+      },
+    });
+    await responses.next(1);
+    send(server, { jsonrpc: "2.0", method: "notifications/initialized" });
+
+    send(server, { jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "surface_summary", arguments: {} } });
+    const summary = await responses.next(2);
+    assert.equal(summary.result.isError, false);
+    assert.equal(summary.result.content.length, 1);
+    assert.equal(summary.result.content[0].type, "text");
+    assert.match(summary.result.content[0].text, /Kontour Surface report/);
+
+    send(server, {
+      jsonrpc: "2.0",
+      id: 3,
+      method: "tools/call",
+      params: { name: "surface_get_claim", arguments: { claimId: "claim.field-attested-records.registration-status" } },
+    });
+    const drilldown = await responses.next(3);
+    assert.equal(drilldown.result.isError, false);
+    assert.equal(drilldown.result.content.length, 1);
+    assert.equal(drilldown.result.content[0].type, "text");
+    const claimView = JSON.parse(drilldown.result.content[0].text);
+    assert.equal(claimView.claim.id, "claim.field-attested-records.registration-status");
   } finally {
     server.stdin.end();
     await once(server, "exit");

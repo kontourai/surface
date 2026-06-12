@@ -84,6 +84,7 @@ test("package scripts are classified active repo workflows", async () => {
   assert.deepEqual(scriptNames, [
     "build",
     "build:console-assets",
+    "build:trust-panel-module",
     "check:console-assets",
     "check:console-kit-assets",
     "check:console-token-drift",
@@ -91,6 +92,7 @@ test("package scripts are classified active repo workflows", async () => {
     "check:doc-links",
     "check:generated-boundaries",
     "check:package-contents",
+    "check:trust-panel-module",
     "docs:build",
     "prepare",
     "release:trust-bundle",

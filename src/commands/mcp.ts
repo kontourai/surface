@@ -7,6 +7,7 @@ import { formatTrustReportSummary } from "../report.js";
 import type { TrustReport } from "../types.js";
 import { loadReport, requireValue, type QueryOptions } from "./shared.js";
 import { projectClaimQuery, projectPolicyQuery } from "./query.js";
+import { buildTrustPanelUiResource } from "../mcp-ui/trust-panel-resource.js";
 
 /**
  * Minimal Model Context Protocol server over stdio.
@@ -30,6 +31,7 @@ interface JsonRpcRequest {
 interface McpServerOptions {
   input: string;
   adapter: string;
+  noUi: boolean;
 }
 
 interface ToolDefinition {
@@ -58,7 +60,10 @@ const tools: ToolDefinition[] = [
     description:
       "Derive the trust report for the configured input and return the human-readable summary: claim counts by status, producer surfaces, high-impact unsupported claims, stale and disputed claims, and transparency gap counts.",
     inputSchema: { type: "object", properties: { ...sharedToolProperties } },
-    run: async (args, options) => formatTrustReportSummary(await loadToolReport(args, options)),
+    run: async (args, options) => {
+      const report = await loadToolReport(args, options);
+      return { _summary: formatTrustReportSummary(report), _report: report, _ui: options.noUi ? null : "summary" };
+    },
   },
   {
     name: "surface_stale_claims",
@@ -93,7 +98,10 @@ const tools: ToolDefinition[] = [
     run: async (args, options) => {
       const claimId = stringArg(args, "claimId");
       if (!claimId) throw new Error("surface_get_claim requires claimId");
-      return projectClaimQuery(await loadToolReport(args, options), claimId);
+      const report = await loadToolReport(args, options);
+      const claimData = projectClaimQuery(report, claimId);
+      if (options.noUi) return claimData;
+      return { _claimData: claimData, _report: report, _ui: `claim-${claimId}` };
     },
   },
   {
@@ -184,8 +192,8 @@ async function handleLine(line: string, options: McpServerOptions, serverVersion
       const toolArgs = (params?.arguments ?? {}) as Record<string, unknown>;
       try {
         const result = await tool.run(toolArgs, options);
-        const text = typeof result === "string" ? result : JSON.stringify(result, null, 2);
-        send({ jsonrpc: "2.0", id, result: { content: [{ type: "text", text }], isError: false } });
+        const content = buildToolContent(result, options);
+        send({ jsonrpc: "2.0", id, result: { content, isError: false } });
       } catch (error) {
         const text = error instanceof Error ? error.message : String(error);
         send({ jsonrpc: "2.0", id, result: { content: [{ type: "text", text }], isError: true } });
@@ -201,6 +209,35 @@ async function handleLine(line: string, options: McpServerOptions, serverVersion
       send({ jsonrpc: "2.0", id, error: { code: -32603, message: messageText } });
     }
   }
+}
+
+/**
+ * Build the tool result content array.  For tools that embed a UI resource
+ * the result object carries special private fields (_summary/_claimData for
+ * the text, _report for the UI payload, _ui for the instance id suffix).
+ * All other tools return a single text entry.
+ */
+function buildToolContent(
+  result: unknown,
+  options: McpServerOptions,
+): Array<{ type: string; text?: string; resource?: unknown }> {
+  if (result !== null && typeof result === "object" && "_ui" in (result as object)) {
+    const r = result as { _ui: string | null; _report?: TrustReport; _summary?: unknown; _claimData?: unknown };
+    // Extract the actual data payload for the text entry
+    const textPayload = r._summary !== undefined ? r._summary : r._claimData;
+    const text = typeof textPayload === "string" ? textPayload : JSON.stringify(textPayload, null, 2);
+    const content: Array<{ type: string; text?: string; resource?: unknown }> = [{ type: "text", text }];
+    if (!options.noUi && r._ui !== null && r._report !== undefined) {
+      const uri =
+        r._ui === "summary"
+          ? "ui://surface/trust-panel/summary"
+          : `ui://surface/trust-panel/claim-${r._ui.slice("claim-".length)}`;
+      content.push(buildTrustPanelUiResource(r._report, { uri }));
+    }
+    return content;
+  }
+  const text = typeof result === "string" ? result : JSON.stringify(result, null, 2);
+  return [{ type: "text", text }];
 }
 
 async function loadToolReport(args: Record<string, unknown>, options: McpServerOptions): Promise<TrustReport> {
@@ -220,15 +257,17 @@ function stringArg(args: Record<string, unknown>, key: string): string | undefin
 function parseMcpArgs(args: string[]): McpServerOptions {
   let input = resolve("examples/surface-example-bundle.json");
   let adapter = "surface";
+  let noUi = false;
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === "--input") input = resolve(requireValue(args, ++index, "--input"));
     else if (arg === "--adapter") adapter = requireValue(args, ++index, "--adapter");
+    else if (arg === "--no-ui") noUi = true;
     else throw new Error(`Unknown mcp argument: ${arg}`);
   }
 
-  return { input, adapter };
+  return { input, adapter, noUi };
 }
 
 async function readPackageVersion(): Promise<string> {
