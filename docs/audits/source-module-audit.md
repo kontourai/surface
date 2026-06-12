@@ -68,8 +68,9 @@ Every `package.json` script is an active repo workflow, release guard, or contri
 |--------|----------|---------|
 | `build` | Build | Regenerates Console assets and compiles TypeScript into `dist/`. |
 | `build:console-assets` | Build | Concatenates ordered Console JS/CSS source parts into checked generated assets. |
+| `build:trust-panel-module` | Build | Reads the compiled trust panel JS from dist and generates the inlined string constant used by the MCP UI resource builder. Runs after tsc. |
 | `check:console-assets` | Guard | Fails when checked generated Console assets are stale. |
-| `typecheck` | Guard | Runs asset sync check before TypeScript `--noEmit`. |
+| `typecheck` | Guard | Runs Console asset sync check and trust panel module sync check before TypeScript `--noEmit`. |
 | `test` | Verification | Builds and runs the Node test suite from `dist/tests`. |
 | `test:external-adapter` | Verification | Runs the package-consumer adapter example test. |
 | `test:package-smoke` | Release guard | Builds the package, installs the packed tarball into a fresh consumer project, imports the root API, and runs the installed CLI. |
@@ -82,6 +83,7 @@ Every `package.json` script is an active repo workflow, release guard, or contri
 | `check:doc-links` | Guard | Fails when local relative Markdown links in repo docs do not resolve. |
 | `check:generated-boundaries` | Guard | Fails when generated/runtime artifacts blur source, gitignore, or package boundaries. |
 | `check:package-contents` | Release guard | Verifies the npm tarball includes only intended files. |
+| `check:trust-panel-module` | Guard | Fails when the generated trust panel module string constant is stale relative to the compiled dist output. |
 | `surface:report` | Smoke test | Builds and runs the CLI report command. |
 | `surface:summary` | Smoke test | Builds and runs the CLI summary report used by `verify`. |
 | `verify` | Release guard | Runs the full local CI lane. |
