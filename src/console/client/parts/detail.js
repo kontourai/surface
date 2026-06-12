@@ -113,6 +113,9 @@ function renderDetailDivergence(claim) {
   }
 }
 
+// ── Item 2: Mobile-friendly guidance layout ────────────────
+// Guidance text is clamped to 2 lines with a "more" expander.
+// The CLI command gets its own full-width block with the copy button below.
 function renderDetailGuidance(claim, evidence, readModel) {
   const guidance = statusGuidance(claim.status, evidence.length);
   const suggested = suggestCommand(claim, evidence, readModel);
@@ -127,7 +130,7 @@ function renderDetailGuidance(claim, evidence, readModel) {
     }
     guidanceEl.className = "detail-guidance detail-guidance--" + (claim.status === "stale" ? "warn" : claim.status === "rejected" || claim.status === "disputed" ? "bad" : "info");
     guidanceEl.innerHTML =
-      (guidance ? `<p class="guidance-text">${esc(guidance)}</p>` : "") +
+      (guidance ? `<details class="guidance-text-details"><summary class="guidance-text guidance-text--clamped">${esc(guidance)}</summary><p class="guidance-text guidance-text--expanded">${esc(guidance)}</p></details>` : "") +
       (suggested ? `<div class="guidance-command">
         <code class="guidance-cmd-text">${esc(suggested.command)}</code>
         <button type="button" class="guidance-copy-btn" data-cmd="${esc(suggested.command)}" aria-label="Copy command">
@@ -142,6 +145,7 @@ function renderDetailGuidance(claim, evidence, readModel) {
   }
 }
 
+// ── Item 4: Gap badge + severity tone + clamped description ──
 function renderDetailGaps(transparencyGaps, claimGaps) {
   const allGapItems = [
     ...transparencyGaps.map(fl => ({ ...fl })),
@@ -159,13 +163,21 @@ function renderDetailGaps(transparencyGaps, claimGaps) {
     el("detailGaps").innerHTML = allGapItems.map(item => {
       const classified = classifyGap(item.type ?? item.gapType, item.message);
       const kindLabel  = gapKindLabel[classified.kind] ?? classified.kind;
-      return `<div class="gap-item gap-${esc(item.severity ?? "medium")} gap-kind-${esc(classified.kind)}">
+      const severity   = item.severity ?? "medium";
+      // Severity tone class: high/critical → bad, medium → warn, low → info
+      const severityTone = (severity === "high" || severity === "critical") ? "gap-severity-high"
+        : severity === "low" ? "gap-severity-low" : "gap-severity-medium";
+      return `<div class="gap-item gap-${esc(severity)} gap-kind-${esc(classified.kind)}">
         <div class="gap-head">
           <span class="gap-kind">${esc(kindLabel)}</span>
           <span class="gap-type">${esc(classified.title)}</span>
+          <span class="gap-severity-badge ${esc(severityTone)}">${esc(severity)}</span>
           ${item.blocking === false ? `<span class="nonblocking-pill">non-blocking</span>` : ""}
         </div>
-        <p class="gap-msg">${esc(item.message ?? "")}</p>
+        <details class="gap-msg-details">
+          <summary class="gap-msg gap-msg--clamped">${esc(item.message ?? "")}</summary>
+          <p class="gap-msg gap-msg--expanded">${esc(item.message ?? "")}</p>
+        </details>
         ${classified.hint ? `<p class="gap-hint">${esc(classified.hint)}</p>` : ""}
       </div>`;
     }).join("");
@@ -209,6 +221,7 @@ function renderDetailPolicyGap(claim, policy) {
 // ── unified "What was checked" section ────────────────────
 // Merges Evidence summary + Observed result into one section so the
 // same information never appears twice.
+// Item 6: when >8 evidence entries show first 5 + "show all (N)" expander.
 function renderDetailWhatWasChecked(claim, evidence) {
   const checked = el("detailWhatWasChecked");
   if (!checked) return;
@@ -222,9 +235,22 @@ function renderDetailWhatWasChecked(claim, evidence) {
   }
 
   // Observed result rows (structured metadata when available)
+  // Item 6: cap at 5 visible by default when there are more than 8 total.
+  const EVIDENCE_SHOW_LIMIT = 5;
+  const EVIDENCE_COLLAPSE_THRESHOLD = 8;
   const observedResults = evidence.map(observedResultForEvidence).filter(Boolean);
   if (observedResults.length) {
-    parts.push(...observedResults.map(renderObservedResult));
+    const showExpander = observedResults.length > EVIDENCE_COLLAPSE_THRESHOLD;
+    const visibleResults = showExpander ? observedResults.slice(0, EVIDENCE_SHOW_LIMIT) : observedResults;
+    parts.push(...visibleResults.map(renderObservedResult));
+    if (showExpander) {
+      parts.push(
+        `<details class="evidence-expander">` +
+        `<summary class="evidence-expander-btn">Show all ${observedResults.length} evidence entries</summary>` +
+        observedResults.slice(EVIDENCE_SHOW_LIMIT).map(renderObservedResult).join("") +
+        `</details>`
+      );
+    }
   }
 
   // Plugin attribution inline with evidence

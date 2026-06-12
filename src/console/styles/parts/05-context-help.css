@@ -34,7 +34,8 @@
   z-index: 30;
   top: calc(100% + 0.5rem);
   left: 50%;
-  width: min(18rem, calc(100vw - 2rem));
+  /* Item 3: cap at min(360px, 88vw) */
+  width: min(22.5rem, 88vw);
   transform: translateX(-50%) translateY(-0.25rem);
   padding: 0.75rem 0.9rem;
   border: 1px solid var(--line);
@@ -57,7 +58,7 @@
   z-index: 10000;
   top: 0;
   left: 0;
-  width: var(--help-popover-width, min(18rem, calc(100vw - 2rem)));
+  width: var(--help-popover-width, min(22.5rem, 88vw));
   max-width: calc(100vw - 1.5rem);
   transform: translateY(-0.25rem);
 }
@@ -102,3 +103,25 @@
   transform: translateY(0);
 }
 
+/* ── Item 3: Narrow viewport — center sheet-style popover ────── */
+/* On viewports ≤480px the floating positioning logic already centres
+   the popover horizontally; this rule adds a bottom-sheet visual style
+   for even narrower contexts (<320px) where the popover would otherwise
+   still clip. The JS positionHelpPopover already clamps left/top, so
+   this is a cosmetic reinforcement only. */
+@media (max-width: 320px) {
+  .help-popover[data-floating="true"] {
+    position: fixed;
+    left: 50% !important;
+    top: auto !important;
+    bottom: 1rem;
+    transform: translateX(-50%) !important;
+    width: calc(100vw - 2rem) !important;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-xl);
+  }
+
+  .help-popover[data-floating="true"]::before {
+    display: none;
+  }
+}

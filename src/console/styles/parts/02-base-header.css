@@ -303,3 +303,88 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
+/* ── Theme Toggle ───────────────────────────────────────────── */
+.theme-toggle {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--raised);
+  color: var(--muted);
+  cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease;
+  flex-shrink: 0;
+}
+
+.theme-toggle:hover,
+.theme-toggle:focus-visible {
+  border-color: var(--blue);
+  color: var(--blue);
+  background: var(--blue-bg);
+  outline: none;
+}
+
+.theme-toggle:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 20%, transparent);
+}
+
+/* Show sun icon when dark, moon icon when light */
+.theme-toggle .icon-sun  { display: none; }
+.theme-toggle .icon-moon { display: block; }
+
+[data-theme="light"] .theme-toggle .icon-sun  { display: block; }
+[data-theme="light"] .theme-toggle .icon-moon { display: none; }
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .theme-toggle .icon-sun  { display: block; }
+  :root:not([data-theme="dark"]) .theme-toggle .icon-moon { display: none; }
+}
+
+/* ── Live indicator dot ────────────────────────────────────────── */
+/* Small pulsing dot placed next to the theme toggle in the header. */
+.live-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  /* Default: connecting (amber) */
+  background: var(--orange, #f3b14b);
+  transition: background 0.3s ease;
+}
+
+.live-indicator[data-live-state="live"] {
+  background: var(--green, #34d399);
+  animation: live-pulse 2.4s ease-in-out infinite;
+}
+
+.live-indicator[data-live-state="disconnected"] {
+  background: var(--muted, #72869b);
+  animation: none;
+}
+
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+
+/* ── Live notice toast ──────────────────────────────────────────── */
+.live-notice {
+  margin: 0.5rem 0 0.25rem;
+  padding: 0.45rem 0.85rem;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  color: var(--ink-2);
+  animation: notice-fade-in 0.2s ease both;
+}
+
+.live-notice[hidden] { display: none; }
+
+@keyframes notice-fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

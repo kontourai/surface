@@ -535,3 +535,99 @@
 @media (max-width: 500px) {
   .card-surface--narrow-hide { display: none; }
 }
+
+/* ── 10. Empty State ─────────────────────────────────────────── */
+.empty-state {
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  color: var(--muted);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-lg);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  background: var(--raised);
+}
+
+.empty-state--setup { padding: 3rem 2rem; }
+
+.empty-setup-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 0.5rem;
+  display: block;
+}
+
+.empty-setup-body {
+  margin: 0 0 1.25rem;
+  font-size: 0.88rem;
+  color: var(--ink-2);
+  line-height: 1.6;
+}
+
+/* Command row: code block + copy button side by side */
+.empty-setup-cmd-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.empty-setup-cmd {
+  display: inline-block;
+  padding: 0.45rem 0.9rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  font-size: 0.88rem;
+  color: var(--blue);
+  letter-spacing: 0.01em;
+}
+
+.empty-setup-copy-btn {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--raised);
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.1s ease, border-color 0.1s ease, background 0.1s ease;
+}
+
+.empty-setup-copy-btn:hover,
+.empty-setup-copy-btn:focus-visible {
+  color: var(--blue);
+  border-color: color-mix(in srgb, var(--blue) 40%, transparent);
+  background: var(--blue-bg);
+  outline: none;
+}
+
+.empty-setup-copy-btn.copied {
+  color: var(--green);
+  border-color: color-mix(in srgb, var(--green) 40%, transparent);
+  background: var(--green-bg);
+}
+
+.empty-setup-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.empty-setup-link {
+  color: var(--blue);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Narrow viewports: hide surface label to reduce clutter */
+@media (max-width: 500px) {
+  .card-surface--narrow-hide { display: none; }
+}

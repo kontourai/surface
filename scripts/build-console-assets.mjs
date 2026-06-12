@@ -19,6 +19,7 @@ const scriptPartFiles = [
   "routing-help.js",
   "authoring.js",
   "runs.js",
+  "live.js",
 ];
 
 const stylePartFiles = [
