@@ -1,6 +1,6 @@
 {
   "name": "@kontourai/surface",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "Shared transparency foundation under Kontour's products. Claims, evidence, freshness, and gaps in one inspectable shape.",
   "license": "Apache-2.0",
   "type": "module",
