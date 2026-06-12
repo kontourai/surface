@@ -342,7 +342,6 @@ const evidence = [
       runner: "bash",
       label: "npm test",
       exitCode: testPassed ? 0 : 1,
-      durationMs: null,
     },
   },
   // (b) spec conformance — per-vector evidence
@@ -453,6 +452,22 @@ const bundle = {
   policies: [POLICY_TEST_SUITE, POLICY_CONFORMANCE, POLICY_VERSION_AGREEMENT, POLICY_PACKAGE_IDENTITY],
   events,
 };
+
+// ---------------------------------------------------------------------------
+// Emit-validate round trip — fail closed.
+// The bundle we publish must validate under our own published validator, or a
+// third party cannot strictly re-derive it (same posture as the cosign
+// self-verification below: never ship an artifact we have not verified as a
+// receiver would).
+// ---------------------------------------------------------------------------
+try {
+  validateTrustBundle(bundle);
+  console.log("emit-validate round trip: PASS (bundle validates under validateTrustBundle)");
+} catch (err) {
+  console.error(`emit-validate round trip FAILED: ${err.message}`);
+  console.error("Refusing to publish a bundle that strict receivers would reject.");
+  process.exit(1);
+}
 
 // ---------------------------------------------------------------------------
 // Build TrustReport

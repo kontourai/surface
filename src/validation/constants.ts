@@ -81,6 +81,15 @@ export const EVIDENCE_KEYS = new Set([
   "integrityAnchor",
   "passing",
   "blocking",
+  "execution",
+  "metadata",
+]);
+export const EXECUTION_KEYS = new Set([
+  "runner",
+  "label",
+  "exitCode",
+  "isError",
+  "durationMs",
   "metadata",
 ]);
 export const POLICY_KEYS = new Set([
