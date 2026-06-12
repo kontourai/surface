@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/kontourai/surface/compare/v0.12.2...v0.13.0) (2026-06-12)
+
+
+### Features
+
+* **trust-panel:** heading attribute; default heading matches component name ([#74](https://github.com/kontourai/surface/issues/74)) ([24efdd3](https://github.com/kontourai/surface/commit/24efdd39713def69a2260ab86f30d93d37e85929))
+
 ## [0.12.2](https://github.com/kontourai/surface/compare/v0.12.1...v0.12.2) (2026-06-12)
 
 
