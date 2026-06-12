@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.2](https://github.com/kontourai/surface/compare/v0.12.1...v0.12.2) (2026-06-12)
+
+
+### Fixes
+
+* **ci:** author release PRs via kontour-release-bot app token ([25c753e](https://github.com/kontourai/surface/commit/25c753e894d94a40a8c12246b45319509eebbe47))
+
 ## [0.12.1](https://github.com/kontourai/surface/compare/v0.12.0...v0.12.1) (2026-06-12)
 
 
