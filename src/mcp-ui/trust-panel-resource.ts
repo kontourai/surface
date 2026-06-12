@@ -53,6 +53,25 @@ function safeJsonStringify(value: unknown): string {
     .replaceAll("&", "\\u0026");
 }
 
+/**
+ * Escapes a JavaScript source string so it is safe to embed verbatim inside
+ * an HTML <script> element.
+ *
+ * The HTML parser terminates a <script> block when it encounters "</script"
+ * (case-insensitive) regardless of JavaScript string or template literal
+ * context.  The universally-safe fix is to replace every "</" sequence with
+ * "<\/" — the backslash-escaped forward slash is valid JavaScript in both
+ * string literals and template literals, and it is invisible to the HTML
+ * tokeniser.
+ *
+ * We also escape "<!--" for the same reason (legacy HTML comment handling in
+ * browsers can cause the parser to treat it as the start of an HTML comment
+ * inside a <script> block).
+ */
+function safeInlineScript(js: string): string {
+  return js.replaceAll("</", "<\\/").replaceAll("<!--", "<\\!--");
+}
+
 function buildHtml(reportJson: string): string {
   return `<!doctype html>
 <html lang="en">
@@ -98,7 +117,7 @@ body {
 <surface-trust-panel></surface-trust-panel>
 <script type="application/json" id="surface-report-data">${reportJson}</script>
 <script type="module">
-${TRUST_PANEL_JS}
+${safeInlineScript(TRUST_PANEL_JS)}
 const dataEl = document.getElementById("surface-report-data");
 const panel = document.querySelector("surface-trust-panel");
 if (dataEl && panel) {

@@ -55,3 +55,19 @@ Releases are automated with release-please: merges to main accumulate into a rel
 https://github.com/kontourai/surface
 
 All projects are Apache-2.0.
+
+## Integration tests
+
+Every embeddable artifact this repo ships — the trust panel web component and
+the MCP UI resources built from it — must be covered at two levels:
+
+1. **Contract tests** that spawn the real process (`tests/mcp.test.ts` runs the
+   actual stdio server) or build the real artifact, asserting payload shapes.
+2. **Browser specs** in `tests/browser/` that render the artifact in Chromium
+   and exercise it: the element upgrades, real data is visible, themes apply,
+   and no external network requests occur. Anything that interpolates data
+   into HTML must include a hostile-input case proving markup and script
+   payloads render as inert text.
+
+`tests/browser/` runs in CI on every build via `npm run verify` — a render
+regression fails the pipeline, not just a local check.
