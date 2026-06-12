@@ -708,6 +708,12 @@ export interface InquiryRecord {
      * through a co-referent subject (mapping-based resolution).
      */
     identityLinkIds?: string[];
+    /**
+     * When rule composition (ruleRef requirements) is used, contains the ids
+     * of all transitively-referenced rules that contributed to the answer,
+     * in evaluation order (excluding the top-level ruleId itself).
+     */
+    transitiveRuleIds?: string[];
   };
   /** The answer, if the outcome is "matched" or "derived". */
   answer?: {
@@ -727,8 +733,22 @@ export interface InquiryRecord {
 
 /**
  * A single requirement within a derivation rule (ADR 0003 §5).
+ *
+ * Two mutually exclusive forms:
+ *  - Claim-based: requires `target` + `acceptedStatuses`.  May add `predicate`
+ *    and/or `fresherThan` to tighten the check.
+ *  - Rule-reference: requires only `ruleRef`.  Met iff the referenced rule
+ *    evaluates to satisfied when resolved against the same rules array.
  */
-export interface DerivationRequirement {
+export type DerivationRequirement =
+  | DerivationClaimRequirement
+  | DerivationRuleRefRequirement;
+
+/**
+ * Claim-based requirement: checks a specific claim against accepted statuses
+ * and optional value predicate / freshness window.
+ */
+export interface DerivationClaimRequirement {
   /** The canonical claim that must exist and satisfy the requirement. */
   target: import("./canonical.js").CanonicalClaimTarget;
   /** The statuses the matched claim's derived status must be in. */
@@ -739,6 +759,26 @@ export interface DerivationRequirement {
     /** The operand value.  For "in", this should be an array.  For "exists", omitted. */
     value?: unknown;
   };
+  /**
+   * Optional freshness window.  When present the claim's authoritative
+   * verification timestamp (latest verifying event's verifiedAt ?? createdAt,
+   * falling back to claim.updatedAt) must be within the given number of days
+   * of the `now` value injected into evaluation.
+   */
+  fresherThan?: { days: number };
+}
+
+/**
+ * Rule-reference requirement: met iff the referenced rule evaluates to
+ * satisfied.  Cycle detection fails the requirement with an explicit reason.
+ * Mutually exclusive with target / predicate / fresherThan.
+ */
+export interface DerivationRuleRefRequirement {
+  /**
+   * The `id` of another DerivationRule in the rules array passed to
+   * evaluateDerivationRule / resolveInquiry.  Met iff that rule is satisfied.
+   */
+  ruleRef: string;
 }
 
 /**

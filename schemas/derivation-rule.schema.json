@@ -2,56 +2,152 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://kontourai.io/schemas/surface/derivation-rule.schema.json",
   "title": "Surface DerivationRule",
-  "description": "A named, versioned rule composing existing claims into a derived boolean answer (ADR 0003 §5).",
+  "description": "A named, versioned rule composing existing claims into a derived boolean answer (ADR 0003 \u00a75).",
   "type": "object",
-  "required": ["id", "version", "name", "target", "requirements", "combinator"],
+  "required": [
+    "id",
+    "version",
+    "name",
+    "target",
+    "requirements",
+    "combinator"
+  ],
   "additionalProperties": false,
   "properties": {
-    "id": { "type": "string" },
-    "version": { "type": "string" },
-    "name": { "type": "string" },
-    "target": { "$ref": "#/$defs/canonicalClaimTarget" },
+    "id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "target": {
+      "$ref": "#/$defs/canonicalClaimTarget"
+    },
     "requirements": {
       "type": "array",
-      "items": { "$ref": "#/$defs/derivationRequirement" }
+      "items": {
+        "$ref": "#/$defs/derivationRequirement"
+      }
     },
-    "combinator": { "enum": ["all", "any"] }
+    "combinator": {
+      "enum": [
+        "all",
+        "any"
+      ]
+    }
   },
   "$defs": {
     "canonicalClaimTarget": {
       "type": "object",
-      "required": ["subjectType", "subjectId", "fieldOrBehavior"],
+      "required": [
+        "subjectType",
+        "subjectId",
+        "fieldOrBehavior"
+      ],
       "additionalProperties": false,
       "properties": {
-        "subjectType": { "type": "string" },
-        "subjectId": { "type": "string" },
-        "fieldOrBehavior": { "type": "string" },
+        "subjectType": {
+          "type": "string"
+        },
+        "subjectId": {
+          "type": "string"
+        },
+        "fieldOrBehavior": {
+          "type": "string"
+        },
         "qualifiers": {
           "type": "object",
-          "additionalProperties": { "type": "string" }
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     },
     "derivationRequirement": {
-      "type": "object",
-      "required": ["target", "acceptedStatuses"],
-      "additionalProperties": false,
-      "properties": {
-        "target": { "$ref": "#/$defs/canonicalClaimTarget" },
-        "acceptedStatuses": {
-          "type": "array",
-          "items": { "enum": ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected"] }
-        },
-        "predicate": {
+      "oneOf": [
+        {
+          "description": "Claim-based requirement: checks a canonical claim against accepted statuses and optional value predicate / freshness window.",
           "type": "object",
-          "required": ["op"],
+          "required": [
+            "target",
+            "acceptedStatuses"
+          ],
           "additionalProperties": false,
           "properties": {
-            "op": { "enum": ["eq", "neq", "gt", "gte", "lt", "lte", "in", "exists"] },
-            "value": {}
+            "target": {
+              "$ref": "#/$defs/canonicalClaimTarget"
+            },
+            "acceptedStatuses": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "unknown",
+                  "proposed",
+                  "assumed",
+                  "verified",
+                  "stale",
+                  "disputed",
+                  "superseded",
+                  "rejected"
+                ]
+              }
+            },
+            "predicate": {
+              "type": "object",
+              "required": [
+                "op"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "op": {
+                  "enum": [
+                    "eq",
+                    "neq",
+                    "gt",
+                    "gte",
+                    "lt",
+                    "lte",
+                    "in",
+                    "exists"
+                  ]
+                },
+                "value": {}
+              }
+            },
+            "fresherThan": {
+              "type": "object",
+              "required": [
+                "days"
+              ],
+              "additionalProperties": false,
+              "description": "The claim's authoritative verification timestamp must be within this many days of the evaluation instant.",
+              "properties": {
+                "days": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "Rule-reference requirement: met iff the referenced rule (resolved from the rules array) evaluates to satisfied.",
+          "type": "object",
+          "required": [
+            "ruleRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "ruleRef": {
+              "type": "string",
+              "description": "The id of another DerivationRule in the rules array. Mutually exclusive with target/predicate/fresherThan."
+            }
           }
         }
-      }
+      ]
     }
   }
 }
