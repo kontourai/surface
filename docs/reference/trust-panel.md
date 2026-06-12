@@ -29,6 +29,9 @@ cp node_modules/@kontourai/surface/dist/src/trust-panel/surface-trust-panel.js p
 <script type="module">
   document.getElementById("panel").report = myTrustReport;
 </script>
+
+<!-- Override the panel heading to match your product's voice -->
+<surface-trust-panel src="./report.json" heading="Why you can trust this listing"></surface-trust-panel>
 ```
 
 The compiled file is a self-contained ES module with no imports, so `type="module"` is the only loading requirement.
@@ -37,7 +40,7 @@ The input is the output of `surface report` or `buildTrustReport` — a derived 
 
 ## What it renders
 
-- A summary header with the report source and generation time.
+- A summary header with the report source and generation time. The heading defaults to "Surface Trust Panel"; set the `heading` attribute to use your own copy.
 - Status chips with plain-language labels (`verified` → "Verified", `stale` → "Needs refresh", `unknown` → "No evidence").
 - One expandable row per claim: subject, asserted field and value, impact, policy, the evidence items behind it, and any transparency gaps, color-coded by severity.
 

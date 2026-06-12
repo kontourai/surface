@@ -240,7 +240,7 @@ test(
       const el = document.querySelector("surface-trust-panel");
       return el?.shadowRoot?.querySelector(".panel-title")?.textContent ?? null;
     });
-    expect(panelTitle).toBe("Surface Transparency");
+    expect(panelTitle).toBe("Surface Trust Panel");
 
     // 3. Claim fields from the example bundle are visible.
     const shadowText = await page.evaluate(() => {
