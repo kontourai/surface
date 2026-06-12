@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.0](https://github.com/kontourai/surface/compare/v0.14.0...v1.0.0) (2026-06-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* require Node >= 22; verify on current LTS (22, 24) ([#78](https://github.com/kontourai/surface/issues/78))
+
+### Features
+
+* require Node &gt;= 22; verify on current LTS (22, 24) ([#78](https://github.com/kontourai/surface/issues/78)) ([b32d2d1](https://github.com/kontourai/surface/commit/b32d2d1f3459cce8b200eb23d4a6c7b59e9937e2))
+
 ## [0.14.0](https://github.com/kontourai/surface/compare/v0.13.0...v0.14.0) (2026-06-12)
 
 
