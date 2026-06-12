@@ -109,3 +109,26 @@ consumers should populate it when the collection channel is known.
   a schema change. Ad-hoc string values in the `kind` field will fail validation.
 - Cryptographic signing and session binding are explicitly backlogged so
   implementers know they are desired, not forgotten.
+
+## Channel roster (amendment)
+
+Photo- and video-attested actions are a collection channel variant. They map to
+existing testimony kinds — `authorized-action` when a named action is captured,
+or `exchange` when a verbal approval is recorded — with the media attached as
+ordinary evidence on the `ReviewOutcome`. When the media carries a valid
+capture-provenance credential (e.g., a C2PA manifest), it is attached with an
+integrity anchor; without one it is ordinary L0 evidence.
+
+Regulatory precedent: remote online notarization frameworks already accept
+video-witnessed signatures as legally admissible acts, establishing that a
+recorded human gesture can satisfy a formal authorization requirement.
+
+Accessibility benefit: recorded verbal approval is an admissible `exchange`
+testimony form, widening participation for reviewers who cannot use keyboard or
+pointer-based interfaces.
+
+This channel variant is a **capability, not a requirement**. It is never
+enabled by default; a vertical UI or deployment must explicitly configure it.
+Channels never substitute for the required fields of the mapped kind — media is
+attached context, not a replacement for `promptRef`, `renderedPrompt`, `action`,
+`authorityRef`, or the `prompt`/`response` pair.
