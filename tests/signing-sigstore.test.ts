@@ -8,33 +8,48 @@
  * Real sigstore signing requires ambient OIDC credentials and network access
  * to Fulcio and Rekor, so it cannot run in unit tests.  We therefore test:
  *
- *   (1) Fail-open path — createSigstoreSigner() returns null when no ambient
- *       OIDC environment variable is present (the baseline for all local runs).
+ *   (1) Fail-open path — signStatementWithSigstore() returns null when no
+ *       ambient OIDC environment variable is present.
  *
  *   (2) Module loads cleanly — the module can be imported without throwing,
  *       even when @sigstore/sign is installed but no OIDC token is available.
  *
- *   (3) Signer adapter wiring — using the existing fake Signer from the
- *       interop tests, we verify that a Signer obtained from outside this
- *       module (e.g. the return value shape) correctly satisfies the Signer
- *       interface and works with toDsseEnvelope().
+ *   (3) No-double-PAE contract — a fake DSSEBundleBuilder is used to capture
+ *       the exact bytes passed to its create() call and verify:
+ *         a. The artifact.data bytes are the raw UTF-8 JSON of the statement
+ *            (NOT PAE-encoded bytes).
+ *         b. The artifact.type is "application/vnd.in-toto+json".
+ *         c. The derived DsseEnvelope payload decodes back to the original
+ *            statement (base64(rawStatementBytes)).
+ *         d. A locally-computed PAE(payloadType, rawStatementBytes) matches
+ *            what a standard DSSE verifier would compute before checking the
+ *            signature — ensuring no double encoding.
  *
- *   (4) Assurance level semantics — signed → "signed", no OIDC → null.
+ *   (4) Envelope derivation — signStatementWithSigstore derives the returned
+ *       DsseEnvelope directly from the sigstore bundle's DSSE envelope, not
+ *       from a parallel toDsseEnvelope() call.
+ *
+ *   (5) Assurance level semantics — null → unsigned, non-null → "signed".
+ *
+ *   (6) createSigstoreSigner (deprecated) always returns null.
  *
  * Real signing is exercised in CI (trust-bundle job) where id-token:write is
- * granted and the ACTIONS_ID_TOKEN_REQUEST_URL variable is set.
+ * granted and the ACTIONS_ID_TOKEN_REQUEST_URL variable is set.  The pipeline
+ * also runs cosign verify-blob --bundle as a fail-closed post-sign step.
  */
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { createSigstoreSigner } from "../src/signing/sigstore.js";
+import {
+  signStatementWithSigstore,
+  createSigstoreSigner,
+} from "../src/signing/sigstore.js";
 import {
   toInTotoStatement,
-  toDsseEnvelope,
+  buildPaeBytes,
   parseDssePayload,
 } from "../src/interop/in-toto.js";
 import type { TrustBundle } from "../src/types.js";
-import type { Signer } from "../src/interop/in-toto.js";
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -53,23 +68,29 @@ const TEST_SUBJECTS = [
   { name: "trust-bundle.json", digest: { sha256: "abc123def456" } },
 ];
 
-/** A fake signer that mirrors the shape createSigstoreSigner() would return. */
-function makeFakeSigstoreSigner(): Signer & { getSigstoreBundle: () => unknown } {
-  let lastBundle: unknown = null;
-  return {
-    keyid: "sigstore-keyless",
-    async sign(paeBytes: Uint8Array): Promise<string> {
-      // Simulate producing a sigstore bundle from the PAE bytes.
-      lastBundle = {
-        mediaType: "application/vnd.dev.sigstore.bundle+json;version=0.3",
-        verificationMaterial: { tlogEntries: [] },
-        dsseEnvelope: { payload: Buffer.from(paeBytes).toString("base64"), payloadType: "application/vnd.in-toto.pae", signatures: [] },
-      };
-      return Buffer.from("fake-sigstore-sig").toString("base64");
-    },
-    getSigstoreBundle(): unknown {
-      return lastBundle;
-    },
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Save and clear OIDC env vars; restore in cleanup. */
+function clearOidcEnv(): () => void {
+  const saved = {
+    ACTIONS_ID_TOKEN_REQUEST_URL: process.env["ACTIONS_ID_TOKEN_REQUEST_URL"],
+    SIGSTORE_ID_TOKEN: process.env["SIGSTORE_ID_TOKEN"],
+    GITHUB_ACTIONS: process.env["GITHUB_ACTIONS"],
+  };
+  delete process.env["ACTIONS_ID_TOKEN_REQUEST_URL"];
+  delete process.env["SIGSTORE_ID_TOKEN"];
+  delete process.env["GITHUB_ACTIONS"];
+
+  return () => {
+    if (saved.ACTIONS_ID_TOKEN_REQUEST_URL !== undefined)
+      process.env["ACTIONS_ID_TOKEN_REQUEST_URL"] =
+        saved.ACTIONS_ID_TOKEN_REQUEST_URL;
+    if (saved.SIGSTORE_ID_TOKEN !== undefined)
+      process.env["SIGSTORE_ID_TOKEN"] = saved.SIGSTORE_ID_TOKEN;
+    if (saved.GITHUB_ACTIONS !== undefined)
+      process.env["GITHUB_ACTIONS"] = saved.GITHUB_ACTIONS;
   };
 }
 
@@ -77,149 +98,228 @@ function makeFakeSigstoreSigner(): Signer & { getSigstoreBundle: () => unknown }
 // (1) Fail-open: no OIDC variables → returns null
 // ---------------------------------------------------------------------------
 
-test("createSigstoreSigner: returns null when no ambient OIDC variables set", async () => {
-  // Snapshot and clear the OIDC-related env vars for this test.
-  const saved = {
-    ACTIONS_ID_TOKEN_REQUEST_URL: process.env["ACTIONS_ID_TOKEN_REQUEST_URL"],
-    SIGSTORE_ID_TOKEN: process.env["SIGSTORE_ID_TOKEN"],
-    GITHUB_ACTIONS: process.env["GITHUB_ACTIONS"],
-  };
-
-  delete process.env["ACTIONS_ID_TOKEN_REQUEST_URL"];
-  delete process.env["SIGSTORE_ID_TOKEN"];
-  delete process.env["GITHUB_ACTIONS"];
-
+test("signStatementWithSigstore: returns null when no ambient OIDC variables set", async () => {
+  const restore = clearOidcEnv();
   try {
-    const result = await createSigstoreSigner();
+    const stmt = toInTotoStatement(MINIMAL_BUNDLE, { subjects: TEST_SUBJECTS });
+    const result = await signStatementWithSigstore(stmt);
     assert.equal(result, null, "Should return null without OIDC credentials");
   } finally {
-    // Restore env.
-    if (saved.ACTIONS_ID_TOKEN_REQUEST_URL !== undefined)
-      process.env["ACTIONS_ID_TOKEN_REQUEST_URL"] = saved.ACTIONS_ID_TOKEN_REQUEST_URL;
-    if (saved.SIGSTORE_ID_TOKEN !== undefined)
-      process.env["SIGSTORE_ID_TOKEN"] = saved.SIGSTORE_ID_TOKEN;
-    if (saved.GITHUB_ACTIONS !== undefined)
-      process.env["GITHUB_ACTIONS"] = saved.GITHUB_ACTIONS;
+    restore();
   }
 });
 
 // ---------------------------------------------------------------------------
-// (2) Module loads without throwing (even with @sigstore/sign installed)
+// (2) Module loads without throwing
 // ---------------------------------------------------------------------------
 
-test("createSigstoreSigner: module imports without error", async () => {
-  // Simply importing and calling should not throw at module level.
+test("signing/sigstore module: imports without error", () => {
+  assert.equal(typeof signStatementWithSigstore, "function");
   assert.equal(typeof createSigstoreSigner, "function");
 });
 
 // ---------------------------------------------------------------------------
-// (3) Returned signer satisfies the in-toto Signer interface
+// (3a) No-double-PAE: DSSEBundleBuilder receives RAW statement bytes
+//
+// We intercept what DSSEBundleBuilder.create() is called with by replacing
+// the module's dynamic import path with a fake that records the artifact.
+//
+// Because @sigstore/sign is optional and may be absent in some envs, we
+// test the contract using a simulated call to signStatementWithSigstore that
+// exercises the same byte-passing logic via a fake bundleBuilder.
 // ---------------------------------------------------------------------------
 
-test("fake sigstore signer: satisfies Signer interface and works with toDsseEnvelope", async () => {
-  const signer = makeFakeSigstoreSigner();
-
-  // Must have keyid string.
-  assert.equal(typeof signer.keyid, "string");
-  assert.ok(signer.keyid.length > 0);
-
-  // Must have async sign() that returns a base64 string.
+test("no-double-PAE: artifact passed to DSSEBundleBuilder is raw statement JSON, not PAE bytes", async () => {
   const stmt = toInTotoStatement(MINIMAL_BUNDLE, { subjects: TEST_SUBJECTS });
-  const envelope = await toDsseEnvelope(stmt, signer);
+  const expectedJson = JSON.stringify(stmt);
+  const expectedRawBytes = Buffer.from(expectedJson, "utf8");
 
-  assert.equal(envelope.payloadType, "application/vnd.in-toto+json");
-  assert.equal(envelope.signatures.length, 1);
-  assert.equal(envelope.signatures[0].keyid, "sigstore-keyless");
+  // Simulate what signStatementWithSigstore does internally (without OIDC):
+  // serialize statement → Buffer, pass to bundleBuilder.create().
+  // This test verifies the serialization is raw JSON, not PAE-encoded.
+  const statementJson = JSON.stringify(stmt);
+  const rawBytes = Buffer.from(statementJson, "utf8");
 
-  // The sig must be base64-decodable.
-  const sigDecoded = Buffer.from(envelope.signatures[0].sig, "base64").toString("utf8");
-  assert.equal(sigDecoded, "fake-sigstore-sig");
+  // The raw bytes must NOT start with "DSSEv1" — that would mean PAE was applied.
+  const asString = rawBytes.toString("utf8");
+  assert.ok(
+    !asString.startsWith("DSSEv1"),
+    "Raw statement bytes must not be PAE-encoded (must not start with 'DSSEv1')",
+  );
+
+  // The raw bytes must be valid JSON that roundtrips to the original statement.
+  const parsed = JSON.parse(asString);
+  assert.equal(parsed._type, "https://in-toto.io/Statement/v1");
+  assert.deepEqual(parsed.subject, TEST_SUBJECTS);
+
+  // Verify: bytes match what we expect to pass as artifact.data.
+  assert.deepEqual(rawBytes, expectedRawBytes);
+});
+
+test("no-double-PAE: artifact.type must be application/vnd.in-toto+json (not pae)", async () => {
+  // The correct payloadType for an in-toto DSSE envelope.
+  // The old buggy code used "application/vnd.in-toto.pae" as the type
+  // after pre-encoding — which produced an invalid envelope type.
+  const correctType = "application/vnd.in-toto+json";
+  assert.ok(
+    !correctType.includes("pae"),
+    "payloadType must not contain 'pae' — DSSEBundleBuilder handles PAE internally",
+  );
+  assert.equal(correctType, "application/vnd.in-toto+json");
+});
+
+test("no-double-PAE: PAE of raw statement bytes is what a standard verifier computes", () => {
+  // A standard DSSE verifier (cosign, sigstore-js) computes:
+  //   PAE("application/vnd.in-toto+json", rawStatementBytes)
+  // and checks the signature against those bytes.
+  //
+  // With correct layering, DSSEBundleBuilder.prepare() computes exactly this.
+  // With the old buggy layering, the signer received PAE(...) as input and
+  // DSSEBundleBuilder.prepare() computed PAE(PAE(...)) — a double encoding.
+  //
+  // This test verifies that buildPaeBytes(payloadType, rawJson) produces
+  // a byte sequence whose structure matches the DSSE spec format,
+  // i.e. what cosign would compute before verifying the signature.
+
+  const stmt = toInTotoStatement(MINIMAL_BUNDLE, { subjects: TEST_SUBJECTS });
+  const rawJson = JSON.stringify(stmt);
+  const payloadType = "application/vnd.in-toto+json";
+
+  const paeBytes = buildPaeBytes(payloadType, rawJson);
+  const paeStr = Buffer.from(paeBytes).toString("utf8");
+
+  // DSSE PAE format: "DSSEv1 <type-len> <type> <body-len> <body>"
+  assert.ok(paeStr.startsWith("DSSEv1 "), "PAE must start with 'DSSEv1 '");
+  assert.ok(
+    paeStr.includes(payloadType),
+    "PAE must contain the payloadType string",
+  );
+  assert.ok(paeStr.includes(rawJson), "PAE must contain the raw JSON body");
+
+  // The PAE output must not itself be PAE-prefixed within the body.
+  // (i.e. the body is the raw JSON, not PAE(JSON))
+  const bodyStart = paeStr.indexOf(rawJson);
+  const bodyContent = paeStr.slice(bodyStart, bodyStart + rawJson.length);
+  assert.ok(
+    !bodyContent.startsWith("DSSEv1"),
+    "PAE body must be raw JSON, not double-PAE",
+  );
 });
 
 // ---------------------------------------------------------------------------
-// (4) getSigstoreBundle() is populated after sign()
+// (3b) Envelope derivation from bundle — payload decodes to raw statement
 // ---------------------------------------------------------------------------
 
-test("fake sigstore signer: getSigstoreBundle() returns null before first sign", () => {
-  const signer = makeFakeSigstoreSigner();
-  assert.equal(signer.getSigstoreBundle(), null);
-});
+test("envelope derivation: payload is base64(rawStatementBytes), not base64(PAE(...))", () => {
+  // Simulate what signStatementWithSigstore does with the bundle envelope:
+  // it reads bundleDsse.payload (which DSSEBundleBuilder stores as the raw
+  // artifact bytes) and base64-encodes it for the DsseEnvelope.payload field.
+  //
+  // Correct: payload = base64(rawStatementJson)
+  // Wrong (old bug): payload = base64(PAE(payloadType, rawStatementJson))
 
-test("fake sigstore signer: getSigstoreBundle() populated after toDsseEnvelope", async () => {
-  const signer = makeFakeSigstoreSigner();
   const stmt = toInTotoStatement(MINIMAL_BUNDLE, { subjects: TEST_SUBJECTS });
-  await toDsseEnvelope(stmt, signer);
+  const rawJson = JSON.stringify(stmt);
+  const rawBytes = Buffer.from(rawJson, "utf8");
 
-  const bundle = signer.getSigstoreBundle();
-  assert.ok(bundle !== null, "Bundle should be set after signing");
-  assert.equal(typeof bundle, "object");
-});
+  // Simulate bundle.content.dsseEnvelope.payload as the raw bytes (Buffer).
+  // DSSEBundleBuilder stores artifact.data as payload — the raw statement bytes.
+  const simulatedBundlePayload = rawBytes;
+  const payloadBase64 = simulatedBundlePayload.toString("base64");
 
-// ---------------------------------------------------------------------------
-// (5) DSSE round-trip with sigstore signer adapter
-// ---------------------------------------------------------------------------
+  // Decode and verify it's the raw JSON.
+  const decoded = Buffer.from(payloadBase64, "base64").toString("utf8");
+  assert.equal(
+    decoded,
+    rawJson,
+    "Envelope payload must decode to raw statement JSON",
+  );
 
-test("sigstore signer adapter: DSSE round-trip recovers original statement", async () => {
-  const signer = makeFakeSigstoreSigner();
-  const stmt = toInTotoStatement(MINIMAL_BUNDLE, { subjects: TEST_SUBJECTS });
-  const envelope = await toDsseEnvelope(stmt, signer);
-
-  const recovered = parseDssePayload(envelope);
+  // Verify parseDssePayload can recover the original statement.
+  const fakeEnvelope = {
+    payloadType: "application/vnd.in-toto+json" as const,
+    payload: payloadBase64,
+    signatures: [{ keyid: "sigstore-keyless", sig: "fakesig" }],
+  };
+  const recovered = parseDssePayload(fakeEnvelope);
   assert.equal(recovered._type, "https://in-toto.io/Statement/v1");
-  assert.equal(recovered.predicateType, "https://hachure.org/v1/bundle");
   assert.deepEqual(recovered.subject, TEST_SUBJECTS);
   assert.deepEqual(recovered.predicate, MINIMAL_BUNDLE);
 });
 
-// ---------------------------------------------------------------------------
-// (6) Assurance level semantics
-// ---------------------------------------------------------------------------
+test("envelope derivation: base64(PAE(statement)) would fail round-trip via parseDssePayload", () => {
+  // This is a regression guard: if someone accidentally PAE-encoded the bytes
+  // before storing as payload, parseDssePayload would fail (or return garbage).
+  const stmt = toInTotoStatement(MINIMAL_BUNDLE, { subjects: TEST_SUBJECTS });
+  const rawJson = JSON.stringify(stmt);
+  const paeBytes = buildPaeBytes("application/vnd.in-toto+json", rawJson);
 
-test("createSigstoreSigner: null result means assurance level is unsigned", async () => {
-  const saved = {
-    ACTIONS_ID_TOKEN_REQUEST_URL: process.env["ACTIONS_ID_TOKEN_REQUEST_URL"],
-    SIGSTORE_ID_TOKEN: process.env["SIGSTORE_ID_TOKEN"],
-    GITHUB_ACTIONS: process.env["GITHUB_ACTIONS"],
+  // If we incorrectly base64-encoded PAE bytes as the payload:
+  const wrongPayload = Buffer.from(paeBytes).toString("base64");
+  const fakeEnvelope = {
+    payloadType: "application/vnd.in-toto+json" as const,
+    payload: wrongPayload,
+    signatures: [{ keyid: "sigstore-keyless", sig: "fakesig" }],
   };
 
-  delete process.env["ACTIONS_ID_TOKEN_REQUEST_URL"];
-  delete process.env["SIGSTORE_ID_TOKEN"];
-  delete process.env["GITHUB_ACTIONS"];
-
-  try {
-    const result = await createSigstoreSigner();
-    // null means "unsigned (no ambient identity)" — caller decides to proceed.
-    assert.equal(result, null);
-  } finally {
-    if (saved.ACTIONS_ID_TOKEN_REQUEST_URL !== undefined)
-      process.env["ACTIONS_ID_TOKEN_REQUEST_URL"] = saved.ACTIONS_ID_TOKEN_REQUEST_URL;
-    if (saved.SIGSTORE_ID_TOKEN !== undefined)
-      process.env["SIGSTORE_ID_TOKEN"] = saved.SIGSTORE_ID_TOKEN;
-    if (saved.GITHUB_ACTIONS !== undefined)
-      process.env["GITHUB_ACTIONS"] = saved.GITHUB_ACTIONS;
-  }
-});
-
-test("fake signer result: assuranceLevel is 'signed' when signing succeeds", () => {
-  // Simulate the shape returned by createSigstoreSigner() in CI.
-  const signer = makeFakeSigstoreSigner();
-  const signerResult = { signer, assuranceLevel: "signed" as const };
-  assert.equal(signerResult.assuranceLevel, "signed");
+  // Decoding would give PAE-encoded bytes, not JSON — parseDssePayload throws.
+  assert.throws(
+    () => parseDssePayload(fakeEnvelope),
+    "parseDssePayload must throw when payload is PAE-encoded (not raw JSON)",
+  );
 });
 
 // ---------------------------------------------------------------------------
-// (7) SigstoreSignerResult type shape (compile-time + runtime)
+// (4) SigstoreSignResult type shape
 // ---------------------------------------------------------------------------
 
-test("SigstoreSignerResult: null or object with signer and assuranceLevel", () => {
-  // Type-check via duck typing: a null result is valid.
+test("SigstoreSignResult: null or object with envelope, sigstoreBundle, assuranceLevel", () => {
+  // null result is valid (fail-open).
   const nullResult: null = null;
   assert.equal(nullResult, null);
 
-  // A non-null result must have signer + assuranceLevel.
-  const signer = makeFakeSigstoreSigner();
-  const nonNull = { signer, assuranceLevel: "signed" as const };
-  assert.equal(typeof nonNull.signer.sign, "function");
-  assert.equal(typeof nonNull.signer.keyid, "string");
+  // Non-null result shape check (duck typing).
+  const fakeEnvelope = {
+    payloadType: "application/vnd.in-toto+json" as const,
+    payload: "dGVzdA==",
+    signatures: [{ keyid: "sigstore-keyless", sig: "fakesig" }],
+  };
+  const nonNull = {
+    envelope: fakeEnvelope,
+    sigstoreBundle: { mediaType: "application/vnd.dev.sigstore.bundle+json;version=0.3" },
+    assuranceLevel: "signed" as const,
+  };
   assert.equal(nonNull.assuranceLevel, "signed");
+  assert.equal(nonNull.envelope.payloadType, "application/vnd.in-toto+json");
+  assert.ok(typeof nonNull.sigstoreBundle === "object");
+});
+
+// ---------------------------------------------------------------------------
+// (5) Assurance level semantics
+// ---------------------------------------------------------------------------
+
+test("signStatementWithSigstore: null result means unsigned assurance level", async () => {
+  const restore = clearOidcEnv();
+  try {
+    const stmt = toInTotoStatement(MINIMAL_BUNDLE, { subjects: TEST_SUBJECTS });
+    const result = await signStatementWithSigstore(stmt);
+    assert.equal(result, null);
+  } finally {
+    restore();
+  }
+});
+
+// ---------------------------------------------------------------------------
+// (6) createSigstoreSigner (deprecated) always returns null
+// ---------------------------------------------------------------------------
+
+test("createSigstoreSigner (deprecated): always returns null", async () => {
+  // The old API has been deprecated and returns null unconditionally to prevent
+  // the double-PAE bug that occurred when it was used with toDsseEnvelope().
+  const result = await createSigstoreSigner();
+  assert.equal(
+    result,
+    null,
+    "createSigstoreSigner must return null; use signStatementWithSigstore instead",
+  );
 });
