@@ -103,11 +103,37 @@ function renderRunPicker() {
   });
 }
 
+// ── theme toggle ───────────────────────────────────────────
+function getEffectiveTheme() {
+  const stored = localStorage.getItem("surface-theme");
+  if (stored === "light" || stored === "dark") return stored;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  localStorage.setItem("surface-theme", theme);
+}
+
+function toggleTheme() {
+  const current = getEffectiveTheme();
+  applyTheme(current === "dark" ? "light" : "dark");
+}
+
 // ── boot ───────────────────────────────────────────────
 const _bootUrl = getUrlState();
 applyUrlFilters(_bootUrl);
 updateConsoleChromeMetrics();
 window.addEventListener("resize", updateConsoleChromeMetrics);
+
+// Apply persisted/system theme on boot (inline script in <head> already does
+// first-paint, this ensures the JS-readable state is consistent).
+(function() {
+  const theme = getEffectiveTheme();
+  document.documentElement.setAttribute("data-theme", theme);
+})();
+
+el("themeToggle")?.addEventListener("click", toggleTheme);
 
 currentRunId = _bootUrl.run ?? null;
 currentData = cfg.consoleModel ?? cfg.emptyConsoleModel;

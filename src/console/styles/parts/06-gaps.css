@@ -236,3 +236,77 @@
   color: var(--ink);
 }
 
+
+/* ── Item 4: Gap severity badge ─────────────────────────────── */
+.gap-severity-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0.08rem 0.4rem;
+  border-radius: 99px;
+  border: 1px solid var(--line);
+  background: var(--raised);
+  color: var(--muted);
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  flex-shrink: 0;
+}
+
+.gap-severity-high {
+  background: var(--red-bg);
+  color: var(--red);
+  border-color: color-mix(in srgb, var(--red) 30%, transparent);
+}
+
+.gap-severity-medium {
+  background: var(--orange-bg);
+  color: var(--orange);
+  border-color: color-mix(in srgb, var(--orange) 30%, transparent);
+}
+
+.gap-severity-low {
+  background: var(--blue-bg);
+  color: var(--blue);
+  border-color: color-mix(in srgb, var(--blue) 30%, transparent);
+}
+
+/* ── Item 4: Gap message clamped with expander ──────────────── */
+.gap-msg-details {
+  margin: 0.25rem 0 0;
+}
+
+.gap-msg-details > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.gap-msg-details > summary::-webkit-details-marker { display: none; }
+
+.gap-msg--clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.gap-msg-details[open] .gap-msg--clamped {
+  display: none;
+}
+
+.gap-msg--expanded {
+  display: none;
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.gap-msg-details[open] .gap-msg--expanded {
+  display: block;
+}

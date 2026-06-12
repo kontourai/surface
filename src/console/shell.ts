@@ -8,6 +8,15 @@ export function buildConsoleHtml(config: SurfaceConsoleRuntimeConfig = {}): stri
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Surface Console</title>
   <link rel="stylesheet" href="/console.css">
+  <script>
+    (function(){
+      var stored = localStorage.getItem("surface-theme");
+      var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      var theme = stored || (prefersDark ? "dark" : "light");
+      if (theme === "light") document.documentElement.setAttribute("data-theme","light");
+      else document.documentElement.setAttribute("data-theme","dark");
+    })();
+  </script>
 </head>
 <body class="console-page theme-surface">
   <header class="dash-header">
@@ -31,6 +40,15 @@ export function buildConsoleHtml(config: SurfaceConsoleRuntimeConfig = {}): stri
     <div class="dash-metrics-row">
       <canvas id="statusDonut" class="status-donut" width="52" height="52" aria-hidden="true"></canvas>
       <div id="consoleMetrics" class="dash-metrics"></div>
+      <button type="button" class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark theme">
+        <svg class="icon-moon" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path d="M12.5 9A6 6 0 015 1.5a6 6 0 100 11 6 6 0 007.5-3.5z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <svg class="icon-sun" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <circle cx="7" cy="7" r="3" stroke="currentColor" stroke-width="1.4"/>
+          <path d="M7 1v1M7 12v1M1 7h1M12 7h1M2.93 2.93l.7.7M10.37 10.37l.7.7M2.93 11.07l.7-.7M10.37 3.63l.7-.7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+      </button>
     </div>
   </header>
 

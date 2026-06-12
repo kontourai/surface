@@ -134,15 +134,32 @@ function renderFeed(d) {
   const visible = filterClaims(d.claims ?? []);
   el("feedCount").textContent =
     visible.length + " of " + (d.claims?.length ?? 0) + " claims";
-  el("claimFeed").innerHTML = visible.length
-    ? visible.map((c, i) => claimCard(c, d.claims.indexOf(c), i)).join("")
-    : (d.claims?.length
-        ? `<p class="empty-state">No claims match the current filters.</p>`
-        : `<div class="empty-state empty-state--setup">
-            <p class="empty-setup-title">No run data yet</p>
-            <p>Run the producer to generate a read model, then refresh this console.</p>
-            <code class="empty-setup-cmd">veritas readiness --working-tree</code>
-           </div>`);
+  if (visible.length) {
+    el("claimFeed").innerHTML = visible.map((c, i) => claimCard(c, d.claims.indexOf(c), i)).join("");
+  } else if (d.claims?.length) {
+    el("claimFeed").innerHTML = `<p class="empty-state">No claims match the current filters.</p>`;
+  } else {
+    // Zero-claims empty state — designed with producer command
+    el("claimFeed").innerHTML = `<div class="empty-state empty-state--setup" id="emptyStateSetup">
+      <p class="empty-setup-title">No claims yet</p>
+      <p class="empty-setup-body">The Surface Console shows the trust state of your project — verified claims, stale evidence, and transparency gaps. Run your producer to emit a first claim.</p>
+      <div class="empty-setup-cmd-row">
+        <code class="empty-setup-cmd" id="emptyStateCmd">npx surface console</code>
+        <button type="button" class="empty-setup-copy-btn" data-copy-cmd="npx surface console" aria-label="Copy producer command">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><rect x="1" y="3" width="8" height="8" rx="1" stroke="currentColor" stroke-width="1.3"/><path d="M3 3V2a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1h-1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <p class="empty-setup-hint">After your producer writes a run snapshot, this console will populate automatically on the next refresh. See the <a class="empty-setup-link" href="https://kontourai.io/surface/docs/guides/getting-started" target="_blank" rel="noopener">getting started guide</a> for producer setup.</p>
+    </div>`;
+    // wire copy button
+    el("claimFeed").querySelector(".empty-setup-copy-btn")?.addEventListener("click", function() {
+      const cmd = this.dataset.copyCmd ?? "";
+      navigator.clipboard?.writeText(cmd).then(() => {
+        this.classList.add("copied");
+        setTimeout(() => this.classList.remove("copied"), 2000);
+      }).catch(() => {});
+    });
+  }
   el("claimFeed").querySelectorAll("[data-claim-index]").forEach(card => {
     card.addEventListener("click", () => {
       const idx = Number(card.dataset.claimIndex);

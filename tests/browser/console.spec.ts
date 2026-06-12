@@ -22,6 +22,9 @@ test("renders standalone Surface Console with embedded Console Kit tokens", asyn
     await expect(page.locator("#claimFeed")).toContainText("npm test");
     await expect(page.locator("#attentionChip")).toBeVisible();
 
+    // Theme toggle is present in the header
+    await expect(page.locator("#themeToggle")).toBeVisible();
+
     const tokenState = await page.evaluate(() => {
       const styles = getComputedStyle(document.body);
       return {
@@ -47,6 +50,65 @@ test("renders standalone Surface Console with embedded Console Kit tokens", asyn
   }
 });
 
+test("theme toggle flips data-theme attribute and persists across reload", async ({ page }) => {
+  const consoleServer = await startSurfaceConsole();
+
+  try {
+    await page.goto(consoleServer.url);
+
+    // Read initial theme
+    const initialTheme = await page.evaluate(() =>
+      document.documentElement.getAttribute("data-theme")
+    );
+    expect(["light", "dark"]).toContain(initialTheme);
+
+    // Click toggle
+    await page.locator("#themeToggle").click();
+
+    // Theme should have flipped
+    const flippedTheme = await page.evaluate(() =>
+      document.documentElement.getAttribute("data-theme")
+    );
+    expect(flippedTheme).not.toBe(initialTheme);
+    expect(["light", "dark"]).toContain(flippedTheme);
+
+    // Persisted in localStorage
+    const stored = await page.evaluate(() =>
+      localStorage.getItem("surface-theme")
+    );
+    expect(stored).toBe(flippedTheme);
+
+    // Reload — should restore the flipped theme
+    await page.reload();
+    const themeAfterReload = await page.evaluate(() =>
+      document.documentElement.getAttribute("data-theme")
+    );
+    expect(themeAfterReload).toBe(flippedTheme);
+  } finally {
+    await consoleServer.stop();
+  }
+});
+
+test("empty state renders with producer command against zero-claim fixture", async ({ page }) => {
+  const consoleServer = await startSurfaceConsole({ emptyClaims: true });
+
+  try {
+    await page.goto(consoleServer.url);
+
+    // The designed empty state should be visible
+    await expect(page.locator("#emptyStateSetup")).toBeVisible();
+    // It should contain the producer command
+    await expect(page.locator("#emptyStateCmd")).toBeVisible();
+    await expect(page.locator("#emptyStateCmd")).toContainText("npx surface console");
+    // Copy button should be present
+    await expect(page.locator(".empty-setup-copy-btn")).toBeVisible();
+    // Descriptive body text
+    await expect(page.locator(".empty-setup-body")).toBeVisible();
+  } finally {
+    await consoleServer.stop();
+  }
+});
+
 function collectConsoleErrors(page: Page): string[] {
   const consoleErrors: string[] = [];
   page.on("console", (message) => {
@@ -58,12 +120,12 @@ function collectConsoleErrors(page: Page): string[] {
   return consoleErrors;
 }
 
-async function startSurfaceConsole(): Promise<{ url: string; stop: () => Promise<void> }> {
+async function startSurfaceConsole(opts: { emptyClaims?: boolean } = {}): Promise<{ url: string; stop: () => Promise<void> }> {
   const port = await getFreePort();
   const dir = await mkdtemp(join(tmpdir(), "surface-console-browser-"));
   const readModelPath = join(dir, "latest.console.json");
   const storePath = join(dir, "veritas.claims.json");
-  await writeFile(readModelPath, `${JSON.stringify(consoleReadModel(), null, 2)}\n`);
+  await writeFile(readModelPath, `${JSON.stringify(opts.emptyClaims ? consoleReadModelEmpty() : consoleReadModel(), null, 2)}\n`);
 
   const child = spawn(
     process.execPath,
@@ -161,5 +223,24 @@ function consoleReadModel() {
         verificationPolicyId: "policy.test",
       },
     ],
+  };
+}
+
+function consoleReadModelEmpty() {
+  return {
+    producer: {
+      runId: "browser-fixture-empty",
+      timestamp: "2026-06-09T12:00:00.000Z",
+      sourceKind: "working-tree",
+      sourceScope: ["staged"],
+    },
+    summary: {
+      claimCount: 0,
+      statusCounts: {},
+      transparencyGapCount: 0,
+      attentionClaimIds: [],
+      surfaceCounts: {},
+    },
+    claims: [],
   };
 }

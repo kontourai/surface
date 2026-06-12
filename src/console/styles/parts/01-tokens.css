@@ -83,8 +83,34 @@
   --k-brand: #14a37a;
 }
 
+/* ── Light theme override (explicit data-theme="light") ──── */
+[data-theme="light"] {
+  color-scheme: light;
+  --k-bg: #f7f8fa;
+  --k-panel: #ffffff;
+  --k-panel-raised: #f0f3f7;
+  --k-line: rgba(35, 49, 65, 0.12);
+  --k-line-strong: rgba(35, 49, 65, 0.2);
+  --k-shadow: 0 20px 42px -34px rgba(19, 27, 38, 0.36);
+  --k-text: #17202b;
+  --k-text-muted: #4e6074;
+  --k-text-faint: #7a8999;
+  --k-brand: #0f766e;
+  --k-brand-contrast: #ffffff;
+  --k-positive: #0f8f66;
+  --k-caution: #a86612;
+  --k-negative: #c24141;
+  --k-neutral: #6b7785;
+  --k-active: #3266d6;
+}
+
+[data-theme="light"] .theme-surface {
+  --k-brand: #0f6b52;
+}
+
+/* ── System preference fallback (no explicit data-theme) ──── */
 @media (prefers-color-scheme: light) {
-  :root {
+  :root:not([data-theme="dark"]) {
     color-scheme: light;
     --k-bg: #f7f8fa;
     --k-panel: #ffffff;
@@ -104,7 +130,7 @@
     --k-active: #3266d6;
   }
 
-  .theme-surface {
+  :root:not([data-theme="dark"]) .theme-surface {
     --k-brand: #0f6b52;
   }
 }
@@ -132,4 +158,3 @@
   --s-shadow:   var(--shadow);
   --s-shadow-lg:var(--shadow-lg);
 }
-

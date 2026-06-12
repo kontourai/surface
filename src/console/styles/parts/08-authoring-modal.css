@@ -136,3 +136,44 @@
   line-height: 1.6;
 }
 
+
+/* ── Item 5: Full-screen sheet on ≤480px ─────────────────────── */
+@media (max-width: 480px) {
+  .claim-modal {
+    /* Cover the full viewport */
+    width: 100vw;
+    max-width: 100vw;
+    max-height: 100dvh;
+    height: 100dvh;
+    border-radius: 0;
+    border: none;
+    margin: 0;
+    padding: 0;
+    /* Position at top so it fills from the top down */
+    position: fixed;
+    top: 0;
+    left: 0;
+  }
+
+  .claim-modal form {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+  }
+
+  .modal-body {
+    flex: 1;
+    max-height: none;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Sticky footer actions */
+  .modal-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    flex-shrink: 0;
+    box-shadow: 0 -1px 0 var(--line);
+  }
+}
