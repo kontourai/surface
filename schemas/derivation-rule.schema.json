@@ -130,6 +130,26 @@
                   "exclusiveMinimum": 0
                 }
               }
+            },
+            "requiresActiveAuthority": {
+              "type": "boolean",
+              "const": true,
+              "description": "When true, the claim's most-recent status-bearing verification event actor must have an AuthorityTrace in the bundle that is active at the evaluation instant (validFrom/validUntil window respected, not revoked). Unmet reason names the actor and why (no trace / expired / revoked)."
+            },
+            "corroboration": {
+              "type": "object",
+              "required": [
+                "minActors"
+              ],
+              "additionalProperties": false,
+              "description": "Minimum number of DISTINCT collectedBy actors whose evidence for this claim carries supportStrength \"entails\". Two entailing evidence items from the same actor do NOT satisfy minActors:2. Addresses Art. 14(5)-style distinct-party review. Note: actors are the implementable proxy for distinct-party review; organisational role-awareness (role field on Evidence) is future work.",
+              "properties": {
+                "minActors": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "The minimum count of distinct actor values on entailing evidence items."
+                }
+              }
             }
           }
         },
