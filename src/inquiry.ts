@@ -9,6 +9,7 @@
  */
 import type {
   Claim,
+  DerivationClaimRequirement,
   DerivationRequirement,
   DerivationRule,
   IdentityLink,
@@ -16,6 +17,7 @@ import type {
   InquiryRecord,
   TrustBundle,
   TrustStatus,
+  VerificationEvent,
 } from "./types.js";
 import type { CanonicalClaimTarget } from "./canonical.js";
 import { canonicalClaimKey } from "./canonical.js";
@@ -85,7 +87,7 @@ export function resolveInquiry(
     const ruleKey = canonicalClaimKey(rule.target);
     if (ruleKey !== inquiryKey) continue;
 
-    const result = evaluateDerivationRule(rule, bundle, { now });
+    const result = evaluateDerivationRule(rule, bundle, { now, rules });
     const inputSnapshot: Array<{ claimId: string; status: TrustStatus }> = result.inputs.map(
       (item) => ({ claimId: item.claimId, status: item.status }),
     );
@@ -97,6 +99,7 @@ export function resolveInquiry(
         claimIds: result.inputs.map((item) => item.claimId),
         ruleId: rule.id,
         ruleVersion: rule.version,
+        transitiveRuleIds: result.transitiveRuleIds,
       },
       answer: { value: result.satisfied, status: result.satisfied ? "verified" : "proposed" },
       inputSnapshot,
@@ -258,6 +261,12 @@ export interface DerivationRuleResult {
   satisfied: boolean;
   inputs: Array<{ claimId: string; status: TrustStatus; requirementMet: boolean }>;
   missing: CanonicalClaimTarget[];
+  /**
+   * Rule ids of all transitively-referenced rules that contributed (via ruleRef
+   * requirements) to this result, in evaluation order.  Undefined when no ruleRef
+   * requirements were used.
+   */
+  transitiveRuleIds?: string[];
 }
 
 /**
@@ -268,20 +277,84 @@ export interface DerivationRuleResult {
 export function evaluateDerivationRule(
   rule: DerivationRule,
   bundle: TrustBundle,
-  options: { now?: Date } = {},
+  options: { now?: Date; rules?: DerivationRule[] } = {},
+): DerivationRuleResult {
+  return evaluateDerivationRuleInternal(rule, bundle, options, new Set<string>());
+}
+
+/**
+ * Internal recursive implementation with cycle detection.
+ * visitedRuleIds tracks the chain of rule ids currently being evaluated to
+ * detect and break cycles.
+ */
+function evaluateDerivationRuleInternal(
+  rule: DerivationRule,
+  bundle: TrustBundle,
+  options: { now?: Date; rules?: DerivationRule[] },
+  visitedRuleIds: Set<string>,
 ): DerivationRuleResult {
   const now = options.now ?? new Date();
+  const rules = options.rules ?? [];
   const inputs: Array<{ claimId: string; status: TrustStatus; requirementMet: boolean }> = [];
   const missing: CanonicalClaimTarget[] = [];
+  const transitiveRuleIds: string[] = [];
 
   const requirementResults: boolean[] = [];
 
+  // Track this rule as being evaluated (for cycle detection in recursive calls)
+  // nextVisited includes the current rule so that self-references are caught.
+  const nextVisited = new Set(visitedRuleIds);
+  nextVisited.add(rule.id);
+
   for (const req of rule.requirements) {
-    const reqKey = canonicalClaimKey(req.target);
+    // --- Rule-reference requirement ---
+    if (isRuleRefRequirement(req)) {
+      if (nextVisited.has(req.ruleRef)) {
+        // Cycle detected — fail the requirement
+        requirementResults.push(false);
+        // We push a sentinel: no claimId, but the caller can see requirementMet=false
+        // We use the missing array to signal the cycle via a synthetic target
+        missing.push({
+          subjectType: "_cycle_",
+          subjectId: req.ruleRef,
+          fieldOrBehavior: "_ruleRef_",
+        });
+        continue;
+      }
+      const refRule = rules.find((r) => r.id === req.ruleRef);
+      if (!refRule) {
+        missing.push({
+          subjectType: "_missing_rule_",
+          subjectId: req.ruleRef,
+          fieldOrBehavior: "_ruleRef_",
+        });
+        requirementResults.push(false);
+        continue;
+      }
+      const refResult = evaluateDerivationRuleInternal(refRule, bundle, options, nextVisited);
+      // Absorb transitive claim and rule ids
+      for (const inp of refResult.inputs) {
+        if (!inputs.some((i) => i.claimId === inp.claimId)) {
+          inputs.push(inp);
+        }
+      }
+      transitiveRuleIds.push(req.ruleRef);
+      if (Array.isArray(refResult.transitiveRuleIds)) {
+        for (const rid of refResult.transitiveRuleIds) {
+          if (!transitiveRuleIds.includes(rid)) transitiveRuleIds.push(rid);
+        }
+      }
+      requirementResults.push(refResult.satisfied);
+      continue;
+    }
+
+    // --- Claim-based requirement ---
+    const claimReq = req as DerivationClaimRequirement;
+    const reqKey = canonicalClaimKey(claimReq.target);
     const claim = bundle.claims.find((c) => canonicalClaimKey(claimToTarget(c)) === reqKey);
 
     if (!claim) {
-      missing.push(req.target);
+      missing.push(claimReq.target);
       requirementResults.push(false);
       continue;
     }
@@ -295,9 +368,12 @@ export function evaluateDerivationRule(
       now,
     });
 
-    const statusOk = req.acceptedStatuses.includes(status);
-    const predicateOk = req.predicate ? evaluatePredicate(req.predicate, claim.value) : true;
-    const requirementMet = statusOk && predicateOk;
+    const statusOk = claimReq.acceptedStatuses.includes(status);
+    const predicateOk = claimReq.predicate ? evaluatePredicate(claimReq.predicate, claim.value) : true;
+    const freshnessOk = claimReq.fresherThan
+      ? evaluateFresherThan(claim, bundle.events, claimReq.fresherThan.days, now)
+      : true;
+    const requirementMet = statusOk && predicateOk && freshnessOk;
 
     inputs.push({ claimId: claim.id, status, requirementMet });
     requirementResults.push(requirementMet);
@@ -309,7 +385,7 @@ export function evaluateDerivationRule(
       ? requirementResults.every(Boolean)
       : requirementResults.some(Boolean);
 
-  return { satisfied, inputs, missing };
+  return { satisfied, inputs, missing, transitiveRuleIds: transitiveRuleIds.length > 0 ? transitiveRuleIds : undefined };
 }
 
 // ---------------------------------------------------------------------------
@@ -325,8 +401,47 @@ function claimToTarget(claim: Claim): CanonicalClaimTarget {
   };
 }
 
+/**
+ * Type-guard: returns true when a DerivationRequirement is a ruleRef requirement.
+ */
+function isRuleRefRequirement(req: DerivationRequirement): req is { ruleRef: string } {
+  return typeof (req as { ruleRef?: unknown }).ruleRef === "string";
+}
+
+/**
+ * Evaluate the fresherThan constraint for a claim-based requirement.
+ * The authoritative verification timestamp is:
+ *   latest verifying event's verifiedAt ?? createdAt  →  fallback to claim.updatedAt
+ */
+function evaluateFresherThan(
+  claim: Claim,
+  events: VerificationEvent[],
+  days: number,
+  now: Date,
+): boolean {
+  // Find the most recent event that marks the claim as verified (or a positive verifying status)
+  const verifyingStatuses = new Set(["verified", "assumed"]);
+  const claimEvents = events
+    .filter((e) => e.claimId === claim.id && verifyingStatuses.has(e.status))
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+
+  let authTimestamp: number;
+  if (claimEvents.length > 0) {
+    const latestEvent = claimEvents[0];
+    const ts = latestEvent.verifiedAt ?? latestEvent.createdAt;
+    authTimestamp = Date.parse(ts);
+  } else {
+    authTimestamp = Date.parse(claim.updatedAt);
+  }
+
+  if (!Number.isFinite(authTimestamp)) return false;
+
+  const windowMs = days * 24 * 60 * 60 * 1000;
+  return now.getTime() - authTimestamp <= windowMs;
+}
+
 function evaluatePredicate(
-  predicate: NonNullable<DerivationRequirement["predicate"]>,
+  predicate: NonNullable<DerivationClaimRequirement["predicate"]>,
   value: unknown,
 ): boolean {
   const { op, value: operand } = predicate;

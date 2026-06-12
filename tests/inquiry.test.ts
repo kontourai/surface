@@ -696,3 +696,358 @@ test("resolveInquiry does not mutate the bundle", () => {
   resolveInquiry(bundle, makeInquiry(), { now: new Date() });
   assert.equal(JSON.stringify(bundle), original);
 });
+
+// ---------------------------------------------------------------------------
+// ruleRef requirements — ADR 0003 §5 rule composition
+// ---------------------------------------------------------------------------
+
+// Shared claims + rules for ruleRef tests
+const SECURITY_SCAN_CLAIM: import("../src/index.js").Claim = {
+  id: "claim-sec-scan",
+  subjectType: "repo",
+  subjectId: "acme/api",
+  surface: "repo.security",
+  claimType: "software-evidence",
+  fieldOrBehavior: "securityscanpassed",
+  value: true,
+  createdAt: "2026-06-01T00:00:00.000Z",
+  updatedAt: "2026-06-01T00:00:00.000Z",
+};
+
+const VERIFIED_SEC_SCAN_EVENT: import("../src/index.js").VerificationEvent = {
+  id: "evt-sec-scan",
+  claimId: "claim-sec-scan",
+  status: "verified",
+  actor: "ci",
+  method: "test-run",
+  evidenceIds: ["ev-sec-scan"],
+  createdAt: "2026-06-01T00:10:00.000Z",
+  verifiedAt: "2026-06-01T00:10:00.000Z",
+};
+
+const SEC_SCAN_EVIDENCE: import("../src/index.js").Evidence = {
+  id: "ev-sec-scan",
+  claimId: "claim-sec-scan",
+  evidenceType: "test_output",
+  method: "validation",
+  sourceRef: "npm audit",
+  excerptOrSummary: "No vulnerabilities found.",
+  observedAt: "2026-06-01T00:05:00.000Z",
+  collectedBy: "ci",
+};
+
+// Rule A: tests + coverage (leaf rule)
+const RULE_A: import("../src/index.js").DerivationRule = {
+  id: "rule-a",
+  version: "1.0.0",
+  name: "Quality Gate A",
+  target: { subjectType: "repo", subjectId: "acme/api", fieldOrBehavior: "qualitygatea" },
+  requirements: [
+    {
+      target: { subjectType: "repo", subjectId: "acme/api", fieldOrBehavior: "testspassing" },
+      acceptedStatuses: ["verified"],
+      predicate: { op: "eq", value: true },
+    },
+    {
+      target: { subjectType: "repo", subjectId: "acme/api", fieldOrBehavior: "coveragepercent" },
+      acceptedStatuses: ["verified"],
+      predicate: { op: "gte", value: 90 },
+    },
+  ],
+  combinator: "all",
+};
+
+// Rule B: security scan (leaf rule)
+const RULE_B: import("../src/index.js").DerivationRule = {
+  id: "rule-b",
+  version: "1.0.0",
+  name: "Quality Gate B",
+  target: { subjectType: "repo", subjectId: "acme/api", fieldOrBehavior: "qualitygateb" },
+  requirements: [
+    {
+      target: { subjectType: "repo", subjectId: "acme/api", fieldOrBehavior: "securityscanpassed" },
+      acceptedStatuses: ["verified"],
+      predicate: { op: "eq", value: true },
+    },
+  ],
+  combinator: "all",
+};
+
+// Rule C: composite rule — ruleRef to A and B
+const RULE_C: import("../src/index.js").DerivationRule = {
+  id: "rule-c",
+  version: "1.0.0",
+  name: "Composite Gate (A+B)",
+  target: { subjectType: "repo", subjectId: "acme/api", fieldOrBehavior: "compositegate" },
+  requirements: [
+    { ruleRef: "rule-a" },
+    { ruleRef: "rule-b" },
+  ],
+  combinator: "all",
+};
+
+test("ruleRef: satisfied when referenced rule is satisfied", () => {
+  const bundle = makeBundle({
+    claims: [REPO_CLAIM, COVERAGE_CLAIM, SECURITY_SCAN_CLAIM],
+    evidence: [TESTS_EVIDENCE, COVERAGE_EVIDENCE, SEC_SCAN_EVIDENCE],
+    events: [VERIFIED_TESTS_EVENT, VERIFIED_COVERAGE_EVENT, VERIFIED_SEC_SCAN_EVENT],
+    policies: [SOFTWARE_POLICY],
+  });
+  const result = evaluateDerivationRule(RULE_C, bundle, {
+    now: new Date("2026-06-15T00:00:00.000Z"),
+    rules: [RULE_A, RULE_B, RULE_C],
+  });
+  assert.equal(result.satisfied, true);
+  assert.ok(Array.isArray(result.transitiveRuleIds), "transitiveRuleIds should be set");
+  assert.ok(result.transitiveRuleIds!.includes("rule-a"), "rule-a in transitiveRuleIds");
+  assert.ok(result.transitiveRuleIds!.includes("rule-b"), "rule-b in transitiveRuleIds");
+  // Claim ids from both sub-rules propagate to the composite result
+  assert.ok(result.inputs.some((i) => i.claimId === "claim-tests"));
+  assert.ok(result.inputs.some((i) => i.claimId === "claim-coverage"));
+  assert.ok(result.inputs.some((i) => i.claimId === "claim-sec-scan"));
+});
+
+test("ruleRef: unsatisfied when referenced rule fails", () => {
+  // Low coverage makes rule-a fail
+  const lowCoverage = { ...COVERAGE_CLAIM, value: 50 };
+  const bundle = makeBundle({
+    claims: [REPO_CLAIM, lowCoverage, SECURITY_SCAN_CLAIM],
+    evidence: [TESTS_EVIDENCE, COVERAGE_EVIDENCE, SEC_SCAN_EVIDENCE],
+    events: [VERIFIED_TESTS_EVENT, VERIFIED_COVERAGE_EVENT, VERIFIED_SEC_SCAN_EVENT],
+    policies: [SOFTWARE_POLICY],
+  });
+  const result = evaluateDerivationRule(RULE_C, bundle, {
+    now: new Date("2026-06-15T00:00:00.000Z"),
+    rules: [RULE_A, RULE_B, RULE_C],
+  });
+  assert.equal(result.satisfied, false);
+});
+
+test("ruleRef: cycle detection fails the requirement with a missing sentinel", () => {
+  // Rule D references itself → cycle
+  const RULE_D: import("../src/index.js").DerivationRule = {
+    id: "rule-d",
+    version: "1.0.0",
+    name: "Cyclic Rule",
+    target: { subjectType: "t", subjectId: "id", fieldOrBehavior: "cyclic" },
+    requirements: [{ ruleRef: "rule-d" }],
+    combinator: "all",
+  };
+  const bundle = makeBundle({});
+  const result = evaluateDerivationRule(RULE_D, bundle, { rules: [RULE_D] });
+  assert.equal(result.satisfied, false);
+  // The cycle is reported as a missing sentinel with subjectType "_cycle_"
+  assert.ok(result.missing.some((m) => m.subjectType === "_cycle_" && m.subjectId === "rule-d"));
+});
+
+test("ruleRef: A → B → C nested chain resolves correctly with transitiveRuleIds", () => {
+  // Rule B2: leaf — just needs securityscan claim
+  const RULE_B2: import("../src/index.js").DerivationRule = {
+    id: "rule-b2",
+    version: "1.0.0",
+    name: "Inner B",
+    target: { subjectType: "repo", subjectId: "acme/api", fieldOrBehavior: "innerb" },
+    requirements: [
+      {
+        target: { subjectType: "repo", subjectId: "acme/api", fieldOrBehavior: "securityscanpassed" },
+        acceptedStatuses: ["verified"],
+      },
+    ],
+    combinator: "all",
+  };
+  // Rule A2: references B2
+  const RULE_A2: import("../src/index.js").DerivationRule = {
+    id: "rule-a2",
+    version: "1.0.0",
+    name: "Middle A",
+    target: { subjectType: "repo", subjectId: "acme/api", fieldOrBehavior: "middlea" },
+    requirements: [{ ruleRef: "rule-b2" }],
+    combinator: "all",
+  };
+  // Rule TOP: references A2
+  const RULE_TOP: import("../src/index.js").DerivationRule = {
+    id: "rule-top",
+    version: "1.0.0",
+    name: "Top Level",
+    target: { subjectType: "repo", subjectId: "acme/api", fieldOrBehavior: "toplevel" },
+    requirements: [{ ruleRef: "rule-a2" }],
+    combinator: "all",
+  };
+  const bundle = makeBundle({
+    claims: [SECURITY_SCAN_CLAIM],
+    evidence: [SEC_SCAN_EVIDENCE],
+    events: [VERIFIED_SEC_SCAN_EVENT],
+    policies: [SOFTWARE_POLICY],
+  });
+  const result = evaluateDerivationRule(RULE_TOP, bundle, {
+    now: new Date("2026-06-15T00:00:00.000Z"),
+    rules: [RULE_TOP, RULE_A2, RULE_B2],
+  });
+  assert.equal(result.satisfied, true);
+  assert.ok(Array.isArray(result.transitiveRuleIds));
+  // Both rule-a2 and rule-b2 should appear
+  assert.ok(result.transitiveRuleIds!.includes("rule-a2"), "rule-a2 in transitiveRuleIds");
+  assert.ok(result.transitiveRuleIds!.includes("rule-b2"), "rule-b2 in transitiveRuleIds");
+  // The claim from rule-b2 appears in inputs
+  assert.ok(result.inputs.some((i) => i.claimId === "claim-sec-scan"));
+});
+
+// ---------------------------------------------------------------------------
+// fresherThan requirements
+// ---------------------------------------------------------------------------
+
+test("fresherThan: requirement met when claim is within the freshness window", () => {
+  // verifiedAt is 2026-06-01; now is 2026-06-08 → 7 days → exactly within a 7-day window
+  const rule: import("../src/index.js").DerivationRule = {
+    id: "rule-fresh",
+    version: "1",
+    name: "Fresh tests",
+    target: { subjectType: "t", subjectId: "id", fieldOrBehavior: "result" },
+    requirements: [{
+      target: { subjectType: "repo", subjectId: "acme/api", fieldOrBehavior: "testspassing" },
+      acceptedStatuses: ["verified"],
+      fresherThan: { days: 7 },
+    }],
+    combinator: "all",
+  };
+  const bundle = makeBundle({
+    claims: [REPO_CLAIM],
+    evidence: [TESTS_EVIDENCE],
+    events: [VERIFIED_TESTS_EVENT],
+    policies: [SOFTWARE_POLICY],
+  });
+  // exactly 7 days after the verifiedAt timestamp
+  const result = evaluateDerivationRule(rule, bundle, {
+    now: new Date("2026-06-08T00:10:00.000Z"),
+  });
+  assert.equal(result.satisfied, true);
+  assert.equal(result.inputs[0].requirementMet, true);
+});
+
+test("fresherThan: requirement NOT met when claim is outside the freshness window", () => {
+  const rule: import("../src/index.js").DerivationRule = {
+    id: "rule-stale",
+    version: "1",
+    name: "Stale tests",
+    target: { subjectType: "t", subjectId: "id", fieldOrBehavior: "result" },
+    requirements: [{
+      target: { subjectType: "repo", subjectId: "acme/api", fieldOrBehavior: "testspassing" },
+      acceptedStatuses: ["verified"],
+      fresherThan: { days: 7 },
+    }],
+    combinator: "all",
+  };
+  const bundle = makeBundle({
+    claims: [REPO_CLAIM],
+    evidence: [TESTS_EVIDENCE],
+    events: [VERIFIED_TESTS_EVENT],
+    policies: [SOFTWARE_POLICY],
+  });
+  // 8 days after verifiedAt — outside 7-day window
+  const result = evaluateDerivationRule(rule, bundle, {
+    now: new Date("2026-06-09T00:10:00.000Z"),
+  });
+  assert.equal(result.satisfied, false);
+  assert.equal(result.inputs[0].requirementMet, false);
+});
+
+test("fresherThan: combined with acceptedStatuses — fails when status not accepted even if fresh", () => {
+  const rule: import("../src/index.js").DerivationRule = {
+    id: "rule-status-and-fresh",
+    version: "1",
+    name: "Status + Freshness",
+    target: { subjectType: "t", subjectId: "id", fieldOrBehavior: "result" },
+    requirements: [{
+      target: { subjectType: "repo", subjectId: "acme/api", fieldOrBehavior: "testspassing" },
+      acceptedStatuses: ["verified"],  // requires verified
+      fresherThan: { days: 30 },
+    }],
+    combinator: "all",
+  };
+  // No events → status will be "proposed" (there is evidence but no verified event)
+  const bundle = makeBundle({
+    claims: [REPO_CLAIM],
+    evidence: [TESTS_EVIDENCE],
+    events: [],  // no verified event → not "verified" status
+    policies: [SOFTWARE_POLICY],
+  });
+  const result = evaluateDerivationRule(rule, bundle, {
+    now: new Date("2026-06-05T00:00:00.000Z"),
+  });
+  // Status is not "verified" → fails even though it would be fresh
+  assert.equal(result.satisfied, false);
+  assert.equal(result.inputs[0].requirementMet, false);
+});
+
+test("fresherThan: falls back to claim.updatedAt when no verifying events exist", () => {
+  // No verification events — freshness uses claim.updatedAt
+  const claimUpdatedRecently: import("../src/index.js").Claim = {
+    id: "claim-recent-update",
+    subjectType: "t",
+    subjectId: "id",
+    surface: "s",
+    claimType: "ct",
+    fieldOrBehavior: "field",
+    value: "x",
+    createdAt: "2026-06-01T00:00:00.000Z",
+    updatedAt: "2026-06-10T00:00:00.000Z",
+    status: "assumed",
+  };
+  const rule: import("../src/index.js").DerivationRule = {
+    id: "rule-fallback",
+    version: "1",
+    name: "Fallback to updatedAt",
+    target: { subjectType: "t2", subjectId: "id2", fieldOrBehavior: "result" },
+    requirements: [{
+      target: { subjectType: "t", subjectId: "id", fieldOrBehavior: "field" },
+      acceptedStatuses: ["assumed"],
+      fresherThan: { days: 5 },
+    }],
+    combinator: "all",
+  };
+  const bundle = makeBundle({ claims: [claimUpdatedRecently] });
+  // 3 days after updatedAt — within 5-day window
+  const withinResult = evaluateDerivationRule(rule, bundle, {
+    now: new Date("2026-06-13T00:00:00.000Z"),
+  });
+  assert.equal(withinResult.satisfied, true);
+
+  // 6 days after updatedAt — outside 5-day window
+  const outsideResult = evaluateDerivationRule(rule, bundle, {
+    now: new Date("2026-06-16T00:00:00.000Z"),
+  });
+  assert.equal(outsideResult.satisfied, false);
+});
+
+// ---------------------------------------------------------------------------
+// resolutionPath transitivity via resolveInquiry
+// ---------------------------------------------------------------------------
+
+test("resolveInquiry with ruleRef: resolutionPath includes transitiveRuleIds", () => {
+  const bundle = makeBundle({
+    claims: [REPO_CLAIM, COVERAGE_CLAIM, SECURITY_SCAN_CLAIM],
+    evidence: [TESTS_EVIDENCE, COVERAGE_EVIDENCE, SEC_SCAN_EVIDENCE],
+    events: [VERIFIED_TESTS_EVENT, VERIFIED_COVERAGE_EVENT, VERIFIED_SEC_SCAN_EVENT],
+    policies: [SOFTWARE_POLICY],
+  });
+  const inquiry: Inquiry = {
+    id: "inq-composite",
+    question: "Is the composite gate satisfied?",
+    target: { subjectType: "repo", subjectId: "acme/api", fieldOrBehavior: "compositegate" },
+    askedBy: "test",
+    askedAt: "2026-06-15T00:00:00.000Z",
+  };
+  const record = resolveInquiry(bundle, inquiry, {
+    now: new Date("2026-06-15T00:00:00.000Z"),
+    rules: [RULE_A, RULE_B, RULE_C],
+  });
+  assert.equal(record.outcome, "derived");
+  assert.equal(record.answer?.value, true);
+  assert.ok(Array.isArray(record.resolutionPath.transitiveRuleIds));
+  assert.ok(record.resolutionPath.transitiveRuleIds!.includes("rule-a"));
+  assert.ok(record.resolutionPath.transitiveRuleIds!.includes("rule-b"));
+  // All transitive claim ids appear in claimIds
+  assert.ok(record.resolutionPath.claimIds.includes("claim-tests"));
+  assert.ok(record.resolutionPath.claimIds.includes("claim-coverage"));
+  assert.ok(record.resolutionPath.claimIds.includes("claim-sec-scan"));
+});
