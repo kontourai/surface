@@ -140,7 +140,7 @@ interface TrustPanelReport {
 
   class SurfaceTrustPanel extends HTMLElement {
     static get observedAttributes(): string[] {
-      return ["src"];
+      return ["src", "heading"];
     }
 
     #report: TrustPanelReport | null = null;
@@ -168,6 +168,7 @@ interface TrustPanelReport {
 
     attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void {
       if (name === "src" && newValue && newValue !== oldValue) void this.#load(newValue);
+      if (name === "heading" && newValue !== oldValue) this.#render();
     }
 
     get report(): TrustPanelReport | null {
@@ -223,7 +224,7 @@ interface TrustPanelReport {
 
       this.#renderShell(`
         <div class="panel-header">
-          <p class="panel-title">Surface Transparency</p>
+          <p class="panel-title">${escapeHtml(this.getAttribute("heading") ?? "Surface Trust Panel")}</p>
           <p class="panel-meta">${escapeHtml(asText(report.source))}${report.generatedAt ? ` · ${escapeHtml(asText(report.generatedAt))}` : ""}</p>
         </div>
         <div class="chips">${chips}</div>
