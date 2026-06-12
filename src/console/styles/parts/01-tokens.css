@@ -26,8 +26,8 @@
   --k-neutral: #6f8095;
   --k-active: #7aa2ff;
   --k-positive-soft: color-mix(in oklab, var(--k-positive) 14%, transparent);
-  --k-caution-soft: color-mix(in oklab, var(--k-caution) 16%, transparent);
-  --k-negative-soft: color-mix(in oklab, var(--k-negative) 15%, transparent);
+  --k-caution-soft: color-mix(in oklab, var(--k-caution) 14%, transparent);
+  --k-negative-soft: color-mix(in oklab, var(--k-negative) 14%, transparent);
   --k-active-soft: color-mix(in oklab, var(--k-active) 14%, transparent);
   --k-space-1: 0.25rem;
   --k-space-2: 0.5rem;

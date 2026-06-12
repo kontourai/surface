@@ -24,7 +24,7 @@ The root module may re-export `startConsoleServer` and `SurfaceConsoleConfig` / 
 |------|-------|-------------------|----------|-----------|
 | Trust contracts | `src/types.ts`, `schemas/` | Public | Keep public | These define the portable Claim Package, Trust Report, Trace, policy, event, and status shapes. Their size reflects domain breadth more than accidental sprawl. |
 | Validation | `src/validate.ts`, `src/validation/` | Public through `validateTrustBundle` | Keep public entry stable; keep internals private | Builders need one validation function. Implementation-only constants, primitive guards, record validators, and reference checks live under `src/validation/` so schema behavior can evolve without widening the public API. |
-| Trust derivation | `src/status.ts`, `src/derivation.ts`, `src/trust-snapshot.ts`, `src/report.ts`, `src/trace-analysis.ts`, `src/claim-groups.ts`, `src/evidence-support.ts`, `src/identity.ts`, `src/policy-resolver.ts` | Public | Keep public for now | Tests and docs already present these helpers as inspectable derivation utilities. Removing exports would be a breaking API decision, not cleanup. |
+| Trust derivation | `src/status.ts`, `src/derivation.ts`, `src/trust-snapshot.ts`, `src/report.ts`, `src/trace-analysis.ts`, `src/claim-groups.ts`, `src/evidence-support.ts`, `src/identity.ts`, `src/policy-resolver.ts` | Public | Keep public | Tests and docs already present these helpers as inspectable derivation utilities. Removing exports would be a breaking API decision, not cleanup. |
 | Projections | `src/analytics.ts`, `src/linked.ts`, `src/derivation-drilldown.ts` | Public | Keep public | These are useful Builder, Verifier, and Agent Mode read models over reports. |
 | Builder helpers | `src/consumer-sdk.ts`, `src/claim-authoring.ts`, `src/store.ts`, `src/policy-helpers.ts`, `src/attestation.ts` | Public | Keep public, review before 1.0 | These are convenience interfaces. They carry more product opinion than the kernel, but they are documented and tested as package surface today. |
 | Extensions and adapters | `src/extension.ts`, `src/adapter.ts`, `src/adapters/` | Public | Keep public | Producers need a supported seam for vocabulary, claim types, and input adaptation. |
@@ -78,6 +78,7 @@ Every `package.json` script is an active repo workflow, release guard, or contri
 | `docs:build` | Build | Syncs Console Kit docs assets and builds the static docs site. |
 | `sync:console-kit` | Build | Copies docs-site token assets from the installed public `@kontourai/console-kit` package. |
 | `check:console-kit-assets` | Guard | Fails when generated docs-site Console Kit assets are stale. |
+| `check:console-token-drift` | Guard | Fails when the embedded Console token block drifts from the installed @kontourai/console-kit token source. |
 | `check:doc-links` | Guard | Fails when local relative Markdown links in repo docs do not resolve. |
 | `check:generated-boundaries` | Guard | Fails when generated/runtime artifacts blur source, gitignore, or package boundaries. |
 | `check:package-contents` | Release guard | Verifies the npm tarball includes only intended files. |
@@ -89,7 +90,8 @@ Every `package.json` script is an active repo workflow, release guard, or contri
 | `check:content-boundary` | Guard | Prevents terminology and content-boundary regressions. |
 | `setup:repo-hooks` | Contributor utility | Installs repo-owned local Git hooks. |
 | `validate:repo-hooks` | Guard | Verifies the repo hook wiring and docs stay aligned. |
+| `verify:trust-bundle` | Release utility | Structurally verifies a signed trust-bundle.dsse.json + trust-bundle.sigstore.json pair, prints the signer certificate identity, and reports assurance level. |
 
 ## Top Recommendation
 
-Keep the source folders stable for now. The next Console refactor should only replace ordered concatenation with browser modules or a real bundler if new behavior makes the current dependency-free build step painful, and it should include browser coverage for `/console.js` and `/console.css`.
+The source folders are stable. Ordered concatenation may be replaced with browser modules or a real bundler if new behavior makes the current dependency-free build step painful; any such refactor should include browser coverage for `/console.js` and `/console.css`.

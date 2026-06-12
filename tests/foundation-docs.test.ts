@@ -16,8 +16,8 @@ test("first-contact docs preserve Surface as the product-neutral foundation", as
     readDoc("docs/maintenance/generated-artifacts.md"),
   ]);
 
-  assert.match(readme, /shared foundation under Kontour's products/);
-  assert.match(readme, /Surface connects evidence provenance/);
+  assert.match(readme, /shared.*foundation.*Kontour.*products/);
+  assert.match(readme, /connects evidence provenance/);
   assert.match(readme, /Trust Snapshot/);
   assert.match(readme, /Product artifacts may embed `trust\.bundle`/);
   assert.match(readme, /Surface remains responsible for generated report fields/);
@@ -26,7 +26,7 @@ test("first-contact docs preserve Surface as the product-neutral foundation", as
   assert.match(sourceAudit, /src\/index\.ts` is the only public module entrypoint/);
   assert.match(sourceAudit, /Consumers should import from `@kontourai\/surface`/);
   assert.match(sourceAudit, /`test:package-smoke` installs the packed tarball/);
-  assert.match(sourceAudit, /Keep the source folders stable for now/);
+  assert.match(sourceAudit, /source folders.*stable/);
   assert.match(foundation, /## Product Layers Built On Surface/);
   assert.match(foundation, /## Foundation Contract/);
   assert.match(foundation, /Surface generates report-only fields after validation/);

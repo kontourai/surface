@@ -460,7 +460,7 @@ const bundle = {
 const report = buildTrustReport(bundle, { now });
 
 // ---------------------------------------------------------------------------
-// Write outputs
+// Write outputs (bundle + report)
 // ---------------------------------------------------------------------------
 const bundlePath = path.join(outDir, "trust-bundle.json");
 const reportPath = path.join(outDir, "trust-report.json");
@@ -472,16 +472,94 @@ await Promise.all([
 
 console.log(`\nWrote trust bundle → ${bundlePath}`);
 console.log(`Wrote trust report → ${reportPath}`);
+
+// ---------------------------------------------------------------------------
+// Sign the bundle as an in-toto Statement + DSSE envelope (Tier-1 keyless)
+//
+// Signing is a "dial, not a gate": unsigned is a valid assurance level.
+// When no ambient OIDC credential is available (local runs, forks without
+// id-token:write), we log the assurance level and continue.  The release
+// still succeeds; the DSSE file is simply not written.
+// ---------------------------------------------------------------------------
+console.log("\nAttempting Sigstore keyless signing …");
+
+let assuranceLevel = "unsigned (no ambient identity)";
+
+try {
+  // Dynamic import keeps this optional — @sigstore/sign is an optionalDependency.
+  const { createSigstoreSigner } = await import(
+    path.join(root, "dist", "src", "signing", "sigstore.js")
+  );
+
+  const signerResult = await createSigstoreSigner();
+
+  if (signerResult === null) {
+    console.log(`  Signing skipped: ${assuranceLevel}`);
+  } else {
+    const { toInTotoStatement, toDsseEnvelope } = await import(
+      path.join(root, "dist", "src", "interop", "in-toto.js")
+    );
+
+    // Build a subject from the bundle file we just wrote (sha256 digest).
+    const { createHash } = await import("node:crypto");
+    const bundleBytes = await readFile(bundlePath);
+    const bundleSha256 = createHash("sha256").update(bundleBytes).digest("hex");
+
+    const statement = toInTotoStatement(bundle, {
+      subjects: [
+        {
+          name: `trust-bundle.json`,
+          digest: { sha256: bundleSha256 },
+        },
+      ],
+    });
+
+    const envelope = await toDsseEnvelope(statement, signerResult.signer);
+
+    const dssePath = path.join(outDir, "trust-bundle.dsse.json");
+    await writeFile(dssePath, JSON.stringify(envelope, null, 2));
+    console.log(`  Wrote DSSE envelope  → ${dssePath}`);
+
+    // Persist the sigstore verification material bundle (cert + Rekor entry).
+    const sigstoreBundle = signerResult.signer.getSigstoreBundle();
+    if (sigstoreBundle !== null) {
+      // Use @sigstore/bundle's bundleToJSON for canonical serialisation.
+      let bundleJson;
+      try {
+        const { bundleToJSON } = await import("@sigstore/bundle");
+        bundleJson = bundleToJSON(sigstoreBundle);
+      } catch {
+        // Fallback: plain JSON (sufficient for inspection even if not canonical).
+        bundleJson = sigstoreBundle;
+      }
+      const sigstorePath = path.join(outDir, "trust-bundle.sigstore.json");
+      await writeFile(sigstorePath, JSON.stringify(bundleJson, null, 2));
+      console.log(`  Wrote sigstore bundle → ${sigstorePath}`);
+    }
+
+    assuranceLevel = signerResult.assuranceLevel;
+    console.log(`  Assurance level: ${assuranceLevel}`);
+  }
+} catch (err) {
+  // Any unexpected error during signing is non-fatal (dial, not gate).
+  console.warn(`  Signing failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`);
+  console.log(`  Assurance level: ${assuranceLevel}`);
+}
+
+// ---------------------------------------------------------------------------
+// Summary
+// ---------------------------------------------------------------------------
 console.log(`\nSummary:`);
-console.log(`  source:  ${bundle.source}`);
-console.log(`  version: ${surfaceVersion} (${gitTag} @ ${gitCommit.slice(0, 8)})`);
-console.log(`  claims:  ${claims.length}`);
+console.log(`  source:          ${bundle.source}`);
+console.log(`  version:         ${surfaceVersion} (${gitTag} @ ${gitCommit.slice(0, 8)})`);
+console.log(`  claims:          ${claims.length}`);
 for (const c of claims) {
   console.log(`    ${c.status.padEnd(10)} ${c.fieldOrBehavior}`);
 }
-console.log(`  all verified: ${claims.every((c) => c.status === "verified")}`);
+console.log(`  all verified:    ${claims.every((c) => c.status === "verified")}`);
+console.log(`  assurance level: ${assuranceLevel}`);
 
-// Exit non-zero if any check failed
+// Exit non-zero if any release check failed (signing failure never blocks).
 const allPassed = testPassed && allVectorsPassed && versionMatch;
 if (!allPassed) {
   console.error("\nOne or more release checks failed. See claims above.");

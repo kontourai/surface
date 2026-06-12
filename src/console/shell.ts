@@ -59,14 +59,6 @@ export function buildConsoleHtml(config: SurfaceConsoleRuntimeConfig = {}): stri
       </div>
     </div>
 
-    <div class="attention-band" id="attentionBand" hidden>
-      <div class="band-icon" aria-hidden="true">!</div>
-      <div class="band-body">
-        <strong id="attentionTitle"></strong>
-        <p id="priorityNarrative"></p>
-      </div>
-    </div>
-
     <p class="feed-count" id="feedCount" aria-live="polite"></p>
     <div id="claimFeed" class="claim-feed"></div>
   </div>
@@ -75,19 +67,24 @@ export function buildConsoleHtml(config: SurfaceConsoleRuntimeConfig = {}): stri
     <div class="sheet-drag" role="presentation" id="sheetDrag"></div>
     <button class="sheet-close" id="sheetClose" aria-label="Close detail">✕</button>
     <div class="sheet-scroll">
+
+      <!-- (a) Big status + freshness header -->
       <div class="sheet-top">
-        <span class="status-badge" id="detailBadge">—</span>
+        <span class="status-badge detail-badge-lg" id="detailBadge">—</span>
         <span class="sheet-surface" id="detailSurface"></span>
       </div>
+      <p class="detail-freshness" id="detailFreshness" hidden></p>
+      <h2 id="detailTitle" class="sheet-title">Claim detail</h2>
+      <p id="detailSubtitle" class="sheet-subtitle"></p>
+      <p id="detailDescription" class="sheet-description" hidden></p>
+
       <div id="detailDivergenceBlock" class="sheet-section divergence-banner" hidden>
         <p id="detailDivergenceBanner"></p>
       </div>
-      <h2 id="detailTitle" class="sheet-title">Claim detail</h2>
-      <p id="detailDescription" class="sheet-description" hidden></p>
-      <p id="detailSubtitle" class="sheet-subtitle"></p>
 
-      <div id="detailGapBlock" class="sheet-section" hidden>
-        <p class="section-label">What went wrong ${helpHint("What went wrong", "Transparency gaps are the reasons this claim needs attention. They explain what prevented the claim from being cleanly verified, such as missing provenance, stale evidence, a conflict, or an unmet policy requirement.")}</p>
+      <!-- (c) Gaps as alert section — "Why this isn't verified" for blocking -->
+      <div id="detailGapBlock" class="sheet-section detail-gap-alert" hidden>
+        <p class="section-label" id="detailGapLabel">Why this isn't verified ${helpHint("Transparency gaps", "Transparency gaps explain what prevented the claim from being cleanly verified, such as missing provenance, stale evidence, a conflict, or an unmet policy requirement.")}</p>
         <div id="detailGaps"></div>
       </div>
 
@@ -96,14 +93,10 @@ export function buildConsoleHtml(config: SurfaceConsoleRuntimeConfig = {}): stri
         <div id="detailPolicyGap" class="gap-table"></div>
       </div>
 
-      <div id="detailValueBlock" class="sheet-section" hidden>
-        <p class="section-label">Expected value ${helpHint("Expected value", "This is the value being asserted by the claim. For automated evidence checks, it should describe the desired outcome, not the command used to collect evidence.")}</p>
-        <code id="detailValue" class="mono-block"></code>
-      </div>
-
-      <div id="detailObservedBlock" class="sheet-section" hidden>
-        <p class="section-label">Observed result ${helpHint("Observed result", "This is what the evidence collector observed when it ran. For automated evidence checks, it includes the pass/fail summary and command output when the producer captured it.")}</p>
-        <div id="detailObserved"></div>
+      <!-- (b) Unified "What was checked" — evidence summary + observed result merged -->
+      <div id="detailWhatWasCheckedBlock" class="sheet-section" hidden>
+        <p class="section-label">What was checked ${helpHint("What was checked", "The evidence collected for this claim: what the producer observed, the pass/fail summary, and any command output. This merges the evidence summary and observed result so the same information appears only once.")}</p>
+        <div id="detailWhatWasChecked"></div>
       </div>
 
       <div id="detailActionsBlock" class="sheet-section" hidden>
@@ -111,31 +104,34 @@ export function buildConsoleHtml(config: SurfaceConsoleRuntimeConfig = {}): stri
         <div id="detailActions" class="action-list"></div>
       </div>
 
-      <div class="sheet-section">
-        <p class="section-label">Evidence summary ${helpHint("Evidence summary", "The excerpt or summary from the evidence artifact for this claim. Use it to understand what the producer observed and whether the evidence is still applicable to the current state.")}</p>
-        <p id="detailEvidence">—</p>
-        <div id="detailPluginAttribution" class="plugin-attribution" hidden></div>
+      <div id="detailValueBlock" class="sheet-section" hidden>
+        <p class="section-label">Expected value ${helpHint("Expected value", "This is the value being asserted by the claim. For automated evidence checks, it should describe the desired outcome, not the command used to collect evidence.")}</p>
+        <code id="detailValue" class="mono-block"></code>
       </div>
 
-      <div id="detailFilesBlock" class="sheet-section" hidden>
-        <p class="section-label">Files in scope ${helpHint("Files in scope", "These files were part of the producer run or evidence artifact. They help you understand the blast radius of the claim and whether the evidence applies to the work you are reviewing.")}</p>
-        <div id="detailFiles" class="file-chips"></div>
-      </div>
+      <!-- (d) Secondary detail in collapsed <details> accordions -->
+      <details class="sheet-accordion" id="detailFilesAccordion" hidden>
+        <summary>Files in scope ${helpHint("Files in scope", "These files were part of the producer run or evidence artifact. They help you understand the blast radius of the claim and whether the evidence applies to the work you are reviewing.")}</summary>
+        <div id="detailFiles" class="file-chips sheet-accordion-body"></div>
+      </details>
 
-      <div id="detailIntegrityBlock" class="sheet-section" hidden>
-        <p class="section-label">Integrity scope ${helpHint("Integrity scope", "Shows what this claim's evidence is anchored to, such as the source revision, working tree digest, file hashes, or producer configuration hashes. Use it to decide whether verified evidence still applies.")}</p>
-        <div id="detailIntegrity" class="integrity-scope"></div>
-      </div>
+      <details class="sheet-accordion" id="detailIntegrityAccordion" hidden>
+        <summary>Evidence anchors ${helpHint("Evidence anchors", "Shows what this claim's evidence is anchored to — the source revision, working tree digest, file hashes, or producer configuration hashes. Use it to decide whether verified evidence still applies to the current state.")}</summary>
+        <div id="detailIntegrity" class="integrity-scope sheet-accordion-body"></div>
+      </details>
 
-      <div class="sheet-section">
-        <p class="section-label">Verification rule ${helpHint("Verification rule", "This is the Surface rule used to judge the claim. Producers such as Veritas can map this to higher-level concepts like Evidence Checks, governance gates, or plugin-owned checks.")}</p>
-        <code id="detailPolicy">—</code>
-      </div>
+      <details class="sheet-accordion">
+        <summary>Verification rule ${helpHint("Verification rule", "This is the Surface rule used to judge the claim. Producers such as Veritas can map this to higher-level concepts like Evidence Checks, governance gates, or plugin-owned checks.")}</summary>
+        <div class="sheet-accordion-body">
+          <code id="detailPolicy">—</code>
+        </div>
+      </details>
 
       <details class="sheet-raw">
         <summary>Raw metadata ${helpHint("Raw metadata", "Raw metadata is the complete audit trail for this detail view. Start with the readable sections above; use the raw JSON when debugging, building automations, or checking the exact source fields.")}</summary>
         <pre id="detailMetadata">{}</pre>
       </details>
+
     </div>
   </aside>
   </div><!-- /.dash-layout -->

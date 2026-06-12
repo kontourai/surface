@@ -9,14 +9,9 @@ function showClaimDetail(claim, readModel, cardEl, pushHistory = true) {
   renderDetailGuidance(claim, detail.evidence, readModel);
   renderDetailGaps(detail.transparencyGaps, detail.claimGaps);
   renderDetailPolicyGap(claim, detail.policy);
-  renderDetailValue(claim);
-  renderDetailObservedResults(detail.evidence);
+  renderDetailWhatWasChecked(claim, detail.evidence);
   renderDetailActions(claim);
-  renderDetailEvidenceSummary(detail.evidence);
-  renderDetailFiles(detail.evidence);
-  renderDetailIntegrity(claim, detail.evidence);
-  el("detailPolicy").textContent = claim.verificationPolicyId ?? "—";
-  renderDetailMetadata(claim, detail);
+  renderDetailAccordions(claim, detail);
 
   if (pushHistory) pushUrlState();
   openSheet();
@@ -39,9 +34,10 @@ function collectClaimDetailContext(claim, readModel) {
 
 function renderDetailHeader(claim, evidence, policy) {
   el("detailBadge").textContent = statusLabel(claim.status, evidence.length);
-  el("detailBadge").className   = "status-badge badge-" + statusColor(claim.status);
+  el("detailBadge").className   = "status-badge badge-" + statusColor(claim.status) + " detail-badge-lg";
   el("detailSurface").textContent = surfaceLabel(claim.surface);
   el("detailTitle").textContent   = claim.fieldOrBehavior || claim.claimType || "—";
+  // Claim ID exposed only as the subtitle (for detail drill-down), not on the card face.
   el("detailSubtitle").textContent = claim.id;
 
   const descEl = el("detailDescription");
@@ -53,6 +49,33 @@ function renderDetailHeader(claim, evidence, policy) {
     } else {
       descEl.setAttribute("hidden", "");
     }
+  }
+
+  // Freshness framing: "verified at / evidence from" instead of security-jargon labels.
+  renderDetailFreshness(claim, evidence);
+}
+
+function renderDetailFreshness(claim, evidence) {
+  const freshnessEl = el("detailFreshness");
+  if (!freshnessEl) return;
+
+  const verifiedAt = evidence[0]?.capturedAt ?? evidence[0]?.metadata?.capturedAt;
+  const evidenceFrom = evidence[0]?.metadata?.source ?? evidence[0]?.metadata?.tool ?? null;
+  const parts = [];
+  if (verifiedAt) {
+    try {
+      const d = new Date(verifiedAt);
+      parts.push("Verified " + d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }));
+    } catch { parts.push("Verified " + verifiedAt); }
+  }
+  if (evidenceFrom) {
+    parts.push("Evidence from " + evidenceFrom);
+  }
+  if (parts.length) {
+    freshnessEl.textContent = parts.join(" · ");
+    freshnessEl.removeAttribute("hidden");
+  } else {
+    freshnessEl.setAttribute("hidden", "");
   }
 }
 
@@ -126,6 +149,13 @@ function renderDetailGaps(transparencyGaps, claimGaps) {
   ];
 
   if (allGapItems.length) {
+    const hasBlocking = allGapItems.some(g => g.blocking !== false);
+    // Update the section label: "Why this isn't verified" for blocking gaps, otherwise "Gaps"
+    const gapLabelEl = el("detailGapLabel");
+    if (gapLabelEl) {
+      const gapLabelText = hasBlocking ? "Why this isn't verified" : "Non-blocking gaps";
+      gapLabelEl.firstChild.textContent = gapLabelText + " ";
+    }
     el("detailGaps").innerHTML = allGapItems.map(item => {
       const classified = classifyGap(item.type ?? item.gapType, item.message);
       const kindLabel  = gapKindLabel[classified.kind] ?? classified.kind;
@@ -176,24 +206,40 @@ function renderDetailPolicyGap(claim, policy) {
   }
 }
 
-function renderDetailValue(claim) {
-  const val = formatValue(claim.value);
-  if (val) {
-    el("detailValue").textContent = typeof claim.value === "object"
-      ? JSON.stringify(claim.value, null, 2) : val;
-    show("detailValueBlock");
-  } else {
-    hide("detailValueBlock");
-  }
-}
+// ── unified "What was checked" section ────────────────────
+// Merges Evidence summary + Observed result into one section so the
+// same information never appears twice.
+function renderDetailWhatWasChecked(claim, evidence) {
+  const checked = el("detailWhatWasChecked");
+  if (!checked) return;
 
-function renderDetailObservedResults(evidence) {
+  const parts = [];
+
+  // Evidence summary (excerpt or summary from first evidence item)
+  const summaryText = evidence[0]?.excerptOrSummary ?? null;
+  if (summaryText) {
+    parts.push(`<p class="checked-summary">${esc(summaryText)}</p>`);
+  }
+
+  // Observed result rows (structured metadata when available)
   const observedResults = evidence.map(observedResultForEvidence).filter(Boolean);
   if (observedResults.length) {
-    el("detailObserved").innerHTML = observedResults.map(renderObservedResult).join("");
-    show("detailObservedBlock");
+    parts.push(...observedResults.map(renderObservedResult));
+  }
+
+  // Plugin attribution inline with evidence
+  const plugin = evidence.find(item => item.metadata?._plugin)?.metadata?._plugin;
+  if (plugin) {
+    parts.push(`<p class="plugin-attribution">Evidence collected via ${esc(plugin.name)} by ${esc(plugin.author?.name ?? "unknown author")}.</p>`);
+  }
+
+  if (parts.length) {
+    checked.innerHTML = parts.join("");
+    show("detailWhatWasCheckedBlock");
   } else {
-    hide("detailObservedBlock");
+    // Fallback: no evidence at all
+    checked.innerHTML = `<p class="checked-empty">No evidence summary available.</p>`;
+    show("detailWhatWasCheckedBlock");
   }
 }
 
@@ -219,20 +265,29 @@ function renderDetailActions(claim) {
   }
 }
 
-function renderDetailEvidenceSummary(evidence) {
-  el("detailEvidence").textContent =
-    evidence[0]?.excerptOrSummary ?? "No evidence summary available.";
-  const plugin = evidence.find(item => item.metadata?._plugin)?.metadata?._plugin;
-  if (plugin) {
-    el("detailPluginAttribution").textContent =
-      "Evidence collected via " + plugin.name + " by " + (plugin.author?.name ?? "unknown author") + ".";
-    show("detailPluginAttribution");
+// ── collapsed accordion sections ─────────────────────────
+// Verification rule/policy, files in scope, integrity anchors, and raw
+// metadata are all secondary detail moved into <details> accordions.
+function renderDetailAccordions(claim, detail) {
+  renderDetailValue(claim);
+  renderDetailFilesAccordion(detail.evidence);
+  renderDetailIntegrityAccordion(claim, detail.evidence);
+  renderDetailPolicyAccordion(claim);
+  renderDetailMetadata(claim, detail);
+}
+
+function renderDetailValue(claim) {
+  const val = formatValue(claim.value);
+  if (val) {
+    el("detailValue").textContent = typeof claim.value === "object"
+      ? JSON.stringify(claim.value, null, 2) : val;
+    show("detailValueBlock");
   } else {
-    hide("detailPluginAttribution");
+    hide("detailValueBlock");
   }
 }
 
-function renderDetailFiles(evidence) {
+function renderDetailFilesAccordion(evidence) {
   const files = evidence[0]?.metadata?.files ?? [];
   if (files.length) {
     const shown = files.slice(0, 15);
@@ -241,21 +296,26 @@ function renderDetailFiles(evidence) {
       (files.length > 15
         ? `<span class="more-note">+${files.length - 15} more</span>`
         : "");
-    show("detailFilesBlock");
+    show("detailFilesAccordion");
   } else {
-    hide("detailFilesBlock");
+    hide("detailFilesAccordion");
   }
 }
 
-function renderDetailIntegrity(claim, evidence) {
+function renderDetailIntegrityAccordion(claim, evidence) {
   const integrityDetails = collectIntegrityDetails(claim, evidence);
   const integrityHtml = renderIntegrityScope(integrityDetails);
   if (integrityHtml) {
     el("detailIntegrity").innerHTML = integrityHtml;
-    show("detailIntegrityBlock");
+    show("detailIntegrityAccordion");
   } else {
-    hide("detailIntegrityBlock");
+    hide("detailIntegrityAccordion");
   }
+}
+
+function renderDetailPolicyAccordion(claim) {
+  const policyEl = el("detailPolicy");
+  if (policyEl) policyEl.textContent = claim.verificationPolicyId ?? "—";
 }
 
 function renderDetailMetadata(claim, detail) {

@@ -105,7 +105,7 @@ consumers should populate it when the collection channel is known.
   collection by construction.
 - Admissibility is defined in code (`validateAuthorizing`), not only in prose,
   so it can be tested and extended without doc-only drift.
-- The three-kind taxonomy is intentionally closed for now. New kinds require a
-  new ADR entry; ad-hoc string values in the `kind` field will fail validation.
+- The three-kind taxonomy is closed by design; new kinds require a new ADR and
+  a schema change. Ad-hoc string values in the `kind` field will fail validation.
 - Cryptographic signing and session binding are explicitly backlogged so
   implementers know they are desired, not forgotten.

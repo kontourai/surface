@@ -75,18 +75,18 @@
   padding: 0.45rem 1rem;
   border-radius: var(--radius-sm);
   background: var(--blue);
-  color: #fff;
+  color: var(--k-brand-contrast, #fff);
   font-weight: 700;
   font-size: 0.86rem;
   letter-spacing: 0.01em;
   transition: filter 0.12s ease, box-shadow 0.12s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--k-active) 28%, transparent);
 }
 
 .btn-primary:hover,
 .btn-primary:focus-visible {
   filter: brightness(1.08);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--k-active) 34%, transparent);
   outline: 2px solid color-mix(in srgb, var(--blue) 60%, transparent);
   outline-offset: 2px;
 }
@@ -167,67 +167,68 @@
 
 .search-row input::placeholder { color: var(--muted); }
 
-/* ── 7. Attention Band ──────────────────────────────────────── */
-.attention-band {
-  display: flex;
-  gap: 0.875rem;
-  align-items: flex-start;
-  padding: 0.9rem 1rem;
-  margin-bottom: 1rem;
-  border: 1px solid color-mix(in srgb, var(--orange) 50%, transparent);
-  border-left: 3px solid var(--orange);
-  border-radius: var(--radius);
+/* ── 7. Attention Chip ──────────────────────────────────────── */
+/* Compact alert chip injected into the metrics row, replacing the
+   full-width attention band. The full narrative is in the tooltip/aria-label. */
+.attention-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.28rem 0.6rem;
+  border-radius: 99px;
+  border: 1px solid color-mix(in srgb, var(--k-caution) 45%, transparent);
   background: var(--orange-bg);
-  box-shadow: var(--shadow);
+  color: var(--orange);
   cursor: pointer;
-  transition: background 0.12s ease, border-color 0.12s ease;
-}
-
-.attention-band:hover {
-  background: color-mix(in srgb, var(--orange) 14%, var(--surface));
-  border-color: color-mix(in srgb, var(--orange) 65%, transparent);
-}
-
-.band-icon {
+  font-size: 0.76rem;
+  font-weight: 700;
+  min-height: 44px;
+  min-width: 44px;
+  transition: border-color 0.12s ease, background 0.12s ease;
   flex-shrink: 0;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
+}
+
+.attention-chip:hover,
+.attention-chip:focus-visible {
+  border-color: var(--orange);
+  background: color-mix(in srgb, var(--orange) 18%, var(--surface));
+  outline: none;
+}
+
+.attention-chip.attention-chip-active {
   background: var(--orange);
-  color: #fff;
-  font-size: 0.85rem;
-  font-weight: 900;
+  color: var(--k-brand-contrast, #fff);
+  border-color: var(--orange);
+}
+
+.attention-chip-icon {
   display: grid;
   place-items: center;
-  margin-top: 0.1rem;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: currentColor;
+  font-size: 0.7rem;
+  font-weight: 900;
+  line-height: 1;
+  /* icon uses inverted text inside the colored circle */
+  color: inherit;
+  flex-shrink: 0;
 }
 
-.band-body { min-width: 0; }
-.band-body strong {
-  display: block;
-  font-size: 0.93rem;
-  font-weight: 700;
-  color: var(--ink);
-}
-.band-body p {
-  margin: 0.2rem 0 0;
-  font-size: 0.85rem;
-  color: var(--muted);
-  line-height: 1.45;
+.attention-chip:not(.attention-chip-active) .attention-chip-icon {
+  background: var(--orange);
+  color: var(--bg);
 }
 
-.band-action {
-  margin-left: 0.6rem;
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--orange);
-  opacity: 0.65;
-  transition: opacity 0.12s ease;
+.attention-chip.attention-chip-active .attention-chip-icon {
+  background: color-mix(in srgb, var(--k-brand-contrast, #fff) 25%, transparent);
+  color: var(--k-brand-contrast, #fff);
+}
+
+.attention-chip-count {
+  font-variant-numeric: tabular-nums;
   font-family: ui-monospace, "Cascadia Code", monospace;
-}
-
-.attention-band:hover .band-action {
-  opacity: 1;
 }
 
 /* ── 8. Feed Header ─────────────────────────────────────────── */
@@ -261,6 +262,7 @@
   align-items: center;
   width: 100%;
   padding: 0.875rem 0.875rem 0.875rem 1rem;
+  min-height: 44px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface);
@@ -426,6 +428,34 @@
 .status-assumed { color: var(--amber); }
 .status-proposed { color: var(--amber); }
 
+/* Impact chip — shown for medium, high, critical only */
+.card-impact {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 0.1rem 0.4rem;
+  border-radius: 99px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid var(--line);
+  background: var(--raised);
+  color: var(--muted);
+}
+
+.card-impact--high,
+.card-impact--critical {
+  background: var(--red-bg);
+  color: var(--red);
+  border-color: color-mix(in srgb, var(--red) 30%, transparent);
+}
+
+.card-impact--medium {
+  background: var(--orange-bg);
+  color: var(--orange);
+  border-color: color-mix(in srgb, var(--orange) 30%, transparent);
+}
+
 /* Gap & divergence badges */
 .card-gaps {
   display: inline-flex;
@@ -450,18 +480,6 @@
   background: var(--amber-bg);
   color: var(--amber);
   border: 1px solid color-mix(in srgb, var(--amber) 35%, transparent);
-}
-
-.card-value {
-  display: block;
-  margin-top: 0.3rem;
-  font-size: 0.77rem;
-  color: var(--muted);
-  font-family: ui-monospace, "Cascadia Code", monospace;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.4;
 }
 
 .card-chevron {
@@ -513,3 +531,7 @@
   letter-spacing: 0.01em;
 }
 
+/* Narrow viewports: hide surface label to reduce clutter */
+@media (max-width: 500px) {
+  .card-surface--narrow-hide { display: none; }
+}
