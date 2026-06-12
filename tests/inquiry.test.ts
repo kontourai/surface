@@ -1051,3 +1051,379 @@ test("resolveInquiry with ruleRef: resolutionPath includes transitiveRuleIds", (
   assert.ok(record.resolutionPath.claimIds.includes("claim-coverage"));
   assert.ok(record.resolutionPath.claimIds.includes("claim-sec-scan"));
 });
+
+// ---------------------------------------------------------------------------
+// requiresActiveAuthority — active / expired / revoked / missing trace
+// ---------------------------------------------------------------------------
+
+// Shared fixtures for authority tests
+const AUTH_CLAIM: import('../src/index.js').Claim = {
+  id: 'claim-auth',
+  subjectType: 'ai-system',
+  subjectId: 'acme-screening-ai',
+  surface: 'compliance',
+  claimType: 'oversight',
+  fieldOrBehavior: 'oversightauthorityactive',
+  value: true,
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+};
+
+const AUTH_CLAIM_EVENT: import('../src/index.js').VerificationEvent = {
+  id: 'evt-auth',
+  claimId: 'claim-auth',
+  status: 'verified',
+  actor: 'dpo@acme.example',
+  method: 'attestation',
+  evidenceIds: ['ev-auth'],
+  createdAt: '2026-01-01T00:10:00.000Z',
+  verifiedAt: '2026-01-01T00:10:00.000Z',
+};
+
+const AUTH_EVIDENCE: import('../src/index.js').Evidence = {
+  id: 'ev-auth',
+  claimId: 'claim-auth',
+  supportStrength: 'entails',
+  evidenceType: 'attestation',
+  method: 'attestation',
+  sourceRef: 'iam-record',
+  excerptOrSummary: 'DPO confirms oversight authority active.',
+  observedAt: '2026-01-01T00:00:00.000Z',
+  collectedBy: 'dpo@acme.example',
+};
+
+const ACTIVE_TRACE: import('../src/index.js').AuthorityTrace = {
+  id: 'trace-dpo-active',
+  subject: { subjectType: 'ai-system', subjectId: 'acme-screening-ai' },
+  actorRef: 'dpo@acme.example',
+  authorityType: 'role',
+  authorityRef: 'DPO',
+  sourceRef: 'hr-iam',
+  observedAt: '2026-01-01T00:00:00.000Z',
+  validFrom: '2025-01-01T00:00:00.000Z',
+  validUntil: '2027-01-01T00:00:00.000Z',
+};
+
+const EXPIRED_TRACE: import('../src/index.js').AuthorityTrace = {
+  ...ACTIVE_TRACE,
+  id: 'trace-dpo-expired',
+  validUntil: '2025-12-31T23:59:59.000Z',
+};
+
+const REVOKED_TRACE: import('../src/index.js').AuthorityTrace = {
+  ...ACTIVE_TRACE,
+  id: 'trace-dpo-revoked',
+  revokedAt: '2025-06-01T00:00:00.000Z',
+};
+
+const AUTH_RULE: import('../src/index.js').DerivationRule = {
+  id: 'rule-active-authority',
+  version: '1.0.0',
+  name: 'Active Authority Check',
+  target: { subjectType: 'ai-system', subjectId: 'acme-screening-ai', fieldOrBehavior: 'oversightready' },
+  requirements: [{
+    target: { subjectType: 'ai-system', subjectId: 'acme-screening-ai', fieldOrBehavior: 'oversightauthorityactive' },
+    acceptedStatuses: ['verified'],
+    requiresActiveAuthority: true,
+  }],
+  combinator: 'all',
+};
+
+const NOW_IN_WINDOW = new Date('2026-06-01T00:00:00.000Z');
+
+test('requiresActiveAuthority: met when actor has active trace', () => {
+  const bundle = makeBundle({
+    claims: [AUTH_CLAIM],
+    evidence: [AUTH_EVIDENCE],
+    events: [AUTH_CLAIM_EVENT],
+    policies: [SOFTWARE_POLICY],
+    authorityTrace: [ACTIVE_TRACE],
+  });
+  const result = evaluateDerivationRule(AUTH_RULE, bundle, { now: NOW_IN_WINDOW });
+  assert.equal(result.satisfied, true);
+  assert.equal(result.inputs[0].requirementMet, true);
+});
+
+test('requiresActiveAuthority: not met when actor has expired trace', () => {
+  const bundle = makeBundle({
+    claims: [AUTH_CLAIM],
+    evidence: [AUTH_EVIDENCE],
+    events: [AUTH_CLAIM_EVENT],
+    policies: [SOFTWARE_POLICY],
+    authorityTrace: [EXPIRED_TRACE],
+  });
+  const result = evaluateDerivationRule(AUTH_RULE, bundle, { now: NOW_IN_WINDOW });
+  assert.equal(result.satisfied, false);
+  assert.equal(result.inputs[0].requirementMet, false);
+});
+
+test('requiresActiveAuthority: not met when actor trace is revoked', () => {
+  const bundle = makeBundle({
+    claims: [AUTH_CLAIM],
+    evidence: [AUTH_EVIDENCE],
+    events: [AUTH_CLAIM_EVENT],
+    policies: [SOFTWARE_POLICY],
+    authorityTrace: [REVOKED_TRACE],
+  });
+  const result = evaluateDerivationRule(AUTH_RULE, bundle, { now: NOW_IN_WINDOW });
+  assert.equal(result.satisfied, false);
+  assert.equal(result.inputs[0].requirementMet, false);
+});
+
+test('requiresActiveAuthority: not met when actor has no trace in bundle', () => {
+  const bundle = makeBundle({
+    claims: [AUTH_CLAIM],
+    evidence: [AUTH_EVIDENCE],
+    events: [AUTH_CLAIM_EVENT],
+    policies: [SOFTWARE_POLICY],
+    authorityTrace: [],  // empty traces
+  });
+  const result = evaluateDerivationRule(AUTH_RULE, bundle, { now: NOW_IN_WINDOW });
+  assert.equal(result.satisfied, false);
+  assert.equal(result.inputs[0].requirementMet, false);
+});
+
+test('requiresActiveAuthority: not met when no status-bearing events exist', () => {
+  const bundle = makeBundle({
+    claims: [AUTH_CLAIM],
+    evidence: [AUTH_EVIDENCE],
+    events: [],  // no events — cannot identify actor
+    policies: [SOFTWARE_POLICY],
+    authorityTrace: [ACTIVE_TRACE],
+  });
+  const result = evaluateDerivationRule(AUTH_RULE, bundle, { now: NOW_IN_WINDOW });
+  assert.equal(result.satisfied, false);
+});
+
+test('requiresActiveAuthority: combined with acceptedStatuses and fresherThan', () => {
+  // All three constraints must be met simultaneously
+  const rule: import('../src/index.js').DerivationRule = {
+    id: 'rule-auth-combined',
+    version: '1',
+    name: 'Combined',
+    target: { subjectType: 'ai-system', subjectId: 'acme-screening-ai', fieldOrBehavior: 'combined' },
+    requirements: [{
+      target: { subjectType: 'ai-system', subjectId: 'acme-screening-ai', fieldOrBehavior: 'oversightauthorityactive' },
+      acceptedStatuses: ['verified'],
+      fresherThan: { days: 180 },
+      requiresActiveAuthority: true,
+    }],
+    combinator: 'all',
+  };
+  const bundle = makeBundle({
+    claims: [AUTH_CLAIM],
+    evidence: [AUTH_EVIDENCE],
+    events: [AUTH_CLAIM_EVENT],
+    policies: [SOFTWARE_POLICY],
+    authorityTrace: [ACTIVE_TRACE],
+  });
+  // Within freshness window (verifiedAt = 2026-01-01, now = 2026-06-01 = 151 days)
+  const result = evaluateDerivationRule(rule, bundle, { now: NOW_IN_WINDOW });
+  assert.equal(result.satisfied, true);
+
+  // Outside freshness window (now = 2026-10-01 > 180 days from 2026-01-01)
+  const staleResult = evaluateDerivationRule(rule, bundle, { now: new Date('2026-10-01T00:00:00.000Z') });
+  assert.equal(staleResult.satisfied, false);
+});
+
+// ---------------------------------------------------------------------------
+// corroboration.minActors — distinct-actor evidence tests
+// ---------------------------------------------------------------------------
+
+const CORROBORATION_CLAIM: import('../src/index.js').Claim = {
+  id: 'claim-corr',
+  subjectType: 'ai-system',
+  subjectId: 'acme-screening-ai',
+  surface: 'compliance',
+  claimType: 'oversight',
+  fieldOrBehavior: 'humanreviewattestationpresent',
+  value: true,
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+};
+
+const CORR_VERIFIED_EVENT: import('../src/index.js').VerificationEvent = {
+  id: 'evt-corr',
+  claimId: 'claim-corr',
+  status: 'verified',
+  actor: 'hr-manager@acme.example',
+  method: 'attestation',
+  evidenceIds: ['ev-corr-1'],
+  createdAt: '2026-01-01T00:10:00.000Z',
+  verifiedAt: '2026-01-01T00:10:00.000Z',
+};
+
+// Evidence from two distinct actors
+const CORR_EV_ACTOR_A: import('../src/index.js').Evidence = {
+  id: 'ev-corr-1',
+  claimId: 'claim-corr',
+  supportStrength: 'entails',
+  evidenceType: 'attestation',
+  method: 'attestation',
+  sourceRef: 'hr-portal',
+  excerptOrSummary: 'HR manager attests human review is in place.',
+  observedAt: '2026-01-01T00:00:00.000Z',
+  collectedBy: 'hr-manager@acme.example',
+};
+
+const CORR_EV_ACTOR_B: import('../src/index.js').Evidence = {
+  id: 'ev-corr-2',
+  claimId: 'claim-corr',
+  supportStrength: 'entails',
+  evidenceType: 'attestation',
+  method: 'corroboration',
+  sourceRef: 'dpo-portal',
+  excerptOrSummary: 'DPO independently corroborates human review.',
+  observedAt: '2026-01-01T01:00:00.000Z',
+  collectedBy: 'dpo@acme.example',
+};
+
+// Second evidence item from the SAME actor as ACTOR_A
+const CORR_EV_ACTOR_A_DUP: import('../src/index.js').Evidence = {
+  id: 'ev-corr-3',
+  claimId: 'claim-corr',
+  supportStrength: 'entails',
+  evidenceType: 'document_citation',
+  method: 'attestation',
+  sourceRef: 'hr-supplemental',
+  excerptOrSummary: 'HR manager adds supplemental reference.',
+  observedAt: '2026-01-02T00:00:00.000Z',
+  collectedBy: 'hr-manager@acme.example',  // same actor as ACTOR_A
+};
+
+const CORR_RULE: import('../src/index.js').DerivationRule = {
+  id: 'rule-corroboration',
+  version: '1.0.0',
+  name: 'Human Review Corroboration',
+  target: { subjectType: 'ai-system', subjectId: 'acme-screening-ai', fieldOrBehavior: 'humanreviewready' },
+  requirements: [{
+    target: { subjectType: 'ai-system', subjectId: 'acme-screening-ai', fieldOrBehavior: 'humanreviewattestationpresent' },
+    acceptedStatuses: ['verified'],
+    corroboration: { minActors: 2 },
+  }],
+  combinator: 'all',
+};
+
+test('corroboration: met when 2 distinct actors provide entailing evidence', () => {
+  const bundle = makeBundle({
+    claims: [CORROBORATION_CLAIM],
+    evidence: [CORR_EV_ACTOR_A, CORR_EV_ACTOR_B],
+    events: [CORR_VERIFIED_EVENT],
+    policies: [SOFTWARE_POLICY],
+  });
+  const result = evaluateDerivationRule(CORR_RULE, bundle, { now: NOW_IN_WINDOW });
+  assert.equal(result.satisfied, true);
+  assert.equal(result.inputs[0].requirementMet, true);
+});
+
+test('corroboration: NOT met with 2 evidence items from same actor', () => {
+  // Two entailing items but both from hr-manager — only 1 distinct actor
+  const bundle = makeBundle({
+    claims: [CORROBORATION_CLAIM],
+    evidence: [CORR_EV_ACTOR_A, CORR_EV_ACTOR_A_DUP],
+    events: [CORR_VERIFIED_EVENT],
+    policies: [SOFTWARE_POLICY],
+  });
+  const result = evaluateDerivationRule(CORR_RULE, bundle, { now: NOW_IN_WINDOW });
+  assert.equal(result.satisfied, false);
+  assert.equal(result.inputs[0].requirementMet, false);
+});
+
+test('corroboration: minActors:1 met with a single entailing evidence item', () => {
+  const rule: import('../src/index.js').DerivationRule = {
+    ...CORR_RULE,
+    id: 'rule-corr-1',
+    requirements: [{
+      target: { subjectType: 'ai-system', subjectId: 'acme-screening-ai', fieldOrBehavior: 'humanreviewattestationpresent' },
+      acceptedStatuses: ['verified'],
+      corroboration: { minActors: 1 },
+    }],
+  };
+  const bundle = makeBundle({
+    claims: [CORROBORATION_CLAIM],
+    evidence: [CORR_EV_ACTOR_A],
+    events: [CORR_VERIFIED_EVENT],
+    policies: [SOFTWARE_POLICY],
+  });
+  const result = evaluateDerivationRule(rule, bundle, { now: NOW_IN_WINDOW });
+  assert.equal(result.satisfied, true);
+});
+
+test('corroboration: non-entailing (cited) evidence does not count toward minActors', () => {
+  // CORR_EV_ACTOR_B has supportStrength 'entails' but we override it to 'cited'
+  const citedEvidence: import('../src/index.js').Evidence = {
+    ...CORR_EV_ACTOR_B,
+    supportStrength: 'cited',  // does NOT count
+  };
+  const bundle = makeBundle({
+    claims: [CORROBORATION_CLAIM],
+    evidence: [CORR_EV_ACTOR_A, citedEvidence],
+    events: [CORR_VERIFIED_EVENT],
+    policies: [SOFTWARE_POLICY],
+  });
+  // Only 1 entailing actor (ACTOR_A), ACTOR_B is cited-only — minActors:2 fails
+  const result = evaluateDerivationRule(CORR_RULE, bundle, { now: NOW_IN_WINDOW });
+  assert.equal(result.satisfied, false);
+});
+
+test('corroboration: combined with acceptedStatuses — both must be satisfied', () => {
+  // Status fails (no verified event), even though corroboration would pass
+  const bundle = makeBundle({
+    claims: [CORROBORATION_CLAIM],
+    evidence: [CORR_EV_ACTOR_A, CORR_EV_ACTOR_B],
+    events: [],  // no verified event → status will not be verified
+    policies: [SOFTWARE_POLICY],
+  });
+  const result = evaluateDerivationRule(CORR_RULE, bundle, { now: NOW_IN_WINDOW });
+  assert.equal(result.satisfied, false);
+  assert.equal(result.inputs[0].requirementMet, false);
+});
+
+test('corroboration + requiresActiveAuthority: both predicates evaluated together', () => {
+  const combinedRule: import('../src/index.js').DerivationRule = {
+    id: 'rule-auth-corr',
+    version: '1.0.0',
+    name: 'Authority + Corroboration',
+    target: { subjectType: 'ai-system', subjectId: 'acme-screening-ai', fieldOrBehavior: 'fullcheck' },
+    requirements: [{
+      target: { subjectType: 'ai-system', subjectId: 'acme-screening-ai', fieldOrBehavior: 'humanreviewattestationpresent' },
+      acceptedStatuses: ['verified'],
+      requiresActiveAuthority: true,
+      corroboration: { minActors: 2 },
+    }],
+    combinator: 'all',
+  };
+  const bundle = makeBundle({
+    claims: [CORROBORATION_CLAIM],
+    evidence: [CORR_EV_ACTOR_A, CORR_EV_ACTOR_B],
+    events: [CORR_VERIFIED_EVENT],
+    policies: [SOFTWARE_POLICY],
+    authorityTrace: [
+      {
+        ...ACTIVE_TRACE,
+        id: 'trace-hr-active',
+        actorRef: 'hr-manager@acme.example',
+        validFrom: '2025-01-01T00:00:00.000Z',
+        validUntil: '2027-01-01T00:00:00.000Z',
+      },
+    ],
+  });
+  // Both satisfied: hr-manager has active trace, 2 distinct actors in evidence
+  const result = evaluateDerivationRule(combinedRule, bundle, { now: NOW_IN_WINDOW });
+  assert.equal(result.satisfied, true);
+
+  // Now revoke the trace — authority fails even though corroboration passes
+  const revokedBundle = makeBundle({
+    ...bundle,
+    authorityTrace: [
+      {
+        ...ACTIVE_TRACE,
+        id: 'trace-hr-revoked',
+        actorRef: 'hr-manager@acme.example',
+        revokedAt: '2025-12-01T00:00:00.000Z',
+      },
+    ],
+  });
+  const revokedResult = evaluateDerivationRule(combinedRule, revokedBundle, { now: NOW_IN_WINDOW });
+  assert.equal(revokedResult.satisfied, false);
+});

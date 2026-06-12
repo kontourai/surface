@@ -8,10 +8,12 @@
  * is satisfied by the claims in a TrustBundle.
  */
 import type {
+  AuthorityTrace,
   Claim,
   DerivationClaimRequirement,
   DerivationRequirement,
   DerivationRule,
+  Evidence,
   IdentityLink,
   Inquiry,
   InquiryRecord,
@@ -21,7 +23,7 @@ import type {
 } from "./types.js";
 import type { CanonicalClaimTarget } from "./canonical.js";
 import { canonicalClaimKey } from "./canonical.js";
-import { deriveClaimStatus, statusFunctionVersion } from "./status.js";
+import { checkAuthorityActive, deriveClaimStatus, statusFunctionVersion } from "./status.js";
 import { weakerStatus } from "./derivation.js";
 
 // ---------------------------------------------------------------------------
@@ -373,7 +375,13 @@ function evaluateDerivationRuleInternal(
     const freshnessOk = claimReq.fresherThan
       ? evaluateFresherThan(claim, bundle.events, claimReq.fresherThan.days, now)
       : true;
-    const requirementMet = statusOk && predicateOk && freshnessOk;
+    const authorityOk = claimReq.requiresActiveAuthority
+      ? evaluateActiveAuthority(claim, bundle.events, bundle.authorityTrace ?? [], now)
+      : true;
+    const corroborationOk = claimReq.corroboration
+      ? evaluateCorroboration(bundle.evidence.filter((e) => e.claimId === claim.id), claimReq.corroboration.minActors)
+      : true;
+    const requirementMet = statusOk && predicateOk && freshnessOk && authorityOk && corroborationOk;
 
     inputs.push({ claimId: claim.id, status, requirementMet });
     requirementResults.push(requirementMet);
@@ -478,4 +486,54 @@ function toNumber(value: unknown): number | null {
     if (Number.isFinite(n)) return n;
   }
   return null;
+}
+
+/**
+ * Evaluate the requiresActiveAuthority constraint.
+ *
+ * Finds the most-recent verification event for the claim that carries a
+ * status-bearing meaning (verified, assumed, stale, rejected, disputed,
+ * superseded), extracts its actor, and checks that actor against the bundle's
+ * authorityTrace using checkAuthorityActive.
+ *
+ * Returns true only when the actor has an active AuthorityTrace at `now`.
+ */
+function evaluateActiveAuthority(
+  claim: Claim,
+  events: VerificationEvent[],
+  authorityTrace: AuthorityTrace[],
+  now: Date,
+): boolean {
+  // Statuses that indicate a meaningful verification actor
+  const statusBearing = new Set<string>([
+    "verified", "assumed", "stale", "rejected", "disputed", "superseded",
+  ]);
+  const claimEvents = events
+    .filter((e) => e.claimId === claim.id && statusBearing.has(e.status))
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+
+  if (claimEvents.length === 0) return false;
+
+  const actor = claimEvents[0].actor;
+  const result = checkAuthorityActive(actor, authorityTrace, now);
+  return result === "active";
+}
+
+/**
+ * Evaluate the corroboration.minActors constraint.
+ *
+ * Counts how many DISTINCT collectedBy values appear on evidence items that
+ * have supportStrength "entails".  Returns true iff that count >= minActors.
+ */
+function evaluateCorroboration(
+  evidence: Evidence[],
+  minActors: number,
+): boolean {
+  const actors = new Set<string>();
+  for (const ev of evidence) {
+    if (ev.supportStrength === "entails") {
+      actors.add(ev.collectedBy);
+    }
+  }
+  return actors.size >= minActors;
 }

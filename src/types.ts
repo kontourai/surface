@@ -746,7 +746,7 @@ export type DerivationRequirement =
 
 /**
  * Claim-based requirement: checks a specific claim against accepted statuses
- * and optional value predicate / freshness window.
+ * and optional value predicate / freshness window / authority / corroboration.
  */
 export interface DerivationClaimRequirement {
   /** The canonical claim that must exist and satisfy the requirement. */
@@ -766,6 +766,26 @@ export interface DerivationClaimRequirement {
    * of the `now` value injected into evaluation.
    */
   fresherThan?: { days: number };
+  /**
+   * When true, the claim's most-recent status-bearing verification event must
+   * have an actor with an AuthorityTrace in the bundle that is active at the
+   * `now` instant: validFrom/validUntil window respected, not revoked, and
+   * subject-compatible.  Unmet reason names the actor and the failure cause
+   * (no trace / expired / revoked).
+   */
+  requiresActiveAuthority?: true;
+  /**
+   * Minimum number of DISTINCT collectedBy actors whose evidence for this
+   * claim carries supportStrength "entails".  Addresses Art. 14(5)-style
+   * distinct-party review: two pieces of evidence from the same actor do NOT
+   * satisfy minActors:2.
+   *
+   * Implementation note: actors are the implementable proxy for distinct-party
+   * review because the format does not yet standardise organisational roles.
+   * Role-awareness (e.g. "primary attestor vs. independent reviewer") is
+   * future work and would require a role field on Evidence.
+   */
+  corroboration?: { minActors: number };
 }
 
 /**

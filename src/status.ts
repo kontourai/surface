@@ -168,6 +168,60 @@ function isResolutionAuthorized(
 }
 
 // ---------------------------------------------------------------------------
+// requiresActiveAuthority helper — exported for use in inquiry evaluation
+// ---------------------------------------------------------------------------
+
+/**
+ * Outcome of an active-authority check for a single actor.
+ * - "active": at least one AuthorityTrace covers the actor and is currently valid.
+ * - "no-trace": no AuthorityTrace record exists for this actor.
+ * - "expired": a trace was found but validUntil is in the past at `now`.
+ * - "revoked": a trace was found but revokedAt is before or at `now`.
+ */
+export type AuthorityCheckResult = "active" | "no-trace" | "expired" | "revoked";
+
+/**
+ * Check whether `actorRef` has at least one AuthorityTrace that is active at
+ * `now`.  Returns the first problem encountered when no trace is valid.
+ *
+ * Precedence of failure reasons: revoked > expired > no-trace.
+ */
+export function checkAuthorityActive(
+  actorRef: string,
+  authorityTrace: AuthorityTrace[],
+  now: Date,
+): AuthorityCheckResult {
+  const actorTraces = authorityTrace.filter((t) => t.actorRef === actorRef);
+  if (actorTraces.length === 0) return "no-trace";
+
+  const nowIso = now.toISOString();
+  let sawRevoked = false;
+  let sawExpired = false;
+
+  for (const trace of actorTraces) {
+    if (trace.revokedAt && trace.revokedAt <= nowIso) {
+      sawRevoked = true;
+      continue;
+    }
+    if (trace.validUntil && trace.validUntil < nowIso) {
+      sawExpired = true;
+      continue;
+    }
+    if (trace.validFrom && trace.validFrom > nowIso) {
+      // Not yet valid — treat as expired for UI purposes
+      sawExpired = true;
+      continue;
+    }
+    // This trace is active
+    return "active";
+  }
+
+  if (sawRevoked) return "revoked";
+  if (sawExpired) return "expired";
+  return "no-trace";
+}
+
+// ---------------------------------------------------------------------------
 // ADR 0003 step 2 — versioned pure status function
 // ---------------------------------------------------------------------------
 
