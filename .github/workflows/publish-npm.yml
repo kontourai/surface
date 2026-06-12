@@ -132,6 +132,9 @@ jobs:
         with:
           node-version: '24'
 
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
       - name: Install
         run: npm ci --no-fund --no-audit
         working-directory: surface
@@ -139,6 +142,19 @@ jobs:
       - name: Generate and Sign Trust Bundle
         run: node scripts/release-trust-bundle.mjs --out /tmp/surface-trust-bundle
         working-directory: surface
+
+      - name: Verify signature with cosign (fail-closed)
+        # Signing is fail-open; verification of a produced signature is fail-closed.
+        # A bad signature is worse than none — if signing ran and produced a bundle,
+        # we must confirm cosign can verify it before uploading to the release.
+        # Skip this step only when signing was skipped (no sigstore bundle written).
+        if: hashFiles('/tmp/surface-trust-bundle/trust-bundle.sigstore.json') != ''
+        run: |
+          cosign verify-blob \
+            --bundle /tmp/surface-trust-bundle/trust-bundle.sigstore.json \
+            --certificate-identity "https://github.com/${{ github.repository }}/.github/workflows/publish-npm.yml@${{ github.ref }}" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            /tmp/surface-trust-bundle/trust-bundle.json
 
       - name: Upload to GitHub Release
         env:

@@ -480,6 +480,11 @@ console.log(`Wrote trust report → ${reportPath}`);
 // When no ambient OIDC credential is available (local runs, forks without
 // id-token:write), we log the assurance level and continue.  The release
 // still succeeds; the DSSE file is simply not written.
+//
+// signStatementWithSigstore() passes RAW statement bytes + the correct
+// payloadType to DSSEBundleBuilder, which PAE-encodes them internally
+// (once, correctly).  The bundle's DSSE envelope is the authoritative
+// signed artifact; we derive trust-bundle.dsse.json from it directly.
 // ---------------------------------------------------------------------------
 console.log("\nAttempting Sigstore keyless signing …");
 
@@ -487,57 +492,53 @@ let assuranceLevel = "unsigned (no ambient identity)";
 
 try {
   // Dynamic import keeps this optional — @sigstore/sign is an optionalDependency.
-  const { createSigstoreSigner } = await import(
+  const { signStatementWithSigstore } = await import(
     path.join(root, "dist", "src", "signing", "sigstore.js")
   );
 
-  const signerResult = await createSigstoreSigner();
+  const { toInTotoStatement } = await import(
+    path.join(root, "dist", "src", "interop", "in-toto.js")
+  );
 
-  if (signerResult === null) {
+  // Build a subject from the bundle file we just wrote (sha256 digest).
+  const { createHash } = await import("node:crypto");
+  const bundleBytes = await readFile(bundlePath);
+  const bundleSha256 = createHash("sha256").update(bundleBytes).digest("hex");
+
+  const statement = toInTotoStatement(bundle, {
+    subjects: [
+      {
+        name: `trust-bundle.json`,
+        digest: { sha256: bundleSha256 },
+      },
+    ],
+  });
+
+  const signResult = await signStatementWithSigstore(statement);
+
+  if (signResult === null) {
     console.log(`  Signing skipped: ${assuranceLevel}`);
   } else {
-    const { toInTotoStatement, toDsseEnvelope } = await import(
-      path.join(root, "dist", "src", "interop", "in-toto.js")
-    );
-
-    // Build a subject from the bundle file we just wrote (sha256 digest).
-    const { createHash } = await import("node:crypto");
-    const bundleBytes = await readFile(bundlePath);
-    const bundleSha256 = createHash("sha256").update(bundleBytes).digest("hex");
-
-    const statement = toInTotoStatement(bundle, {
-      subjects: [
-        {
-          name: `trust-bundle.json`,
-          digest: { sha256: bundleSha256 },
-        },
-      ],
-    });
-
-    const envelope = await toDsseEnvelope(statement, signerResult.signer);
-
+    // The envelope payload is the raw statement bytes (base64) — no double-PAE.
     const dssePath = path.join(outDir, "trust-bundle.dsse.json");
-    await writeFile(dssePath, JSON.stringify(envelope, null, 2));
+    await writeFile(dssePath, JSON.stringify(signResult.envelope, null, 2));
     console.log(`  Wrote DSSE envelope  → ${dssePath}`);
 
     // Persist the sigstore verification material bundle (cert + Rekor entry).
-    const sigstoreBundle = signerResult.signer.getSigstoreBundle();
-    if (sigstoreBundle !== null) {
-      // Use @sigstore/bundle's bundleToJSON for canonical serialisation.
-      let bundleJson;
-      try {
-        const { bundleToJSON } = await import("@sigstore/bundle");
-        bundleJson = bundleToJSON(sigstoreBundle);
-      } catch {
-        // Fallback: plain JSON (sufficient for inspection even if not canonical).
-        bundleJson = sigstoreBundle;
-      }
-      const sigstorePath = path.join(outDir, "trust-bundle.sigstore.json");
-      await writeFile(sigstorePath, JSON.stringify(bundleJson, null, 2));
-      console.log(`  Wrote sigstore bundle → ${sigstorePath}`);
+    // Use @sigstore/bundle's bundleToJSON for canonical serialisation.
+    let bundleJson;
+    try {
+      const { bundleToJSON } = await import("@sigstore/bundle");
+      bundleJson = bundleToJSON(signResult.sigstoreBundle);
+    } catch {
+      // Fallback: plain JSON (sufficient for inspection even if not canonical).
+      bundleJson = signResult.sigstoreBundle;
     }
+    const sigstorePath = path.join(outDir, "trust-bundle.sigstore.json");
+    await writeFile(sigstorePath, JSON.stringify(bundleJson, null, 2));
+    console.log(`  Wrote sigstore bundle → ${sigstorePath}`);
 
-    assuranceLevel = signerResult.assuranceLevel;
+    assuranceLevel = signResult.assuranceLevel;
     console.log(`  Assurance level: ${assuranceLevel}`);
   }
 } catch (err) {
