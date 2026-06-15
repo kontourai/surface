@@ -47,6 +47,9 @@ button {
 }
 
 .dash-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   margin: 0 0 0.2rem;
   font-size: 0.65rem;
   font-weight: 800;
@@ -54,6 +57,12 @@ button {
   text-transform: uppercase;
   color: var(--muted);
   font-family: ui-monospace, "Cascadia Code", "SF Mono", monospace;
+}
+
+/* Surface product mark from @kontourai/ui, paired with the brand eyebrow. */
+.dash-eyebrow .brand-mark {
+  flex-shrink: 0;
+  color: var(--blue);
 }
 
 .dash-title-row {

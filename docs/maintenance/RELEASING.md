@@ -9,7 +9,7 @@ This document is the operator checklist for cutting a release of `@kontourai/sur
 - `npm run test:package-smoke` passes, proving a fresh consumer can install the packed artifact, import the root entrypoint, and run the CLI
 - `npm run check:package-contents` passes, proving the packed file list matches the intended package boundary
 - package metadata in `package.json` is correct, including `types`, `exports`, `bin`, license, repository, and public access
-- vendored docs assets sourced from `@kontourai/console-kit` are limited to approved token CSS, or the upstream package declares explicit license metadata for any additional asset class
+- vendored docs assets sourced from `@kontourai/ui` are limited to approved token CSS, or the upstream package declares explicit license metadata for any additional asset class
 - any breaking changes are documented
 
 ## Release Flow

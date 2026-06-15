@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createServer } from "node:net";
 
-test("renders standalone Surface Console with embedded Console Kit tokens", async ({ page }) => {
+test("renders standalone Surface Console with embedded Kontour UI tokens", async ({ page }) => {
   const consoleErrors = collectConsoleErrors(page);
   const consoleServer = await startSurfaceConsole();
 

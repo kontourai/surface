@@ -47,7 +47,7 @@ function renderShell({ slug, pageTitle, description, body, extraScripts }) {
   <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3efe3">
   <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#101511">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,${faviconSvg}">
-  <link rel="stylesheet" href="vendor/console-kit/tokens/index.css">
+  <link rel="stylesheet" href="vendor/kontourai-ui/tokens/index.css">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>

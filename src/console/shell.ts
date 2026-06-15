@@ -21,7 +21,14 @@ export function buildConsoleHtml(config: SurfaceConsoleRuntimeConfig = {}): stri
 <body class="console-page theme-surface">
   <header class="dash-header">
     <div class="dash-brand">
-      <p class="dash-eyebrow">Surface</p>
+      <p class="dash-eyebrow">
+        <svg class="brand-mark" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3.5 20.5 8 12 12.5 3.5 8Z"/>
+          <path d="M3.5 12 12 16.5 20.5 12"/>
+          <path d="M3.5 16 12 20.5 20.5 16"/>
+        </svg>
+        Surface
+      </p>
       <div class="dash-title-row">
         <h1 id="projectName">Loading…</h1>
         <span class="run-label" id="runLabel" hidden></span>
