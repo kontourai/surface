@@ -55,7 +55,7 @@ Surface keeps its own standalone Surface Console. Keep product-specific trust be
 | Standalone UI asset sources | `src/console/client/parts/`, `src/console/styles/parts/` | Owns the editable browser behavior and Console Kit-compatible token aliases for the standalone Surface Console. |
 | Generated UI asset constants | `scripts/build-console-assets.mjs`, `src/console/client/index.js`, `src/console/styles/index.css`, `src/console/assets.generated.ts`, `src/console/script.ts`, `src/console/styles.ts` | Concatenates ordered client and CSS parts, then converts JS/CSS assets into TypeScript constants consumed by `/console.js` and `/console.css`; regenerate with `npm run build:console-assets`. |
 | Browser coverage | `tests/browser/console.spec.ts` | Starts `bin/surface.mjs console` and verifies the real standalone page on desktop and mobile. |
-| Docs-site Console Kit assets | `scripts/sync-console-kit-assets.mjs`, `docs-site/vendor/console-kit/` | Copies token CSS from the installed public `@kontourai/console-kit` package for generated docs pages. |
+| Docs-site Kontour UI assets | `scripts/sync-ui-assets.mjs`, `docs-site/vendor/kontourai-ui/` | Copies token CSS from the installed public `@kontourai/ui` package for generated docs pages. |
 | Package boundary guard | `tests/package-files.test.ts`, `scripts/check-package-contents.mjs` | Keeps Console Kit dev-only, prevents React/runtime leakage, and verifies published package contents. |
 
 ## Run directory convention

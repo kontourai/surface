@@ -2,7 +2,7 @@
  * check-console-token-drift.mjs
  *
  * Compares the --k-* token values embedded in src/console/styles/parts/01-tokens.css
- * against the @kontourai/console-kit installed dev dependency.
+ * against the @kontourai/ui installed dev dependency.
  *
  * The console's token block is a manual copy kept local so the published CLI is
  * standalone. This script prevents silent drift.
@@ -21,7 +21,7 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const consoleTokensPath = path.join(root, "src", "console", "styles", "parts", "01-tokens.css");
-const kitTokensPath = path.join(root, "node_modules", "@kontourai", "console-kit", "tokens", "tokens.css");
+const kitTokensPath = path.join(root, "node_modules", "@kontourai", "ui", "tokens", "tokens.css");
 
 // Tokens where the console intentionally diverges from kit values (e.g. rem vs px,
 // or console-specific font stack). Add names here to suppress false drift errors.
@@ -74,11 +74,11 @@ if (missingInConsole.length) {
 }
 
 if (driftErrors.length) {
-  console.error("Console token drift detected — values diverge from @kontourai/console-kit:");
+  console.error("Console token drift detected — values diverge from @kontourai/ui:");
   driftErrors.forEach(e => console.error(e));
   console.error("\nTo fix: update src/console/styles/parts/01-tokens.css to match the kit,");
   console.error("or add the token name to ALLOWED_VALUE_DRIFTS in scripts/check-console-token-drift.mjs");
   process.exit(1);
 }
 
-console.log("Console tokens are in sync with @kontourai/console-kit (" + kitTokens.size + " checked, " + ALLOWED_VALUE_DRIFTS.size + " allowed drifts).");
+console.log("Console tokens are in sync with @kontourai/ui (" + kitTokens.size + " checked, " + ALLOWED_VALUE_DRIFTS.size + " allowed drifts).");

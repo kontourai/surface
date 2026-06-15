@@ -3,20 +3,20 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const installedKitRoot = path.join(root, "node_modules", "@kontourai", "console-kit");
-const target = path.join(root, "docs-site", "vendor", "console-kit", "tokens");
+const installedKitRoot = path.join(root, "node_modules", "@kontourai", "ui");
+const target = path.join(root, "docs-site", "vendor", "kontourai-ui", "tokens");
 const checkOnly = process.argv.includes("--check");
 const kitRoot = await resolveKitRoot();
 const source = path.join(kitRoot, "tokens");
 
 if (checkOnly) {
   await compareDirectories(source, target);
-  console.log("Surface docs Console Kit vendor assets are synced.");
+  console.log("Surface docs Kontour UI vendor assets are synced.");
 } else {
   await rm(path.dirname(target), { recursive: true, force: true });
   await mkdir(path.dirname(target), { recursive: true });
   await cp(source, target, { recursive: true });
-  console.log("Synced Surface docs Console Kit vendor assets.");
+  console.log("Synced Surface docs Kontour UI vendor assets.");
 }
 
 async function resolveKitRoot() {
@@ -25,14 +25,14 @@ async function resolveKitRoot() {
     await assertPackageName(installedKitRoot);
     return installedKitRoot;
   }
-  throw new Error("Missing @kontourai/console-kit. Run npm install before syncing docs assets.");
+  throw new Error("Missing @kontourai/ui. Run npm install before syncing docs assets.");
 }
 
 async function assertPackageName(candidate) {
   const packageJsonPath = path.join(candidate, "package.json");
   const packageJson = JSON.parse(await readFile(packageJsonPath, "utf8"));
-  if (packageJson.name !== "@kontourai/console-kit") {
-    throw new Error(`Expected @kontourai/console-kit at ${candidate}, found ${packageJson.name ?? "unnamed package"}.`);
+  if (packageJson.name !== "@kontourai/ui") {
+    throw new Error(`Expected @kontourai/ui at ${candidate}, found ${packageJson.name ?? "unnamed package"}.`);
   }
 }
 

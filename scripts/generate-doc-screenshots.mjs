@@ -44,7 +44,7 @@ async function captureProductEmbed(browser, baseUrl) {
   report.claims = report.claims.filter((claim) => String(claim.surface).startsWith("field-attested-records"));
   const html = `<!doctype html>
 <html class="theme-surface"><head><meta charset="utf-8">
-<link rel="stylesheet" href="${baseUrl}/vendor/console-kit/tokens/index.css">
+<link rel="stylesheet" href="${baseUrl}/vendor/kontourai-ui/tokens/index.css">
 <style>
   body { margin: 0; padding: 40px; background: #f3efe3; font-family: var(--k-font-ui, sans-serif); color: #17201b; }
   .product-card { max-width: 660px; margin: 0 auto; background: #fffcf1; border: 1px solid rgba(36,68,52,0.16); border-radius: 18px; padding: 28px; }

@@ -29,7 +29,7 @@ Before opening a PR:
 npm run verify
 ```
 
-This runs the content-boundary check, doc-link check, generated-boundary check, typecheck, full test suite, docs build, console-kit asset check, package-contents check, external-adapter test, package smoke test, surface summary, and browser tests.
+This runs the content-boundary check, doc-link check, generated-boundary check, typecheck, full test suite, docs build, Kontour UI asset check, package-contents check, external-adapter test, package smoke test, surface summary, and browser tests.
 
 Individual checks by change type:
 
