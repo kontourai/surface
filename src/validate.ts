@@ -4,6 +4,7 @@ import {
   DERIVATION_EDGE_KEYS,
   DERIVATION_METHODS,
   EVIDENCE_KEYS,
+  EXECUTION_KEYS,
   EVIDENCE_METHODS,
   EVIDENCE_TYPES,
   EVENT_KEYS,
@@ -121,6 +122,27 @@ export function validateTrustBundle(input: unknown): TrustBundle {
     }
     if (item.blocking !== undefined && typeof item.blocking !== "boolean") {
       throw new Error(`Evidence ${item.id} blocking must be a boolean`);
+    }
+    if (item.execution !== undefined) {
+      requireObject(item.execution, `evidence ${String(item.id ?? "")} execution`);
+      const execution = item.execution as Record<string, unknown>;
+      rejectUnknownKeys(execution, EXECUTION_KEYS, `evidence ${String(item.id ?? "")} execution`);
+      if (execution.runner !== "bash" && execution.runner !== "mcp") {
+        throw new Error(`Evidence ${item.id} execution.runner must be "bash" or "mcp"`);
+      }
+      if (typeof execution.label !== "string" || execution.label.length === 0) {
+        throw new Error(`Evidence ${item.id} execution.label must be a non-empty string`);
+      }
+      if (execution.exitCode !== undefined && !Number.isInteger(execution.exitCode)) {
+        throw new Error(`Evidence ${item.id} execution.exitCode must be an integer`);
+      }
+      if (execution.isError !== undefined && typeof execution.isError !== "boolean") {
+        throw new Error(`Evidence ${item.id} execution.isError must be a boolean`);
+      }
+      if (execution.durationMs !== undefined && typeof execution.durationMs !== "number") {
+        throw new Error(`Evidence ${item.id} execution.durationMs must be a number`);
+      }
+      if (execution.metadata !== undefined) requireObject(execution.metadata, "evidence.execution.metadata");
     }
     if (item.metadata !== undefined) requireObject(item.metadata, "evidence.metadata");
   }
