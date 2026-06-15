@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/kontourai/surface/compare/v1.0.0...v1.0.1) (2026-06-15)
+
+
+### Fixes
+
+* **validate:** accept Evidence.execution; emit-validate round-trip gate in release bundle ([#80](https://github.com/kontourai/surface/issues/80)) ([2042b58](https://github.com/kontourai/surface/commit/2042b58a8d30aedbe5fe1a3234cec943006ef34f))
+
 ## [1.0.0](https://github.com/kontourai/surface/compare/v0.14.0...v1.0.0) (2026-06-12)
 
 
