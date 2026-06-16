@@ -32,6 +32,10 @@ test("surface mcp serves trust state over the Model Context Protocol", async () 
     assert.equal(initialize.result.serverInfo.name, "kontour-surface");
     assert.equal(initialize.result.protocolVersion, "2025-06-18");
     assert.ok(initialize.result.capabilities.tools);
+    // SEP-1865: resources back the ui:// trust panel, and the MCP Apps
+    // capability extension is advertised.
+    assert.ok(initialize.result.capabilities.resources);
+    assert.ok(initialize.result.capabilities.extensions?.["io.modelcontextprotocol/ui"]);
 
     send(server, { jsonrpc: "2.0", method: "notifications/initialized" });
 
@@ -53,6 +57,14 @@ test("surface mcp serves trust state over the Model Context Protocol", async () 
       assert.equal(typeof tool.description, "string");
       assert.equal(tool.inputSchema.type, "object");
     }
+    // surface_summary advertises its SEP-1865 UI resource in BOTH the flat
+    // canonical key and the nested convenience shape, so one server renders in
+    // the official Apps hosts (ChatGPT/Claude) and in Station alike.
+    const summaryTool = toolsList.result.tools.find(
+      (tool: { name: string }) => tool.name === "surface_summary",
+    );
+    assert.equal(summaryTool._meta["ui/resourceUri"], "ui://surface/trust-panel/summary");
+    assert.equal(summaryTool._meta.ui.resourceUri, "ui://surface/trust-panel/summary");
 
     send(server, { jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "surface_summary", arguments: {} } });
     const summary = await responses.next(4);
@@ -121,8 +133,40 @@ test("surface mcp serves trust state over the Model Context Protocol", async () 
     assert.equal(unknownTool.error?.code, -32602);
     assert.match(unknownTool.error?.message ?? "", /Unknown tool/);
 
+    // SEP-1865 declared-resource path: list + read the trust panel resource.
     send(server, { jsonrpc: "2.0", id: 9, method: "resources/list" });
-    const unknownMethod = await responses.next(9);
+    const resourcesList = await responses.next(9);
+    const listed = resourcesList.result.resources;
+    assert.equal(listed.length, 1);
+    assert.equal(listed[0].uri, "ui://surface/trust-panel/summary");
+    assert.equal(listed[0].mimeType, "text/html;profile=mcp-app");
+
+    send(server, {
+      jsonrpc: "2.0",
+      id: 10,
+      method: "resources/read",
+      params: { uri: "ui://surface/trust-panel/summary" },
+    });
+    const resourceRead = await responses.next(10);
+    const contents = resourceRead.result.contents;
+    assert.equal(contents.length, 1);
+    assert.equal(contents[0].uri, "ui://surface/trust-panel/summary");
+    assert.equal(contents[0].mimeType, "text/html;profile=mcp-app");
+    assert.ok(contents[0].text.includes("surface-trust-panel"));
+    // The report data is embedded in the read resource (no extra round-trip).
+    assert.ok(contents[0].text.includes("field-attested-records"));
+
+    send(server, {
+      jsonrpc: "2.0",
+      id: 11,
+      method: "resources/read",
+      params: { uri: "ui://surface/does-not-exist" },
+    });
+    const unknownResource = await responses.next(11);
+    assert.equal(unknownResource.error?.code, -32602);
+
+    send(server, { jsonrpc: "2.0", id: 12, method: "no/such/method" });
+    const unknownMethod = await responses.next(12);
     assert.equal(unknownMethod.error?.code, -32601);
   } finally {
     server.stdin.end();
@@ -149,8 +193,23 @@ test("surface mcp --no-ui omits the UI resource entry", async () => {
         clientInfo: { name: "surface-tests", version: "0.0.0" },
       },
     });
-    await responses.next(1);
+    const noUiInitialize = await responses.next(1);
+    // --no-ui suppresses the resources capability and the MCP Apps extension.
+    assert.equal(noUiInitialize.result.capabilities.resources, undefined);
+    assert.equal(noUiInitialize.result.capabilities.extensions, undefined);
     send(server, { jsonrpc: "2.0", method: "notifications/initialized" });
+
+    // No UI resources are advertised, and tools carry no SEP-1865 _meta.
+    send(server, { jsonrpc: "2.0", id: 10, method: "resources/list" });
+    const noUiResources = await responses.next(10);
+    assert.equal(noUiResources.result.resources.length, 0);
+
+    send(server, { jsonrpc: "2.0", id: 11, method: "tools/list" });
+    const noUiTools = await responses.next(11);
+    const noUiSummary = noUiTools.result.tools.find(
+      (tool: { name: string }) => tool.name === "surface_summary",
+    );
+    assert.equal(noUiSummary._meta, undefined);
 
     send(server, { jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "surface_summary", arguments: {} } });
     const summary = await responses.next(2);
