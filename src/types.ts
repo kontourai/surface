@@ -601,9 +601,20 @@ export interface DerivationCheckpoint {
   expiresAtByClaimId?: Record<string, string>;
   /**
    * High-water mark: the max event.createdAt folded into this checkpoint.
-   * Events with createdAt <= this are assumed already reflected.
+   * Events with createdAt <= this are assumed already reflected. This is a
+   * GLOBAL mark across all claims; because events for different claims can land
+   * out of order, it alone is not a safe per-claim tail boundary — prefer
+   * `throughEventCreatedAtByClaimId` for tail detection when present.
    */
   throughEventCreatedAt: string | null;
+  /**
+   * Per-claim high-water mark: the max event.createdAt folded for each claim.
+   * Tail-only re-derivation uses this so an out-of-order event for one claim
+   * (older than the global mark but newer than that claim's own last folded
+   * event) is still correctly treated as tail. Absent on legacy checkpoints; a
+   * derivation without it falls back to full replay for safety.
+   */
+  throughEventCreatedAtByClaimId?: Record<string, string | null>;
   statusFunctionVersion: string;
 }
 

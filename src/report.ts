@@ -11,6 +11,7 @@ import type {
   TrustStatus,
 } from "./types.js";
 import { deriveTrustSnapshot } from "./trust-snapshot.js";
+import type { SnapshotEventProbe } from "./trust-snapshot.js";
 import { statusFunctionVersion } from "./status.js";
 
 const STATUSES: TrustStatus[] = ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected", "revoked"];
@@ -36,11 +37,17 @@ export interface BuildTrustReportOptions {
    * freshness is always re-applied against `now`.
    */
   since?: DerivationCheckpoint;
+  /**
+   * Instrumentation hook (testing/observability): invoked once per claim with
+   * how many of that claim's events were actually folded. Lets callers prove a
+   * checkpointed derivation consumed only the event tail (often zero events).
+   */
+  instrument?: (probe: SnapshotEventProbe) => void;
 }
 
 export function buildTrustReport(input: TrustBundle, options: BuildTrustReportOptions = {}): TrustReport {
   const now = options.now ?? new Date();
-  const snapshot = deriveTrustSnapshot(input, { now });
+  const snapshot = deriveTrustSnapshot(input, { now, since: options.since, instrument: options.instrument });
 
   return {
     schemaVersion: input.schemaVersion,
@@ -77,10 +84,19 @@ export function checkpointFromReport(report: TrustReport): DerivationCheckpoint 
     statusByClaimId[claim.id] = claim.status;
     if (claim.freshness?.expiresAt) expiresAtByClaimId[claim.id] = claim.freshness.expiresAt;
   }
+  // Record both a global and a per-claim high-water mark. The per-claim mark is
+  // what makes tail detection correct under out-of-order arrival; the global
+  // mark is kept for backward compatibility / coarse diagnostics.
   let throughEventCreatedAt: string | null = null;
+  const throughEventCreatedAtByClaimId: Record<string, string | null> = {};
+  for (const claim of report.claims) throughEventCreatedAtByClaimId[claim.id] = null;
   for (const event of report.events) {
     if (throughEventCreatedAt === null || Date.parse(event.createdAt) > Date.parse(throughEventCreatedAt)) {
       throughEventCreatedAt = event.createdAt;
+    }
+    const prior = throughEventCreatedAtByClaimId[event.claimId];
+    if (prior === undefined || prior === null || Date.parse(event.createdAt) > Date.parse(prior)) {
+      throughEventCreatedAtByClaimId[event.claimId] = event.createdAt;
     }
   }
   return {
@@ -88,6 +104,7 @@ export function checkpointFromReport(report: TrustReport): DerivationCheckpoint 
     statusByClaimId,
     expiresAtByClaimId: Object.keys(expiresAtByClaimId).length > 0 ? expiresAtByClaimId : undefined,
     throughEventCreatedAt,
+    throughEventCreatedAtByClaimId,
     statusFunctionVersion: report.statusFunctionVersion,
   };
 }

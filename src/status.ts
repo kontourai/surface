@@ -99,6 +99,34 @@ export function deriveTrustStatus(input: {
   return hasRequiredEvidence ? "proposed" : "unknown";
 }
 
+/**
+ * Re-apply ONLY the time-based staleness of an already-`verified`/`stale` claim
+ * against a new `now`, without re-folding the claim's event ledger. Used by the
+ * checkpoint (tail-only) derivation path: when a claim has no events newer than
+ * the checkpoint high-water mark, its verified/stale boundary is the only status
+ * input that can move as the wall clock advances. Returns the re-applied status
+ * (`verified` or `stale`); any other prior status passes through unchanged.
+ *
+ * The governing verified event (anchor for `ttlSeconds` and the policy duration
+ * window) is taken from the unchanged ledger. This is identical to what
+ * `deriveTrustStatus` would compute for the same `now`, by construction.
+ */
+export function reapplyVerifiedFreshness(input: {
+  priorStatus: TrustStatus;
+  claim: Claim;
+  evidence: Evidence[];
+  events: VerificationEvent[];
+  policy?: VerificationPolicy;
+  now: Date;
+}): TrustStatus {
+  if (input.priorStatus !== "verified" && input.priorStatus !== "stale") return input.priorStatus;
+  const governing = input.events
+    .filter((event) => event.claimId === input.claim.id && event.status === "verified")
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0];
+  if (governing === undefined) return input.priorStatus;
+  return isVerifiedEventStale(governing, input.claim, input.evidence, input.policy, input.now) ? "stale" : "verified";
+}
+
 function isVerifiedEventStale(
   event: VerificationEvent,
   claim: Claim,

@@ -3,6 +3,7 @@ import type {
   ClaimFreshness,
   ClaimGroupRollup,
   DerivationChangeRecord,
+  DerivationCheckpoint,
   DerivedReportClaim,
   Evidence,
   EvidenceRequirement,
@@ -19,7 +20,7 @@ import { applyDerivation } from "./derivation.js";
 import { partitionEvidenceBySupport } from "./evidence-support.js";
 import { buildIdentityIndex } from "./identity.js";
 import { resolvePolicyForClaim } from "./policy-resolver.js";
-import { claimIntrinsicExpiry, deriveTrustStatus } from "./status.js";
+import { claimIntrinsicExpiry, deriveTrustStatus, reapplyVerifiedFreshness, statusFunctionVersion } from "./status.js";
 
 const TRANSPARENCY_GAP_TYPES: TransparencyGapType[] = [
   "contradiction",
@@ -39,12 +40,45 @@ export interface TrustSnapshotDerivation {
   claimGroupRollups: ClaimGroupRollup[];
 }
 
+export interface DeriveTrustSnapshotOptions {
+  now?: Date;
+  /**
+   * Optional checkpoint enabling cost-bounded (tail-only) re-derivation. When
+   * supplied, a claim with **no events newer than the checkpoint's high-water
+   * mark** (`throughEventCreatedAt`) is not event-replayed at all: its
+   * event-driven status is taken from the checkpoint (which already folded that
+   * claim's full ledger), and only time-based freshness is re-applied against
+   * `now`. A claim that DOES have tail events is fully re-folded. The status
+   * function is pure, so the result is byte-identical to a full derivation for
+   * the same `now`; the win is that the event fold only touches the tail.
+   */
+  since?: DerivationCheckpoint;
+  /**
+   * Instrumentation hook (testing/observability). Invoked once per claim with
+   * how many of that claim's events were actually folded for the event-driven
+   * status fold (the whole ledger for a full derivation; only the tail — often
+   * zero — under a matching checkpoint). Lets callers prove tail-only behaviour.
+   */
+  instrument?: (probe: SnapshotEventProbe) => void;
+}
+
+export interface SnapshotEventProbe {
+  claimId: string;
+  /** Events for this claim folded by the event-driven status function. */
+  eventsFolded: number;
+  /** Total events for this claim present in the bundle. */
+  eventsTotal: number;
+  /** True when the checkpoint short-circuited this claim's event fold. */
+  fromCheckpoint: boolean;
+}
+
 /** Latest verified verification event for a claim (governs intrinsic ttl anchor). */
 function governingVerifiedEvent(claimId: string, events: VerificationEvent[]): VerificationEvent | undefined {
   return events
     .filter((event) => event.claimId === claimId && event.status === "verified")
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0];
 }
+
 
 /** Build the per-claim freshness facts attached to a derived report claim. */
 function freshnessForClaim(claim: Claim, events: VerificationEvent[], status: TrustStatus, now: Date): ClaimFreshness {
@@ -60,13 +94,37 @@ function freshnessForClaim(claim: Claim, events: VerificationEvent[], status: Tr
   return freshness;
 }
 
-export function deriveTrustSnapshot(input: TrustBundle, options: { now?: Date } = {}): TrustSnapshotDerivation {
+export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnapshotOptions = {}): TrustSnapshotDerivation {
   const now = options.now ?? new Date();
   const evidenceRequirementsByClaimId: Record<string, EvidenceRequirement> = {};
   const transparencyGaps: TransparencyGap[] = [];
   const changeRecords: DerivationChangeRecord[] = [];
   const identityIndex = buildIdentityIndex(input);
   const policyByClaimId = new Map<string, VerificationPolicy>();
+
+  // Index events by claim once so a single claim's fold (and the cheap
+  // "does this claim have any tail events?" check) is O(events for that claim),
+  // not O(whole ledger) per claim.
+  const eventsByClaimId = new Map<string, VerificationEvent[]>();
+  for (const event of input.events) {
+    const list = eventsByClaimId.get(event.claimId);
+    if (list) list.push(event);
+    else eventsByClaimId.set(event.claimId, [event]);
+  }
+
+  const checkpoint = options.since;
+  // A checkpoint is only usable for a tail-only fold when (a) it was produced by
+  // the same status-function version (else the recorded statuses may not be
+  // re-derivable under current semantics) AND (b) it carries the PER-CLAIM
+  // high-water marks. A global mark alone is unsafe: an event can land for one
+  // claim with a createdAt older than the global max but newer than that claim's
+  // own last folded event, and would be silently dropped from the tail. Legacy
+  // checkpoints without the per-claim map fall back to full replay.
+  const perClaimMark = checkpoint?.throughEventCreatedAtByClaimId;
+  const checkpointUsable =
+    checkpoint !== undefined &&
+    checkpoint.statusFunctionVersion === statusFunctionVersion &&
+    perClaimMark !== undefined;
 
   const ownStatusByClaimId = new Map<string, TrustStatus>();
   const claimsById = new Map<string, Claim>();
@@ -77,7 +135,45 @@ export function deriveTrustSnapshot(input: TrustBundle, options: { now?: Date } 
     const policy = resolvePolicyForClaim(claim, input.policies);
     if (policy) policyByClaimId.set(claim.id, policy);
     const producerStatus = claim.status;
-    const ownStatus = deriveTrustStatus({ claim, evidence: entailingEvidence, policy, events: input.events, now, authorityTrace: input.authorityTrace });
+    const claimEvents = eventsByClaimId.get(claim.id) ?? [];
+
+    // Tail = events newer than this claim's own high-water mark. When the
+    // checkpoint is usable and the claim's tail is empty, its event ledger is
+    // byte-for-byte what the checkpoint already folded, so its event-driven
+    // status is the checkpoint's recorded status. We then re-apply ONLY the
+    // time-based freshness against the new `now` (the one input that can move
+    // without a new event). This touches zero of the claim's events. A claim
+    // the checkpoint never saw (no entry in the per-claim mark) is treated as
+    // having an unbounded tail → full fold.
+    const claimMarkIso = checkpointUsable && perClaimMark
+      ? (claim.id in perClaimMark ? perClaimMark[claim.id] : undefined)
+      : undefined;
+    const claimMark = typeof claimMarkIso === "string" ? Date.parse(claimMarkIso) : undefined;
+    const claimSeenByCheckpoint = checkpointUsable && perClaimMark ? claim.id in perClaimMark : false;
+    const tailEvents = !checkpointUsable || claimMark === undefined
+      ? claimEvents
+      : claimEvents.filter((event) => Date.parse(event.createdAt) > claimMark);
+    const priorStatus = checkpoint?.statusByClaimId[claim.id];
+    const canShortCircuit =
+      checkpointUsable && claimSeenByCheckpoint && tailEvents.length === 0 && priorStatus !== undefined;
+
+    let ownStatus: TrustStatus;
+    let eventsFolded: number;
+    if (canShortCircuit) {
+      ownStatus = reapplyVerifiedFreshness({
+        priorStatus: priorStatus as TrustStatus,
+        claim,
+        evidence: entailingEvidence,
+        events: claimEvents,
+        policy,
+        now,
+      });
+      eventsFolded = 0;
+    } else {
+      ownStatus = deriveTrustStatus({ claim, evidence: entailingEvidence, policy, events: claimEvents, now, authorityTrace: input.authorityTrace });
+      eventsFolded = claimEvents.length;
+    }
+    options.instrument?.({ claimId: claim.id, eventsFolded, eventsTotal: claimEvents.length, fromCheckpoint: canShortCircuit });
     ownStatusByClaimId.set(claim.id, ownStatus);
     if (policy) {
       evidenceRequirementsByClaimId[claim.id] = evidenceRequirementFromPolicy(policy);
