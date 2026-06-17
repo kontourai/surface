@@ -15,14 +15,15 @@ import type { Claim, DerivationChangeRecord, TransparencyGap, TrustStatus } from
  */
 
 const STATUS_RANK: Record<TrustStatus, number> = {
-  rejected: 0,
-  disputed: 1,
-  superseded: 2,
-  stale: 3,
-  unknown: 4,
-  assumed: 5,
-  proposed: 6,
-  verified: 7,
+  revoked: 0,
+  rejected: 1,
+  disputed: 2,
+  superseded: 3,
+  stale: 4,
+  unknown: 5,
+  assumed: 6,
+  proposed: 7,
+  verified: 8,
 };
 
 export function compareStatusStrength(a: TrustStatus, b: TrustStatus): number {

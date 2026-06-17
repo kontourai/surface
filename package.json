@@ -1,6 +1,6 @@
 {
   "name": "@kontourai/surface",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Shared transparency foundation under Kontour's products. Claims, evidence, freshness, and gaps in one inspectable shape.",
   "license": "Apache-2.0",
   "type": "module",
@@ -24,6 +24,10 @@
     ".": {
       "types": "./dist/src/index.d.ts",
       "import": "./dist/src/index.js"
+    },
+    "./trust-panel/element": {
+      "types": "./dist/src/trust-panel/surface-trust-panel.d.ts",
+      "import": "./dist/src/trust-panel/surface-trust-panel.js"
     }
   },
   "files": [
@@ -73,7 +77,7 @@
     "@kontourai/ui": "^1.1.0",
     "@playwright/test": "^1.60.0",
     "@types/node": "^25.9.2",
-    "hachure": "^0.2.0",
+    "hachure": "^0.5.0",
     "typescript": "^6.0.3"
   },
   "engines": {

@@ -1,5 +1,8 @@
 import type {
   Claim,
+  DerivationCheckpoint,
+  DerivedReportClaim,
+  FreshnessTransitionEvent,
   TransparencyGap,
   TransparencyGapType,
   TrustBundle,
@@ -8,8 +11,10 @@ import type {
   TrustStatus,
 } from "./types.js";
 import { deriveTrustSnapshot } from "./trust-snapshot.js";
+import type { SnapshotEventProbe } from "./trust-snapshot.js";
+import { statusFunctionVersion } from "./status.js";
 
-const STATUSES: TrustStatus[] = ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected"];
+const STATUSES: TrustStatus[] = ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected", "revoked"];
 const TRANSPARENCY_GAP_TYPES: TransparencyGapType[] = [
   "contradiction",
   "provenance_gap",
@@ -19,9 +24,30 @@ const TRANSPARENCY_GAP_TYPES: TransparencyGapType[] = [
   "unsupported_inference",
 ];
 
-export function buildTrustReport(input: TrustBundle, options: { now?: Date; id?: string } = {}): TrustReport {
+export interface BuildTrustReportOptions {
+  /** The evaluation instant for time-based freshness. Defaults to wall clock. */
+  now?: Date;
+  id?: string;
+  /**
+   * Optional checkpoint enabling cost-bounded re-derivation. When supplied,
+   * derivation still produces an identical report for the same `now` (the
+   * status function is pure), but the checkpoint is validated for consistency
+   * and surfaced so callers can chain derivations. Re-derivation is bounded by
+   * the event tail newer than the checkpoint's high-water mark; time-based
+   * freshness is always re-applied against `now`.
+   */
+  since?: DerivationCheckpoint;
+  /**
+   * Instrumentation hook (testing/observability): invoked once per claim with
+   * how many of that claim's events were actually folded. Lets callers prove a
+   * checkpointed derivation consumed only the event tail (often zero events).
+   */
+  instrument?: (probe: SnapshotEventProbe) => void;
+}
+
+export function buildTrustReport(input: TrustBundle, options: BuildTrustReportOptions = {}): TrustReport {
   const now = options.now ?? new Date();
-  const snapshot = deriveTrustSnapshot(input, { now });
+  const snapshot = deriveTrustSnapshot(input, { now, since: options.since, instrument: options.instrument });
 
   return {
     schemaVersion: input.schemaVersion,
@@ -41,7 +67,73 @@ export function buildTrustReport(input: TrustBundle, options: { now?: Date; id?:
     subjectGroups: snapshot.subjectGroups,
     claimGroupRollups: snapshot.claimGroupRollups,
     summary: summarizeClaims(snapshot.claims, snapshot.transparencyGaps, snapshot.changeRecords),
+    statusFunctionVersion,
   };
+}
+
+/**
+ * Freeze a derivation checkpoint from a report. The checkpoint is the immutable
+ * inquiry record AND the performance lever for `buildTrustReport(bundle, { now,
+ * since })`: subsequent derivations only need to fold events newer than its
+ * `throughEventCreatedAt`.
+ */
+export function checkpointFromReport(report: TrustReport): DerivationCheckpoint {
+  const statusByClaimId: Record<string, TrustStatus> = {};
+  const expiresAtByClaimId: Record<string, string> = {};
+  for (const claim of report.claims) {
+    statusByClaimId[claim.id] = claim.status;
+    if (claim.freshness?.expiresAt) expiresAtByClaimId[claim.id] = claim.freshness.expiresAt;
+  }
+  // Record both a global and a per-claim high-water mark. The per-claim mark is
+  // what makes tail detection correct under out-of-order arrival; the global
+  // mark is kept for backward compatibility / coarse diagnostics.
+  let throughEventCreatedAt: string | null = null;
+  const throughEventCreatedAtByClaimId: Record<string, string | null> = {};
+  for (const claim of report.claims) throughEventCreatedAtByClaimId[claim.id] = null;
+  for (const event of report.events) {
+    if (throughEventCreatedAt === null || Date.parse(event.createdAt) > Date.parse(throughEventCreatedAt)) {
+      throughEventCreatedAt = event.createdAt;
+    }
+    const prior = throughEventCreatedAtByClaimId[event.claimId];
+    if (prior === undefined || prior === null || Date.parse(event.createdAt) > Date.parse(prior)) {
+      throughEventCreatedAtByClaimId[event.claimId] = event.createdAt;
+    }
+  }
+  return {
+    asOf: report.generatedAt,
+    statusByClaimId,
+    expiresAtByClaimId: Object.keys(expiresAtByClaimId).length > 0 ? expiresAtByClaimId : undefined,
+    throughEventCreatedAt,
+    throughEventCreatedAtByClaimId,
+    statusFunctionVersion: report.statusFunctionVersion,
+  };
+}
+
+/**
+ * Diff two derivations (prior checkpoint → later report) and emit a
+ * FreshnessTransitionEvent for each claim whose time-based freshness flipped.
+ * This is the "fresh→stale without polling" signal downstream planes consume.
+ */
+export function diffFreshness(prior: DerivationCheckpoint, next: TrustReport): FreshnessTransitionEvent[] {
+  const transitions: FreshnessTransitionEvent[] = [];
+  const wasStale = (status: TrustStatus | undefined): boolean => status === "stale";
+  for (const claim of next.claims) {
+    const before = prior.statusByClaimId[claim.id];
+    if (before === undefined) continue;
+    const fromStale = wasStale(before);
+    const toStale = claim.status === "stale";
+    if (fromStale === toStale) continue;
+    const event: FreshnessTransitionEvent = {
+      claimId: claim.id,
+      from: fromStale ? "stale" : "fresh",
+      to: toStale ? "stale" : "fresh",
+      asOf: claim.freshness?.asOf ?? next.generatedAt,
+      statusFunctionVersion: next.statusFunctionVersion,
+    };
+    if (claim.freshness?.expiresAt) event.expiresAt = claim.freshness.expiresAt;
+    transitions.push(event);
+  }
+  return transitions;
 }
 
 export function summarizeClaims(

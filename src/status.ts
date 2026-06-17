@@ -2,7 +2,7 @@ import type { AuthorityTrace, Claim, Evidence, TrustStatus, VerificationEvent, V
 import { evidenceEntailsClaim, partitionEvidenceBySupport } from "./evidence-support.js";
 import { resolvePolicyForClaim } from "./policy-resolver.js";
 
-const TERMINAL_EVENT_STATUSES = new Set<TrustStatus>(["rejected", "disputed", "superseded", "stale"]);
+const TERMINAL_EVENT_STATUSES = new Set<TrustStatus>(["rejected", "disputed", "superseded", "stale", "revoked"]);
 
 export function deriveTrustStatus(input: {
   claim: Claim;
@@ -36,8 +36,18 @@ export function deriveTrustStatus(input: {
     return resolutionEvent.status;
   }
 
+  // An explicit invalidation event (Hachure schema 4, type: "invalidation") is
+  // terminal: it asserts the claim is no longer good. A "revoked" status
+  // derives "stale" (event-driven staleness). An invalidation event whose
+  // status is not itself a terminal "no-longer-good" status still collapses to
+  // "stale". Other terminal statuses pass through unchanged.
+  if (latestEvent && latestEvent.type === "invalidation") {
+    return TERMINAL_EVENT_STATUSES.has(latestEvent.status) && latestEvent.status !== "revoked"
+      ? latestEvent.status
+      : "stale";
+  }
   if (latestEvent && TERMINAL_EVENT_STATUSES.has(latestEvent.status)) {
-    return latestEvent.status;
+    return latestEvent.status === "revoked" ? "stale" : latestEvent.status;
   }
 
   if (latestEvent?.status === "assumed") {
@@ -89,6 +99,34 @@ export function deriveTrustStatus(input: {
   return hasRequiredEvidence ? "proposed" : "unknown";
 }
 
+/**
+ * Re-apply ONLY the time-based staleness of an already-`verified`/`stale` claim
+ * against a new `now`, without re-folding the claim's event ledger. Used by the
+ * checkpoint (tail-only) derivation path: when a claim has no events newer than
+ * the checkpoint high-water mark, its verified/stale boundary is the only status
+ * input that can move as the wall clock advances. Returns the re-applied status
+ * (`verified` or `stale`); any other prior status passes through unchanged.
+ *
+ * The governing verified event (anchor for `ttlSeconds` and the policy duration
+ * window) is taken from the unchanged ledger. This is identical to what
+ * `deriveTrustStatus` would compute for the same `now`, by construction.
+ */
+export function reapplyVerifiedFreshness(input: {
+  priorStatus: TrustStatus;
+  claim: Claim;
+  evidence: Evidence[];
+  events: VerificationEvent[];
+  policy?: VerificationPolicy;
+  now: Date;
+}): TrustStatus {
+  if (input.priorStatus !== "verified" && input.priorStatus !== "stale") return input.priorStatus;
+  const governing = input.events
+    .filter((event) => event.claimId === input.claim.id && event.status === "verified")
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0];
+  if (governing === undefined) return input.priorStatus;
+  return isVerifiedEventStale(governing, input.claim, input.evidence, input.policy, input.now) ? "stale" : "verified";
+}
+
 function isVerifiedEventStale(
   event: VerificationEvent,
   claim: Claim,
@@ -96,6 +134,14 @@ function isVerifiedEventStale(
   policy: VerificationPolicy | undefined,
   now: Date,
 ): boolean {
+  // Claim-intrinsic validity window (Hachure schema 4) overrides policy timing
+  // when present. expiresAt is canonical; ttlSeconds is the relative fallback,
+  // resolved against the governing event's verifiedAt (fallback createdAt).
+  const intrinsic = claimIntrinsicExpiry(event, claim);
+  if (intrinsic !== undefined) {
+    return now.getTime() > intrinsic;
+  }
+
   if (!policy) {
     return false;
   }
@@ -125,6 +171,32 @@ function isVerifiedEventStale(
 
   const expiresAt = verifiedTime + policy.validityRule.durationDays * 24 * 60 * 60 * 1000;
   return expiresAt < now.getTime();
+}
+
+/**
+ * Resolve the claim-intrinsic validity window to an absolute expiry epoch (ms),
+ * or undefined when the claim declares no intrinsic window (Hachure schema 4).
+ *
+ * Precedence: `expiresAt` (absolute) wins over `ttlSeconds` (relative). When
+ * `ttlSeconds` is used, it is resolved against the governing event's
+ * `verifiedAt` (fallback `createdAt`), falling back to the claim's `updatedAt`
+ * when no event is supplied.
+ */
+export function claimIntrinsicExpiry(
+  event: VerificationEvent | undefined,
+  claim: Claim,
+): number | undefined {
+  if (typeof claim.expiresAt === "string" && claim.expiresAt.length > 0) {
+    const t = Date.parse(claim.expiresAt);
+    return Number.isFinite(t) ? t : undefined;
+  }
+  if (typeof claim.ttlSeconds === "number" && Number.isFinite(claim.ttlSeconds)) {
+    const anchorIso = event?.verifiedAt ?? event?.createdAt ?? claim.updatedAt;
+    const anchor = Date.parse(anchorIso);
+    if (!Number.isFinite(anchor)) return undefined;
+    return anchor + claim.ttlSeconds * 1000;
+  }
+  return undefined;
 }
 
 
@@ -230,7 +302,7 @@ export function checkAuthorityActive(
  * Increment when the algorithm changes so that stored InquiryRecords can be
  * re-evaluated if needed.
  */
-export const statusFunctionVersion = "1";
+export const statusFunctionVersion = "2";
 
 /**
  * The result shape returned by deriveClaimStatus.

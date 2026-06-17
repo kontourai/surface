@@ -36,11 +36,18 @@ test("package files whitelist excludes generated example output", async () => {
 test("package entrypoint exposes explicit ESM and TypeScript contracts", async () => {
   const packageJson = await readPackageJson();
 
-  assert.deepEqual(Object.keys(packageJson.exports ?? {}).sort(), ["."]);
+  assert.deepEqual(Object.keys(packageJson.exports ?? {}).sort(), [".", "./trust-panel/element"]);
   assert.equal(packageJson.types, "./dist/src/index.d.ts");
   assert.deepEqual(packageJson.exports?.["."], {
     types: "./dist/src/index.d.ts",
     import: "./dist/src/index.js",
+  });
+  // Stable subpath export for the dependency-free <surface-trust-panel> custom
+  // element, so Flow's console drawer + the console plane can register it
+  // without depending on the dist/ path.
+  assert.deepEqual(packageJson.exports?.["./trust-panel/element"], {
+    types: "./dist/src/trust-panel/surface-trust-panel.d.ts",
+    import: "./dist/src/trust-panel/surface-trust-panel.js",
   });
 });
 
