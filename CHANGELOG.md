@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.0](https://github.com/kontourai/surface/compare/v1.0.1...v1.1.0) (2026-06-17)
+
+
+### Features
+
+* **mcp:** serve the trust panel as a declared MCP Apps (SEP-1865) resource ([#85](https://github.com/kontourai/surface/issues/85)) ([7cc28f8](https://github.com/kontourai/surface/commit/7cc28f836a46edd2cf650aa8bd7f9e996b4ebf2f))
+* migrate design system to @kontourai/ui@^1.1.0 and adopt Surface product mark ([#82](https://github.com/kontourai/surface/issues/82)) ([d113c39](https://github.com/kontourai/surface/commit/d113c3920d9624afa16c58914c9461560c922dea))
+
 ## [1.0.1](https://github.com/kontourai/surface/compare/v1.0.0...v1.0.1) (2026-06-15)
 
 
