@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/kontourai/surface/compare/v1.2.0...v1.2.1) (2026-06-17)
+
+
+### Fixes
+
+* bump hachure to 0.5.1 so release signing passes ([#89](https://github.com/kontourai/surface/issues/89)) ([d7688f7](https://github.com/kontourai/surface/commit/d7688f75980b5fb6ffd9b91f1a67a2b94df45ddd))
+
 ## [1.2.0](https://github.com/kontourai/surface/compare/v1.1.0...v1.2.0) (2026-06-17)
 
 
