@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/kontourai/surface/compare/v1.1.0...v1.2.0) (2026-06-17)
+
+
+### Features
+
+* time-aware trust derivation, checkpoints & freshness events ([#87](https://github.com/kontourai/surface/issues/87)) ([0dc1c76](https://github.com/kontourai/surface/commit/0dc1c7666c9e4a9e23ad2acba69133cfbc1566e1))
+
 ## [1.1.0](https://github.com/kontourai/surface/compare/v1.0.1...v1.1.0) (2026-06-17)
 
 
