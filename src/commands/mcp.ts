@@ -21,6 +21,17 @@ import { buildTrustPanelUiResource } from "../mcp-ui/trust-panel-resource.js";
 
 const PROTOCOL_VERSION = "2025-06-18";
 
+// MCP Apps extension (SEP-1865). The canonical, on-the-wire resource pointer is
+// the FLAT `_meta["ui/resourceUri"]` key (what the official `registerAppTool`
+// emits and what ChatGPT/Claude read); the nested `_meta.ui.resourceUri` is the
+// convenience shape some hosts (e.g. Station) read. We emit both so one server
+// renders everywhere. Resources carry the MCP Apps HTML profile mimetype, and
+// the server advertises the `io.modelcontextprotocol/ui` capability extension.
+const UI_RESOURCE_URI_META_KEY = "ui/resourceUri";
+const UI_RESOURCE_MIME = "text/html;profile=mcp-app";
+const UI_CAPABILITY_EXTENSION = "io.modelcontextprotocol/ui";
+const SUMMARY_PANEL_URI = "ui://surface/trust-panel/summary";
+
 interface JsonRpcRequest {
   jsonrpc?: string;
   id?: number | string | null;
@@ -39,7 +50,18 @@ interface ToolDefinition {
   title: string;
   description: string;
   inputSchema: Record<string, unknown>;
+  // SEP-1865 UI metadata advertised in tools/list (omitted under --no-ui).
+  _meta?: Record<string, unknown>;
   run: (args: Record<string, unknown>, options: McpServerOptions) => Promise<unknown>;
+}
+
+// The SEP-1865 `_meta` for a tool whose UI is a declared `ui://` resource.
+// Emits BOTH the flat canonical key and the nested convenience shape.
+function uiResourceMeta(resourceUri: string): Record<string, unknown> {
+  return {
+    [UI_RESOURCE_URI_META_KEY]: resourceUri,
+    ui: { resourceUri, visibility: ["model", "app"] },
+  };
 }
 
 const sharedToolProperties = {
@@ -60,6 +82,7 @@ const tools: ToolDefinition[] = [
     description:
       "Derive the trust report for the configured input and return the human-readable summary: claim counts by status, producer surfaces, high-impact unsupported claims, stale and disputed claims, and transparency gap counts.",
     inputSchema: { type: "object", properties: { ...sharedToolProperties } },
+    _meta: uiResourceMeta(SUMMARY_PANEL_URI),
     run: async (args, options) => {
       const report = await loadToolReport(args, options);
       return { _summary: formatTrustReportSummary(report), _report: report, _ui: options.noUi ? null : "summary" };
@@ -166,7 +189,15 @@ async function handleLine(line: string, options: McpServerOptions, serverVersion
         id,
         result: {
           protocolVersion: PROTOCOL_VERSION,
-          capabilities: { tools: { listChanged: false } },
+          capabilities: {
+            tools: { listChanged: false },
+            // Resources back the SEP-1865 `ui://` trust panel (unless --no-ui).
+            ...(options.noUi ? {} : { resources: { listChanged: false } }),
+            // Advertise the MCP Apps extension so UI-aware hosts opt in.
+            ...(options.noUi
+              ? {}
+              : { extensions: { [UI_CAPABILITY_EXTENSION]: {} } }),
+          },
           serverInfo: { name: "kontour-surface", title: "Kontour Surface", version: serverVersion },
           instructions:
             "Read portable trust state before relying on a claim: act on verified claims, reverify stale ones, escalate disputed ones, and treat transparency gaps as a reason to ask before acting.",
@@ -179,7 +210,47 @@ async function handleLine(line: string, options: McpServerOptions, serverVersion
         jsonrpc: "2.0",
         id,
         result: {
-          tools: tools.map(({ name, title, description, inputSchema }) => ({ name, title, description, inputSchema })),
+          tools: tools.map(({ name, title, description, inputSchema, _meta }) => ({
+            name,
+            title,
+            description,
+            inputSchema,
+            // Advertise the SEP-1865 UI pointer unless UI is disabled.
+            ...(options.noUi || !_meta ? {} : { _meta }),
+          })),
+        },
+      });
+    } else if (method === "resources/list") {
+      send({
+        jsonrpc: "2.0",
+        id,
+        result: {
+          resources: options.noUi
+            ? []
+            : [
+                {
+                  uri: SUMMARY_PANEL_URI,
+                  name: "Surface trust panel",
+                  description:
+                    "Interactive trust panel for the configured trust report (MCP Apps UI resource).",
+                  mimeType: UI_RESOURCE_MIME,
+                },
+              ],
+        },
+      });
+    } else if (method === "resources/read") {
+      const uri = typeof params?.uri === "string" ? params.uri : "";
+      if (options.noUi || uri !== SUMMARY_PANEL_URI) {
+        send({ jsonrpc: "2.0", id, error: { code: -32602, message: `Unknown resource: ${uri || "(missing uri)"}` } });
+        return;
+      }
+      const report = await loadReport({ input: options.input, adapter: options.adapter });
+      const { resource } = buildTrustPanelUiResource(report, { uri: SUMMARY_PANEL_URI });
+      send({
+        jsonrpc: "2.0",
+        id,
+        result: {
+          contents: [{ uri: SUMMARY_PANEL_URI, mimeType: UI_RESOURCE_MIME, text: resource.text }],
         },
       });
     } else if (method === "tools/call") {

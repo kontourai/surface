@@ -67,12 +67,19 @@ The registration status was verified once, but its 14-day freshness window expir
 
 The embedded document is fully self-contained: the trust panel module and the report data are inlined, no network requests are made, and theming follows the host's light/dark preference through the standard `--k-*` token contract. Pass `--no-ui` to `surface mcp` to omit UI resources entirely.
 
+### Two ways hosts find the panel
+
+The panel is offered under both UI conventions, so one server renders across hosts:
+
+- **Embedded (mcp-ui.dev):** the `ui://` resource is included directly in the `surface_summary` / `surface_get_claim` tool result, as above.
+- **Declared (MCP Apps / SEP-1865):** `surface_summary` advertises `_meta["ui/resourceUri"]` (and the nested `_meta.ui.resourceUri`) pointing at `ui://surface/trust-panel/summary`, the server advertises the `resources` capability and the `io.modelcontextprotocol/ui` extension, and the panel is served via `resources/read`. This is the path the official MCP Apps hosts (e.g. ChatGPT, Claude) use to render the panel from a declared resource. `--no-ui` suppresses this surface too (no `resources` capability, no tool `_meta`).
+
 ## Behavior contract
 
 - Tool results carry the same JSON shapes as the corresponding CLI commands (`surface report --format summary`, `surface stale`, `surface missing`, `surface get`, `surface policy`).
 - Domain failures (unknown claim id, unreadable input) return tool results with `isError: true` rather than protocol errors, so agents can read the message and recover.
 - Unknown tools and unknown methods return standard JSON-RPC errors.
-- The server advertises only the `tools` capability. It exposes no write operations: an agent can inspect trust state through MCP, but changing claims or evidence goes through the producer or the [claim authoring](claim-authoring.md) commands.
+- The server advertises the `tools` capability and (unless `--no-ui`) the `resources` capability plus the `io.modelcontextprotocol/ui` extension for the declared trust panel. It exposes no write operations: an agent can inspect trust state through MCP, but changing claims or evidence goes through the producer or the [claim authoring](claim-authoring.md) commands.
 
 ## The discipline the kernel hands the agent
 
