@@ -4,13 +4,13 @@ import { EVIDENCE_METHODS, EVIDENCE_SUPPORT_STRENGTHS } from "./constants.js";
 export function requireSchemaVersion(input: Record<string, unknown>): SchemaVersion {
   if (!("schemaVersion" in input)) {
     throw new Error(
-      "Missing required schemaVersion: expected 2 or 3. See docs/reference/schema-versioning.md for the v1-to-v2 migration.",
+      "Missing required schemaVersion: expected 2, 3, or 4. See docs/reference/schema-versioning.md for the v1-to-v2 migration.",
     );
   }
   const value = input.schemaVersion;
-  if (value !== 2 && value !== 3) {
+  if (value !== 2 && value !== 3 && value !== 4) {
     throw new Error(
-      `Unsupported schemaVersion ${String(value)}: expected 2 or 3. See docs/reference/schema-versioning.md for the v1-to-v2 migration.`,
+      `Unsupported schemaVersion ${String(value)}: expected 2, 3, or 4. See docs/reference/schema-versioning.md for the v1-to-v2 migration.`,
     );
   }
   return value as SchemaVersion;

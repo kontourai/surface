@@ -1,7 +1,9 @@
 import type {
   Claim,
+  ClaimFreshness,
   ClaimGroupRollup,
   DerivationChangeRecord,
+  DerivedReportClaim,
   Evidence,
   EvidenceRequirement,
   SubjectGroup,
@@ -9,6 +11,7 @@ import type {
   TransparencyGapType,
   TrustBundle,
   TrustStatus,
+  VerificationEvent,
   VerificationPolicy,
 } from "./types.js";
 import { deriveClaimGroupRollups } from "./claim-groups.js";
@@ -16,7 +19,7 @@ import { applyDerivation } from "./derivation.js";
 import { partitionEvidenceBySupport } from "./evidence-support.js";
 import { buildIdentityIndex } from "./identity.js";
 import { resolvePolicyForClaim } from "./policy-resolver.js";
-import { deriveTrustStatus } from "./status.js";
+import { claimIntrinsicExpiry, deriveTrustStatus } from "./status.js";
 
 const TRANSPARENCY_GAP_TYPES: TransparencyGapType[] = [
   "contradiction",
@@ -28,12 +31,33 @@ const TRANSPARENCY_GAP_TYPES: TransparencyGapType[] = [
 ];
 
 export interface TrustSnapshotDerivation {
-  claims: Array<Claim & { status: TrustStatus }>;
+  claims: DerivedReportClaim[];
   evidenceRequirementsByClaimId: Record<string, EvidenceRequirement>;
   transparencyGaps: TransparencyGap[];
   changeRecords: DerivationChangeRecord[];
   subjectGroups: SubjectGroup[];
   claimGroupRollups: ClaimGroupRollup[];
+}
+
+/** Latest verified verification event for a claim (governs intrinsic ttl anchor). */
+function governingVerifiedEvent(claimId: string, events: VerificationEvent[]): VerificationEvent | undefined {
+  return events
+    .filter((event) => event.claimId === claimId && event.status === "verified")
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0];
+}
+
+/** Build the per-claim freshness facts attached to a derived report claim. */
+function freshnessForClaim(claim: Claim, events: VerificationEvent[], status: TrustStatus, now: Date): ClaimFreshness {
+  const governing = governingVerifiedEvent(claim.id, events);
+  const intrinsic = claimIntrinsicExpiry(governing, claim);
+  const freshness: ClaimFreshness = {
+    asOf: now.toISOString(),
+    stale: status === "stale",
+  };
+  if (intrinsic !== undefined) {
+    freshness.expiresAt = new Date(intrinsic).toISOString();
+  }
+  return freshness;
 }
 
 export function deriveTrustSnapshot(input: TrustBundle, options: { now?: Date } = {}): TrustSnapshotDerivation {
@@ -78,9 +102,10 @@ export function deriveTrustSnapshot(input: TrustBundle, options: { now?: Date } 
     transparencyGaps.push(...outcome.transparencyGaps);
     changeRecords.push(...outcome.changeRecords);
     const derived = outcome.status;
-    const output: Claim & { status: TrustStatus; producerStatus?: TrustStatus } = {
+    const output: DerivedReportClaim = {
       ...claim,
       status: derived,
+      freshness: freshnessForClaim(claim, input.events, derived, now),
     };
     if (producerStatus !== undefined && producerStatus !== derived) {
       output.producerStatus = producerStatus;

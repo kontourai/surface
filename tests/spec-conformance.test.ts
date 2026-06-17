@@ -37,8 +37,8 @@ test("hachure package contains at least five test vector files", () => {
   );
 });
 
-test("statusFunctionVersion is '1'", () => {
-  assert.equal(statusFunctionVersion, "1");
+test("statusFunctionVersion is '2'", () => {
+  assert.equal(statusFunctionVersion, "2");
 });
 
 test("implementation statusFunctionVersion matches the hachure spec package", async () => {

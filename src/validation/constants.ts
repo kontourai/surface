@@ -1,4 +1,5 @@
-export const TRUST_STATUSES = ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected"] as const;
+export const TRUST_STATUSES = ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected", "revoked"] as const;
+export const EVENT_TYPES = ["verification", "invalidation"] as const;
 export const IMPACT_LEVELS = ["low", "medium", "high", "critical"] as const;
 export const MATERIALITY_LEVELS = ["low", "medium", "high"] as const;
 export const EVIDENCE_METHODS = [
@@ -53,6 +54,8 @@ export const CLAIM_KEYS = new Set([
   "status",
   "createdAt",
   "updatedAt",
+  "expiresAt",
+  "ttlSeconds",
   "impactLevel",
   "materiality",
   "currentIntegrityRef",
@@ -64,6 +67,11 @@ export const CLAIM_KEYS = new Set([
   "derivationEdges",
   "qualifiers",
   "metadata",
+  // Derivation-only fields tolerated on round-trip (a TrustReport's derived
+  // claims can be re-fed as input). They are recomputed, never trusted.
+  "status",
+  "producerStatus",
+  "freshness",
 ]);
 export const DERIVATION_EDGE_KEYS = new Set(["inputClaimId", "method", "role", "supportStrength", "rationale", "metadata"]);
 export const EVIDENCE_KEYS = new Set([
@@ -108,7 +116,7 @@ export const POLICY_KEYS = new Set([
   "incompatibleValues",
   "incompatibleStatuses",
 ]);
-export const EVENT_KEYS = new Set(["id", "claimId", "status", "actor", "method", "evidenceIds", "createdAt", "verifiedAt", "notes", "resolvesDispute", "authorityRef"]);
+export const EVENT_KEYS = new Set(["id", "claimId", "status", "type", "actor", "method", "evidenceIds", "createdAt", "verifiedAt", "notes", "resolvesDispute", "authorityRef"]);
 export const CLAIM_GROUP_KEYS = new Set(["id", "title", "kind", "description", "claimIds", "requirements", "rollupPolicy", "metadata"]);
 export const REQUIREMENT_KEYS = new Set(["id", "title", "claimIds", "required", "severity", "validationStrategy", "metadata"]);
 export const ROLLUP_POLICY_KEYS = new Set(["mode", "requiredRequirementIds", "optionalRequirementIds"]);

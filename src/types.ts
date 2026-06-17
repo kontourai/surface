@@ -6,7 +6,8 @@ export type TrustStatus =
   | "stale"
   | "disputed"
   | "superseded"
-  | "rejected";
+  | "rejected"
+  | "revoked";
 
 export type ImpactLevel = "low" | "medium" | "high" | "critical";
 export type Materiality = "low" | "medium" | "high";
@@ -132,7 +133,7 @@ export interface IdentityLink {
   mappingClaimId?: string;
 }
 
-export type SchemaVersion = 2 | 3;
+export type SchemaVersion = 2 | 3 | 4;
 export type DerivationMethod =
   | "sum"
   | "max"
@@ -187,6 +188,18 @@ export interface Claim {
   status?: TrustStatus;
   createdAt: string;
   updatedAt: string;
+  /**
+   * Optional absolute validity window (Hachure schema 4). ISO-8601 instant
+   * after which the claim is no longer fresh. Canonical when both expiresAt
+   * and ttlSeconds are present (expiresAt wins).
+   */
+  expiresAt?: string;
+  /**
+   * Optional relative validity window in seconds (Hachure schema 4), resolved
+   * against the governing verification event's verifiedAt (fallback createdAt).
+   * Ignored when expiresAt is present.
+   */
+  ttlSeconds?: number;
   impactLevel?: ImpactLevel;
   materiality?: Materiality;
   currentIntegrityRef?: string;
@@ -385,10 +398,19 @@ export interface ClaimGroupRollup {
   metadata?: Record<string, unknown>;
 }
 
+export type VerificationEventType = "verification" | "invalidation";
+
 export interface VerificationEvent {
   id: string;
   claimId: string;
   status: TrustStatus;
+  /**
+   * Optional event classifier (Hachure schema 4). "invalidation" marks a
+   * ledger line that explicitly revokes/stales a previously-good claim (use
+   * with status "revoked" or "stale"); it is terminal in derivation.
+   * Defaults to "verification" semantics when omitted.
+   */
+  type?: VerificationEventType;
   actor: string;
   method: string;
   evidenceIds: string[];
@@ -504,17 +526,85 @@ export interface SubjectGroup {
   claimIds: string[];
 }
 
+/**
+ * Per-claim freshness facts attached to a derived claim in a TrustReport. Lets
+ * a consumer render "verified, fresh as of T" and detect when re-derivation is
+ * due, without re-deriving in the browser.
+ */
+export interface ClaimFreshness {
+  /** The `now` instant the claim's status was judged against (ISO 8601). */
+  asOf: string;
+  /**
+   * The absolute expiry the claim was judged against (ISO 8601), when the claim
+   * carries an intrinsic validity window (expiresAt / ttlSeconds). Absent when
+   * freshness is governed solely by the verification policy or not time-based.
+   */
+  expiresAt?: string;
+  /** True when the claim's derived status is time-stale at `asOf`. */
+  stale: boolean;
+}
+
+export type DerivedReportClaim = Claim & {
+  status: TrustStatus;
+  producerStatus?: TrustStatus;
+  freshness?: ClaimFreshness;
+};
+
 export interface TrustReport extends TrustBundle {
   schemaVersion: SchemaVersion;
   id: string;
   generatedAt: string;
-  claims: Array<Claim & { status: TrustStatus; producerStatus?: TrustStatus }>;
+  claims: DerivedReportClaim[];
   evidenceRequirementsByClaimId: Record<string, EvidenceRequirement>;
   transparencyGaps: TransparencyGap[];
   changeRecords: DerivationChangeRecord[];
   subjectGroups: SubjectGroup[];
   claimGroupRollups: ClaimGroupRollup[];
   summary: TrustReportSummary;
+  /**
+   * Static version of the status derivation algorithm used to produce this
+   * report. Pin downstream (inquiry records, bundle references) so a parent can
+   * tell whether a child report is still derivable under the same semantics.
+   */
+  statusFunctionVersion: string;
+}
+
+/**
+ * Freshness transition event (the shape downstream planes consume to react to
+ * fresh→stale without polling). Emitted by `diffFreshness` when a claim's
+ * time-based freshness flips between two derivations.
+ */
+export interface FreshnessTransitionEvent {
+  claimId: string;
+  from: "fresh" | "stale";
+  to: "fresh" | "stale";
+  /** The `now` of the later derivation that observed the transition. */
+  asOf: string;
+  /** The expiry the claim was judged against, when intrinsic. */
+  expiresAt?: string;
+  statusFunctionVersion: string;
+}
+
+/**
+ * Checkpoint for cost-bounded re-derivation: a frozen snapshot of derived claim
+ * statuses + the high-water mark of events folded so far. Re-deriving with
+ * `{ now, since: checkpoint }` replays only events newer than the checkpoint's
+ * `throughEventCreatedAt`, then re-applies time-based freshness against `now`.
+ * This object doubles as Flow's per-evaluation inquiry record.
+ */
+export interface DerivationCheckpoint {
+  /** ISO 8601 instant the checkpoint was derived at. */
+  asOf: string;
+  /** Per-claim derived status captured at `asOf`. */
+  statusByClaimId: Record<string, TrustStatus>;
+  /** Per-claim intrinsic expiry captured at `asOf` (ISO 8601), when present. */
+  expiresAtByClaimId?: Record<string, string>;
+  /**
+   * High-water mark: the max event.createdAt folded into this checkpoint.
+   * Events with createdAt <= this are assumed already reflected.
+   */
+  throughEventCreatedAt: string | null;
+  statusFunctionVersion: string;
 }
 
 export interface TrustAnalyticsProjection {

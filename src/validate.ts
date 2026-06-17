@@ -8,6 +8,7 @@ import {
   EVIDENCE_METHODS,
   EVIDENCE_TYPES,
   EVENT_KEYS,
+  EVENT_TYPES,
   IMPACT_LEVELS,
   MATERIALITY_LEVELS,
   POLICY_KEYS,
@@ -53,6 +54,12 @@ export function validateTrustBundle(input: unknown): TrustBundle {
     if (!("value" in claim)) throw new Error(`Claim ${claim.id} is missing value`);
     requireDateTime(claim, "createdAt");
     requireDateTime(claim, "updatedAt");
+    if (claim.expiresAt !== undefined) requireDateTime(claim, "expiresAt");
+    if (claim.ttlSeconds !== undefined) {
+      if (typeof claim.ttlSeconds !== "number" || !Number.isFinite(claim.ttlSeconds) || claim.ttlSeconds < 0) {
+        throw new Error(`Claim ${claim.id} ttlSeconds must be a non-negative number`);
+      }
+    }
     if (claim.status !== undefined) requireEnum(claim, "status", TRUST_STATUSES);
     if (claim.impactLevel !== undefined) requireEnum(claim, "impactLevel", IMPACT_LEVELS);
     if (claim.materiality !== undefined) requireEnum(claim, "materiality", MATERIALITY_LEVELS);
@@ -203,6 +210,7 @@ export function validateTrustBundle(input: unknown): TrustBundle {
       requireString(event, field);
     }
     requireEnum(event, "status", TRUST_STATUSES);
+    if (event.type !== undefined) requireEnum(event, "type", EVENT_TYPES);
     requireStringArray(event, "evidenceIds");
     requireDateTime(event, "createdAt");
     if (event.verifiedAt !== undefined) requireDateTime(event, "verifiedAt");

@@ -2,7 +2,7 @@ import type { AuthorityTrace, Claim, Evidence, TrustStatus, VerificationEvent, V
 import { evidenceEntailsClaim, partitionEvidenceBySupport } from "./evidence-support.js";
 import { resolvePolicyForClaim } from "./policy-resolver.js";
 
-const TERMINAL_EVENT_STATUSES = new Set<TrustStatus>(["rejected", "disputed", "superseded", "stale"]);
+const TERMINAL_EVENT_STATUSES = new Set<TrustStatus>(["rejected", "disputed", "superseded", "stale", "revoked"]);
 
 export function deriveTrustStatus(input: {
   claim: Claim;
@@ -36,8 +36,18 @@ export function deriveTrustStatus(input: {
     return resolutionEvent.status;
   }
 
+  // An explicit invalidation event (Hachure schema 4, type: "invalidation") is
+  // terminal: it asserts the claim is no longer good. A "revoked" status
+  // derives "stale" (event-driven staleness). An invalidation event whose
+  // status is not itself a terminal "no-longer-good" status still collapses to
+  // "stale". Other terminal statuses pass through unchanged.
+  if (latestEvent && latestEvent.type === "invalidation") {
+    return TERMINAL_EVENT_STATUSES.has(latestEvent.status) && latestEvent.status !== "revoked"
+      ? latestEvent.status
+      : "stale";
+  }
   if (latestEvent && TERMINAL_EVENT_STATUSES.has(latestEvent.status)) {
-    return latestEvent.status;
+    return latestEvent.status === "revoked" ? "stale" : latestEvent.status;
   }
 
   if (latestEvent?.status === "assumed") {
@@ -96,6 +106,14 @@ function isVerifiedEventStale(
   policy: VerificationPolicy | undefined,
   now: Date,
 ): boolean {
+  // Claim-intrinsic validity window (Hachure schema 4) overrides policy timing
+  // when present. expiresAt is canonical; ttlSeconds is the relative fallback,
+  // resolved against the governing event's verifiedAt (fallback createdAt).
+  const intrinsic = claimIntrinsicExpiry(event, claim);
+  if (intrinsic !== undefined) {
+    return now.getTime() > intrinsic;
+  }
+
   if (!policy) {
     return false;
   }
@@ -125,6 +143,32 @@ function isVerifiedEventStale(
 
   const expiresAt = verifiedTime + policy.validityRule.durationDays * 24 * 60 * 60 * 1000;
   return expiresAt < now.getTime();
+}
+
+/**
+ * Resolve the claim-intrinsic validity window to an absolute expiry epoch (ms),
+ * or undefined when the claim declares no intrinsic window (Hachure schema 4).
+ *
+ * Precedence: `expiresAt` (absolute) wins over `ttlSeconds` (relative). When
+ * `ttlSeconds` is used, it is resolved against the governing event's
+ * `verifiedAt` (fallback `createdAt`), falling back to the claim's `updatedAt`
+ * when no event is supplied.
+ */
+export function claimIntrinsicExpiry(
+  event: VerificationEvent | undefined,
+  claim: Claim,
+): number | undefined {
+  if (typeof claim.expiresAt === "string" && claim.expiresAt.length > 0) {
+    const t = Date.parse(claim.expiresAt);
+    return Number.isFinite(t) ? t : undefined;
+  }
+  if (typeof claim.ttlSeconds === "number" && Number.isFinite(claim.ttlSeconds)) {
+    const anchorIso = event?.verifiedAt ?? event?.createdAt ?? claim.updatedAt;
+    const anchor = Date.parse(anchorIso);
+    if (!Number.isFinite(anchor)) return undefined;
+    return anchor + claim.ttlSeconds * 1000;
+  }
+  return undefined;
 }
 
 
@@ -230,7 +274,7 @@ export function checkAuthorityActive(
  * Increment when the algorithm changes so that stored InquiryRecords can be
  * re-evaluated if needed.
  */
-export const statusFunctionVersion = "1";
+export const statusFunctionVersion = "2";
 
 /**
  * The result shape returned by deriveClaimStatus.
