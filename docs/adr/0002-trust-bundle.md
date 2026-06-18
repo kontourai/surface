@@ -41,8 +41,9 @@ Trust Bundles adopt the Kontour Resource Shape (`apiVersion`, `kind`, `metadata`
 Bundles from multiple producers fold into one ledger:
 
 - `identityLinks` declare co-referent subjects across bundles (existing `buildIdentityIndex` machinery).
-- When two bundles assert conflicting values for the same subject and field, the conflict is surfaced: the claims' derived status becomes `disputed`. Merging is never last-write-wins and never silently smooths a disagreement.
+- When bundles assert conflicting **values** for the same subject and field (under a policy with `incompatibleValues`), the conflict is surfaced as a `contradiction` **transparency gap**; **both claims are retained** — merging is never last-write-wins and never silently smooths a disagreement. Conflicting **statuses** (policy `incompatibleStatuses`) or an authority-weighted resolution event derive a `disputed` **status**. (Implementation: value-conflicts emit the contradiction gap via `deriveIncompatibilityTransparencyGaps`; `disputed` is reserved for status/event conflicts in `status.ts`. The gap is the value-conflict signal — a stronger property than overwriting status.)
 - Losing evidence is never deleted. Dispute resolution is an authority-weighted, append-only decision event, per ADR 0003.
+- **API.** `mergeBundles(bundles: TrustBundle[]): TrustBundle` folds bundles into one ledger: union by `id` (first-wins; **throws** on a claim-id collision with differing content — never corrupts a claim), `source` becomes `merged:<a>+<b>`, identity union-find dedupes links. `mergeBundlesDetailed` returns the same plus a `collisions[]` report. The merged bundle is fed to `buildTrustReport`; `surface report --input` is repeatable and merges before reporting (single-input path is byte-identical).
 
 ### Hard migration
 
@@ -64,4 +65,4 @@ Rename `TrustInput` → `TrustBundle` everywhere, with no deprecated alias. Comp
 - One concept, one name, in product language and code. ADR 0001's vocabulary table is amended by this ADR.
 - Veritas may drop its dual-emission fallback (`metadata.authorityTrace` for older Surface runtimes) in the same migration; pre-stability, the fallback is maintenance without benefit.
 - Bundles already carry `events[]`, so they are forward-compatible with the event-stream-plus-projection model (Console's contract and ADR 0003's status function): a bundle is exactly the input to the status fold, handed across a boundary when no shared stream exists.
-- Cross-producer conflict handling now has a specified behavior (`disputed`, never last-write-wins) that implementations and tests can be held to.
+- Cross-producer conflict handling now has a specified behavior — value-conflicts surface a `contradiction` gap (both claims retained), status/event conflicts derive `disputed`; never last-write-wins — that implementations and tests can be held to (see `src/merge.ts`, `tests/merge.test.ts`).

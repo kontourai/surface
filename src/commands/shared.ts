@@ -1,12 +1,20 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { getAdapter, listAdapters } from "../adapter.js";
+import { mergeBundles } from "../merge.js";
 import { buildTrustReport } from "../report.js";
 import { validateTrustBundle } from "../validate.js";
-import type { TrustReport } from "../types.js";
+import type { TrustBundle, TrustReport } from "../types.js";
 
 export interface CommonReportOptions {
   input: string;
+  /**
+   * Additional inputs to merge with {@link input}.  When non-empty, every input
+   * (including {@link input}) is loaded, validated, and folded together via
+   * {@link mergeBundles} before building the report.  When empty, the loader
+   * takes the single-input path unchanged.
+   */
+  inputs?: string[];
   runId?: string;
   adapter: string;
 }
@@ -18,6 +26,7 @@ export interface QueryOptions extends CommonReportOptions {
 
 export function parseReportArgs(args: string[]): {
   input: string;
+  inputs: string[];
   format: "json" | "summary" | "linked" | "analytics";
   runId?: string;
   adapter: string;
@@ -27,12 +36,14 @@ export function parseReportArgs(args: string[]): {
   let runId: string | undefined;
   let adapter = "surface";
   let inputExplicit = false;
+  const explicitInputs: string[] = [];
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === "--input") {
       input = resolve(requireValue(args, ++index, "--input"));
       inputExplicit = true;
+      explicitInputs.push(input);
     }
     else if (arg === "--format") {
       const value = requireValue(args, ++index, "--format");
@@ -51,7 +62,10 @@ export function parseReportArgs(args: string[]): {
     else throw new Error(`Unknown report argument: ${arg}`);
   }
 
-  return { input, format, runId, adapter };
+  // Only treat inputs as a merge set when more than one --input was given.
+  // A single (or zero) --input keeps the byte-identical single-input path.
+  const inputs = explicitInputs.length > 1 ? explicitInputs : [];
+  return { input, inputs, format, runId, adapter };
 }
 
 export function parseQueryArgs(args: string[]): QueryOptions {
@@ -86,12 +100,26 @@ export function parseQueryArgs(args: string[]): QueryOptions {
 }
 
 export async function loadReport(options: CommonReportOptions): Promise<TrustReport> {
-  const raw = await readFile(options.input, "utf8");
-  const parsed = JSON.parse(raw);
   const adapter = getAdapter(options.adapter);
   if (!adapter) {
     throw new Error(`Unknown adapter: ${options.adapter}. Registered adapters: ${registeredAdapterNames()}`);
   }
+
+  if (options.inputs && options.inputs.length > 1) {
+    const bundles = await Promise.all(
+      options.inputs.map(async (path): Promise<TrustBundle> => {
+        const raw = await readFile(path, "utf8");
+        return validateTrustBundle(adapter.adapt(JSON.parse(raw)));
+      }),
+    );
+    // Re-validate the merged ledger so the union is held to the same invariants
+    // as any single producer bundle.
+    const merged = validateTrustBundle(mergeBundles(bundles));
+    return buildTrustReport(merged, { id: options.runId });
+  }
+
+  const raw = await readFile(options.input, "utf8");
+  const parsed = JSON.parse(raw);
   const input = validateTrustBundle(adapter.adapt(parsed));
   return buildTrustReport(input, { id: options.runId });
 }
