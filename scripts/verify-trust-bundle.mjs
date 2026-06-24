@@ -1,13 +1,15 @@
 /**
  * scripts/verify-trust-bundle.mjs
  *
- * Verify a signed trust-bundle.dsse.json + trust-bundle.sigstore.json pair
- * produced by release-trust-bundle.mjs.
+ * Structurally inspect a signed trust-bundle.dsse.json +
+ * trust-bundle.sigstore.json pair produced by release-trust-bundle.mjs.
  *
- * What it checks:
+ * Capability state: structural-only
+ *
+ * What it checks structurally:
  *   1. The DSSE envelope payload decodes to a valid in-toto Statement v1.
- *   2. The sigstore bundle's certificate identity matches the expected
- *      GitHub Actions workflow identity (or a caller-supplied pattern).
+ *   2. The sigstore bundle contains certificate identity material that can be
+ *      inspected manually.
  *   3. The Rekor log entry is present (transparency log inclusion).
  *
  * Usage:
@@ -17,14 +19,14 @@
  *     [--issuer https://token.actions.githubusercontent.com] \
  *     [--san    https://github.com/kontourai/surface/.github/workflows/publish-npm.yml@refs/tags/v*]
  *
- * Note on offline vs online verification:
- *   This script performs STRUCTURAL verification only — it checks that the
+ * Note on verification scope:
+ *   Capability state: structural-only.
+ *   This script performs structural verification only — it checks that the
  *   sigstore bundle is well-formed, that the certificate identity fields are
  *   present, and that the DSSE payload parses correctly.  Full cryptographic
- *   verification (certificate chain, Rekor inclusion proof) requires the
- *   @sigstore/verify package and a network connection to fetch the Sigstore
- *   TUF root.  When @sigstore/verify is not available, the script reports the
- *   certificate identity from the bundle and exits 0 (inspection mode).
+ *   Sigstore verification, including certificate-chain validation and Rekor
+ *   inclusion-proof verification, is not implemented here. Use a separate
+ *   verifier such as cosign or sigstore-js for full cryptographic verification.
  */
 
 import { readFile } from "node:fs/promises";
@@ -46,7 +48,11 @@ const bundlePath = argValue("--bundle");
 
 if (!dssePath || !bundlePath) {
   console.error(
-    "Usage: node scripts/verify-trust-bundle.mjs --dsse <path> --bundle <path> [--issuer <url>] [--san <pattern>]",
+    [
+      "Capability state: structural-only",
+      "Usage: node scripts/verify-trust-bundle.mjs --dsse <path> --bundle <path> [--issuer <url>] [--san <pattern>]",
+      "Full Sigstore cryptographic verification is unavailable in this script; use cosign or sigstore-js manually.",
+    ].join("\n"),
   );
   process.exit(1);
 }
@@ -56,6 +62,11 @@ const expectedIssuer =
   "https://token.actions.githubusercontent.com";
 
 const expectedSan = argValue("--san");
+
+console.log("Capability state: structural-only");
+console.log(
+  "Full Sigstore cryptographic verification is unavailable in this script; use cosign or sigstore-js manually.",
+);
 
 // ---------------------------------------------------------------------------
 // Load files
@@ -158,21 +169,21 @@ try {
   const tufFetch = await import("make-fetch-happen").catch(() => null);
   if (!tufFetch) {
     console.log(
-      "\nFull cryptographic verification skipped (make-fetch-happen not available).",
+      "\nFull Sigstore cryptographic verification unavailable in this structural-only script.",
     );
   } else {
     console.log(
-      "\nFull cryptographic verification: not implemented in offline mode.",
+      "\nFull Sigstore cryptographic verification unavailable in this structural-only script.",
     );
     console.log(
-      "  To verify: use cosign verify-blob or sigstore-js CLI with the bundle.",
+      "  Use cosign verify-blob or sigstore-js manually with the bundle.",
     );
   }
 
   fullVerificationAttempted = true;
 } catch {
   console.log(
-    "\n@sigstore/verify not available — structural verification only.",
+    "\n@sigstore/verify not available; continuing with structural-only inspection.",
   );
 }
 
@@ -193,11 +204,11 @@ if (certDer) {
 
 if (!fullVerificationAttempted) {
   console.log(
-    "\nNote: cryptographic signature verification was not performed.",
+    "\nNote: full Sigstore cryptographic verification was not performed.",
   );
   console.log(
-    "  Use `cosign verify-blob` or the sigstore-js CLI for full verification.",
+    "  Use `cosign verify-blob` or the sigstore-js CLI manually for full verification.",
   );
 }
 
-console.log("\nVerification complete (structural).");
+console.log("\nStructural-only trust-bundle inspection complete.");
