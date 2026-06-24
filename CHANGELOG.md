@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/kontourai/surface/compare/v1.2.1...v1.3.0) (2026-06-24)
+
+
+### Features
+
+* multi-producer trust-bundle merge (WS1 connective tissue) ([#91](https://github.com/kontourai/surface/issues/91)) ([4bf2012](https://github.com/kontourai/surface/commit/4bf2012dfc3adc878cc0c32f1ce127ee83c1b724))
+
 ## [1.2.1](https://github.com/kontourai/surface/compare/v1.2.0...v1.2.1) (2026-06-17)
 
 
