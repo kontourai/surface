@@ -92,7 +92,7 @@ Every `package.json` script is an active repo workflow, release guard, or contri
 | `check:content-boundary` | Guard | Prevents terminology and content-boundary regressions. |
 | `setup:repo-hooks` | Contributor utility | Installs repo-owned local Git hooks. |
 | `validate:repo-hooks` | Guard | Verifies the repo hook wiring and docs stay aligned. |
-| `verify:trust-bundle` | Release utility | Structurally verifies a signed trust-bundle.dsse.json + trust-bundle.sigstore.json pair, prints the signer certificate identity, and reports assurance level. |
+| `verify:trust-bundle` | Release utility | `structural-only` trust-bundle inspection for a signed trust-bundle.dsse.json + trust-bundle.sigstore.json pair; full Sigstore cryptographic verification remains unavailable in this script and must be performed manually with a separate verifier. |
 
 ## Top Recommendation
 
