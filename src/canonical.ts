@@ -26,15 +26,28 @@ export interface CanonicalClaimTarget {
  * The resulting key is an opaque string; callers should not parse it.
  */
 export function canonicalClaimKey(target: CanonicalClaimTarget): string {
-  const subjectType = target.subjectType.trim().toLowerCase();
-  const subjectId = target.subjectId.trim();
-  const fieldOrBehavior = target.fieldOrBehavior.trim().toLowerCase();
+  // Escape the separator characters (`:` and `?`, plus `%` itself) inside each segment
+  // so that values legitimately containing them (e.g. subjectId="commit:abc") cannot
+  // bleed across segment boundaries and produce an ambiguous, colliding key. Other
+  // characters (including `/`) are left intact to keep keys readable.
+  const subjectType = escapeSegment(target.subjectType.trim().toLowerCase());
+  const subjectId = escapeSegment(target.subjectId.trim());
+  const fieldOrBehavior = escapeSegment(target.fieldOrBehavior.trim().toLowerCase());
 
   const qualifiersPart = buildQualifiersPart(target.qualifiers);
 
   return qualifiersPart
     ? `${subjectType}:${subjectId}:${fieldOrBehavior}?${qualifiersPart}`
     : `${subjectType}:${subjectId}:${fieldOrBehavior}`;
+}
+
+/**
+ * Escapes the key's structural delimiters within a single segment. `%` is escaped
+ * first so the transform stays reversible/injective; `:` and `?` are the segment
+ * separators in the key grammar.
+ */
+function escapeSegment(value: string): string {
+  return value.replace(/%/g, "%25").replace(/:/g, "%3A").replace(/\?/g, "%3F");
 }
 
 function buildQualifiersPart(qualifiers: Record<string, string> | undefined): string {

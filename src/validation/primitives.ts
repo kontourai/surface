@@ -71,7 +71,7 @@ export function requireEvidenceSupportStrength(evidence: Record<string, unknown>
 
 export function requireDateTime(object: Record<string, unknown>, field: string): void {
   const value = requireString(object, field);
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value) || !Number.isFinite(Date.parse(value))) {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value) || !Number.isFinite(Date.parse(value))) {
     throw new Error(`${field} must be an ISO-8601 UTC date-time`);
   }
 }
