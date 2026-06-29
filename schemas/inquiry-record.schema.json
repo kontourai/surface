@@ -26,7 +26,7 @@
       "additionalProperties": false,
       "properties": {
         "value": {},
-        "status": { "enum": ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected"] }
+        "status": { "enum": ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected", "revoked"] }
       }
     },
     "inputSnapshot": {
@@ -37,7 +37,7 @@
         "additionalProperties": false,
         "properties": {
           "claimId": { "type": "string" },
-          "status": { "enum": ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected"] }
+          "status": { "enum": ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected", "revoked"] }
         }
       }
     },

@@ -78,6 +78,7 @@ Every `package.json` script is an active repo workflow, release guard, or contri
 | `test:coverage` | Verification | Runs Node tests with experimental coverage reporting. |
 | `docs:build` | Build | Syncs Kontour UI docs assets and builds the static docs site. |
 | `sync:ui-assets` | Build | Copies docs-site token assets from the installed public `@kontourai/ui` package. |
+| `sync:schemas` | Build | Generates `schemas/` from the installed `hachure` package — the single normative source for the trust-format schemas. |
 | `check:ui-assets` | Guard | Fails when generated docs-site Kontour UI assets are stale. |
 | `check:console-token-drift` | Guard | Fails when the embedded Console token block drifts from the installed @kontourai/ui token source. |
 | `check:doc-links` | Guard | Fails when local relative Markdown links in repo docs do not resolve. |

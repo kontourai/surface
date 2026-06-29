@@ -34,7 +34,6 @@ const requiredFiles = [
   "dist/src/trust-panel/trust-panel-module.generated.js",
   "dist/src/mcp-ui/trust-panel-resource.js",
   "schemas/trust-bundle.schema.json",
-  "schemas/trust-report.schema.json",
   "docs/reference/console.md",
   "examples/external-adapter/src/index.ts",
 ];

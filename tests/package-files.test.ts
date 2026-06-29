@@ -106,6 +106,7 @@ test("package scripts are classified active repo workflows", async () => {
     "setup:repo-hooks",
     "surface:report",
     "surface:summary",
+    "sync:schemas",
     "sync:ui-assets",
     "test",
     "test:browser",

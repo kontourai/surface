@@ -7,7 +7,11 @@
   "properties": {
     "id": { "type": "string" },
     "claimId": { "type": "string" },
-    "status": { "enum": ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected"] },
+    "status": { "enum": ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected", "revoked"] },
+    "type": {
+      "description": "Optional event classifier. 'invalidation' marks a ledger line that explicitly revokes/stales a previously-good claim (use with status 'revoked' or 'stale'). 'verification' is the default assertion of a status. Surface treats an invalidation event as terminal for the claim.",
+      "enum": ["verification", "invalidation"]
+    },
     "actor": { "type": "string" },
     "method": { "type": "string" },
     "evidenceIds": { "type": "array", "items": { "type": "string" } },
