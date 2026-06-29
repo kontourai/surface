@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.1](https://github.com/kontourai/surface/compare/v1.3.0...v1.3.1) (2026-06-29)
+
+
+### Fixes
+
+* **surface:** escape canonical key segments; accept sub-second/offset timestamps ([#97](https://github.com/kontourai/surface/issues/97)) ([38934b4](https://github.com/kontourai/surface/commit/38934b438d035b38c6e1e3b1eaa752788bbc0aad))
+* **surface:** generate schemas/ from hachure + schema-parity test (ops[#9](https://github.com/kontourai/surface/issues/9)) ([#100](https://github.com/kontourai/surface/issues/100)) ([ebac158](https://github.com/kontourai/surface/commit/ebac15801d775e554f384adb6a8838dfdbf87451))
+
 ## [1.3.0](https://github.com/kontourai/surface/compare/v1.2.1...v1.3.0) (2026-06-24)
 
 
