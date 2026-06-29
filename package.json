@@ -71,7 +71,8 @@
     "validate:repo-hooks": "node scripts/validate-repo-hooks.cjs",
     "release:trust-bundle": "node scripts/release-trust-bundle.mjs",
     "check:console-token-drift": "node scripts/check-console-token-drift.mjs",
-    "verify:trust-bundle": "node scripts/verify-trust-bundle.mjs"
+    "verify:trust-bundle": "node scripts/verify-trust-bundle.mjs",
+    "sync:schemas": "node scripts/sync-schemas.mjs"
   },
   "devDependencies": {
     "@kontourai/ui": "^1.1.0",

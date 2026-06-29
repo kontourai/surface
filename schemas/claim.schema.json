@@ -12,9 +12,19 @@
     "claimType": { "type": "string" },
     "fieldOrBehavior": { "type": "string" },
     "value": {},
-    "status": { "enum": ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected"] },
+    "status": { "enum": ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected", "revoked"] },
     "createdAt": { "type": "string", "format": "date-time" },
     "updatedAt": { "type": "string", "format": "date-time" },
+    "expiresAt": {
+      "description": "Optional absolute validity window: ISO-8601 instant after which the claim is no longer fresh. Canonical when both expiresAt and ttlSeconds are present (expiresAt wins). Behaviour is derived by Surface, not by this schema.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "ttlSeconds": {
+      "description": "Optional relative validity window in seconds, resolved by the deriver against the governing verification event's verifiedAt (falling back to createdAt). If expiresAt is also present, expiresAt takes precedence. Behaviour is derived by Surface, not by this schema.",
+      "type": "integer",
+      "minimum": 0
+    },
     "impactLevel": { "enum": ["low", "medium", "high", "critical"] },
     "materiality": { "enum": ["low", "medium", "high"] },
     "currentIntegrityRef": { "type": "string" },

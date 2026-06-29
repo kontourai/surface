@@ -121,7 +121,7 @@ Derivation drilldowns are read models over existing report fields. They normaliz
 
 Generated transparency gaps preserve claim `materiality` when present. Analytics and review queue projections can then sort or filter by `materiality` while keeping severity/impact and trust status separate.
 
-Schema: `schemas/trust-report.schema.json`
+Type: `TrustReport`, exported from the package. The report is a surface read-model with no separate shipped JSON Schema — the `schemas/` directory mirrors the canonical Hachure trust-format schemas (synced from the `hachure` dependency via `npm run sync:schemas`).
 
 ## Eval Summary
 

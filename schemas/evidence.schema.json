@@ -24,9 +24,34 @@
     "collectedBy": { "type": "string" },
     "integrityRef": { "type": "string" },
     "integrityAnchor": { "$ref": "#/$defs/integrityAnchor" },
+    "passing": {
+      "type": "boolean",
+      "description": "Whether the check that produced this evidence passed. Omitted when the evidence is not the output of a pass/fail check."
+    },
+    "blocking": {
+      "type": "boolean",
+      "description": "Whether a non-passing result should block (e.g. trigger disputed status under a policy conflict rule)."
+    },
+    "execution": {
+      "$ref": "#/$defs/execution",
+      "description": "How the evidence was produced: the command or tool invocation, exit code, and duration — making artifacts self-describing without requiring the producer's adapter config."
+    },
     "metadata": { "type": "object" }
   },
   "$defs": {
+    "execution": {
+      "type": "object",
+      "required": ["runner", "label"],
+      "properties": {
+        "runner": { "enum": ["bash", "mcp"] },
+        "label": { "type": "string" },
+        "exitCode": { "type": "integer" },
+        "isError": { "type": "boolean" },
+        "durationMs": { "type": "number" },
+        "metadata": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
     "integrityAnchor": {
       "type": "object",
       "required": ["id", "kind", "algorithm", "value", "sourceRef"],
