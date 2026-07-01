@@ -56,16 +56,16 @@ _Avoid_: Dispute, conclusion as separate core concept
 The mechanism Surface provides for product transparency: a shared shape for claims, evidence, policies, events, statuses, freshness, and conflicts that different products and agents can inspect consistently.
 _Avoid_: Product transparency, trust score
 
-**Claim Package**:
-A portable package of claims, evidence, traces, policies, materiality mappings, integrity references, authority traces, and related context that can be evaluated into a trust snapshot or projected into a Trust Panel, Console, API, or MCP resource.
-_Avoid_: Monolithic trust object, console state
+**Trust Bundle**:
+A portable, point-in-time package of trust state from one producer, including claims, evidence, verification events, policies, authority trace, and related context. A Trust Bundle is the supply side of the trust ledger; an Inquiry is the demand side.
+_Avoid_: Claim Package, Trust Input, monolithic trust object, console state
 
 **Open Trust Format**:
 The portability principle that Surface trust state should be schema-first, exportable, embeddable, locally inspectable, and usable without a proprietary hosted service. Hosted Surface services may add storage, monitoring, discovery, and Console features, but should not be required to understand the trust state.
 _Avoid_: Proprietary handshake, hosted-only trust
 
 **Kontour Resource Shape**:
-The shared convention for new portable Kontour records: `apiVersion`, `kind`, `metadata`, `spec`, optional `status`, and optional `proof`. Canonical doc: https://github.com/kontourai/kontourai.io/blob/main/docs/kontour-resource-shape.md. Surface-specific use: keep existing `TrustBundle`, claim, evidence, and report contracts stable, and use the resource shape additively for portable records such as integrity anchors, trust snapshots, and exported history. A Surface proof or integrity anchor proves provenance and tamper evidence; it does not prove the underlying domain claim is true.
+The shared convention for new portable Kontour records. Surface uses the resource shape additively for portable records such as integrity anchors, trust snapshots, and exported history; a Surface proof or integrity anchor proves provenance and tamper evidence, not that the underlying domain claim is true.
 _Avoid_: Breaking all Surface inputs into a new envelope, storing trust semantics in metadata, treating `proof` as a truth guarantee
 
 **Interoperability Target**:
@@ -204,9 +204,17 @@ _Avoid_: Core status, raw field name
 An advanced relationship where one claim depends on one or more supporting claims. Dependencies help Surface explain higher-level claims, propagate stale or disputed upstream state, and prevent downstream claims from appearing stronger than their support.
 _Avoid_: Evidence, claim group, unrelated reference
 
+**Derivation**:
+The disciplined use of supporting claims or named rules to answer or explain another claim without inventing unsupported truth. Derivation carries confidence ceilings and review obligations so downstream claims cannot appear stronger than their support.
+_Avoid_: General inference, hidden reasoning, unreviewed logic
+
 **Candidate Claim**:
 A suggested claim discovered from product output, UI text, reports, API responses, agent transcripts, docs, or workflows. Candidate claims are not trusted claims until an operator or producer-owned rule promotes them into the managed claim lifecycle.
 _Avoid_: Verified claim, automatic truth, generated claim
+
+**Inquiry**:
+A question posed against the trust ledger, including statements nobody pre-registered as claims. An Inquiry resolves as matched, derived, or an unsupported gap, and the resolution is recorded as append-only testimony.
+_Avoid_: Search query, prompt answer, silent semantic match
 
 **Domain Validity Claim**:
 An advanced producer-authored claim that something is valid, ready, eligible, compliant, or acceptable according to the producer's own domain policy. Surface evaluates a domain validity claim like any other claim; it is not a universal action guarantee.
@@ -224,9 +232,17 @@ _Avoid_: Custom status, untyped artifact
 Producer- or policy-supplied context about the role and reliability of an evidence source, such as primary source, secondary source, corroborating source, system of record, archived source, official registry, or user feedback. Surface represents source quality for transparency and display, but does not act as a universal credibility judge.
 _Avoid_: Universal source score, global credibility ranking
 
+**Confidence Basis**:
+The visible basis for how much verification depth supports a claim, including source quality, reviewer authority, and evidence strength. Confidence basis is explanatory context, not a trust score.
+_Avoid_: Confidence score, model confidence, universal credibility grade
+
 **Attestation**:
 A specific evidence type where an actor or authority asserts, reviews, approves, or accepts something. An attestation should be paired with authority trace when the actor's authority matters.
 _Avoid_: Evidence in general, signature, approval without authority
+
+**Attestation Validity**:
+Whether an attestation has enough visible identity, authority, freshness, and integrity context to satisfy a policy. Attestation validity is separate from the truth of the attested claim.
+_Avoid_: Actor legitimacy guarantee, authorization system, automatic proof
 
 **Evidence Trace**:
 The inspectable path showing how evidence was produced, including source, method, actor or system, timestamp, tool or run context, logs when relevant, and integrity scope. Surface standardizes evidence traceability without owning evidence collection.
@@ -332,16 +348,24 @@ _Avoid_: Point-in-time trust report
 A top-level summary of the trust state for an output, report, product area, or claim group. A trust summary orients users with counts and attention states, but should not collapse the whole object into a single verdict.
 _Avoid_: Product verdict, trust score, approved status
 
+**Coverage**:
+How much of a product output, claim group, or transparency area is supported by current evidence and policy. Coverage is a rollup unless a producer deliberately promotes it into its own policy-governed claim.
+_Avoid_: Trust score, product verdict, completeness guarantee
+
+**Trust Analytics Projection**:
+Evidence intelligence derived from a Trust Report for Console, query, or monitoring use. A trust analytics projection groups gaps, coverage, stale or disputed claims, authority trace state, and action queues without becoming a separate trust model.
+_Avoid_: Arbitrary product analytics, score dashboard, separate report model
+
 **Verification Portability**:
-The degree to which a claim package includes enough structure for producer reverification and, where possible, independent verification by another compatible app, agent, or producer. Surface should express verification portability as capabilities, not as a score.
+The degree to which a Trust Bundle includes enough structure for producer reverification and, where possible, independent verification by another compatible app, agent, or producer. Surface should express verification portability as capabilities, not as a score.
 _Avoid_: Trust score, certification, universal guarantee
 
 **Independent Verification**:
-A compatible app, agent, or producer rechecking all or part of a claim package it did not originally emit, using available traces, integrity references, signatures, source links, and authority references.
+A compatible app, agent, or producer rechecking all or part of a Trust Bundle it did not originally emit, using available traces, integrity references, signatures, source links, and authority references.
 _Avoid_: Producer reverification, Surface approval
 
 **Transparency Capabilities**:
-Non-scored indicators describing what kind of transparency a claim package supports, such as inspectable, anchored, signed, producer-reverifiable, independently verifiable, or private-source.
+Non-scored indicators describing what kind of transparency a Trust Bundle supports, such as inspectable, anchored, signed, producer-reverifiable, independently verifiable, or private-source.
 _Avoid_: Transparency score, maturity level, certification level
 
 **Surface Trust Panel**:

@@ -1,35 +1,23 @@
 import type {
   Claim,
-  ClaimFreshness,
   ClaimGroupRollup,
   DerivationChangeRecord,
   DerivationCheckpoint,
   DerivedReportClaim,
-  Evidence,
   EvidenceRequirement,
   SubjectGroup,
   TransparencyGap,
-  TransparencyGapType,
   TrustBundle,
   TrustStatus,
   VerificationEvent,
   VerificationPolicy,
 } from "./types.js";
+import { foldClaim } from "./claim-fold.js";
 import { deriveClaimGroupRollups } from "./claim-groups.js";
+import { deriveConflictTransparencyGaps } from "./conflict-derivation.js";
 import { applyDerivation } from "./derivation.js";
-import { partitionEvidenceBySupport } from "./evidence-support.js";
 import { buildIdentityIndex } from "./identity.js";
-import { resolvePolicyForClaim } from "./policy-resolver.js";
-import { claimIntrinsicExpiry, deriveTrustStatus, reapplyVerifiedFreshness, statusFunctionVersion } from "./status.js";
-
-const TRANSPARENCY_GAP_TYPES: TransparencyGapType[] = [
-  "contradiction",
-  "provenance_gap",
-  "policy_violation",
-  "freshness_breach",
-  "corroboration_absent",
-  "unsupported_inference",
-];
+import { statusFunctionVersion } from "./status.js";
 
 export interface TrustSnapshotDerivation {
   claims: DerivedReportClaim[];
@@ -72,28 +60,6 @@ export interface SnapshotEventProbe {
   fromCheckpoint: boolean;
 }
 
-/** Latest verified verification event for a claim (governs intrinsic ttl anchor). */
-function governingVerifiedEvent(claimId: string, events: VerificationEvent[]): VerificationEvent | undefined {
-  return events
-    .filter((event) => event.claimId === claimId && event.status === "verified")
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0];
-}
-
-
-/** Build the per-claim freshness facts attached to a derived report claim. */
-function freshnessForClaim(claim: Claim, events: VerificationEvent[], status: TrustStatus, now: Date): ClaimFreshness {
-  const governing = governingVerifiedEvent(claim.id, events);
-  const intrinsic = claimIntrinsicExpiry(governing, claim);
-  const freshness: ClaimFreshness = {
-    asOf: now.toISOString(),
-    stale: status === "stale",
-  };
-  if (intrinsic !== undefined) {
-    freshness.expiresAt = new Date(intrinsic).toISOString();
-  }
-  return freshness;
-}
-
 export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnapshotOptions = {}): TrustSnapshotDerivation {
   const now = options.now ?? new Date();
   const evidenceRequirementsByClaimId: Record<string, EvidenceRequirement> = {};
@@ -128,88 +94,66 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
 
   const ownStatusByClaimId = new Map<string, TrustStatus>();
   const claimsById = new Map<string, Claim>();
-  const ownStatuses = input.claims.map((claim) => {
+  const foldedClaims = input.claims.map((claim) => {
     claimsById.set(claim.id, claim);
     const evidence = input.evidence.filter((item) => item.claimId === claim.id);
-    const { entailingEvidence } = partitionEvidenceBySupport(evidence);
-    const policy = resolvePolicyForClaim(claim, input.policies);
-    if (policy) policyByClaimId.set(claim.id, policy);
-    const producerStatus = claim.status;
     const claimEvents = eventsByClaimId.get(claim.id) ?? [];
-
-    // Tail = events newer than this claim's own high-water mark. When the
-    // checkpoint is usable and the claim's tail is empty, its event ledger is
-    // byte-for-byte what the checkpoint already folded, so its event-driven
-    // status is the checkpoint's recorded status. We then re-apply ONLY the
-    // time-based freshness against the new `now` (the one input that can move
-    // without a new event). This touches zero of the claim's events. A claim
-    // the checkpoint never saw (no entry in the per-claim mark) is treated as
-    // having an unbounded tail → full fold.
     const claimMarkIso = checkpointUsable && perClaimMark
       ? (claim.id in perClaimMark ? perClaimMark[claim.id] : undefined)
       : undefined;
     const claimMark = typeof claimMarkIso === "string" ? Date.parse(claimMarkIso) : undefined;
     const claimSeenByCheckpoint = checkpointUsable && perClaimMark ? claim.id in perClaimMark : false;
-    const tailEvents = !checkpointUsable || claimMark === undefined
-      ? claimEvents
-      : claimEvents.filter((event) => Date.parse(event.createdAt) > claimMark);
-    const priorStatus = checkpoint?.statusByClaimId[claim.id];
-    const canShortCircuit =
-      checkpointUsable && claimSeenByCheckpoint && tailEvents.length === 0 && priorStatus !== undefined;
 
-    let ownStatus: TrustStatus;
-    let eventsFolded: number;
-    if (canShortCircuit) {
-      ownStatus = reapplyVerifiedFreshness({
-        priorStatus: priorStatus as TrustStatus,
-        claim,
-        evidence: entailingEvidence,
-        events: claimEvents,
-        policy,
-        now,
-      });
-      eventsFolded = 0;
-    } else {
-      ownStatus = deriveTrustStatus({ claim, evidence: entailingEvidence, policy, events: claimEvents, now, authorityTrace: input.authorityTrace });
-      eventsFolded = claimEvents.length;
-    }
-    options.instrument?.({ claimId: claim.id, eventsFolded, eventsTotal: claimEvents.length, fromCheckpoint: canShortCircuit });
-    ownStatusByClaimId.set(claim.id, ownStatus);
-    if (policy) {
-      evidenceRequirementsByClaimId[claim.id] = evidenceRequirementFromPolicy(policy);
-      transparencyGaps.push(...deriveTransparencyGaps({ claim, evidence, entailingEvidence, policy, status: ownStatus, now }));
-    } else if (evidence.length === 0) {
-      transparencyGaps.push({
-        id: `${claim.id}.gap.provenance-gap`,
-        claimId: claim.id,
-        type: "provenance_gap",
-        severity: claim.impactLevel ?? "medium",
-        ...materialityFromClaim(claim),
-        message: `Claim ${claim.id} has no evidence and no verification policy.`,
-        blocking: true,
-        createdAt: now.toISOString(),
-      });
-    }
-    return { claim, ownStatus, producerStatus };
+    const folded = foldClaim({
+      claim,
+      evidence,
+      policies: input.policies,
+      events: claimEvents,
+      allEvents: input.events,
+      authorityTrace: input.authorityTrace,
+      now,
+      checkpointStatus: checkpoint?.statusByClaimId[claim.id],
+      checkpointUsable,
+      checkpointSeenClaim: claimSeenByCheckpoint,
+      checkpointMark: claimMark,
+    });
+
+    options.instrument?.({
+      claimId: claim.id,
+      eventsFolded: folded.eventsFolded,
+      eventsTotal: folded.eventsTotal,
+      fromCheckpoint: folded.fromCheckpoint,
+    });
+    ownStatusByClaimId.set(claim.id, folded.ownStatus);
+    if (folded.policy) policyByClaimId.set(claim.id, folded.policy);
+    if (folded.evidenceRequirement) evidenceRequirementsByClaimId[claim.id] = folded.evidenceRequirement;
+    transparencyGaps.push(...folded.transparencyGaps);
+    return folded;
   });
 
-  const claims = ownStatuses.map(({ claim, ownStatus, producerStatus }) => {
-    const outcome = applyDerivation({ claim, ownStatus, ownStatusByClaimId, claimsById, now });
+  const claims = foldedClaims.map((folded) => {
+    const outcome = applyDerivation({
+      claim: folded.claim,
+      ownStatus: folded.ownStatus,
+      ownStatusByClaimId,
+      claimsById,
+      now,
+    });
     transparencyGaps.push(...outcome.transparencyGaps);
     changeRecords.push(...outcome.changeRecords);
     const derived = outcome.status;
     const output: DerivedReportClaim = {
-      ...claim,
+      ...folded.claim,
       status: derived,
-      freshness: freshnessForClaim(claim, input.events, derived, now),
+      freshness: folded.freshnessForStatus(derived),
     };
-    if (producerStatus !== undefined && producerStatus !== derived) {
-      output.producerStatus = producerStatus;
+    if (folded.producerStatus !== undefined && folded.producerStatus !== derived) {
+      output.producerStatus = folded.producerStatus;
     }
     return output;
   });
 
-  transparencyGaps.push(...deriveIncompatibilityTransparencyGaps({
+  transparencyGaps.push(...deriveConflictTransparencyGaps({
     claims,
     policyByClaimId,
     canonicalKeyForClaim: (claim) => identityIndex.canonicalKeyForClaim(claim),
@@ -224,287 +168,4 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
     subjectGroups: identityIndex.groups,
     claimGroupRollups: deriveClaimGroupRollups({ claimGroups: input.claimGroups, claims }),
   };
-}
-
-function evidenceRequirementFromPolicy(policy: VerificationPolicy): EvidenceRequirement {
-  return {
-    requiredEvidenceTypes: policy.requiredEvidence,
-    requiredMethods: policy.requiredMethods,
-    requiresCorroboration: policy.requiresCorroboration,
-    requiredAuthority: policy.reviewAuthority,
-    notes: policy.acceptanceCriteria.join("; "),
-  };
-}
-
-function deriveTransparencyGaps(input: {
-  claim: Claim;
-  evidence: Evidence[];
-  entailingEvidence: Evidence[];
-  policy: VerificationPolicy;
-  status: TrustStatus;
-  now: Date;
-}): TransparencyGap[] {
-  const transparencyGaps: TransparencyGap[] = [];
-  const createdAt = input.now.toISOString();
-  const evidenceTypes = new Set(input.entailingEvidence.map((item) => item.evidenceType));
-  const evidenceMethods = new Set(input.entailingEvidence.map((item) => item.method));
-  const missingEvidence = input.policy.requiredEvidence.filter((type) => !evidenceTypes.has(type));
-  const missingMethods = (input.policy.requiredMethods ?? []).filter((method) => !evidenceMethods.has(method));
-  const citedEvidenceIds = input.evidence
-    .filter((item) => !input.entailingEvidence.some((entailing) => entailing.id === item.id))
-    .map((item) => item.id);
-
-  if (missingEvidence.length > 0) {
-    transparencyGaps.push({
-      id: `${input.claim.id}.gap.provenance-gap`,
-      claimId: input.claim.id,
-      type: "provenance_gap",
-      severity: input.claim.impactLevel ?? input.policy.impactLevel,
-      ...materialityFromClaim(input.claim),
-      message: `Missing required evidence: ${missingEvidence.join(", ")}.`,
-      policyId: input.policy.id,
-      blocking: true,
-      createdAt,
-    });
-  }
-
-  if (missingMethods.length > 0) {
-    transparencyGaps.push({
-      id: `${input.claim.id}.gap.policy-violation`,
-      claimId: input.claim.id,
-      type: "policy_violation",
-      severity: input.claim.impactLevel ?? input.policy.impactLevel,
-      ...materialityFromClaim(input.claim),
-      message: `Missing required verification method: ${missingMethods.join(", ")}.`,
-      evidenceIds: input.evidence.map((item) => item.id),
-      policyId: input.policy.id,
-      blocking: true,
-      createdAt,
-    });
-  }
-
-  if (input.policy.requiresCorroboration && input.entailingEvidence.length < 2) {
-    transparencyGaps.push({
-      id: `${input.claim.id}.gap.corroboration-absent`,
-      claimId: input.claim.id,
-      type: "corroboration_absent",
-      severity: input.claim.impactLevel ?? input.policy.impactLevel,
-      ...materialityFromClaim(input.claim),
-      message: "Policy requires corroboration from at least two evidence records.",
-      evidenceIds: input.entailingEvidence.map((item) => item.id),
-      policyId: input.policy.id,
-      blocking: true,
-      createdAt,
-    });
-  }
-
-  if (
-    input.evidence.length > 0 &&
-    citedEvidenceIds.length > 0 &&
-    (missingEvidence.length > 0 || missingMethods.length > 0 || (input.policy.requiresCorroboration && input.entailingEvidence.length < 2))
-  ) {
-    const hasProducerUnsupportedInferenceHint = input.evidence.some((item) => {
-      const hints = item.metadata?.transparencyGapHints;
-      return Array.isArray(hints) && hints.some((hint) => (
-        typeof hint === "object" &&
-        hint !== null &&
-        "type" in hint &&
-        hint.type === "unsupported_inference"
-      ));
-    });
-
-    if (!hasProducerUnsupportedInferenceHint) {
-      transparencyGaps.push({
-        id: `${input.claim.id}.gap.unsupported-inference`,
-        claimId: input.claim.id,
-        type: "unsupported_inference",
-        severity: input.claim.impactLevel ?? input.policy.impactLevel,
-        ...materialityFromClaim(input.claim),
-        message: "Linked evidence cites or references the claim but does not entail enough support under policy.",
-        evidenceIds: citedEvidenceIds,
-        policyId: input.policy.id,
-        blocking: true,
-        createdAt,
-      });
-    }
-  }
-
-  if (input.status === "stale") {
-    transparencyGaps.push({
-      id: `${input.claim.id}.gap.freshness-breach`,
-      claimId: input.claim.id,
-      type: "freshness_breach",
-      severity: input.claim.impactLevel ?? input.policy.impactLevel,
-      ...materialityFromClaim(input.claim),
-      message: "Claim verification is stale under its verification policy.",
-      evidenceIds: input.entailingEvidence.map((item) => item.id),
-      policyId: input.policy.id,
-      blocking: true,
-      createdAt,
-    });
-  }
-
-  for (const item of input.entailingEvidence.filter((evidence) => evidence.passing === false)) {
-    transparencyGaps.push({
-      id: `${input.claim.id}.gap.evidence-${item.id}`,
-      claimId: input.claim.id,
-      type: "policy_violation",
-      severity: input.claim.impactLevel ?? input.policy.impactLevel,
-      ...materialityFromClaim(input.claim),
-      message: "Evidence explicitly reported a non-passing result.",
-      evidenceIds: [item.id],
-      policyId: input.policy.id,
-      blocking: item.blocking !== false,
-      createdAt,
-    });
-  }
-
-  for (const hint of input.evidence.flatMap((item) => transparencyGapHintsFromEvidence(item, input.claim, input.policy.id, createdAt))) {
-    transparencyGaps.push(hint);
-  }
-
-  return transparencyGaps;
-}
-
-function transparencyGapHintsFromEvidence(evidence: Evidence, claim: Claim, policyId: string, createdAt: string): TransparencyGap[] {
-  const hints = evidence.metadata?.transparencyGapHints;
-  if (!Array.isArray(hints)) return [];
-
-  return hints
-    .filter((hint): hint is Record<string, unknown> => typeof hint === "object" && hint !== null)
-    .map((hint, index) => ({
-      id: typeof hint.id === "string" ? hint.id : `${evidence.claimId}.gap.hint-${index + 1}`,
-      claimId: evidence.claimId,
-      type: isTransparencyGapType(hint.type) ? hint.type : "unsupported_inference",
-      severity: isImpactLevel(hint.severity) ? hint.severity : "medium",
-      ...materialityFromClaim(claim),
-      message: typeof hint.message === "string" ? hint.message : "Evidence contains a transparency-gap hint.",
-      evidenceIds: [evidence.id],
-      policyId,
-      blocking: typeof hint.blocking === "boolean" ? hint.blocking : true,
-      createdAt,
-      metadata: {
-        source: "evidence.metadata.transparencyGapHints",
-      },
-    }));
-}
-
-function isTransparencyGapType(value: unknown): value is TransparencyGapType {
-  return typeof value === "string" && TRANSPARENCY_GAP_TYPES.includes(value as TransparencyGapType);
-}
-
-function isImpactLevel(value: unknown): value is TransparencyGap["severity"] {
-  return value === "low" || value === "medium" || value === "high" || value === "critical";
-}
-
-function materialityFromClaim(claim: Claim): Pick<TransparencyGap, "materiality"> | Record<string, never> {
-  return claim.materiality === undefined ? {} : { materiality: claim.materiality };
-}
-
-function deriveIncompatibilityTransparencyGaps(input: {
-  claims: Array<Claim & { status: TrustStatus }>;
-  policyByClaimId: Map<string, VerificationPolicy>;
-  canonicalKeyForClaim: (claim: Claim) => string;
-  now: Date;
-}): TransparencyGap[] {
-  const transparencyGaps: TransparencyGap[] = [];
-  const createdAt = input.now.toISOString();
-
-  type Group = { policy: VerificationPolicy; subjectKey: string; claims: Array<Claim & { status: TrustStatus }> };
-  const groupsByKey = new Map<string, Group>();
-  for (const claim of input.claims) {
-    const policy = input.policyByClaimId.get(claim.id);
-    if (!policy) continue;
-    if (!hasIncompatibilityRules(policy)) continue;
-    const subjectKey = input.canonicalKeyForClaim(claim);
-    const groupKey = `${policy.id}::${subjectKey}`;
-    const group = groupsByKey.get(groupKey) ?? { policy, subjectKey, claims: [] };
-    group.claims.push(claim);
-    groupsByKey.set(groupKey, group);
-  }
-
-  for (const group of groupsByKey.values()) {
-    if (group.claims.length < 2) continue;
-    for (let i = 0; i < group.claims.length; i += 1) {
-      for (let j = i + 1; j < group.claims.length; j += 1) {
-        const a = group.claims[i];
-        const b = group.claims[j];
-
-        for (const pair of group.policy.incompatibleValues ?? []) {
-          if (matchValuePair(a.value, b.value, pair.values)) {
-            transparencyGaps.push({
-              id: `${a.id}.${b.id}.gap.contradiction-values`,
-              claimId: a.id,
-              type: "contradiction",
-              severity: a.impactLevel ?? b.impactLevel ?? group.policy.impactLevel,
-              ...materialityFromClaim(a),
-              message:
-                pair.message ??
-                `Claims ${a.id} and ${b.id} hold incompatible values under policy ${group.policy.id}.`,
-              policyId: group.policy.id,
-              createdAt,
-              metadata: { peerClaimId: b.id, subjectKey: group.subjectKey, source: "policy.incompatibleValues" },
-            });
-          }
-        }
-
-        for (const pair of group.policy.incompatibleStatuses ?? []) {
-          if (matchStatusPair(a.status, b.status, pair.statuses)) {
-            transparencyGaps.push({
-              id: `${a.id}.${b.id}.gap.contradiction-statuses`,
-              claimId: a.id,
-              type: "contradiction",
-              severity: a.impactLevel ?? b.impactLevel ?? group.policy.impactLevel,
-              ...materialityFromClaim(a),
-              message:
-                pair.message ??
-                `Claims ${a.id} and ${b.id} hold incompatible statuses under policy ${group.policy.id}.`,
-              policyId: group.policy.id,
-              createdAt,
-              metadata: { peerClaimId: b.id, subjectKey: group.subjectKey, source: "policy.incompatibleStatuses" },
-            });
-          }
-        }
-      }
-    }
-  }
-
-  return transparencyGaps;
-}
-
-function hasIncompatibilityRules(policy: VerificationPolicy): boolean {
-  return (
-    (Array.isArray(policy.incompatibleValues) && policy.incompatibleValues.length > 0) ||
-    (Array.isArray(policy.incompatibleStatuses) && policy.incompatibleStatuses.length > 0)
-  );
-}
-
-function matchValuePair(a: unknown, b: unknown, pair: [unknown, unknown]): boolean {
-  return (deepEqual(a, pair[0]) && deepEqual(b, pair[1])) || (deepEqual(a, pair[1]) && deepEqual(b, pair[0]));
-}
-
-function matchStatusPair(a: TrustStatus, b: TrustStatus, pair: [TrustStatus, TrustStatus]): boolean {
-  return (a === pair[0] && b === pair[1]) || (a === pair[1] && b === pair[0]);
-}
-
-function deepEqual(a: unknown, b: unknown): boolean {
-  if (a === b) return true;
-  if (a === null || b === null) return false;
-  if (typeof a !== typeof b) return false;
-  if (typeof a !== "object") return false;
-  if (Array.isArray(a) !== Array.isArray(b)) return false;
-  if (Array.isArray(a) && Array.isArray(b)) {
-    if (a.length !== b.length) return false;
-    for (let i = 0; i < a.length; i += 1) {
-      if (!deepEqual(a[i], b[i])) return false;
-    }
-    return true;
-  }
-  const aKeys = Object.keys(a as Record<string, unknown>);
-  const bKeys = Object.keys(b as Record<string, unknown>);
-  if (aKeys.length !== bKeys.length) return false;
-  for (const key of aKeys) {
-    if (!deepEqual((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key])) return false;
-  }
-  return true;
 }

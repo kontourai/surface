@@ -1,5 +1,8 @@
 export * from "./types.js";
 export * from "./status.js";
+export * from "./status-taxonomy.js";
+export * from "./claim-fold.js";
+export * from "./conflict-derivation.js";
 export * from "./report.js";
 export * from "./validate.js";
 export * from "./adapter.js";
@@ -19,7 +22,9 @@ export * from "./extension.js";
 export * from "./trust-snapshot.js";
 export * from "./evidence-support.js";
 export * from "./claim-authoring.js";
+export * from "./claim-store-transactions.js";
 export * from "./trace-analysis.js";
+export * from "./trust-panel/projection.js";
 export * from "./adapters/index.js";
 export { startConsoleServer } from "./console/server.js";
 export type { SurfaceConsoleConfig, SurfaceConsoleTheme, SurfaceConsoleVocab } from "./console/types.js";

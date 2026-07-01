@@ -24,6 +24,16 @@ export interface EvidenceLink {
   linkTo(claimId: string): TrustBundleBuilder;
 }
 
+export interface VerifiedClaimEmission {
+  claim: ClaimDraft;
+  evidence: EvidenceDraft;
+  policy: VerificationPolicyDraft;
+  event: Omit<VerificationEventDraft, "claimId" | "evidenceIds" | "status"> & {
+    status?: VerificationEventDraft["status"];
+    evidenceIds?: string[];
+  };
+}
+
 export function buildClaim(claim: ClaimDraft): Claim {
   return claim;
 }
@@ -89,6 +99,20 @@ export class TrustBundleBuilder {
 
   addClaimGroup(claimGroup: ClaimGroup): this {
     this.claimGroups.push(claimGroup);
+    return this;
+  }
+
+  addVerifiedClaim(input: VerifiedClaimEmission): this {
+    this.addClaim(input.claim);
+    const evidence = { ...input.evidence, claimId: input.claim.id } as Evidence;
+    this.upsertEvidence(evidence);
+    this.addPolicy(input.policy);
+    this.addEvent({
+      ...input.event,
+      claimId: input.claim.id,
+      status: input.event.status ?? "verified",
+      evidenceIds: input.event.evidenceIds ?? [evidence.id],
+    } as VerificationEvent);
     return this;
   }
 

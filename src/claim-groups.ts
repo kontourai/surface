@@ -6,6 +6,7 @@ import type {
   ClaimGroup,
   TrustStatus,
 } from "./types.js";
+import { aggregateTrustStatuses, isRequirementUnsupportedStatus } from "./status-taxonomy.js";
 
 export function deriveClaimGroupRollups(input: {
   claimGroups?: ClaimGroup[];
@@ -33,9 +34,7 @@ function deriveClaimGroupRollup(
       verifiedClaims: claims.filter((claim) => claim.status === "verified").map((claim) => claim.id),
       staleClaims: claims.filter((claim) => claim.status === "stale" || claim.status === "superseded").map((claim) => claim.id),
       disputedClaims: claims.filter((claim) => claim.status === "disputed" || claim.status === "rejected").map((claim) => claim.id),
-      unsupportedClaims: claims
-        .filter((claim) => claim.status === "unknown" || claim.status === "proposed")
-        .map((claim) => claim.id),
+      unsupportedClaims: claims.filter((claim) => isRequirementUnsupportedStatus(claim.status)).map((claim) => claim.id),
       missingClaimIds,
     };
     if (requirement.validationStrategy) rollup.validationStrategy = requirement.validationStrategy;
@@ -80,21 +79,20 @@ function deriveRequirementStatus(
 ): TrustStatus {
   if (missingClaimIds.length > 0 || claims.length === 0) return "unknown";
   const statuses = claims.map((claim) => claim.status);
-  if (statuses.some((status) => status === "rejected")) return "rejected";
-  if (statuses.some((status) => status === "disputed")) return "disputed";
-  if (statuses.some((status) => status === "stale" || status === "superseded")) return "stale";
-  if (statuses.some((status) => status === "unknown" || status === "proposed")) return "proposed";
-  return "verified";
+  const aggregate = aggregateTrustStatuses(statuses);
+  if (aggregate === "unknown") return "proposed";
+  if (aggregate === "assumed") return "verified";
+  return aggregate;
 }
 
 function deriveClaimGroupStatus(claimGroup: ClaimGroup, requirements: RequirementRollup[]): TrustStatus {
   const required = requiredRequirements(claimGroup, requirements);
-  if (required.length === 0) return requirements.length > 0 ? aggregateStatuses(requirements.map((requirement) => requirement.status)) : "unknown";
+  if (required.length === 0) return requirements.length > 0 ? aggregateTrustStatuses(requirements.map((requirement) => requirement.status)) : "unknown";
   if (claimGroup.rollupPolicy?.mode === "any-required") {
     if (required.some((requirement) => requirement.status === "verified")) return "verified";
-    return aggregateStatuses(required.map((requirement) => requirement.status));
+    return aggregateTrustStatuses(required.map((requirement) => requirement.status));
   }
-  return aggregateStatuses(required.map((requirement) => requirement.status));
+  return aggregateTrustStatuses(required.map((requirement) => requirement.status));
 }
 
 function requiredRequirements(claimGroup: ClaimGroup, requirements: RequirementRollup[]): RequirementRollup[] {
@@ -102,16 +100,6 @@ function requiredRequirements(claimGroup: ClaimGroup, requirements: RequirementR
   const optionalIds = new Set(claimGroup.rollupPolicy?.optionalRequirementIds ?? []);
   if (requiredIds.size > 0) return requirements.filter((requirement) => requiredIds.has(requirement.id));
   return requirements.filter((requirement) => requirement.required && !optionalIds.has(requirement.id));
-}
-
-function aggregateStatuses(statuses: TrustStatus[]): TrustStatus {
-  if (statuses.length === 0) return "unknown";
-  if (statuses.some((status) => status === "rejected")) return "rejected";
-  if (statuses.some((status) => status === "disputed")) return "disputed";
-  if (statuses.some((status) => status === "stale" || status === "superseded")) return "stale";
-  if (statuses.some((status) => status === "unknown")) return "unknown";
-  if (statuses.some((status) => status === "proposed")) return "proposed";
-  return "verified";
 }
 
 function summarizeRequirements(requirements: RequirementRollup[]): ClaimGroupRollup["summary"] {
@@ -123,7 +111,7 @@ function summarizeRequirements(requirements: RequirementRollup[]): ClaimGroupRol
     verifiedRequirements,
     staleRequirements: requirements.filter((requirement) => requirement.status === "stale" || requirement.status === "superseded").length,
     disputedRequirements: requirements.filter((requirement) => requirement.status === "disputed" || requirement.status === "rejected").length,
-    unsupportedRequirements: requirements.filter((requirement) => requirement.status === "unknown" || requirement.status === "proposed").length,
+    unsupportedRequirements: requirements.filter((requirement) => isRequirementUnsupportedStatus(requirement.status)).length,
     missingClaims: requirements.reduce((total, requirement) => total + requirement.missingClaimIds.length, 0),
     verificationCoverage: requirements.length === 0 ? 0 : verifiedRequirements / requirements.length,
   };

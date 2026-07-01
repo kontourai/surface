@@ -16,6 +16,8 @@ test("buildSurfaceConsoleProjection derives Operator-facing metrics and narrativ
       transparencyGapCount: 3,
       surfaceCounts: { "veritas.evidence-check": 2 },
     },
+    evidence: [{ id: "evidence-1", claimId: "claim-1" }],
+    transparencyGaps: [{ id: "gap-1", claimId: "claim-1" }],
     claims: [{
       id: "claim-1",
       status: "unknown",
@@ -45,6 +47,29 @@ test("buildSurfaceConsoleProjection derives Operator-facing metrics and narrativ
     ["Verified", "1", "50%", "verified"],
     ["Attention", "1", "3 gaps", "attention"],
   ]);
+  assert.deepEqual(projection.claimCards.map((claim) => ({
+    id: claim.id,
+    title: claim.title,
+    surfaceLabel: claim.surfaceLabel,
+    status: claim.status,
+    evidenceCount: claim.evidenceCount,
+    transparencyGapCount: claim.transparencyGapCount,
+  })), [{
+    id: "claim-1",
+    title: "npm test",
+    surfaceLabel: "Evidence Check",
+    status: "unknown",
+    evidenceCount: 1,
+    transparencyGapCount: 1,
+  }, {
+    id: "claim-2",
+    title: "lint",
+    surfaceLabel: "Evidence Check",
+    status: "verified",
+    evidenceCount: 0,
+    transparencyGapCount: 0,
+  }]);
+  assert.deepEqual(projection.attentionClaims.map((claim) => claim.id), ["claim-1"]);
 });
 
 test("emptySurfaceConsoleProjection carries a renderable empty state", () => {
@@ -52,6 +77,8 @@ test("emptySurfaceConsoleProjection carries a renderable empty state", () => {
 
   assert.equal(projection.project.name, "Veritas");
   assert.equal(projection.claims.length, 0);
+  assert.equal(projection.claimCards.length, 0);
+  assert.equal(projection.attentionClaims.length, 0);
   assert.equal(projection.readModel, null);
   assert.equal(projection.metrics[0]?.value, "0");
 });

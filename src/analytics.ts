@@ -17,6 +17,7 @@ import type {
   TrustStatus,
 } from "./types.js";
 import { analyzeTrustTraces } from "./trace-analysis.js";
+import { isUnsupportedStatus } from "./status-taxonomy.js";
 
 const IMPACT_LEVELS: ImpactLevel[] = ["low", "medium", "high", "critical"];
 const MATERIALITY_ORDER: Record<Materiality, number> = {
@@ -61,7 +62,7 @@ export function buildTrustAnalyticsProjection(report: TrustReport): TrustAnalyti
     disputedClaims: claimItems.filter((item) => item.status === "disputed"),
     highImpactUnsupportedClaims: claimItems.filter((item) => {
       return (item.impactLevel === "high" || item.impactLevel === "critical") &&
-        (item.status === "unknown" || item.status === "proposed" || item.status === "assumed");
+        isUnsupportedStatus(item.status);
     }),
     transparencyGaps: {
       byType: report.summary.transparencyGapsByType,
@@ -139,7 +140,7 @@ function buildCoverageBySurface(claims: Array<Claim & { status: TrustStatus }>):
     if (claim.status === "verified") item.verifiedClaims += 1;
     if (claim.status === "stale") item.staleClaims += 1;
     if (claim.status === "disputed") item.disputedClaims += 1;
-    if (claim.status === "unknown" || claim.status === "proposed" || claim.status === "assumed") item.unsupportedClaims += 1;
+    if (isUnsupportedStatus(claim.status)) item.unsupportedClaims += 1;
     bySurface.set(claim.surface, item);
   }
 
@@ -220,7 +221,7 @@ function buildActionQueues(input: {
     if (item.status === "disputed") reviewClaimIds.add(item.claimId);
     if (
       (item.impactLevel === "high" || item.impactLevel === "critical") &&
-      (item.status === "unknown" || item.status === "proposed" || item.status === "assumed")
+      isUnsupportedStatus(item.status)
     ) {
       reviewClaimIds.add(item.claimId);
     }
