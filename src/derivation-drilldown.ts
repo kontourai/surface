@@ -10,8 +10,9 @@ import type {
   VerificationEvent,
   VerificationPolicy,
 } from "./types.js";
+import { derivationInputsForClaim, type DerivationInputSource, type NormalizedDerivationInput } from "./derivation.js";
 
-export type DerivedClaimInputSource = "derivedFrom" | "derivationEdges";
+export type DerivedClaimInputSource = DerivationInputSource;
 export type DerivedClaimDrilldownDiagnosticType = "missing-input" | "cycle";
 
 export interface DerivedClaimEvidenceContext {
@@ -124,27 +125,8 @@ export function buildDerivationDrilldown(report: TrustReport, claimId: string): 
   };
 }
 
-interface NormalizedDerivationInput {
-  inputClaimId: string;
-  source: DerivedClaimInputSource;
-  edge?: DerivationEdge;
-}
-
 function normalizeInputs(claim: Claim): NormalizedDerivationInput[] {
-  const inputs = new Map<string, NormalizedDerivationInput>();
-  for (const edge of claim.derivationEdges ?? []) {
-    inputs.set(edge.inputClaimId, {
-      inputClaimId: edge.inputClaimId,
-      source: "derivationEdges",
-      edge,
-    });
-  }
-  for (const inputClaimId of claim.derivedFrom ?? []) {
-    if (!inputs.has(inputClaimId)) {
-      inputs.set(inputClaimId, { inputClaimId, source: "derivedFrom" });
-    }
-  }
-  return [...inputs.values()];
+  return derivationInputsForClaim(claim);
 }
 
 function evidenceContext(report: TrustReport, claim: TrustReport["claims"][number]): DerivedClaimEvidenceContext {

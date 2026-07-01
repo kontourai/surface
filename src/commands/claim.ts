@@ -1,16 +1,13 @@
 import { resolve } from "node:path";
+import { parseImpactLevel, type ClaimDefinitionUpdateDraft } from "../claim-authoring.js";
 import {
-  addAuthoredClaim,
-  parseImpactLevel,
-  removeAuthoredClaim,
-  updateAuthoredClaim,
-  type ClaimDefinitionUpdateDraft,
-} from "../claim-authoring.js";
-import {
-  loadClaimStore,
-  saveClaimStore,
-  validateClaimStore,
-} from "../store.js";
+  addClaimStoreClaim,
+  DEFAULT_CLAIM_STORE_PATH,
+  listClaimStore,
+  removeClaimStoreClaim,
+  updateClaimStoreClaim,
+  validateClaimStoreAtPath,
+} from "../claim-store-transactions.js";
 import type { ImpactLevel } from "../types.js";
 import { requireValue } from "./shared.js";
 
@@ -26,7 +23,7 @@ export async function runClaimCommand(args: string[]): Promise<void> {
 
 function runClaimList(args: string[]): void {
   const options = parseClaimArgs(args);
-  const store = loadClaimStore(resolve(options.store));
+  const store = listClaimStore(resolve(options.store));
   if (store.claims.length === 0) {
     console.log("No claims defined.");
     return;
@@ -40,7 +37,7 @@ function runClaimAdd(args: string[]): void {
   const options = parseClaimArgs(args);
   requireClaimCreateOptions(options);
   const storePath = resolve(options.store);
-  const { store, claim } = addAuthoredClaim(loadClaimStore(storePath), {
+  const { claim } = addClaimStoreClaim(storePath, {
     id: options.id,
     surface: options.surface,
     claimType: options.type,
@@ -51,7 +48,6 @@ function runClaimAdd(args: string[]): void {
     verificationPolicyId: options.policyId,
     metadata: options.metadata,
   });
-  saveClaimStore(store, storePath);
   console.log(`Added claim: ${claim.id}`);
 }
 
@@ -68,8 +64,7 @@ function runClaimEdit(args: string[]): void {
   if (options.policyId) updates.verificationPolicyId = options.policyId;
   if (options.metadata) updates.metadata = options.metadata;
   const storePath = resolve(options.store);
-  const { store } = updateAuthoredClaim(loadClaimStore(storePath), options.claimId, updates);
-  saveClaimStore(store, storePath);
+  updateClaimStoreClaim(storePath, options.claimId, updates);
   console.log(`Updated claim: ${options.claimId}`);
 }
 
@@ -77,14 +72,13 @@ function runClaimRemove(args: string[]): void {
   const options = parseClaimArgs(args);
   if (!options.claimId) throw new Error("surface claim remove requires --claim-id");
   const storePath = resolve(options.store);
-  const updated = removeAuthoredClaim(loadClaimStore(storePath), options.claimId);
-  saveClaimStore(updated, storePath);
+  removeClaimStoreClaim(storePath, options.claimId);
   console.log(`Removed claim: ${options.claimId}`);
 }
 
 function runClaimValidate(args: string[]): void {
   const options = parseClaimArgs(args);
-  const store = validateClaimStore(loadClaimStore(resolve(options.store)));
+  const store = validateClaimStoreAtPath(resolve(options.store));
   const policyIds = new Set(store.policies.map((policy) => policy.id));
   const issues = store.claims
     .filter((claim) => claim.verificationPolicyId && !policyIds.has(claim.verificationPolicyId))
@@ -112,7 +106,7 @@ interface ClaimCommandOptions {
 }
 
 function parseClaimArgs(args: string[]): ClaimCommandOptions {
-  const options: ClaimCommandOptions = { store: "veritas.claims.json" };
+  const options: ClaimCommandOptions = { store: DEFAULT_CLAIM_STORE_PATH };
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === "--store") options.store = requireValue(args, ++index, "--store");

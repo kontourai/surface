@@ -13,8 +13,8 @@ import type {
 import { deriveTrustSnapshot } from "./trust-snapshot.js";
 import type { SnapshotEventProbe } from "./trust-snapshot.js";
 import { statusFunctionVersion } from "./status.js";
+import { isUnsupportedStatus, TRUST_STATUS_ORDER } from "./status-taxonomy.js";
 
-const STATUSES: TrustStatus[] = ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected", "revoked"];
 const TRANSPARENCY_GAP_TYPES: TransparencyGapType[] = [
   "contradiction",
   "provenance_gap",
@@ -141,7 +141,7 @@ export function summarizeClaims(
   transparencyGaps: TransparencyGap[] = [],
   changeRecords: Array<{ claimId: string; action: string }> = [],
 ): TrustReportSummary {
-  const byStatus = Object.fromEntries(STATUSES.map((status) => [status, 0])) as Record<TrustStatus, number>;
+  const byStatus = Object.fromEntries(TRUST_STATUS_ORDER.map((status) => [status, 0])) as Record<TrustStatus, number>;
   const bySurface: Record<string, number> = {};
   const sourceQuality: Record<string, number> = {};
   const reviewerAuthority: Record<string, number> = {};
@@ -170,7 +170,7 @@ export function summarizeClaims(
 
     if (
       (claim.impactLevel === "high" || claim.impactLevel === "critical") &&
-      (claim.status === "unknown" || claim.status === "proposed" || claim.status === "assumed")
+      isUnsupportedStatus(claim.status)
     ) {
       highImpactUnsupported.push(claim.id);
     }
@@ -206,7 +206,7 @@ export function summarizeClaims(
 }
 
 export function formatTrustReportSummary(report: TrustReport): string {
-  const statusSummary = STATUSES
+  const statusSummary = TRUST_STATUS_ORDER
     .filter((status) => report.summary.byStatus[status] > 0)
     .map((status) => `${status}: ${report.summary.byStatus[status]}`)
     .join(", ");

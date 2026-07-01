@@ -5,7 +5,7 @@
  * implementation (deriveClaimStatus via buildTrustReport) produces the expected
  * per-claim statuses at the test vector's fixed `now` timestamp.
  *
- * Any conforming independent implementation of status function version "1" must
+ * Any conforming independent implementation of status function version "2" must
  * produce the same outputs for these inputs.
  */
 import test from "node:test";

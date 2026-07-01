@@ -1,4 +1,7 @@
 import type { Claim, DerivationChangeRecord, TransparencyGap, TrustStatus } from "./types.js";
+import type { DerivationEdge } from "./types.js";
+export { compareStatusStrength, weakerStatus } from "./status-taxonomy.js";
+import { weakerStatus } from "./status-taxonomy.js";
 
 /**
  * A derived claim cannot be more confident than the weakest claim it is built
@@ -14,26 +17,6 @@ import type { Claim, DerivationChangeRecord, TransparencyGap, TrustStatus } from
  * in the report.
  */
 
-const STATUS_RANK: Record<TrustStatus, number> = {
-  revoked: 0,
-  rejected: 1,
-  disputed: 2,
-  superseded: 3,
-  stale: 4,
-  unknown: 5,
-  assumed: 6,
-  proposed: 7,
-  verified: 8,
-};
-
-export function compareStatusStrength(a: TrustStatus, b: TrustStatus): number {
-  return STATUS_RANK[a] - STATUS_RANK[b];
-}
-
-export function weakerStatus(a: TrustStatus, b: TrustStatus): TrustStatus {
-  return STATUS_RANK[a] <= STATUS_RANK[b] ? a : b;
-}
-
 export interface DerivationOutcome {
   /** The status after applying the derivation ceiling. */
   status: TrustStatus;
@@ -41,6 +24,14 @@ export interface DerivationOutcome {
   transparencyGaps: TransparencyGap[];
   /** Change records explaining recompute/review pressure from derivation inputs. */
   changeRecords: DerivationChangeRecord[];
+}
+
+export type DerivationInputSource = "derivedFrom" | "derivationEdges";
+
+export interface NormalizedDerivationInput {
+  inputClaimId: string;
+  source: DerivationInputSource;
+  edge?: DerivationEdge;
 }
 
 interface DerivationInputs {
@@ -159,6 +150,27 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
 }
 
 export function derivationInputIds(claim: Claim): string[] {
+  return legacyDerivationInputIds(claim);
+}
+
+export function derivationInputsForClaim(claim: Claim): NormalizedDerivationInput[] {
+  const inputs = new Map<string, NormalizedDerivationInput>();
+  for (const edge of claim.derivationEdges ?? []) {
+    inputs.set(edge.inputClaimId, {
+      inputClaimId: edge.inputClaimId,
+      source: "derivationEdges",
+      edge,
+    });
+  }
+  for (const inputClaimId of claim.derivedFrom ?? []) {
+    if (!inputs.has(inputClaimId)) {
+      inputs.set(inputClaimId, { inputClaimId, source: "derivedFrom" });
+    }
+  }
+  return [...inputs.values()];
+}
+
+function legacyDerivationInputIds(claim: Claim): string[] {
   const ids = new Set<string>();
   for (const id of claim.derivedFrom ?? []) ids.add(id);
   for (const edge of claim.derivationEdges ?? []) ids.add(edge.inputClaimId);

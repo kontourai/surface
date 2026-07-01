@@ -8,14 +8,15 @@ import { CONSOLE_SCRIPT } from "./script.js";
 import { CONSOLE_CSS } from "./styles.js";
 import { buildSurfaceConsoleProjection, emptySurfaceConsoleProjection } from "./projection.js";
 import {
-  addAuthoredClaim,
   parseImpactLevel,
-  removeAuthoredClaim,
-  updateAuthoredClaim,
   type ClaimDefinitionDraft,
   type ClaimDefinitionUpdateDraft,
 } from "../claim-authoring.js";
-import { loadClaimStore, saveClaimStore } from "../store.js";
+import {
+  addClaimStoreClaim,
+  removeClaimStoreClaim,
+  updateClaimStoreClaim,
+} from "../claim-store-transactions.js";
 import { listExtensions } from "../extension.js";
 import type { SurfaceConsoleConfig } from "./types.js";
 
@@ -230,8 +231,7 @@ export async function startConsoleServer(config: SurfaceConsoleConfig = {}): Pro
       try {
         const body = await readJsonBody(req);
         const resolvedStorePath = resolve(storePath);
-        const { store, claim } = addAuthoredClaim(loadClaimStore(resolvedStorePath), claimFromBody(body));
-        saveClaimStore(store, resolvedStorePath);
+        const { claim } = addClaimStoreClaim(resolvedStorePath, claimFromBody(body));
         res.writeHead(201, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify({ ok: true, claim }));
       } catch (error) {
@@ -245,8 +245,7 @@ export async function startConsoleServer(config: SurfaceConsoleConfig = {}): Pro
         const claimId = decodeURIComponent(url.slice("/api/claims/".length));
         const body = await readJsonBody(req);
         const resolvedStorePath = resolve(storePath);
-        const { store } = updateAuthoredClaim(loadClaimStore(resolvedStorePath), claimId, claimUpdatesFromBody(body));
-        saveClaimStore(store, resolvedStorePath);
+        updateClaimStoreClaim(resolvedStorePath, claimId, claimUpdatesFromBody(body));
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify({ ok: true }));
       } catch (error) {
@@ -259,8 +258,7 @@ export async function startConsoleServer(config: SurfaceConsoleConfig = {}): Pro
       try {
         const claimId = decodeURIComponent(url.slice("/api/claims/".length));
         const resolvedStorePath = resolve(storePath);
-        const updated = removeAuthoredClaim(loadClaimStore(resolvedStorePath), claimId);
-        saveClaimStore(updated, resolvedStorePath);
+        removeClaimStoreClaim(resolvedStorePath, claimId);
         res.writeHead(204);
         res.end();
       } catch (error) {

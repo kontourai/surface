@@ -153,3 +153,52 @@ test("TrustBundleBuilder validates before returning input", () => {
     /createdAt/,
   );
 });
+
+test("TrustBundleBuilder emits a common verified claim bundle in one step", () => {
+  const built = new TrustBundleBuilder({ source: "sdk:verified-claim" })
+    .addVerifiedClaim({
+      claim: {
+        id: "claim.release.tests",
+        subjectType: "repo",
+        subjectId: "surface",
+        surface: "release",
+        claimType: "release-check",
+        fieldOrBehavior: "tests",
+        value: "passing",
+        createdAt: "2026-05-01T00:00:00.000Z",
+        updatedAt: "2026-05-01T00:00:00.000Z",
+        verificationPolicyId: "policy.release.tests",
+      },
+      evidence: {
+        id: "evidence.release.tests",
+        evidenceType: "test_output",
+        method: "validation",
+        sourceRef: "ci:test",
+        excerptOrSummary: "Tests passed.",
+        observedAt: "2026-05-01T00:01:00.000Z",
+        collectedBy: "ci",
+      },
+      policy: {
+        id: "policy.release.tests",
+        claimType: "release-check",
+        requiredEvidence: ["test_output"],
+        requiredMethods: ["validation"],
+        reviewAuthority: "ci",
+        validityRule: { kind: "duration", durationDays: 1 },
+        stalenessTriggers: [],
+        conflictRules: [],
+        acceptanceCriteria: ["Tests pass"],
+        impactLevel: "medium",
+      },
+      event: {
+        id: "event.release.tests",
+        actor: "ci",
+        method: "validation",
+        createdAt: "2026-05-01T00:02:00.000Z",
+      },
+    })
+    .build();
+
+  const report = buildTrustReport(built, { now: new Date("2026-05-01T00:03:00.000Z") });
+  assert.equal(report.claims[0].status, "verified");
+});
