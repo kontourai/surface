@@ -430,6 +430,21 @@ export interface VerificationEvent {
 export interface TrustBundle {
   schemaVersion: SchemaVersion;
   source: string;
+  /**
+   * OPTIONAL stable identifier for the *system* that produced this bundle,
+   * distinct from `source`'s run-scoped free text (hachure `merge.md` §2).
+   * A producer SHOULD keep `producerId` stable across every bundle it emits
+   * (e.g. `"veritas"`), while `source` may vary per run (`"veritas:run-48213"`).
+   *
+   * Carries no cryptographic weight — it is an L0 (producer-asserted) fact.
+   * Producers needing a verifiable identity use the Assurance L1/L2 presentation
+   * layer; this field is the plain, always-available floor beneath it.
+   *
+   * On merge (`mergeBundlesDetailed`), a merged bundle represents more than one
+   * producer, so `producerId` MUST be omitted from merged output (`merge.md`
+   * §5 rule 3) — unlike `source`, which is synthesized as `merged:<a>+<b>`.
+   */
+  producerId?: string;
   claims: Claim[];
   evidence: Evidence[];
   policies: VerificationPolicy[];

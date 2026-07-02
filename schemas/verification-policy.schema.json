@@ -10,7 +10,7 @@
     "parentType": { "type": "string" },
     "requiredEvidence": {
       "type": "array",
-      "items": { "enum": ["source_excerpt", "test_output", "human_attestation", "calculation_trace", "document_citation", "crawl_observation", "policy_rule"] }
+      "items": { "enum": ["source_excerpt", "test_output", "human_attestation", "attestation", "calculation_trace", "document_citation", "crawl_observation", "policy_rule"] }
     },
     "requiredMethods": {
       "type": "array",
@@ -53,7 +53,7 @@
             "type": "array",
             "minItems": 2,
             "maxItems": 2,
-            "items": { "enum": ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected"] }
+            "items": { "enum": ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected", "revoked"] }
           },
           "message": { "type": "string" }
         },

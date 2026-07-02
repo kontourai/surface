@@ -8,6 +8,11 @@
   "properties": {
     "schemaVersion": { "enum": [2, 3, 4] },
     "source": { "type": "string" },
+    "producerId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional stable identifier for the producing system, distinct from source (which is free-text and may vary per run). When present, MUST be a non-empty string (minLength: 1) -- see merge.md section 2. Omitted (never synthesized) on a merged bundle."
+    },
     "claims": {
       "type": "array",
       "items": { "$ref": "claim.schema.json" }
@@ -18,36 +23,15 @@
     },
     "policies": {
       "type": "array",
-      "items": { "type": "object" }
+      "items": { "$ref": "verification-policy.schema.json" }
     },
     "events": {
       "type": "array",
-      "items": { "type": "object" }
+      "items": { "$ref": "verification-event.schema.json" }
     },
     "identityLinks": {
       "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["subjects"],
-        "properties": {
-          "subjects": {
-            "type": "array",
-            "minItems": 2,
-            "items": {
-              "type": "object",
-              "required": ["subjectType", "subjectId"],
-              "properties": {
-                "subjectType": { "type": "string" },
-                "subjectId": { "type": "string" }
-              },
-              "additionalProperties": false
-            }
-          },
-          "reason": { "type": "string" },
-          "attestedBy": { "type": "string" }
-        },
-        "additionalProperties": false
-      }
+      "items": { "$ref": "#/$defs/identityLink" }
     },
     "claimGroups": {
       "type": "array",
@@ -65,6 +49,32 @@
       "properties": {
         "subjectType": { "type": "string" },
         "subjectId": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "identityLink": {
+      "type": "object",
+      "required": ["subjects"],
+      "properties": {
+        "id": { "type": "string" },
+        "subjects": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "$ref": "#/$defs/subjectRef" }
+        },
+        "reason": { "type": "string" },
+        "attestedBy": { "type": "string" },
+        "relation": { "enum": ["equivalent", "subsumes", "converts"] },
+        "conversion": {
+          "type": "object",
+          "properties": {
+            "factor": { "type": "number" },
+            "offset": { "type": "number" },
+            "note": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        "mappingClaimId": { "type": "string" }
       },
       "additionalProperties": false
     },

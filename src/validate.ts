@@ -37,6 +37,10 @@ export function validateTrustBundle(input: unknown): TrustBundle {
   if (!isObject(input)) throw new Error("Trust bundle must be an object");
   const schemaVersion = requireSchemaVersion(input);
   const source = requireString(input, "source");
+  // Optional stable producer identity (hachure merge.md §2). requireString
+  // already rejects empty strings, matching the "minLength 1 when present" rule
+  // used for every other optional string field in this validator.
+  const producerId = input.producerId === undefined ? undefined : requireString(input, "producerId");
   const claims = requireArray(input, "claims");
   const evidence = requireArray(input, "evidence");
   const policies = requireArray(input, "policies");
@@ -274,6 +278,7 @@ export function validateTrustBundle(input: unknown): TrustBundle {
   validateReferences({ claims, evidence, policies, events, claimGroups, authorityTrace } as TrustBundle);
 
   const result: TrustBundle = { schemaVersion, source, claims, evidence, policies, events } as TrustBundle;
+  if (producerId !== undefined) (result as TrustBundle).producerId = producerId;
   if (identityLinks !== undefined) (result as TrustBundle).identityLinks = identityLinks as TrustBundle["identityLinks"];
   if (claimGroups !== undefined) (result as TrustBundle).claimGroups = claimGroups as TrustBundle["claimGroups"];
   if (authorityTrace !== undefined) (result as TrustBundle).authorityTrace = authorityTrace as TrustBundle["authorityTrace"];

@@ -12,7 +12,7 @@
     "claimType": { "type": "string" },
     "fieldOrBehavior": { "type": "string" },
     "value": {},
-    "status": { "enum": ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected", "revoked"] },
+    "status": { "$ref": "#/$defs/trustStatus" },
     "createdAt": { "type": "string", "format": "date-time" },
     "updatedAt": { "type": "string", "format": "date-time" },
     "expiresAt": {
@@ -67,9 +67,23 @@
       "type": "object",
       "additionalProperties": { "type": "string" }
     },
-    "metadata": { "type": "object" }
+    "metadata": { "type": "object" },
+    "producerStatus": { "$ref": "#/$defs/trustStatus" },
+    "freshness": {
+      "type": "object",
+      "required": ["asOf", "stale"],
+      "properties": {
+        "asOf": { "type": "string", "format": "date-time" },
+        "expiresAt": { "type": "string", "format": "date-time" },
+        "stale": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    }
   },
   "$defs": {
+    "trustStatus": {
+      "enum": ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected", "revoked"]
+    },
     "integrityAnchor": {
       "type": "object",
       "required": ["id", "kind", "algorithm", "value", "sourceRef"],
