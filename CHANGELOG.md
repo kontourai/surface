@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.0](https://github.com/kontourai/surface/compare/v1.3.1...v1.4.0) (2026-07-02)
+
+
+### Features
+
+* **merge:** order-independent multi-producer merge + producerId; execute hachure 0.7.0 conformance ([#103](https://github.com/kontourai/surface/issues/103)) ([1d2b490](https://github.com/kontourai/surface/commit/1d2b490af0ab620baddd042973ad2eb7caa97246))
+
+
+### Refactoring
+
+* decompose trust-snapshot; single-source status taxonomy ([#101](https://github.com/kontourai/surface/issues/101)) ([7da006d](https://github.com/kontourai/surface/commit/7da006d2ee1e4bc370f145fde295866df0e9e581))
+
 ## [1.3.1](https://github.com/kontourai/surface/compare/v1.3.0...v1.3.1) (2026-06-29)
 
 
