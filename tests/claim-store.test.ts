@@ -16,7 +16,7 @@ import {
 
 const claim: ClaimDefinition = {
   id: "repo.proof.npm-test",
-  surface: "veritas.evidence-check",
+  facet: "veritas.evidence-check",
   claimType: "software-evidence",
   fieldOrBehavior: "npm test",
   subjectType: "repository",
@@ -72,7 +72,7 @@ test("updateClaimInStore updates mutable fields and preserves identity fields", 
   assert.equal(updated.claims[0]?.createdAt, claim.createdAt);
   assert.notEqual(updated.claims[0]?.updatedAt, claim.updatedAt);
   assert.equal(store.claims[0]?.fieldOrBehavior, "npm test");
-  assert.throws(() => updateClaimInStore(store, "missing", { surface: "x" }), /not found/);
+  assert.throws(() => updateClaimInStore(store, "missing", { facet: "x" }), /not found/);
 });
 
 test("removeClaimFromStore removes immutably and rejects missing ids", () => {
@@ -87,6 +87,47 @@ test("validateClaimStore passes valid stores and rejects non-object input", () =
   const store: ClaimStore = { schemaVersion: 1, producer: "veritas", claims: [claim], policies: [] };
   assert.equal(validateClaimStore(store), store);
   assert.throws(() => validateClaimStore(null), /JSON object/);
+});
+
+test("loadClaimStore maps a legacy claim definition `surface` field onto `facet`, strips it, and warns once", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "surface-store-"));
+  try {
+    const path = join(dir, "veritas.claims.json");
+    const legacyClaim = {
+      id: "repo.proof.legacy",
+      surface: "veritas.legacy-grouping",
+      claimType: "software-evidence",
+      fieldOrBehavior: "npm test",
+      subjectType: "repository",
+      subjectId: "repo",
+      createdAt: "2026-05-19T00:00:00.000Z",
+      updatedAt: "2026-05-19T00:00:00.000Z",
+    };
+    await writeFile(
+      path,
+      `${JSON.stringify({ schemaVersion: 1, producer: "veritas", claims: [legacyClaim], policies: [] })}\n`,
+    );
+
+    const warnings: string[] = [];
+    const previousWarn = console.warn;
+    console.warn = (message?: unknown) => {
+      warnings.push(String(message));
+    };
+    let store: ClaimStore;
+    try {
+      store = loadClaimStore(path);
+    } finally {
+      console.warn = previousWarn;
+    }
+
+    // Legacy entry retains its grouping: the value that used to live under
+    // `surface` is readable under `facet` after load.
+    assert.equal(store.claims[0]?.facet, "veritas.legacy-grouping");
+    assert.ok(!("surface" in (store.claims[0] as unknown as Record<string, unknown>)), "surface must never be re-emitted");
+    assert.ok(warnings.some((message) => /deprecated/.test(message) && /"surface"/.test(message) && /"facet"/.test(message)));
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });
 
 test("save/load round trip preserves formatted JSON", async () => {

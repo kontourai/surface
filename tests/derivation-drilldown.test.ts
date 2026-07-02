@@ -10,7 +10,7 @@ import type { Claim, Evidence, TrustBundle, TrustReport, VerificationEvent } fro
 const baseClaim: Omit<Claim, "id" | "value" | "fieldOrBehavior"> = {
   subjectType: "repo-governance.repo",
   subjectId: "repo-A",
-  surface: "repo-governance.developer-evidence",
+  facet: "repo-governance.developer-evidence",
   claimType: "software-evidence",
   createdAt: "2026-04-25T00:00:00.000Z",
   updatedAt: "2026-04-25T00:00:00.000Z",
@@ -84,7 +84,7 @@ function minimalReport(claims: TrustReport["claims"]): TrustReport {
         rejected: 0,
         revoked: 0,
       },
-      bySurface: {},
+      byFacet: {},
       staleClaims: [],
       disputedClaims: [],
       highImpactUnsupported: [],

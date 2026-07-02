@@ -1,16 +1,26 @@
 import type { SchemaVersion } from "../types.js";
 import { EVIDENCE_METHODS, EVIDENCE_SUPPORT_STRENGTHS } from "./constants.js";
 
+// TOLERANCE SHIM (owner-ratified, one release, hachure facet rename): this
+// reader intentionally still ACCEPTS legacy schemaVersion 2-4 on read (the
+// shipped `trust-bundle.schema.json` / `trust-report.schema.json` enums are a
+// hard [5]-only wire contract for NEW bundles — see schemas/*.schema.json —
+// but this hand-written validator is the same read choke point that maps
+// legacy `surface` onto `facet`, and a bundle self-declaring schemaVersion 4
+// is exactly the kind of archived/legacy bundle that shim exists for). Every
+// bundle this release WRITES self-declares schemaVersion 5
+// (`CURRENT_SCHEMA_VERSION`, see types.ts) — this function governs reading
+// only, never writing.
 export function requireSchemaVersion(input: Record<string, unknown>): SchemaVersion {
   if (!("schemaVersion" in input)) {
     throw new Error(
-      "Missing required schemaVersion: expected 2, 3, or 4. See docs/reference/schema-versioning.md for the v1-to-v2 migration.",
+      "Missing required schemaVersion: expected 2, 3, 4, or 5. See docs/reference/schema-versioning.md for the v1-to-v2 migration.",
     );
   }
   const value = input.schemaVersion;
-  if (value !== 2 && value !== 3 && value !== 4) {
+  if (value !== 2 && value !== 3 && value !== 4 && value !== 5) {
     throw new Error(
-      `Unsupported schemaVersion ${String(value)}: expected 2, 3, or 4. See docs/reference/schema-versioning.md for the v1-to-v2 migration.`,
+      `Unsupported schemaVersion ${String(value)}: expected 2, 3, 4, or 5. See docs/reference/schema-versioning.md for the v1-to-v2 migration.`,
     );
   }
   return value as SchemaVersion;

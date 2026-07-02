@@ -17,7 +17,7 @@ export interface SurfaceConsoleProjection {
   claimCards: SurfaceConsoleClaimCard[];
   attentionClaims: SurfaceConsoleClaimCard[];
   claims: Array<Record<string, unknown>>;
-  surfaceCounts: Record<string, number>;
+  facetCounts: Record<string, number>;
   readModel: unknown;
 }
 
@@ -25,7 +25,7 @@ export interface SurfaceConsoleClaimCard {
   id: string;
   title: string;
   subject: string;
-  surface: string;
+  facet: string;
   surfaceLabel: string;
   status: string;
   evidenceCount: number;
@@ -83,7 +83,9 @@ export function buildSurfaceConsoleProjection(
     claimCards,
     attentionClaims: claimCards.filter((claim) => isAttentionStatus(claim.status)),
     claims,
-    surfaceCounts: numberRecord(summary.surfaceCounts),
+    // Tolerant of a read-model JSON produced before this rename (an
+    // un-migrated producer, or an archived local run artifact).
+    facetCounts: numberRecord(isRecord(summary.facetCounts) ? summary.facetCounts : summary.surfaceCounts),
     readModel,
   };
 }
@@ -101,7 +103,7 @@ export function emptySurfaceConsoleProjection(config: SurfaceConsoleRuntimeConfi
     claimCards: [],
     attentionClaims: [],
     claims: [],
-    surfaceCounts: {},
+    facetCounts: {},
     readModel: null,
   };
 }
@@ -112,14 +114,16 @@ function buildClaimCard(
   surfaceLabels?: Record<string, string>,
 ): SurfaceConsoleClaimCard {
   const id = stringValue(claim.id);
-  const surface = stringValue(claim.surface);
+  // Tolerant of a legacy `surface` key (pre-rename producer or archived run
+  // artifact) — same one-release shim spirit as validate.ts's bundle-read shim.
+  const facet = stringValue(claim.facet) || stringValue(claim.surface);
   const policyId = stringValue(claim.verificationPolicyId);
   const card: SurfaceConsoleClaimCard = {
     id,
     title: stringValue(claim.fieldOrBehavior) || stringValue(claim.claimType) || id || "Untitled claim",
     subject: [stringValue(claim.subjectType), stringValue(claim.subjectId)].filter(Boolean).join(":"),
-    surface,
-    surfaceLabel: surfaceLabel(surface, surfaceLabels),
+    facet,
+    surfaceLabel: surfaceLabel(facet, surfaceLabels),
     status: stringValue(claim.status, "unknown"),
     evidenceCount: evidenceForClaim(claim, readModel).length,
     transparencyGapCount: transparencyGapsForClaim(claim, readModel).length,
@@ -157,8 +161,8 @@ function buildNarrative(input: {
   }
   const first = input.attention[0];
   const fieldOrBehavior = stringValue(first.fieldOrBehavior) || stringValue(first.claimType);
-  const surface = stringValue(first.surface);
-  return `${input.attention.length} claim${input.attention.length !== 1 ? "s" : ""} need attention. Start with “${fieldOrBehavior}” on surface ${surfaceLabel(surface, input.surfaceLabels)}.`;
+  const facet = stringValue(first.facet) || stringValue(first.surface);
+  return `${input.attention.length} claim${input.attention.length !== 1 ? "s" : ""} need attention. Start with “${fieldOrBehavior}” on facet ${surfaceLabel(facet, input.surfaceLabels)}.`;
 }
 
 function formatSourceSummary(producer: Record<string, unknown>): string | null {

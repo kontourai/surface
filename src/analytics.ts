@@ -10,7 +10,7 @@ import type {
   TransparencyGapType,
   ImpactLevel,
   Materiality,
-  SurfaceTrustCoverage,
+  FacetTrustCoverage,
   TrustActionQueues,
   TrustAnalyticsProjection,
   TrustReport,
@@ -57,7 +57,7 @@ export function buildTrustAnalyticsProjection(report: TrustReport): TrustAnalyti
     },
     authorityTrace: buildAuthorityTraceProjection(report.authorityTrace ?? [], report.generatedAt),
     claimGroupRollups: report.claimGroupRollups,
-    coverageBySurface: buildCoverageBySurface(report.claims),
+    coverageByFacet: buildCoverageByFacet(report.claims),
     staleClaims: claimItems.filter((item) => item.status === "stale"),
     disputedClaims: claimItems.filter((item) => item.status === "disputed"),
     highImpactUnsupportedClaims: claimItems.filter((item) => {
@@ -123,12 +123,13 @@ function isBefore(value: string | undefined, comparedTo: string): boolean {
   return Number.isFinite(timestamp) && Number.isFinite(comparedTimestamp) && timestamp < comparedTimestamp;
 }
 
-function buildCoverageBySurface(claims: Array<Claim & { status: TrustStatus }>): SurfaceTrustCoverage[] {
-  const bySurface = new Map<string, SurfaceTrustCoverage>();
+function buildCoverageByFacet(claims: Array<Claim & { status: TrustStatus }>): FacetTrustCoverage[] {
+  const byFacet = new Map<string, FacetTrustCoverage>();
 
   for (const claim of claims) {
-    const item = bySurface.get(claim.surface) ?? {
-      surface: claim.surface,
+    const facet = claim.facet ?? "unknown";
+    const item = byFacet.get(facet) ?? {
+      facet,
       totalClaims: 0,
       verifiedClaims: 0,
       staleClaims: 0,
@@ -141,21 +142,21 @@ function buildCoverageBySurface(claims: Array<Claim & { status: TrustStatus }>):
     if (claim.status === "stale") item.staleClaims += 1;
     if (claim.status === "disputed") item.disputedClaims += 1;
     if (isUnsupportedStatus(claim.status)) item.unsupportedClaims += 1;
-    bySurface.set(claim.surface, item);
+    byFacet.set(facet, item);
   }
 
-  return [...bySurface.values()]
+  return [...byFacet.values()]
     .map((item) => ({
       ...item,
       verificationCoverage: item.totalClaims === 0 ? 0 : item.verifiedClaims / item.totalClaims,
     }))
-    .sort((a, b) => a.surface.localeCompare(b.surface));
+    .sort((a, b) => a.facet.localeCompare(b.facet));
 }
 
 function claimQueueItem(claim: Claim & { status: TrustStatus }): ClaimQueueItem {
   const item: ClaimQueueItem = {
     claimId: claim.id,
-    surface: claim.surface,
+    facet: claim.facet ?? "unknown",
     status: claim.status,
     impactLevel: claim.impactLevel ?? "medium",
     claimType: claim.claimType,
@@ -196,7 +197,7 @@ function buildEvidenceGaps(report: TrustReport, claimsById: Map<string, Claim>):
       const claim = claimsById.get(transparencyGap.claimId);
       const gap: EvidenceGap = {
         claimId: transparencyGap.claimId,
-        surface: claim?.surface ?? "unknown",
+        facet: claim?.facet ?? "unknown",
         impactLevel: claim?.impactLevel ?? transparencyGap.severity,
         gapType: transparencyGap.type,
         message: transparencyGap.message,

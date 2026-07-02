@@ -47,13 +47,16 @@ npx surface report --input examples/surface-example-bundle.json --format summary
 
 The command reads a Surface trust input, derives claim statuses, and emits a local trust report — the basis for a point-in-time Trust Snapshot. In this repo the example bundle ships at `examples/surface-example-bundle.json`; after installing the package in another project, pass `--input` pointing at your own trust input file.
 
+The shipped example bundle is deliberately kept in its pre-rename `schemaVersion: 3` / legacy `surface` field shape (rather than migrated to `facet`) so this quickstart doubles as a live demonstration of the read-tolerance shim described in [Schema Versioning](docs/reference/schema-versioning.md#v3-to-v5-migration): the kernel still reads it correctly, but says so on stderr.
+
 The output from the shipped example bundle looks like this:
 
 ```text
+[@kontourai/surface] deprecated: reading legacy claim field "surface" as "facet". This read-tolerance shim is temporary (one release) — re-emit affected bundles with "facet" instead of "surface".
 Kontour Surface report surface-1779196544815
 Source: kontour-surface-validation-examples
 Claims: 4 (unknown: 1, verified: 2, stale: 1)
-Surfaces: repo-governance.developer-evidence: 1, field-attested-records.public-data: 1, fact-resolution.financial-facts: 1, surface.roadmap: 1
+Facets: repo-governance.developer-evidence: 1, field-attested-records.public-data: 1, fact-resolution.financial-facts: 1, surface.roadmap: 1
 High-impact unsupported: none
 Stale: claim.field-attested-records.registration-status
 Recompute needed: none
@@ -62,7 +65,7 @@ Claim groups: 0
 Transparency gaps: 3
 ```
 
-Each line answers a different question: **Claims** gives the total and derived status breakdown. **Surfaces** shows where claims live by producer namespace. **High-impact unsupported** flags claims where impact is high but evidence is missing or weak — the first thing to look at. **Stale** lists claims whose verification has expired. **Disputed** lists claims contradicted by an event or another claim. **Transparency gaps** counts discoverable conflicts, missing support, and supersede chains across the input.
+The first line is the one-time-per-process deprecation warning noted above — it fires on stderr because the example bundle still carries the legacy `surface` field; a bundle already written with `facet` produces no such line. Each remaining line answers a different question: **Claims** gives the total and derived status breakdown. **Facets** shows where claims live by producer namespace. **High-impact unsupported** flags claims where impact is high but evidence is missing or weak — the first thing to look at. **Stale** lists claims whose verification has expired. **Disputed** lists claims contradicted by an event or another claim. **Transparency gaps** counts discoverable conflicts, missing support, and supersede chains across the input.
 
 For a step-by-step tour, see the [Walkthrough](docs/guides/walkthrough.md).
 
@@ -79,7 +82,7 @@ const input = new TrustBundleBuilder({ source: "my-producer:local" })
     subjectType: "api",
     subjectId: "public-api",
     claimType: "software-evidence",
-    surface: "api",
+    facet: "api",
     fieldOrBehavior: "rate limit is enforced",
     value: "100 requests/minute",
     currentIntegrityRef: "commit:abc123",

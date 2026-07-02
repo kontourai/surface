@@ -8,6 +8,7 @@ import type {
   VerificationEvent,
   VerificationPolicy,
 } from "./types.js";
+import { CURRENT_SCHEMA_VERSION } from "./types.js";
 import { validateTrustBundle } from "./validate.js";
 
 export type ClaimDraft = Claim;
@@ -62,7 +63,7 @@ export class TrustBundleBuilder {
 
   constructor(args: TrustBundleBuilderArgs) {
     this.source = args.source;
-    this.schemaVersion = args.schemaVersion ?? 2;
+    this.schemaVersion = args.schemaVersion ?? CURRENT_SCHEMA_VERSION;
   }
 
   addClaim(claim: ClaimDraft): this {

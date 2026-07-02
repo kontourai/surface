@@ -55,7 +55,7 @@ const input = new TrustBundleBuilder({ source: "my-producer:local" })
     subjectType: "api",
     subjectId: "public-api",
     claimType: "software-evidence",
-    surface: "api",
+    facet: "api",
     fieldOrBehavior: "rate limit is enforced",
     value: "100 requests/minute",
     currentIntegrityRef: "commit:abc123",

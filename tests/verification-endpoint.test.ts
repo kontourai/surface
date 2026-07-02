@@ -31,7 +31,7 @@ const CLAIM_A: Claim = {
   id: "claim-a",
   subjectType: "service",
   subjectId: "api",
-  surface: "test",
+  facet: "test",
   claimType: "availability",
   fieldOrBehavior: "uptime",
   value: 99.9,

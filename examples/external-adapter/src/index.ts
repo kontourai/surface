@@ -29,7 +29,7 @@ const ticketAdapter: Adapter<TicketRecord> = {
       id: claimId,
       subjectType: "ticket",
       subjectId: record.id,
-      surface: "external-ticket-system.workflow",
+      facet: "external-ticket-system.workflow",
       claimType: "ticket-status",
       fieldOrBehavior: "status",
       value: record.status,

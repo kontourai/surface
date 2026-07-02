@@ -133,7 +133,16 @@ export interface IdentityLink {
   mappingClaimId?: string;
 }
 
-export type SchemaVersion = 2 | 3 | 4;
+export type SchemaVersion = 2 | 3 | 4 | 5;
+
+/**
+ * The schemaVersion this release of surface WRITES on every bundle/report it
+ * emits (buildTrustReport, mergeBundles/mergeBundlesDetailed, TrustBundleBuilder,
+ * the verification-endpoint responder). Reading tolerates 2-4 (see validate.ts's
+ * legacy facet/surface read-tolerance shim); writing is always 5 (Hachure
+ * facet rename, one deliberate hard break — `surface` renamed to `facet`).
+ */
+export const CURRENT_SCHEMA_VERSION: SchemaVersion = 5;
 export type DerivationMethod =
   | "sum"
   | "max"
@@ -180,7 +189,12 @@ export interface Claim {
   id: string;
   subjectType: string;
   subjectId: string;
-  surface: string;
+  /**
+   * Producer-defined grouping or namespace for this claim (Hachure schema 5).
+   * Optional. See hachure `merge.md` §4: excluded from cross-producer claim
+   * identity because there is no shared vocabulary across producers.
+   */
+  facet?: string;
   claimType: string;
   fieldOrBehavior: string;
   qualifiers?: Record<string, string>;
@@ -214,7 +228,7 @@ export interface Claim {
 
 export interface ClaimDefinition {
   id: string;
-  surface: string;
+  facet?: string;
   claimType: string;
   fieldOrBehavior: string;
   subjectType: string;
@@ -247,7 +261,7 @@ export interface ClaimTypeDefinition {
   displayName: string;
   description: string;
   defaultImpact: ImpactLevel;
-  defaultSurface?: string;
+  defaultFacet?: string;
   policyTemplateId?: string;
   metadataFields?: ClaimTypeMetadataField[];
 }
@@ -488,7 +502,7 @@ export interface EvalSummary {
 export interface TrustReportSummary {
   totalClaims: number;
   byStatus: Record<TrustStatus, number>;
-  bySurface: Record<string, number>;
+  byFacet: Record<string, number>;
   confidenceBasis: {
     sourceQuality: Record<string, number>;
     reviewerAuthority: Record<string, number>;
@@ -648,7 +662,7 @@ export interface TrustAnalyticsProjection {
   };
   authorityTrace: AuthorityTraceProjection;
   claimGroupRollups: ClaimGroupRollup[];
-  coverageBySurface: SurfaceTrustCoverage[];
+  coverageByFacet: FacetTrustCoverage[];
   staleClaims: ClaimQueueItem[];
   disputedClaims: ClaimQueueItem[];
   highImpactUnsupportedClaims: ClaimQueueItem[];
@@ -664,8 +678,8 @@ export interface TrustAnalyticsProjection {
   attestationValidity: AttestationValidityProjection;
 }
 
-export interface SurfaceTrustCoverage {
-  surface: string;
+export interface FacetTrustCoverage {
+  facet: string;
   totalClaims: number;
   verifiedClaims: number;
   staleClaims: number;
@@ -674,9 +688,17 @@ export interface SurfaceTrustCoverage {
   verificationCoverage: number;
 }
 
+/**
+ * @deprecated Renamed to {@link FacetTrustCoverage} (hachure facet rename,
+ * 0.9.0: `Claim.surface` -> `Claim.facet`). Kept as a type alias for one
+ * release so existing consumers importing `SurfaceTrustCoverage` do not break
+ * on this rename; import `FacetTrustCoverage` going forward.
+ */
+export type SurfaceTrustCoverage = FacetTrustCoverage;
+
 export interface ClaimQueueItem {
   claimId: string;
-  surface: string;
+  facet: string;
   status: TrustStatus;
   impactLevel: ImpactLevel;
   materiality?: Materiality;
@@ -698,7 +720,7 @@ export interface TransparencyGapQueueItem {
 
 export interface EvidenceGap {
   claimId: string;
-  surface: string;
+  facet: string;
   impactLevel: ImpactLevel;
   materiality?: Materiality;
   gapType: TransparencyGapType | AttestationGapType;

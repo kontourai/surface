@@ -17,7 +17,7 @@ test("TrustBundleBuilder creates validated input and links evidence fluently", (
       id: claimId,
       subjectType: "ticket",
       subjectId: "ticket-1",
-      surface: "tickets.workflow",
+      facet: "tickets.workflow",
       claimType: "ticket-status",
       fieldOrBehavior: "status",
       value: "verified",
@@ -61,7 +61,9 @@ test("TrustBundleBuilder creates validated input and links evidence fluently", (
   })).linkTo(claimId);
 
   const built = input.build();
-  assert.equal(built.schemaVersion, 2);
+  // TrustBundleBuilder defaults to the CURRENT schemaVersion (5) when the
+  // caller does not pin one explicitly — emission side, Hachure facet rename.
+  assert.equal(built.schemaVersion, 5);
   assert.equal(built.evidence[0].claimId, claimId);
   assert.equal(buildTrustReport(built).summary.byStatus.verified, 1);
 });
@@ -74,7 +76,7 @@ test("TrustBundleBuilder preserves legacy entailing default and cited support be
       id: claimId,
       subjectType: "ticket",
       subjectId: "ticket-2",
-      surface: "tickets.workflow",
+      facet: "tickets.workflow",
       claimType: "ticket-status",
       fieldOrBehavior: "status",
       value: "verified",
@@ -142,7 +144,7 @@ test("TrustBundleBuilder validates before returning input", () => {
         id: "missing-date",
         subjectType: "ticket",
         subjectId: "ticket-1",
-        surface: "tickets.workflow",
+        facet: "tickets.workflow",
         claimType: "ticket-status",
         fieldOrBehavior: "status",
         value: "verified",
@@ -161,7 +163,7 @@ test("TrustBundleBuilder emits a common verified claim bundle in one step", () =
         id: "claim.release.tests",
         subjectType: "repo",
         subjectId: "surface",
-        surface: "release",
+        facet: "release",
         claimType: "release-check",
         fieldOrBehavior: "tests",
         value: "passing",

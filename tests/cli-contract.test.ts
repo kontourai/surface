@@ -28,6 +28,6 @@ test("CLI report summary remains available through the package bin", async () =>
 
   assert.match(report.stdout, /Kontour Surface report cli-contract/);
   assert.match(report.stdout, /Claims:/);
-  assert.match(report.stdout, /Surfaces:/);
+  assert.match(report.stdout, /Facets:/);
   assert.match(report.stdout, /Transparency gaps:/);
 });

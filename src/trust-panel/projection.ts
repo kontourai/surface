@@ -13,7 +13,7 @@ export interface ViewerTrustPanelClaim {
   title: string;
   subject: string;
   status: TrustStatus;
-  surface: string;
+  facet: string;
   evidence: Evidence[];
   transparencyGaps: TransparencyGap[];
 }
@@ -39,7 +39,7 @@ export function buildTrustPanelProjection(report: TrustReport, options: { claimI
       title: claim.fieldOrBehavior || claim.claimType || claim.id,
       subject: `${claim.subjectType}:${claim.subjectId}`,
       status: claim.status,
-      surface: claim.surface,
+      facet: claim.facet ?? "unknown",
       evidence: report.evidence.filter((item) => item.claimId === claim.id),
       transparencyGaps: report.transparencyGaps.filter((item) => item.claimId === claim.id),
     })),

@@ -325,11 +325,13 @@ async function readJsonBody(req: IncomingMessage): Promise<Record<string, unknow
 
 function claimFromBody(body: Record<string, unknown>): ClaimDefinitionDraft {
   const subjectId = requireString(body, "subjectId");
-  const surface = requireString(body, "surface");
+  // Tolerant of the pre-rename `surface` key from an un-refreshed browser tab
+  // (same one-release shim spirit as validate.ts's bundle-read shim).
+  const facet = optionalString(body.facet) ?? optionalString(body.surface);
   const fieldOrBehavior = requireString(body, "fieldOrBehavior");
   return {
     id: optionalString(body.id),
-    surface,
+    facet,
     claimType: requireString(body, "claimType"),
     fieldOrBehavior,
     subjectType: requireString(body, "subjectType"),
@@ -342,7 +344,9 @@ function claimFromBody(body: Record<string, unknown>): ClaimDefinitionDraft {
 
 function claimUpdatesFromBody(body: Record<string, unknown>): ClaimDefinitionUpdateDraft {
   const updates: ClaimDefinitionUpdateDraft = {};
-  if (body.surface !== undefined) updates.surface = requireString(body, "surface");
+  if (body.facet !== undefined || body.surface !== undefined) {
+    updates.facet = optionalString(body.facet) ?? optionalString(body.surface);
+  }
   if (body.claimType !== undefined) updates.claimType = requireString(body, "claimType");
   if (body.fieldOrBehavior !== undefined) updates.fieldOrBehavior = requireString(body, "fieldOrBehavior");
   if (body.subjectType !== undefined) updates.subjectType = requireString(body, "subjectType");

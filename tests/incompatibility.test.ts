@@ -6,7 +6,7 @@ import type { Claim, TrustBundle, VerificationPolicy } from "../src/index.js";
 const baseClaim: Omit<Claim, "id" | "value" | "fieldOrBehavior"> = {
   subjectType: "repo-governance.repo",
   subjectId: "repo-A",
-  surface: "repo-governance.developer-evidence",
+  facet: "repo-governance.developer-evidence",
   claimType: "release-status",
   createdAt: "2026-04-25T00:00:00.000Z",
   updatedAt: "2026-04-25T00:00:00.000Z",

@@ -7,7 +7,7 @@ const baseClaim: Claim = {
   id: "claim-1",
   subjectType: "repo-governance.repo",
   subjectId: "repo-A",
-  surface: "repo-governance.developer-evidence",
+  facet: "repo-governance.developer-evidence",
   claimType: "software-evidence",
   fieldOrBehavior: "passes",
   value: true,

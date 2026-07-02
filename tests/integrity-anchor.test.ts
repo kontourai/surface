@@ -38,7 +38,7 @@ function makeInput(overrides: Partial<TrustBundle> = {}): TrustBundle {
       id: "claim.record.status",
       subjectType: "record",
       subjectId: "record-1",
-      surface: "public-data.records",
+      facet: "public-data.records",
       claimType: "record-field",
       fieldOrBehavior: "status",
       value: "OPEN",

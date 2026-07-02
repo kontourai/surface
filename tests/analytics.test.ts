@@ -7,6 +7,8 @@ import {
   buildTrustAnalyticsProjection,
   buildTrustReport,
   validateTrustBundle,
+  type FacetTrustCoverage,
+  type SurfaceTrustCoverage,
   type TrustBundle,
 } from "../src/index.js";
 
@@ -25,7 +27,7 @@ test("builds a deterministic trust analytics projection from a report", async ()
   assert.equal(projection.reportId, "analytics-report");
   assert.equal(projection.totals.claims, 4);
   assert.equal(projection.totals.evidence, 5);
-  assert.equal(projection.coverageBySurface.map((item) => item.surface).join(","), [
+  assert.equal(projection.coverageByFacet.map((item) => item.facet).join(","), [
     "fact-resolution.financial-facts",
     "field-attested-records.public-data",
     "repo-governance.developer-evidence",
@@ -73,7 +75,7 @@ test("recognizes actor-backed attestations with identity, authority, freshness, 
       id: "claim.attested.valid",
       subjectType: "record",
       subjectId: "record-1",
-      surface: "records.public-data",
+      facet: "records.public-data",
       claimType: "record-field",
       fieldOrBehavior: "status",
       value: "OPEN",
@@ -147,7 +149,7 @@ test("orders and filters review queue items by ordinal materiality", () => {
       id: "claim.low",
       subjectType: "repo",
       subjectId: "repo-1",
-      surface: "surface",
+      facet: "surface",
       claimType: "software-evidence",
       fieldOrBehavior: "low evidence",
       value: true,
@@ -159,7 +161,7 @@ test("orders and filters review queue items by ordinal materiality", () => {
       id: "claim.high",
       subjectType: "repo",
       subjectId: "repo-1",
-      surface: "surface",
+      facet: "surface",
       claimType: "software-evidence",
       fieldOrBehavior: "high evidence",
       value: true,
@@ -171,7 +173,7 @@ test("orders and filters review queue items by ordinal materiality", () => {
       id: "claim.medium",
       subjectType: "repo",
       subjectId: "repo-1",
-      surface: "surface",
+      facet: "surface",
       claimType: "software-evidence",
       fieldOrBehavior: "medium evidence",
       value: true,
@@ -213,7 +215,7 @@ test("analytics carries materiality on generated derived-claim gaps", () => {
       id: "claim.medium-cycle",
       subjectType: "repo",
       subjectId: "repo-1",
-      surface: "surface",
+      facet: "surface",
       claimType: "software-evidence",
       fieldOrBehavior: "medium cycle",
       value: true,
@@ -226,7 +228,7 @@ test("analytics carries materiality on generated derived-claim gaps", () => {
       id: "claim.high-cycle",
       subjectType: "repo",
       subjectId: "repo-1",
-      surface: "surface",
+      facet: "surface",
       claimType: "software-evidence",
       fieldOrBehavior: "high cycle",
       value: true,
@@ -266,7 +268,7 @@ test("analytics sorts and filters contradiction gaps by owning claim materiality
       id: "claim.absent-owner",
       subjectType: "record",
       subjectId: "record-1",
-      surface: "records",
+      facet: "records",
       claimType: "record-field",
       fieldOrBehavior: "status",
       value: "open",
@@ -278,7 +280,7 @@ test("analytics sorts and filters contradiction gaps by owning claim materiality
       id: "claim.high-owner",
       subjectType: "record",
       subjectId: "record-2",
-      surface: "records",
+      facet: "records",
       claimType: "record-field",
       fieldOrBehavior: "status",
       value: "open",
@@ -291,7 +293,7 @@ test("analytics sorts and filters contradiction gaps by owning claim materiality
       id: "claim.high-peer",
       subjectType: "record",
       subjectId: "record-1",
-      surface: "records",
+      facet: "records",
       claimType: "record-field",
       fieldOrBehavior: "status",
       value: "closed",
@@ -304,7 +306,7 @@ test("analytics sorts and filters contradiction gaps by owning claim materiality
       id: "claim.low-peer",
       subjectType: "record",
       subjectId: "record-2",
-      surface: "records",
+      facet: "records",
       claimType: "record-field",
       fieldOrBehavior: "status",
       value: "closed",
@@ -380,4 +382,20 @@ test("CLI exposes projection-backed trust query commands", async () => {
   const policyView = JSON.parse(policy.stdout);
   assert.equal(policyView.policy.id, "policy.public-data-field.short-lived");
   assert.equal(policyView.gaps.some((gap: { gapType: string }) => gap.gapType === "freshness_breach"), true);
+});
+
+test("SurfaceTrustCoverage stays a compatible type alias for FacetTrustCoverage (facet rename compat)", async () => {
+  // Compile-time contract: this assignment only typechecks if
+  // SurfaceTrustCoverage and FacetTrustCoverage are structurally (in this
+  // case, literally) the same type, per the deprecated alias in src/types.ts.
+  const raw = await readFile("examples/surface-example-bundle.json", "utf8");
+  const input = validateTrustBundle(JSON.parse(raw));
+  const report = buildTrustReport(input, { now: new Date("2026-04-25T00:00:00.000Z") });
+  const projection = buildTrustAnalyticsProjection(report);
+
+  const viaDeprecatedAlias: SurfaceTrustCoverage[] = projection.coverageByFacet;
+  const viaCurrentName: FacetTrustCoverage[] = viaDeprecatedAlias;
+
+  assert.ok(viaCurrentName.length > 0);
+  assert.equal(viaCurrentName[0]?.facet, projection.coverageByFacet[0]?.facet);
 });

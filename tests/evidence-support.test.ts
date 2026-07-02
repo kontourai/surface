@@ -13,7 +13,7 @@ const claim: Claim = {
   id: "claim.support-strength",
   subjectType: "record",
   subjectId: "record-1",
-  surface: "records.public",
+  facet: "records.public",
   claimType: "record-status",
   fieldOrBehavior: "status",
   value: "active",
