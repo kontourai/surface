@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.0.0](https://github.com/kontourai/surface/compare/v1.3.1...v2.0.0) (2026-07-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* Claim.surface is renamed to Claim.facet across the schema, validation, merge, and store layers to match hachure spec 0.9.0. schemaVersion now accepts 5. producerId is optional. SurfaceTrustCoverage is renamed to FacetTrustCoverage (SurfaceTrustCoverage kept as a deprecated alias export). merge.ts normalizes facet/surface at the API boundary so callers only ever see facet on the way out.
+
+### Features
+
+* **merge:** order-independent multi-producer merge + producerId; execute hachure 0.7.0 conformance ([#103](https://github.com/kontourai/surface/issues/103)) ([1d2b490](https://github.com/kontourai/surface/commit/1d2b490af0ab620baddd042973ad2eb7caa97246))
+* rename Claim.surface to facet (hachure 0.9.0 parity, schemaVersion 5) ([#105](https://github.com/kontourai/surface/issues/105)) ([9f2a67f](https://github.com/kontourai/surface/commit/9f2a67f29913633b711b2316b7b15067e9fdee89))
+
+
+### Refactoring
+
+* decompose trust-snapshot; single-source status taxonomy ([#101](https://github.com/kontourai/surface/issues/101)) ([7da006d](https://github.com/kontourai/surface/commit/7da006d2ee1e4bc370f145fde295866df0e9e581))
+
 ## [1.3.1](https://github.com/kontourai/surface/compare/v1.3.0...v1.3.1) (2026-06-29)
 
 
