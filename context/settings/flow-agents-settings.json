@@ -5,6 +5,6 @@
     "mode": "report",
     "extractor": "anthropic",
     "agentId": "surface-agent",
-    "bundlePath": ".kontour/trust-bundle.json"
+    "bundlePath": ".kontourai/surface/trust-bundle.json"
   }
 }
