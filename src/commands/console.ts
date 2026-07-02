@@ -41,6 +41,19 @@ export async function runConsole(args: string[]): Promise<void> {
   if (storePath) config = { ...config, storePath };
   if (inputs.length > 0) config = { ...config, inputs };
 
+  // Documented behavior (README, docs/reference/console.md): any --input
+  // switches the console onto the merge-and-project path, additive to (and
+  // taking precedence over) the single --read-model/--store path. Surface a
+  // one-line runtime notice so operators who pass both are not surprised by
+  // which path actually served the view.
+  if (inputs.length > 0 && (readModelPath !== undefined || storePath !== undefined)) {
+    process.stderr.write(
+      "[surface console] --input was provided together with --read-model/--store; " +
+        "--input wins (the console serves the merged producer-bundle view). " +
+        "See docs/reference/console.md.\n",
+    );
+  }
+
   const { startConsoleServer } = await import("../console/server.js");
   await startConsoleServer(config);
   await new Promise(() => {});

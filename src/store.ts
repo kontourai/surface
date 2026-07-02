@@ -32,11 +32,11 @@ export function saveClaimStore(store: ClaimStore, path: string): void {
 }
 
 export function addClaimToStore(store: ClaimStore, claim: ClaimDefinition): ClaimStore {
-  validateClaimDefinition(claim);
-  if (store.claims.some((item) => item.id === claim.id)) {
-    throw new Error(`Claim "${claim.id}" already exists in store`);
+  const normalized = validateClaimDefinition(claim);
+  if (store.claims.some((item) => item.id === normalized.id)) {
+    throw new Error(`Claim "${normalized.id}" already exists in store`);
   }
-  return { ...store, claims: [...store.claims, { ...claim }] };
+  return { ...store, claims: [...store.claims, { ...normalized }] };
 }
 
 export function updateClaimInStore(
@@ -54,10 +54,10 @@ export function updateClaimInStore(
     createdAt: existing.createdAt,
     updatedAt: updates.updatedAt ?? new Date().toISOString(),
   };
-  validateClaimDefinition(updated);
+  const normalized = validateClaimDefinition(updated);
   return {
     ...store,
-    claims: [...store.claims.slice(0, index), updated, ...store.claims.slice(index + 1)],
+    claims: [...store.claims.slice(0, index), normalized, ...store.claims.slice(index + 1)],
   };
 }
 
@@ -91,48 +91,61 @@ export function validateClaimStore(raw: unknown): ClaimStore {
   }
   if (!Array.isArray(raw.claims)) throw new Error("Claim store must have a claims array");
   if (!Array.isArray(raw.policies)) throw new Error("Claim store must have a policies array");
-  const store = raw as unknown as ClaimStore;
-  for (const claim of store.claims) validateClaimDefinition(claim);
-  const policyIds = new Set(store.policies.map((policy) => policy.id));
-  for (const claim of store.claims) {
+  // Non-mutating: validateClaimDefinition returns a normalized copy (legacy
+  // `surface` mapped onto `facet`) instead of writing onto the caller's raw
+  // claim objects, so the normalized claims are threaded through explicitly
+  // below rather than relying on in-place mutation of `raw.claims`.
+  const claims = raw.claims.map((claim) => validateClaimDefinition(claim));
+  const policies = raw.policies as VerificationPolicy[];
+  const policyIds = new Set(policies.map((policy) => policy.id));
+  for (const claim of claims) {
     if (claim.verificationPolicyId && !policyIds.has(claim.verificationPolicyId)) {
       throw new Error(`Claim "${claim.id}" references unknown policy "${claim.verificationPolicyId}"`);
     }
   }
-  return store;
+  return { ...(raw as Record<string, unknown>), claims } as unknown as ClaimStore;
 }
 
-function validateClaimDefinition(raw: unknown): asserts raw is ClaimDefinition {
-  if (!isObject(raw)) throw new Error("Claim definition must be a JSON object");
+// TOLERANCE SHIM (owner-ratified, one release): a store entry written before
+// the hachure facet rename used `surface` where this release reads `facet`.
+// Non-mutating, mirrors validateTrustBundle's normalizeClaimFacetForRead
+// (src/validate.ts): never writes onto the caller-supplied object — a frozen
+// claim (e.g. `Object.freeze`d by a caller holding its own reference) must
+// validate successfully, not throw. Only allocates a shallow copy when there
+// is actually something to normalize/strip (a legacy `surface` key); the
+// common case (no `surface` key) validates and returns the original
+// reference untouched. Read path only: `surface`'s value is copied onto
+// `facet` when `facet` is absent, a deprecation warning fires once per
+// process (not once per claim), and `surface` is never re-emitted — a
+// round-tripped save migrates the entry instead of preserving the stale key
+// forever.
+function validateClaimDefinition(rawInput: unknown): ClaimDefinition {
+  if (!isObject(rawInput)) throw new Error("Claim definition must be a JSON object");
+  const raw: Record<string, unknown> = "surface" in rawInput ? { ...rawInput } : rawInput;
   for (const field of ["id", "claimType", "fieldOrBehavior", "subjectType", "subjectId", "createdAt", "updatedAt"]) {
-    if (typeof raw[field] !== "string" || raw[field].length === 0) {
+    if (typeof raw[field] !== "string" || (raw[field] as string).length === 0) {
       throw new Error(`Claim definition must have a ${field} string`);
     }
   }
-  // TOLERANCE SHIM (owner-ratified, one release): a store entry written before
-  // the hachure facet rename used `surface` where this release reads `facet`.
-  // Read path only: map `surface`'s value onto `facet` when `facet` is absent,
-  // warn once per process, and never re-emit `surface` (stripped below) so a
-  // round-tripped save migrates the entry instead of preserving the stale key
-  // forever.
   if (raw.facet === undefined && typeof raw.surface === "string" && raw.surface.length > 0) {
     warnLegacyClaimDefinitionSurfaceFieldOnce();
     raw.facet = raw.surface;
   }
   delete raw.surface;
   // facet is optional (mirrors the hachure Claim.facet rename/optionality).
-  if (raw.facet !== undefined && (typeof raw.facet !== "string" || raw.facet.length === 0)) {
+  if (raw.facet !== undefined && (typeof raw.facet !== "string" || (raw.facet as string).length === 0)) {
     throw new Error("Claim definition facet must be a non-empty string when present");
   }
   if (raw.impactLevel !== undefined && !IMPACT_LEVELS.has(raw.impactLevel as ImpactLevel)) {
-    throw new Error(`Claim "${raw.id}" has unsupported impactLevel: ${String(raw.impactLevel)}`);
+    throw new Error(`Claim "${raw.id as string}" has unsupported impactLevel: ${String(raw.impactLevel)}`);
   }
   if (raw.verificationPolicyId !== undefined && typeof raw.verificationPolicyId !== "string") {
-    throw new Error(`Claim "${raw.id}" verificationPolicyId must be a string`);
+    throw new Error(`Claim "${raw.id as string}" verificationPolicyId must be a string`);
   }
   if (raw.metadata !== undefined && !isObject(raw.metadata)) {
-    throw new Error(`Claim "${raw.id}" metadata must be an object`);
+    throw new Error(`Claim "${raw.id as string}" metadata must be an object`);
   }
+  return raw as unknown as ClaimDefinition;
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
