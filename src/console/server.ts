@@ -228,7 +228,11 @@ export async function startConsoleServer(config: SurfaceConsoleConfig = {}): Pro
           : await loadReadModel(effectiveReadModelPath(readModelPath, runParam));
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify(readModel));
-      } catch {
+      } catch (error) {
+        if (error instanceof InvalidRunParamError) {
+          respondBadRequest(res, error);
+          return;
+        }
         res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify({ error: "read model not found" }));
       }
@@ -243,7 +247,11 @@ export async function startConsoleServer(config: SurfaceConsoleConfig = {}): Pro
           : await loadConsoleProjection(effectiveReadModelPath(readModelPath, runParam), config, storePath);
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify(consoleModel));
-      } catch {
+      } catch (error) {
+        if (error instanceof InvalidRunParamError) {
+          respondBadRequest(res, error);
+          return;
+        }
         res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify({ error: "console model not found" }));
       }
@@ -327,11 +335,31 @@ export async function startConsoleServer(config: SurfaceConsoleConfig = {}): Pro
   console.log(`Surface console running at http://localhost:${port}`);
 }
 
+// The `?run=` query param names a file within the runs archive directory
+// (see effectiveReadModelPath below) and must never be used to escape it.
+// Constrained to the expected run-id shape: no path separators, no `..`
+// traversal, no absolute paths (POSIX or Windows-drive) — those all fall
+// outside this character class already, this is defense in depth.
+const RUN_ID_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$/;
+
+class InvalidRunParamError extends Error {}
+
+function sanitizeRunParam(runParam: string): string {
+  if (
+    runParam.includes("/") ||
+    runParam.includes("\\") ||
+    runParam.includes("..") ||
+    !RUN_ID_PATTERN.test(runParam)
+  ) {
+    throw new InvalidRunParamError(`Invalid run parameter: ${runParam}`);
+  }
+  return runParam;
+}
+
 function effectiveReadModelPath(readModelPath: string, runParam: string | null): string {
   const base = resolve(readModelPath);
-  return runParam && runParam !== "latest"
-    ? resolve(dirname(base), `${runParam}.console.json`)
-    : base;
+  if (!runParam || runParam === "latest") return base;
+  return resolve(dirname(base), `${sanitizeRunParam(runParam)}.console.json`);
 }
 
 function registeredClaimTypes() {
