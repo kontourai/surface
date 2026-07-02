@@ -40,6 +40,22 @@ Or use a config file:
 surface console --config surface.config.json
 ```
 
+## Merge multiple producer bundles into one view
+
+`surface console` also accepts repeatable `--input` bundle paths, mirroring `surface report --input`. This is additive to `--read-model`: any `--input` switches the console onto a merge-and-project path. With more than one input the console validates each producer bundle, merges them order-independently (`mergeBundlesDetailed`), and projects the merged ledger into the read model. Each input bundle is watched, so editing any producer bundle refreshes the view live.
+
+```sh
+npx surface console \
+  --input examples/console-multi-producer/ci-producer.bundle.json \
+  --input examples/console-multi-producer/review-producer.bundle.json \
+  --input examples/console-multi-producer/security-producer.bundle.json
+```
+
+The merged view adds two multi-producer affordances:
+
+- **Producer attribution.** Every claim card names the producer(s) that asserted it, built from each input bundle's optional `producerId` (falling back to `source`). An identical shared claim contributed by several producers dedups to one card that still lists all of them. Because a merged bundle never carries a top-level `producerId` (`merge.md` §5 rule 3), attribution is carried as projection metadata keyed by claim id, built during the merge step — not read back off the merged bundle.
+- **Merge collisions.** Same claim id, different content across producers is surfaced in a dedicated "Merge collisions" section that names the colliding producers. The lexicographically-first content is kept and every losing record is reported there, never silently dropped (`merge.md` §6). The [`examples/console-multi-producer/`](../../examples/console-multi-producer/) demo ships a build-digest collision between the CI and security producers.
+
 Implementation note: `surface console`, `*.console.json`, `/console.js`, and `/console.css` are current implementation names. Product-facing language should describe the Operator experience as the Surface Console.
 
 ## Developer map

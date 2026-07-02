@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 5,
+  "source": "security-producer:scan-8842",
+  "producerId": "security-producer",
+  "claims": [
+    {
+      "id": "claim.shared.repo-identity",
+      "subjectType": "repository",
+      "subjectId": "acme/widgets",
+      "facet": "governance.identity",
+      "claimType": "repo-metadata",
+      "fieldOrBehavior": "canonical repository",
+      "value": "acme/widgets",
+      "createdAt": "2026-06-01T00:00:00.000Z",
+      "updatedAt": "2026-06-01T00:00:00.000Z"
+    },
+    {
+      "id": "claim.security.dependency-audit",
+      "subjectType": "repository",
+      "subjectId": "acme/widgets",
+      "facet": "security.supply-chain",
+      "claimType": "dependency-audit",
+      "fieldOrBehavior": "no known high-severity CVEs in dependencies",
+      "value": "clean",
+      "impactLevel": "critical",
+      "createdAt": "2026-07-01T08:30:00.000Z",
+      "updatedAt": "2026-07-01T08:30:00.000Z"
+    },
+    {
+      "id": "claim.build.artifact-digest",
+      "subjectType": "artifact",
+      "subjectId": "acme/widgets@1.4.0",
+      "facet": "ci.build",
+      "claimType": "artifact-digest",
+      "fieldOrBehavior": "release artifact sha256 digest",
+      "value": "sha256:9999ffff8888eeee7777dddd6666cccc5555bbbb4444aaaa3333999922221111",
+      "impactLevel": "high",
+      "createdAt": "2026-07-01T09:05:00.000Z",
+      "updatedAt": "2026-07-01T09:05:00.000Z"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev.security.dependency-audit",
+      "claimId": "claim.security.dependency-audit",
+      "evidenceType": "test_output",
+      "method": "monitoring",
+      "sourceRef": "security-producer://scan/8842",
+      "excerptOrSummary": "0 high-severity advisories across 214 resolved dependencies.",
+      "observedAt": "2026-07-01T08:30:00.000Z",
+      "collectedBy": "security-producer",
+      "passing": true
+    }
+  ],
+  "policies": [],
+  "events": [
+    {
+      "id": "ev.event.security.dependency-audit",
+      "claimId": "claim.security.dependency-audit",
+      "status": "verified",
+      "actor": "security-producer",
+      "method": "monitoring",
+      "evidenceIds": ["ev.security.dependency-audit"],
+      "createdAt": "2026-07-01T08:30:05.000Z"
+    }
+  ]
+}

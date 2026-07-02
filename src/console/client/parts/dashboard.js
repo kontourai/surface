@@ -1,13 +1,64 @@
 function renderConsole() {
   const d = currentData;
   renderProjectChrome(d);
+  renderProducerBar(d);
   if (d.claims?.length) renderDonut(d);
   renderMetrics(d);
   renderAttentionChip(d);
+  renderCollisions(d);
   renderSurfaceChips(d);
   renderFeed(d);
   buildClaimTypeOptions();
   bindConsoleFilters(d);
+}
+
+// ── multi-producer attribution bar ─────────────────────
+// Lists the distinct producers whose bundles were merged into this view. Hidden
+// for a single-producer read model (d.producers empty).
+function renderProducerBar(d) {
+  const bar = el("producerBar");
+  if (!bar) return;
+  const producers = d.producers ?? [];
+  if (!producers.length) {
+    bar.setAttribute("hidden", "");
+    bar.innerHTML = "";
+    return;
+  }
+  bar.removeAttribute("hidden");
+  bar.innerHTML = `<span class="producer-bar-label">${producers.length} producer${producers.length !== 1 ? "s" : ""}</span>` +
+    producers.map(p => `<span class="producer-chip" data-producer="${esc(p)}">${esc(p)}</span>`).join("");
+}
+
+// ── merge collision section ────────────────────────────
+// Surfaces same-id/different-content collisions between producers. Losing
+// content is reported here, never silently dropped (merge.md §6). Hidden when
+// there are no collisions.
+function renderCollisions(d) {
+  const section = el("collisionSection");
+  if (!section) return;
+  const collisions = d.collisions ?? [];
+  if (!collisions.length) {
+    section.setAttribute("hidden", "");
+    section.innerHTML = "";
+    return;
+  }
+  section.removeAttribute("hidden");
+  const items = collisions.map(c => {
+    const producers = c.withinBundle
+      ? `within ${esc(c.keptProducer)}`
+      : `${esc(c.keptProducer)} <span class="collision-vs">vs</span> ${esc(c.droppedProducer)}`;
+    return `<li class="collision-item" data-collision-id="${esc(c.id)}">
+      <span class="collision-badge">${esc(c.collection)}</span>
+      <code class="collision-id">${esc(c.id)}</code>
+      <span class="collision-producers">${producers}</span>
+    </li>`;
+  }).join("");
+  section.innerHTML = `<div class="collision-head">
+      <h2 class="collision-title">Merge collisions</h2>
+      <span class="collision-count">${collisions.length}</span>
+    </div>
+    <p class="collision-help">Same id, different content across producers. The lexicographically-first content is kept; every losing record is reported here, never silently dropped.</p>
+    <ul class="collision-list">${items}</ul>`;
 }
 
 function renderProjectChrome(d) {
@@ -204,6 +255,9 @@ function claimCard(claim, index, visibleIndex = 0) {
       <span class="card-meta">
         <span class="card-status-text status-${esc(claim.status)}">${esc(statusLabel(claim.status, claimEvidenceCount(claim)))}</span>
         <span class="card-surface card-surface--narrow-hide">${esc(surface)}</span>
+        ${(claim.producers && claim.producers.length)
+          ? `<span class="card-producers" title="Attributed to ${esc(claim.producers.join(", "))}">${claim.producers.map(p => `<span class="card-producer">${esc(p)}</span>`).join("")}</span>`
+          : ""}
         ${showImpact ? `<span class="card-impact card-impact--${esc(impact)}">${esc(impact)}</span>` : ""}
         ${claim.producerStatus
           ? `<span class="card-divergence" title="Producer declared ${esc(claim.producerStatus)}">! was ${esc(claim.producerStatus)}</span>`

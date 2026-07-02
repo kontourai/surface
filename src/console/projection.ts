@@ -18,7 +18,27 @@ export interface SurfaceConsoleProjection {
   attentionClaims: SurfaceConsoleClaimCard[];
   claims: Array<Record<string, unknown>>;
   facetCounts: Record<string, number>;
+  /**
+   * Distinct producer identities contributing to this view, sorted. Empty for a
+   * single-producer read model; populated when the console merged >1 producer
+   * bundle (see merged-read-model.ts). Drives the multi-producer attribution bar.
+   */
+  producers: string[];
+  /**
+   * Merge collisions surfaced for the operator — same-id records that disagreed
+   * across producers. Losing content is reported here, never silently dropped
+   * (merge.md §6). Each collision names the colliding producers.
+   */
+  collisions: SurfaceConsoleCollision[];
   readModel: unknown;
+}
+
+export interface SurfaceConsoleCollision {
+  collection: string;
+  id: string;
+  keptProducer: string;
+  droppedProducer: string;
+  withinBundle: boolean;
 }
 
 export interface SurfaceConsoleClaimCard {
@@ -86,8 +106,25 @@ export function buildSurfaceConsoleProjection(
     // Tolerant of a read-model JSON produced before this rename (an
     // un-migrated producer, or an archived local run artifact).
     facetCounts: numberRecord(isRecord(summary.facetCounts) ? summary.facetCounts : summary.surfaceCounts),
+    producers: stringArray(model.producers),
+    collisions: collisionsFromModel(model.mergeCollisions),
     readModel,
   };
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function collisionsFromModel(value: unknown): SurfaceConsoleCollision[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(isRecord).map((record) => ({
+    collection: stringValue(record.collection),
+    id: stringValue(record.id),
+    keptProducer: stringValue(record.keptProducer),
+    droppedProducer: stringValue(record.droppedProducer),
+    withinBundle: record.withinBundle === true,
+  }));
 }
 
 export function emptySurfaceConsoleProjection(config: SurfaceConsoleRuntimeConfig = {}): SurfaceConsoleProjection {
@@ -104,6 +141,8 @@ export function emptySurfaceConsoleProjection(config: SurfaceConsoleRuntimeConfi
     attentionClaims: [],
     claims: [],
     facetCounts: {},
+    producers: [],
+    collisions: [],
     readModel: null,
   };
 }

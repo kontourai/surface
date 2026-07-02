@@ -1,0 +1,141 @@
+/* ── 20. Multi-producer attribution + merge collisions ─────── */
+/* Rendered only when the console merged >1 producer bundle. */
+
+.producer-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.producer-bar-label {
+  font-size: var(--k-text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.producer-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--radius-xl);
+  font-size: var(--k-text-xs);
+  font-weight: 600;
+  color: var(--blue);
+  background: var(--blue-bg);
+  border: 1px solid color-mix(in srgb, var(--blue) 26%, transparent);
+}
+
+/* Per-claim producer attribution on the feed card */
+.card-producers {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.card-producer {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.35rem;
+  border-radius: var(--radius-sm);
+  font-size: var(--k-text-xs);
+  font-weight: 600;
+  color: var(--blue);
+  background: var(--blue-bg);
+  border: 1px solid color-mix(in srgb, var(--blue) 22%, transparent);
+}
+
+/* ── merge collision section ── */
+.collision-section {
+  margin: 0.75rem 0 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius);
+  background: var(--orange-bg);
+  border: 1px solid color-mix(in srgb, var(--orange) 30%, transparent);
+  border-left: 3px solid var(--orange);
+}
+
+.collision-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.collision-title {
+  margin: 0;
+  font-size: var(--k-text-md);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.collision-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.4rem;
+  height: 1.4rem;
+  padding: 0 0.4rem;
+  border-radius: var(--radius-xl);
+  font-size: var(--k-text-xs);
+  font-weight: 700;
+  color: #fff;
+  background: var(--orange);
+}
+
+.collision-help {
+  margin: 0.35rem 0 0.6rem;
+  font-size: var(--k-text-xs);
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.collision-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.collision-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--orange) 8%, transparent);
+}
+
+.collision-badge {
+  font-size: var(--k-text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--orange);
+  padding: 0.05rem 0.4rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--orange) 30%, transparent);
+}
+
+.collision-id {
+  font-family: var(--k-font-mono);
+  font-size: var(--k-text-xs);
+  color: var(--ink);
+}
+
+.collision-producers {
+  font-size: var(--k-text-xs);
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.collision-vs {
+  font-weight: 400;
+  color: var(--muted);
+  padding: 0 0.15rem;
+}

@@ -109,6 +109,93 @@ test("empty state renders with producer command against zero-claim fixture", asy
   }
 });
 
+test("merged multi-producer console: attribution bar, per-claim producers, and collision section", async ({ page }) => {
+  const consoleErrors = collectConsoleErrors(page);
+  const consoleServer = await startMergedSurfaceConsole();
+
+  try {
+    await page.goto(consoleServer.url);
+
+    await expect(page).toHaveTitle("Surface Console");
+
+    // Multi-producer attribution bar names all three producers
+    const producerBar = page.locator("#producerBar");
+    await expect(producerBar).toBeVisible();
+    await expect(producerBar).toContainText("3 producers");
+    for (const producer of ["ci-producer", "review-producer", "security-producer"]) {
+      await expect(producerBar.locator(".producer-chip", { hasText: producer })).toBeVisible();
+    }
+
+    // The deduped shared claim is attributed to all three producers on its card
+    const sharedCard = page.locator("#claimFeed .claim-card").filter({ hasText: "canonical repository" });
+    await expect(sharedCard).toHaveCount(1);
+    await expect(sharedCard.locator(".card-producer")).toHaveCount(3);
+
+    // The merge collision is surfaced (not silently dropped) with named producers
+    const collisionSection = page.locator("#collisionSection");
+    await expect(collisionSection).toBeVisible();
+    await expect(collisionSection).toContainText("Merge collisions");
+    await expect(collisionSection.locator(".collision-item")).toHaveCount(1);
+    await expect(collisionSection.locator(".collision-item")).toContainText("claim.build.artifact-digest");
+    await expect(collisionSection.locator(".collision-item")).toContainText("security-producer");
+    await expect(collisionSection.locator(".collision-item")).toContainText("ci-producer");
+
+    // Visual evidence: capture the merged view for the golden demo record
+    await page.screenshot({ path: MERGED_SCREENSHOT_PATH, fullPage: true });
+
+    expect(consoleErrors).toEqual([]);
+  } finally {
+    await consoleServer.stop();
+  }
+});
+
+const MERGED_SCREENSHOT_PATH = resolve(
+  ".kontourai/flow-agents/surface-console-multi-bundle/console-multi-producer.png",
+);
+
+async function startMergedSurfaceConsole(): Promise<{ url: string; stop: () => Promise<void> }> {
+  const port = await getFreePort();
+  const dir = await mkdtemp(join(tmpdir(), "surface-console-merged-"));
+  const storePath = join(dir, "veritas.claims.json");
+  const exampleDir = resolve("examples/console-multi-producer");
+
+  const child = spawn(
+    process.execPath,
+    [
+      "bin/surface.mjs", "console",
+      "--input", join(exampleDir, "ci-producer.bundle.json"),
+      "--input", join(exampleDir, "review-producer.bundle.json"),
+      "--input", join(exampleDir, "security-producer.bundle.json"),
+      "--store", storePath,
+      "--port", String(port),
+    ],
+    { cwd: resolve("."), stdio: ["ignore", "pipe", "pipe"] },
+  );
+  let output = "";
+  child.stdout.on("data", (chunk) => { output += String(chunk); });
+  child.stderr.on("data", (chunk) => { output += String(chunk); });
+
+  try {
+    await waitForConsole(`http://127.0.0.1:${port}/api/console-model`, child, () => output);
+  } catch (error) {
+    child.kill("SIGTERM");
+    await rm(dir, { recursive: true, force: true });
+    throw error;
+  }
+
+  return {
+    url: `http://127.0.0.1:${port}/`,
+    stop: async () => {
+      child.kill("SIGTERM");
+      await Promise.race([
+        once(child, "exit"),
+        new Promise((resolveTimeout) => setTimeout(resolveTimeout, 1500)).then(() => child.kill("SIGKILL")),
+      ]);
+      await rm(dir, { recursive: true, force: true });
+    },
+  };
+}
+
 function collectConsoleErrors(page: Page): string[] {
   const consoleErrors: string[] = [];
   page.on("console", (message) => {
