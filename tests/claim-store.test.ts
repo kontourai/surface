@@ -85,7 +85,10 @@ test("removeClaimFromStore removes immutably and rejects missing ids", () => {
 
 test("validateClaimStore passes valid stores and rejects non-object input", () => {
   const store: ClaimStore = { schemaVersion: 1, producer: "veritas", claims: [claim], policies: [] };
-  assert.equal(validateClaimStore(store), store);
+  // validateClaimDefinition is non-mutating (see the frozen-input regression
+  // test below), so validateClaimStore returns an equivalent store rather
+  // than the identical input reference — deep-equal, not reference-equal.
+  assert.deepEqual(validateClaimStore(store), store);
   assert.throws(() => validateClaimStore(null), /JSON object/);
 });
 
@@ -128,6 +131,103 @@ test("loadClaimStore maps a legacy claim definition `surface` field onto `facet`
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+test("validateClaimDefinition does not mutate the caller-supplied claim object", () => {
+  const legacyClaim = {
+    id: "repo.proof.legacy-no-mutate",
+    surface: "veritas.legacy-grouping",
+    claimType: "software-evidence",
+    fieldOrBehavior: "npm test",
+    subjectType: "repository",
+    subjectId: "repo",
+    createdAt: "2026-05-19T00:00:00.000Z",
+    updatedAt: "2026-05-19T00:00:00.000Z",
+  };
+  const snapshot = { ...legacyClaim };
+
+  const warnings: string[] = [];
+  const previousWarn = console.warn;
+  console.warn = (message?: unknown) => { warnings.push(String(message)); };
+  let store: ClaimStore;
+  try {
+    store = addClaimToStore(emptyClaimStore(), legacyClaim as unknown as ClaimDefinition);
+  } finally {
+    console.warn = previousWarn;
+  }
+
+  // The returned store's claim is correctly normalized...
+  assert.equal(store.claims[0]?.facet, "veritas.legacy-grouping");
+  assert.ok(!("surface" in (store.claims[0] as unknown as Record<string, unknown>)));
+
+  // ...but the caller's original claim object is completely untouched: still
+  // carries `surface`, still has no `facet`, unchanged from the snapshot
+  // taken before validation, and not the same reference as the stored claim.
+  assert.deepEqual(legacyClaim, snapshot);
+  assert.equal((legacyClaim as unknown as Record<string, unknown>).surface, "veritas.legacy-grouping");
+  assert.equal((legacyClaim as unknown as Record<string, unknown>).facet, undefined);
+  assert.notEqual(store.claims[0], legacyClaim);
+});
+
+test("addClaimToStore accepts a frozen legacy claim without throwing (non-mutating shim regression)", () => {
+  // Regression for the deferred facet-delivery finding: unlike
+  // validateTrustBundle's normalizeClaimFacetForRead (src/validate.ts),
+  // validateClaimDefinition used to write `facet`/delete `surface` directly
+  // onto its input, which threw a TypeError on a frozen object. It must now
+  // follow the same non-mutating, shallow-copy-on-write pattern.
+  const frozenLegacyClaim = Object.freeze({
+    id: "repo.proof.frozen-legacy",
+    surface: "veritas.frozen-check",
+    claimType: "software-evidence",
+    fieldOrBehavior: "frozen test",
+    subjectType: "repository",
+    subjectId: "repo",
+    createdAt: "2026-07-02T00:00:00.000Z",
+    updatedAt: "2026-07-02T00:00:00.000Z",
+  }) as unknown as ClaimDefinition;
+
+  assert.doesNotThrow(() => addClaimToStore(emptyClaimStore(), frozenLegacyClaim));
+
+  const warnings: string[] = [];
+  const previousWarn = console.warn;
+  console.warn = (message?: unknown) => { warnings.push(String(message)); };
+  let store: ClaimStore;
+  try {
+    store = addClaimToStore(emptyClaimStore(), frozenLegacyClaim);
+  } finally {
+    console.warn = previousWarn;
+  }
+
+  assert.equal(store.claims[0]?.facet, "veritas.frozen-check");
+  assert.ok(!("surface" in (store.claims[0] as unknown as Record<string, unknown>)));
+  // The frozen input itself is provably untouched (it would throw on write
+  // in strict mode if the implementation ever attempted to mutate it).
+  assert.equal((frozenLegacyClaim as unknown as Record<string, unknown>).surface, "veritas.frozen-check");
+  assert.equal((frozenLegacyClaim as unknown as Record<string, unknown>).facet, undefined);
+});
+
+test("validateClaimStore accepts a frozen store containing a frozen legacy claim without throwing", () => {
+  const frozenStore = Object.freeze({
+    schemaVersion: 1,
+    producer: "veritas",
+    claims: [
+      Object.freeze({
+        id: "repo.proof.frozen-store-claim",
+        surface: "veritas.frozen-store-check",
+        claimType: "software-evidence",
+        fieldOrBehavior: "frozen store test",
+        subjectType: "repository",
+        subjectId: "repo",
+        createdAt: "2026-07-02T00:00:00.000Z",
+        updatedAt: "2026-07-02T00:00:00.000Z",
+      }),
+    ],
+    policies: [],
+  });
+
+  let result: ClaimStore | undefined;
+  assert.doesNotThrow(() => { result = validateClaimStore(frozenStore); });
+  assert.equal(result?.claims[0]?.facet, "veritas.frozen-store-check");
 });
 
 test("save/load round trip preserves formatted JSON", async () => {
