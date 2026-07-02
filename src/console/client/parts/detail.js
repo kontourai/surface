@@ -35,7 +35,7 @@ function collectClaimDetailContext(claim, readModel) {
 function renderDetailHeader(claim, evidence, policy) {
   el("detailBadge").textContent = statusLabel(claim.status, evidence.length);
   el("detailBadge").className   = "status-badge badge-" + statusColor(claim.status) + " detail-badge-lg";
-  el("detailSurface").textContent = surfaceLabel(claim.surface);
+  el("detailSurface").textContent = surfaceLabel(claim.facet ?? claim.surface);
   el("detailTitle").textContent   = claim.fieldOrBehavior || claim.claimType || "—";
   // Claim ID exposed only as the subtitle (for detail drill-down), not on the card face.
   el("detailSubtitle").textContent = claim.id;

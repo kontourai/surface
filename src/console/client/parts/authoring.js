@@ -49,7 +49,7 @@ function openClaimModal(existing) {
   el("claimModalTitle").textContent = existing ? "Edit claim" : "Add claim";
   el("claimIdInput").value = existing?.id ?? "";
   el("claimTypeSelect").value = existing?.claimType ?? el("claimTypeSelect").value;
-  el("claimSurfaceInput").value = existing?.surface ?? "";
+  el("claimSurfaceInput").value = existing?.facet ?? existing?.surface ?? "";
   el("claimFieldInput").value = existing?.fieldOrBehavior ?? "";
   el("claimSubjectTypeInput").value = existing?.subjectType ?? "";
   el("claimSubjectIdInput").value = existing?.subjectId ?? "";
@@ -85,7 +85,7 @@ async function submitClaimForm(event) {
   }
   const body = {
     claimType: el("claimTypeSelect").value,
-    surface: el("claimSurfaceInput").value,
+    facet: el("claimSurfaceInput").value,
     fieldOrBehavior: el("claimFieldInput").value,
     subjectType: el("claimSubjectTypeInput").value,
     subjectId: el("claimSubjectIdInput").value,

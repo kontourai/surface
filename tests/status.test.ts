@@ -7,7 +7,7 @@ const claim: Claim = {
   id: "claim-1",
   subjectType: "attested-record",
   subjectId: "record-1",
-  surface: "field-attested-records.public-data",
+  facet: "field-attested-records.public-data",
   claimType: "public-data-field",
   fieldOrBehavior: "registrationStatus",
   value: "OPEN",

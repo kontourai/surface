@@ -13,16 +13,13 @@
  * merge.md §12 names: the spec repo's own `npm test` validates vector *shape*,
  * not code *execution* — this harness executes them.
  *
- * DEFERRAL (2026-07-01): as of this delivery, the published hachure package
- * (npm `hachure@0.6.0`; installed 0.5.1) does NOT yet ship `conformance/merge/`
- * — the concurrent hachure 0.7.0 delivery (merge.md + producerId schema +
- * conformance/merge/*.json) is still mid-gate upstream and unpublished. Per the
- * WS4 plan this harness must NOT fabricate a stand-in vector file (that would
- * prove nothing about real hachure conformance and would silently diverge the
- * moment the real vectors land). It therefore SKIPS with a clear TODO marker
- * when `conformance/merge/` is absent, and the orchestrator re-runs it once
- * hachure 0.7.0 is published (see handoff.json). Do not delete the skip path;
- * remove it only when 0.7.0 is a real semver devDependency and the vectors exist.
+ * `hachure` ^0.9.0 (the installed devDependency) ships `conformance/merge/`
+ * with all 4 named vectors, so this harness runs them for real on every
+ * `npm test`; the branch below is not exercised in normal CI. It is kept as a
+ * defensive fallback — not a live deferral — for the unlikely case a future
+ * hachure bump ever ships without `conformance/merge/` again: rather than
+ * fail the whole suite on a missing optional fixture directory, it skips with
+ * a clear marker instead of silently reporting zero conformance coverage.
  */
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -47,12 +44,12 @@ const MERGE_CONFORMANCE_DIR = "node_modules/hachure/conformance/merge";
 const mergeDirPresent = existsSync(MERGE_CONFORMANCE_DIR);
 
 if (!mergeDirPresent) {
-  // TODO(hachure-0.7.0): remove this skip once `hachure` ships `conformance/merge/`.
-  // Deferral is recorded in the WS4 session handoff.json; the orchestrator re-runs
-  // this suite after hachure 0.7.0 lands as a published devDependency.
+  // Defensive fallback only (see the module comment above) — not expected to
+  // trigger with the currently installed hachure ^0.9.0, which ships this
+  // directory.
   test(
-    "merge conformance vectors (DEFERRED: hachure conformance/merge/ not yet published)",
-    { skip: "TODO(hachure-0.7.0): node_modules/hachure/conformance/merge/ is absent — hachure 0.7.0 (merge.md + conformance/merge/*.json) is not yet published to npm. Re-run after the dependency bump lands." },
+    "merge conformance vectors (SKIPPED: hachure conformance/merge/ is absent from the installed package)",
+    { skip: "node_modules/hachure/conformance/merge/ is absent from the installed hachure version — reinstall/update the hachure devDependency to restore conformance coverage." },
     () => {
       assert.fail("unreachable — skipped");
     },

@@ -10,6 +10,7 @@ import type {
   TrustReportSummary,
   TrustStatus,
 } from "./types.js";
+import { CURRENT_SCHEMA_VERSION } from "./types.js";
 import { deriveTrustSnapshot } from "./trust-snapshot.js";
 import type { SnapshotEventProbe } from "./trust-snapshot.js";
 import { statusFunctionVersion } from "./status.js";
@@ -50,7 +51,7 @@ export function buildTrustReport(input: TrustBundle, options: BuildTrustReportOp
   const snapshot = deriveTrustSnapshot(input, { now, since: options.since, instrument: options.instrument });
 
   return {
-    schemaVersion: input.schemaVersion,
+    schemaVersion: CURRENT_SCHEMA_VERSION,
     id: options.id ?? `surface-${now.getTime()}`,
     generatedAt: now.toISOString(),
     source: input.source,
@@ -142,7 +143,7 @@ export function summarizeClaims(
   changeRecords: Array<{ claimId: string; action: string }> = [],
 ): TrustReportSummary {
   const byStatus = Object.fromEntries(TRUST_STATUS_ORDER.map((status) => [status, 0])) as Record<TrustStatus, number>;
-  const bySurface: Record<string, number> = {};
+  const byFacet: Record<string, number> = {};
   const sourceQuality: Record<string, number> = {};
   const reviewerAuthority: Record<string, number> = {};
   const evidenceStrength: Record<string, number> = {};
@@ -158,7 +159,8 @@ export function summarizeClaims(
 
   for (const claim of claims) {
     byStatus[claim.status] += 1;
-    bySurface[claim.surface] = (bySurface[claim.surface] ?? 0) + 1;
+    const facet = claim.facet ?? "unknown";
+    byFacet[facet] = (byFacet[facet] ?? 0) + 1;
     const basis = claim.confidenceBasis;
     if (basis?.sourceQuality) sourceQuality[basis.sourceQuality] = (sourceQuality[basis.sourceQuality] ?? 0) + 1;
     if (basis?.reviewerAuthority) reviewerAuthority[basis.reviewerAuthority] = (reviewerAuthority[basis.reviewerAuthority] ?? 0) + 1;
@@ -185,7 +187,7 @@ export function summarizeClaims(
   return {
     totalClaims: claims.length,
     byStatus,
-    bySurface,
+    byFacet,
     confidenceBasis: {
       sourceQuality,
       reviewerAuthority,
@@ -210,15 +212,15 @@ export function formatTrustReportSummary(report: TrustReport): string {
     .filter((status) => report.summary.byStatus[status] > 0)
     .map((status) => `${status}: ${report.summary.byStatus[status]}`)
     .join(", ");
-  const surfaceSummary = Object.entries(report.summary.bySurface)
-    .map(([surface, count]) => `${surface}: ${count}`)
+  const facetSummary = Object.entries(report.summary.byFacet)
+    .map(([facet, count]) => `${facet}: ${count}`)
     .join(", ");
 
   return [
     `Kontour Surface report ${report.id}`,
     `Source: ${report.source}`,
     `Claims: ${report.summary.totalClaims} (${statusSummary || "none"})`,
-    `Surfaces: ${surfaceSummary || "none"}`,
+    `Facets: ${facetSummary || "none"}`,
     `High-impact unsupported: ${report.summary.highImpactUnsupported.join(", ") || "none"}`,
     `Stale: ${report.summary.staleClaims.join(", ") || "none"}`,
     `Recompute needed: ${report.summary.recomputeNeededClaims.join(", ") || "none"}`,

@@ -32,7 +32,7 @@ const claim: Claim = {
   id: "claim.widget.status",
   subjectType: "widget",
   subjectId: "widget-1",
-  surface: "widgets.public",
+  facet: "widgets.public",
   claimType: "widget-field",
   fieldOrBehavior: "status",
   value: "OPEN",

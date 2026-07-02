@@ -10,7 +10,7 @@ function makeInput(executionOverride?: Record<string, unknown>): TrustBundle {
       id: "claim.release.test-suite-passes",
       subjectType: "npm-package",
       subjectId: "@kontourai/surface@0.0.0-test",
-      surface: "kontourai-surface.release",
+      facet: "kontourai-surface.release",
       claimType: "release-check",
       fieldOrBehavior: "test-suite-passes",
       value: true,

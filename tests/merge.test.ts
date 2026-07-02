@@ -11,7 +11,7 @@ import type { Claim, TrustBundle, VerificationPolicy } from "../src/index.js";
 const baseClaim: Omit<Claim, "id" | "value" | "fieldOrBehavior"> = {
   subjectType: "repo-governance.repo",
   subjectId: "repo-A",
-  surface: "repo-governance.developer-evidence",
+  facet: "repo-governance.developer-evidence",
   claimType: "release-status",
   createdAt: "2026-04-25T00:00:00.000Z",
   updatedAt: "2026-04-25T00:00:00.000Z",
@@ -58,10 +58,18 @@ test("mergeBundles of a single bundle equals the input (no-op union)", () => {
   assert.deepEqual(merged.events, []);
 });
 
-test("mergeBundles throws on schemaVersion mismatch", () => {
-  const a = makeBundle({ schemaVersion: 3 });
-  const b = makeBundle({ schemaVersion: 2 });
-  assert.throws(() => mergeBundles([a, b]), /schemaVersion mismatch/);
+test("mergeBundles always emits the current schemaVersion, even mixing legacy and current input bundles", () => {
+  // Hachure facet rename (0.9.0): a merged bundle is a freshly synthesized
+  // artifact (like `source`, synthesized as `merged:<a>+<b>`) — it no longer
+  // requires every input to share one schemaVersion, and always self-declares
+  // the current one (5), regardless of what any input bundle declared.
+  const legacy = makeBundle({ schemaVersion: 3 });
+  const current = makeBundle({ schemaVersion: 5 });
+  const merged = mergeBundles([legacy, current]);
+  assert.equal(merged.schemaVersion, 5);
+
+  const allLegacy = mergeBundles([makeBundle({ schemaVersion: 2 }), makeBundle({ schemaVersion: 4 })]);
+  assert.equal(allLegacy.schemaVersion, 5);
 });
 
 test("mergeBundles unions claims/evidence/policies/events from two producers", () => {
@@ -109,7 +117,7 @@ test("mergeBundles unions claims/evidence/policies/events from two producers", (
   // distinct child sources are combined under a merged: prefix
   assert.equal(merged.source, "merged:producer-a+producer-b");
   // provenance preserved: claim surfaces untouched
-  assert.ok(merged.claims.every((c) => c.surface === "repo-governance.developer-evidence"));
+  assert.ok(merged.claims.every((c) => c.facet === "repo-governance.developer-evidence"));
 });
 
 test("mergeBundles dedupes identical records by id (first occurrence wins)", () => {

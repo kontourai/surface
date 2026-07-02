@@ -78,7 +78,7 @@
     "@kontourai/ui": "^1.1.0",
     "@playwright/test": "^1.60.0",
     "@types/node": "^25.9.2",
-    "hachure": "^0.8.0",
+    "hachure": "^0.9.0",
     "typescript": "^6.0.3"
   },
   "engines": {

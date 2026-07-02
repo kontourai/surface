@@ -107,12 +107,13 @@ function bindConsoleFilters(d) {
   });
 }
 
-// ── surface chips ──────────────────────────────────────
+// ── facet chips (rendered into the legacy "surfaceChips" DOM id/CSS hooks —
+// UI-level naming only, not the wire field) ────────────────────────────────
 function renderSurfaceChips(d) {
-  const surfaces = Object.keys(d.surfaceCounts ?? {});
+  const facets = Object.keys(d.facetCounts ?? {});
   el("surfaceChips").innerHTML = [
     chipBtn("all", "All", d.claims?.length ?? 0),
-    ...surfaces.map(s => chipBtn(s, surfaceLabel(s), d.surfaceCounts[s]))
+    ...facets.map(s => chipBtn(s, surfaceLabel(s), d.facetCounts[s]))
   ].join("");
   el("surfaceChips").querySelectorAll("[data-surface]").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -176,17 +177,17 @@ function filterClaims(claims) {
       (filters.status === "attention"
         ? ["stale","disputed","rejected","unknown","assumed","proposed"].includes(c.status)
         : c.status === filters.status);
-    const surfaceOk = filters.surface === "all" || c.surface === filters.surface;
-    const hay = [c.id, c.status, c.surface, c.claimType, c.fieldOrBehavior,
+    const facetOk = filters.surface === "all" || (c.facet ?? c.surface) === filters.surface;
+    const hay = [c.id, c.status, c.facet ?? c.surface, c.claimType, c.fieldOrBehavior,
                  c.verificationPolicyId, c.subjectId].join(" ").toLowerCase();
-    return statusOk && surfaceOk && (!q || hay.includes(q));
+    return statusOk && facetOk && (!q || hay.includes(q));
   });
 }
 
 function claimCard(claim, index, visibleIndex = 0) {
   const isAttention = ["disputed","stale","rejected"].includes(claim.status);
   const label  = claim.fieldOrBehavior || claim.claimType || claim.id;
-  const surface = surfaceLabel(claim.surface);
+  const surface = surfaceLabel(claim.facet ?? claim.surface);
   const gaps = claim.transparencyGapIds?.length ?? 0;
   const color  = statusColor(claim.status);
   const impact = claim.impactLevel;

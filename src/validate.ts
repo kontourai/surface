@@ -33,6 +33,41 @@ import {
 import { validateReferences } from "./validation/references.js";
 import { validateAuthorityTrace, validateClaimGroup, validateIntegrityAnchor } from "./validation/records.js";
 
+// TOLERANCE SHIM support (owner-ratified, one release; see the claim-loop
+// comment above for the read-path rule this guards). Warns exactly once per
+// process — not once per claim, not once per call to validateTrustBundle — so
+// a bundle with many legacy claims (or a long-lived process validating many
+// bundles) does not flood stderr.
+let warnedLegacySurfaceFieldOnce = false;
+function warnLegacySurfaceFieldOnce(): void {
+  if (warnedLegacySurfaceFieldOnce) return;
+  warnedLegacySurfaceFieldOnce = true;
+  console.warn(
+    "[@kontourai/surface] deprecated: reading legacy claim field \"surface\" as \"facet\". " +
+      "This read-tolerance shim is temporary (one release) — re-emit affected bundles with \"facet\" instead of \"surface\".",
+  );
+}
+
+/**
+ * TOLERANCE SHIM (owner-ratified, one release): maps a legacy claim's
+ * `surface` value onto `facet` and strips `surface`, without mutating the
+ * caller-supplied object. Returns the original reference unchanged when the
+ * claim carries no `surface` key at all (the overwhelmingly common case), and
+ * only allocates a shallow copy when there is actually something to
+ * normalize — so validateTrustBundle never rewrites objects the caller still
+ * holds a reference to (e.g. for diffing or re-validating the original
+ * payload).
+ */
+function normalizeClaimFacetForRead(raw: unknown): unknown {
+  if (!isObject(raw) || !("surface" in raw)) return raw;
+  const { surface, ...rest } = raw;
+  if (rest.facet === undefined && typeof surface === "string" && surface.length > 0) {
+    warnLegacySurfaceFieldOnce();
+    return { ...rest, facet: surface };
+  }
+  return rest;
+}
+
 export function validateTrustBundle(input: unknown): TrustBundle {
   if (!isObject(input)) throw new Error("Trust bundle must be an object");
   const schemaVersion = requireSchemaVersion(input);
@@ -41,7 +76,7 @@ export function validateTrustBundle(input: unknown): TrustBundle {
   // already rejects empty strings, matching the "minLength 1 when present" rule
   // used for every other optional string field in this validator.
   const producerId = input.producerId === undefined ? undefined : requireString(input, "producerId");
-  const claims = requireArray(input, "claims");
+  const claims = requireArray(input, "claims").map(normalizeClaimFacetForRead);
   const evidence = requireArray(input, "evidence");
   const policies = requireArray(input, "policies");
   const events = requireArray(input, "events");
@@ -52,9 +87,16 @@ export function validateTrustBundle(input: unknown): TrustBundle {
   for (const claim of claims) {
     requireObject(claim, "claim");
     rejectUnknownKeys(claim, CLAIM_KEYS, `claim ${String(claim.id ?? "")}`);
-    for (const field of ["id", "subjectType", "subjectId", "surface", "claimType", "fieldOrBehavior", "createdAt", "updatedAt"]) {
+    for (const field of ["id", "subjectType", "subjectId", "claimType", "fieldOrBehavior", "createdAt", "updatedAt"]) {
       requireString(claim, field);
     }
+    // facet (Hachure schemaVersion 5, renamed from `surface`) is optional. When
+    // present it must be a non-empty string, same rule as every other optional
+    // string field below. A legacy `surface` value was already mapped onto
+    // `facet` (on a non-mutating copy) and stripped by
+    // `normalizeClaimFacetForRead` above, before this claim ever entered the
+    // loop — there is nothing left to shim here.
+    if (claim.facet !== undefined) requireString(claim, "facet");
     if (!("value" in claim)) throw new Error(`Claim ${claim.id} is missing value`);
     requireDateTime(claim, "createdAt");
     requireDateTime(claim, "updatedAt");

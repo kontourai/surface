@@ -16,7 +16,7 @@ test("claim store transactions own load-mutate-save flow", async () => {
   const path = join(dir, "claims.json");
   try {
     const added = addClaimStoreClaim(path, {
-      surface: "release",
+      facet: "release",
       claimType: "release-check",
       fieldOrBehavior: "tests",
       subjectType: "repo",

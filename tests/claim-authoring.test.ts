@@ -12,7 +12,7 @@ const now = "2026-05-22T12:00:00.000Z";
 
 test("buildClaimDefinition owns claim id generation and timestamps", () => {
   const claim = buildClaimDefinition({
-    surface: "veritas.evidence-check",
+    facet: "veritas.evidence-check",
     claimType: "software-evidence",
     fieldOrBehavior: "npm test",
     subjectType: "repository",
@@ -28,7 +28,7 @@ test("buildClaimDefinition owns claim id generation and timestamps", () => {
 test("addAuthoredClaim and updateAuthoredClaim apply authoring timestamps", () => {
   const added = addAuthoredClaim(emptyClaimStore(), {
     id: "claim-1",
-    surface: "veritas.evidence-check",
+    facet: "veritas.evidence-check",
     claimType: "software-evidence",
     fieldOrBehavior: "npm test",
     subjectType: "repository",

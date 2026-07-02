@@ -29,7 +29,7 @@ function runClaimList(args: string[]): void {
     return;
   }
   for (const claim of store.claims) {
-    console.log(`${claim.id}\t${claim.claimType}\t${claim.surface}\t${claim.fieldOrBehavior}`);
+    console.log(`${claim.id}\t${claim.claimType}\t${claim.facet ?? ""}\t${claim.fieldOrBehavior}`);
   }
 }
 
@@ -39,7 +39,7 @@ function runClaimAdd(args: string[]): void {
   const storePath = resolve(options.store);
   const { claim } = addClaimStoreClaim(storePath, {
     id: options.id,
-    surface: options.surface,
+    facet: options.facet,
     claimType: options.type,
     fieldOrBehavior: options.field,
     subjectType: options.subjectType,
@@ -56,7 +56,7 @@ function runClaimEdit(args: string[]): void {
   if (!options.claimId) throw new Error("surface claim edit requires --claim-id");
   const updates: ClaimDefinitionUpdateDraft = {};
   if (options.type) updates.claimType = options.type;
-  if (options.surface) updates.surface = options.surface;
+  if (options.facet) updates.facet = options.facet;
   if (options.subjectType) updates.subjectType = options.subjectType;
   if (options.subjectId) updates.subjectId = options.subjectId;
   if (options.field) updates.fieldOrBehavior = options.field;
@@ -96,7 +96,7 @@ interface ClaimCommandOptions {
   id?: string;
   claimId?: string;
   type?: string;
-  surface?: string;
+  facet?: string;
   subjectType?: string;
   subjectId?: string;
   field?: string;
@@ -113,7 +113,7 @@ function parseClaimArgs(args: string[]): ClaimCommandOptions {
     else if (arg === "--id") options.id = requireValue(args, ++index, "--id");
     else if (arg === "--claim-id") options.claimId = requireValue(args, ++index, "--claim-id");
     else if (arg === "--type") options.type = requireValue(args, ++index, "--type");
-    else if (arg === "--surface") options.surface = requireValue(args, ++index, "--surface");
+    else if (arg === "--facet") options.facet = requireValue(args, ++index, "--facet");
     else if (arg === "--subject-type") options.subjectType = requireValue(args, ++index, "--subject-type");
     else if (arg === "--subject-id") options.subjectId = requireValue(args, ++index, "--subject-id");
     else if (arg === "--field") options.field = requireValue(args, ++index, "--field");
@@ -127,14 +127,12 @@ function parseClaimArgs(args: string[]): ClaimCommandOptions {
 
 function requireClaimCreateOptions(options: ClaimCommandOptions): asserts options is ClaimCommandOptions & {
   type: string;
-  surface: string;
   subjectType: string;
   subjectId: string;
   field: string;
 } {
   for (const [field, flag] of [
     ["type", "--type"],
-    ["surface", "--surface"],
     ["subjectType", "--subject-type"],
     ["subjectId", "--subject-id"],
     ["field", "--field"],

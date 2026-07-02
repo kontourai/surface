@@ -17,7 +17,7 @@ builder.addClaim({
   id: claimId,
   subjectType: "policy",
   subjectId: "release-gate",
-  surface: "myproduct.governance",
+  facet: "myproduct.governance",
   claimType: "release-policy",
   fieldOrBehavior: "gate",
   value: "passed",

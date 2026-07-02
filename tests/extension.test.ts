@@ -21,7 +21,7 @@ function extension(name: string): SurfaceExtension {
       displayName: `${name} claim`,
       description: "test claim type",
       defaultImpact: "medium",
-      defaultSurface: `${name}.surface`,
+      defaultFacet: `${name}.facet`,
       policyTemplateId: `${name}.policy`,
       metadataFields: [{ key: "owner", label: "Owner", type: "string" }],
     }],
@@ -51,7 +51,7 @@ test("claim type definitions expose authoring hints without changing trust seman
   registerExtension(extension("registry-authoring"));
   const definition = resolveClaimTypeDefinition("registry-authoring-claim");
 
-  assert.equal(definition?.defaultSurface, "registry-authoring.surface");
+  assert.equal(definition?.defaultFacet, "registry-authoring.facet");
   assert.equal(definition?.policyTemplateId, "registry-authoring.policy");
   assert.deepEqual(definition?.metadataFields, [{ key: "owner", label: "Owner", type: "string" }]);
 });

@@ -3,6 +3,24 @@ import type { ClaimDefinition, ClaimStore, ImpactLevel, VerificationPolicy } fro
 
 const IMPACT_LEVELS = new Set<ImpactLevel>(["low", "medium", "high", "critical"]);
 
+// TOLERANCE SHIM (owner-ratified, one release; hachure facet rename, 0.9.0):
+// mirrors validateTrustBundle's read-tolerance shim (src/validate.ts) for the
+// local claim-authoring store (veritas.claims.json and friends). A legacy
+// ClaimDefinition.surface value is mapped onto `facet` on read, `surface` is
+// never re-emitted, and a deprecation warning fires once per process (not
+// once per claim/store) so a store full of legacy entries does not flood
+// stderr. This is a separate warn-once flag from validate.ts's — the two
+// shims guard different read paths and are allowed to each warn once.
+let warnedLegacyClaimDefinitionSurfaceFieldOnce = false;
+function warnLegacyClaimDefinitionSurfaceFieldOnce(): void {
+  if (warnedLegacyClaimDefinitionSurfaceFieldOnce) return;
+  warnedLegacyClaimDefinitionSurfaceFieldOnce = true;
+  console.warn(
+    "[@kontourai/surface] deprecated: reading legacy claim definition field \"surface\" as \"facet\". " +
+      "This read-tolerance shim is temporary (one release) — re-emit affected claim stores with \"facet\" instead of \"surface\".",
+  );
+}
+
 export function loadClaimStore(path: string): ClaimStore {
   if (!existsSync(path)) return emptyClaimStore();
   const raw = readFileSync(path, "utf8");
@@ -86,10 +104,25 @@ export function validateClaimStore(raw: unknown): ClaimStore {
 
 function validateClaimDefinition(raw: unknown): asserts raw is ClaimDefinition {
   if (!isObject(raw)) throw new Error("Claim definition must be a JSON object");
-  for (const field of ["id", "surface", "claimType", "fieldOrBehavior", "subjectType", "subjectId", "createdAt", "updatedAt"]) {
+  for (const field of ["id", "claimType", "fieldOrBehavior", "subjectType", "subjectId", "createdAt", "updatedAt"]) {
     if (typeof raw[field] !== "string" || raw[field].length === 0) {
       throw new Error(`Claim definition must have a ${field} string`);
     }
+  }
+  // TOLERANCE SHIM (owner-ratified, one release): a store entry written before
+  // the hachure facet rename used `surface` where this release reads `facet`.
+  // Read path only: map `surface`'s value onto `facet` when `facet` is absent,
+  // warn once per process, and never re-emit `surface` (stripped below) so a
+  // round-tripped save migrates the entry instead of preserving the stale key
+  // forever.
+  if (raw.facet === undefined && typeof raw.surface === "string" && raw.surface.length > 0) {
+    warnLegacyClaimDefinitionSurfaceFieldOnce();
+    raw.facet = raw.surface;
+  }
+  delete raw.surface;
+  // facet is optional (mirrors the hachure Claim.facet rename/optionality).
+  if (raw.facet !== undefined && (typeof raw.facet !== "string" || raw.facet.length === 0)) {
+    throw new Error("Claim definition facet must be a non-empty string when present");
   }
   if (raw.impactLevel !== undefined && !IMPACT_LEVELS.has(raw.impactLevel as ImpactLevel)) {
     throw new Error(`Claim "${raw.id}" has unsupported impactLevel: ${String(raw.impactLevel)}`);

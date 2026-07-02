@@ -23,14 +23,14 @@ test("buildSurfaceConsoleProjection derives Operator-facing metrics and narrativ
       status: "unknown",
       fieldOrBehavior: "npm test",
       claimType: "software-evidence",
-      surface: "veritas.evidence-check",
+      facet: "veritas.evidence-check",
       subjectId: "repo",
     }, {
       id: "claim-2",
       status: "verified",
       fieldOrBehavior: "lint",
       claimType: "software-evidence",
-      surface: "veritas.evidence-check",
+      facet: "veritas.evidence-check",
       subjectId: "repo",
     }],
   }, {

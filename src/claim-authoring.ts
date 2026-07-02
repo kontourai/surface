@@ -7,7 +7,7 @@ import type { ClaimDefinition, ClaimStore, ImpactLevel } from "./types.js";
 
 export interface ClaimDefinitionDraft {
   id?: string;
-  surface: string;
+  facet?: string;
   claimType: string;
   fieldOrBehavior: string;
   subjectType: string;
@@ -63,8 +63,8 @@ export function buildClaimDefinition(
 ): ClaimDefinition {
   const now = authoringTimestamp(options.now);
   return {
-    id: nonEmptyString(draft.id) ?? generateClaimId(draft.subjectId, draft.surface, draft.fieldOrBehavior),
-    surface: requireDraftString(draft.surface, "surface"),
+    id: nonEmptyString(draft.id) ?? generateClaimId(draft.subjectId, draft.facet, draft.fieldOrBehavior),
+    facet: nonEmptyString(draft.facet),
     claimType: requireDraftString(draft.claimType, "claimType"),
     fieldOrBehavior: requireDraftString(draft.fieldOrBehavior, "fieldOrBehavior"),
     subjectType: requireDraftString(draft.subjectType, "subjectType"),
@@ -84,7 +84,7 @@ export function buildClaimDefinitionUpdates(
   const updates: Partial<Omit<ClaimDefinition, "id" | "createdAt">> = {
     updatedAt: authoringTimestamp(options.now),
   };
-  if (draft.surface !== undefined) updates.surface = requireDraftString(draft.surface, "surface");
+  if (draft.facet !== undefined) updates.facet = nonEmptyString(draft.facet);
   if (draft.claimType !== undefined) updates.claimType = requireDraftString(draft.claimType, "claimType");
   if (draft.fieldOrBehavior !== undefined) updates.fieldOrBehavior = requireDraftString(draft.fieldOrBehavior, "fieldOrBehavior");
   if (draft.subjectType !== undefined) updates.subjectType = requireDraftString(draft.subjectType, "subjectType");
@@ -101,8 +101,8 @@ export function parseImpactLevel(value: unknown, label = "impactLevel"): ImpactL
   throw new Error(`${label} must be low, medium, high, or critical`);
 }
 
-export function generateClaimId(subjectId: string, surface: string, fieldOrBehavior: string): string {
-  return `${slugify(subjectId)}.${slugify(surface)}.${slugify(fieldOrBehavior)}`;
+export function generateClaimId(subjectId: string, facet: string | undefined, fieldOrBehavior: string): string {
+  return [subjectId, facet, fieldOrBehavior].filter((part): part is string => Boolean(part)).map(slugify).join(".");
 }
 
 function authoringTimestamp(now: Date | string | undefined): string {

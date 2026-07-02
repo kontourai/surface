@@ -107,7 +107,7 @@ function buildAttestationGaps(
     return item.gaps.map((gapType) => {
       const gap: EvidenceGap = {
         claimId: item.claimId,
-        surface: claim?.surface ?? "unknown",
+        facet: claim?.facet ?? "unknown",
         impactLevel: claim?.impactLevel ?? "medium",
         gapType,
         message: attestationGapMessage(gapType, item),

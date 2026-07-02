@@ -47,6 +47,13 @@ export const CLAIM_KEYS = new Set([
   "id",
   "subjectType",
   "subjectId",
+  "facet",
+  // TOLERANCE SHIM (owner-ratified, one release, hachure facet rename):
+  // `surface` is the pre-0.9.0 name for `facet`. Kept allowed (not required)
+  // here so legacy bundles don't fail rejectUnknownKeys; validate.ts's
+  // read-tolerance shim maps its value onto `facet` and strips it before the
+  // bundle is returned — `surface` is never itself part of the current wire
+  // shape and is never re-emitted. Remove this entry in the following release.
   "surface",
   "claimType",
   "fieldOrBehavior",

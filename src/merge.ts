@@ -8,6 +8,7 @@ import type {
   VerificationEvent,
   VerificationPolicy,
 } from "./types.js";
+import { CURRENT_SCHEMA_VERSION } from "./types.js";
 
 /**
  * A collision between records that share an `id` but differ in content.  When
@@ -56,7 +57,7 @@ export interface MergeResult {
  * subject and field are NOT resolved here; they are surfaced downstream by
  * {@link buildTrustReport} as `contradiction` transparency gaps / `disputed`
  * status.  This function only handles structural union + id de-duplication, and
- * preserves all provenance (claim.surface / source are never mutated).
+ * preserves all provenance (claim.facet / source are never mutated).
  *
  * Records are de-duped by id.  Identical content under a shared id is kept once
  * (a re-export round-trip is not a collision).  When two or more *distinct*
@@ -88,19 +89,32 @@ export function mergeBundlesDetailed(bundles: TrustBundle[]): MergeResult {
     throw new Error("mergeBundles: at least one bundle is required");
   }
 
-  const schemaVersion = bundles[0].schemaVersion;
-  for (let i = 1; i < bundles.length; i += 1) {
-    if (bundles[i].schemaVersion !== schemaVersion) {
-      throw new Error(
-        `mergeBundles: schemaVersion mismatch — bundle 0 is ${schemaVersion}, ` +
-          `bundle ${i} is ${bundles[i].schemaVersion}. All bundles must share a schemaVersion.`,
-      );
-    }
-  }
+  // A merged bundle is a freshly synthesized artifact (like `source` below,
+  // which is synthesized as `merged:<a>+<b>` rather than copied from any one
+  // input) — it always self-declares the CURRENT schemaVersion, regardless of
+  // what schemaVersion any individual input bundle declared. This lets legacy
+  // (schemaVersion 2-4, `facet` already normalized by validateTrustBundle's
+  // read-tolerance shim) and current (schemaVersion 5) bundles merge together;
+  // there is no mismatch to reject, only a single always-current output.
+  const schemaVersion = CURRENT_SCHEMA_VERSION;
 
   const collisions: MergeCollision[] = [];
 
-  const claims = unionById<Claim>(bundles, (b) => b.claims, "claims", collisions);
+  // Defensive normalization at the merge API boundary (hachure facet rename,
+  // 0.9.0): mergeBundles/mergeBundlesDetailed are exported as public API and
+  // are NOT guaranteed to only ever see output that already passed through
+  // validateTrustBundle's read-tolerance shim (src/validate.ts). Without this,
+  // a legacy claim carrying `surface` and its current-format twin carrying
+  // `facet` — otherwise identical content, same id — would canonically
+  // serialize to two DIFFERENT strings and be reported as a false content
+  // collision (or silently dropped) instead of correctly deduping as the same
+  // claim. Apply the same facet<-surface mapping rule the read shim uses, on a
+  // shallow COPY of each claim (inputs are never mutated), before the
+  // canonical-serialization comparison below runs. This is intentionally
+  // silent — no console.warn here — the one-process deprecation warning stays
+  // solely on the validateTrustBundle read path so calling mergeBundles
+  // directly on already-normalized input never floods stderr.
+  const claims = unionById<Claim>(bundles, (b) => b.claims.map(normalizeClaimFacetForMerge), "claims", collisions);
   const evidence = unionById<Evidence>(bundles, (b) => b.evidence, "evidence", collisions);
   const policies = unionById<VerificationPolicy>(bundles, (b) => b.policies, "policies", collisions);
   const events = unionById<VerificationEvent>(bundles, (b) => b.events, "events", collisions);
@@ -146,6 +160,25 @@ export function mergeBundlesDetailed(bundles: TrustBundle[]): MergeResult {
   if (authorityTrace.length > 0) bundle.authorityTrace = authorityTrace;
 
   return { bundle, collisions };
+}
+
+/**
+ * Defensive, merge-local mirror of validateTrustBundle's read-tolerance shim
+ * (hachure facet rename, 0.9.0): maps a legacy `surface` value onto `facet`
+ * when `facet` is absent, and always strips `surface` from the returned copy
+ * so it never re-enters the canonical-serialization comparison used for
+ * dedup/collision detection. Returns the original claim reference unchanged
+ * when there is nothing to normalize (no `surface` key present at all), and
+ * otherwise returns a shallow copy — the input claim object is never mutated.
+ */
+function normalizeClaimFacetForMerge(claim: Claim): Claim {
+  const record = claim as Claim & { surface?: unknown };
+  if (!("surface" in record)) return claim;
+  const { surface, ...rest } = record;
+  if (rest.facet === undefined && typeof surface === "string" && surface.length > 0) {
+    return { ...rest, facet: surface } as Claim;
+  }
+  return rest as Claim;
 }
 
 type Keyed<T> = { record: T; bundleIndex: number };
