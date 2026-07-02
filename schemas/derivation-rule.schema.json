@@ -40,7 +40,7 @@
         "target": { "$ref": "#/$defs/canonicalClaimTarget" },
         "acceptedStatuses": {
           "type": "array",
-          "items": { "enum": ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected"] }
+          "items": { "enum": ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected", "revoked"] }
         },
         "predicate": {
           "type": "object",
