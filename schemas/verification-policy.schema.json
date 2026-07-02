@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://kontourai.io/schemas/surface/verification-policy.schema.json",
-  "title": "Kontour Surface Verification Policy",
+  "$id": "https://hachure.org/schemas/verification-policy.schema.json",
+  "title": "Hachure VerificationPolicy",
   "type": "object",
   "required": ["id", "claimType", "requiredEvidence", "acceptanceCriteria", "reviewAuthority", "validityRule", "stalenessTriggers", "conflictRules", "impactLevel"],
   "properties": {

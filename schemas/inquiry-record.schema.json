@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://kontourai.io/schemas/surface/inquiry-record.schema.json",
-  "title": "Surface InquiryRecord",
+  "$id": "https://hachure.org/schemas/inquiry-record.schema.json",
+  "title": "Hachure InquiryRecord",
   "description": "Append-only record capturing the resolution of an Inquiry against a TrustBundle (ADR 0003 §6).",
   "type": "object",
   "required": ["id", "inquiry", "outcome", "resolutionPath", "inputSnapshot", "statusFunctionVersion", "resolvedAt"],
