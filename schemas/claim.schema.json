@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://kontourai.io/schemas/surface/claim.schema.json",
-  "title": "Kontour Surface Claim",
+  "$id": "https://hachure.org/schemas/claim.schema.json",
+  "title": "Hachure Claim",
   "type": "object",
   "required": ["id", "subjectType", "subjectId", "surface", "claimType", "fieldOrBehavior", "value", "createdAt", "updatedAt"],
   "properties": {

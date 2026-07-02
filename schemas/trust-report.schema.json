@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://kontourai.io/schemas/surface/trust-report.schema.json",
-  "title": "Surface TrustReport",
+  "$id": "https://hachure.org/schemas/trust-report.schema.json",
+  "title": "Hachure TrustReport",
   "$comment": "transparencyGaps, changeRecords, subjectGroups, claimGroupRollups, summary, and evidenceRequirementsByClaimId are intentionally loosely typed pending dedicated normative sub-schemas (no existing schema for TransparencyGap/DerivationChangeRecord/SubjectGroup/ClaimGroupRollup/TrustReportSummary/EvidenceRequirement exists anywhere in the ecosystem today); only the top-level report shape and the pass-through bundle fields are strictly validated.",
   "type": "object",
   "additionalProperties": false,

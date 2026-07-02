@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://kontourai.io/schemas/surface/evidence.schema.json",
-  "title": "Kontour Surface Evidence",
+  "$id": "https://hachure.org/schemas/evidence.schema.json",
+  "title": "Hachure Evidence",
   "type": "object",
   "required": ["id", "claimId", "evidenceType", "method", "sourceRef", "excerptOrSummary", "observedAt", "collectedBy"],
   "properties": {
