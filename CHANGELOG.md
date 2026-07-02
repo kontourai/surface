@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.1](https://github.com/kontourai/surface/compare/v2.1.0...v2.1.1) (2026-07-02)
+
+
+### Fixes
+
+* console --input notice, ?run= sanitization, stray .kontour fixtures, store.ts non-mutating shim ([#111](https://github.com/kontourai/surface/issues/111)) ([8bee094](https://github.com/kontourai/surface/commit/8bee094fae2d7be75a9b044ab95191fb01b8d0e0))
+
 ## [2.1.0](https://github.com/kontourai/surface/compare/v2.0.0...v2.1.0) (2026-07-02)
 
 
