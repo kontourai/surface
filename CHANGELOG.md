@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0](https://github.com/kontourai/surface/compare/v2.0.0...v2.1.0) (2026-07-02)
+
+
+### Features
+
+* console multi-producer merge view (repeatable --input) ([#106](https://github.com/kontourai/surface/issues/106)) ([ac52eed](https://github.com/kontourai/surface/commit/ac52eed4af8ef4d29cc0a14066a92cd7ee976409))
+
 ## [2.0.0](https://github.com/kontourai/surface/compare/v1.3.1...v2.0.0) (2026-07-02)
 
 
