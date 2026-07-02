@@ -90,6 +90,7 @@ test("Surface Console CSS source is split into ordered concern files", async () 
     "07-evidence-details.css",
     "08-authoring-modal.css",
     "09-responsive.css",
+    "10-multi-producer.css",
   ];
   const [buildScript, styleSource, ...partSources] = await Promise.all([
     readFile("scripts/build-console-assets.mjs", "utf8"),
@@ -112,6 +113,7 @@ test("Surface Console CSS source is split into ordered concern files", async () 
   assert.match(partSources[6], /Observed Result/);
   assert.match(partSources[7], /Claim Authoring Modal/);
   assert.match(partSources[8], /Reduced motion/);
+  assert.match(partSources[9], /Multi-producer attribution/);
 });
 
 test("Surface Console generated assets are synced with source assets", async () => {

@@ -43,6 +43,7 @@ export function buildConsoleHtml(config: SurfaceConsoleRuntimeConfig = {}): stri
           <div class="run-dropdown" id="runDropdown" role="listbox" aria-label="Select run"></div>
         </div>
       </div>
+      <div id="producerBar" class="producer-bar" role="group" aria-label="Contributing producers" hidden></div>
     </div>
     <div class="dash-metrics-row">
       <canvas id="statusDonut" class="status-donut" width="52" height="52" aria-hidden="true"></canvas>
@@ -84,6 +85,8 @@ export function buildConsoleHtml(config: SurfaceConsoleRuntimeConfig = {}): stri
         </select>
       </div>
     </div>
+
+    <section id="collisionSection" class="collision-section" aria-label="Merge collisions" hidden></section>
 
     <p class="feed-count" id="feedCount" aria-live="polite"></p>
     <div id="claimFeed" class="claim-feed"></div>

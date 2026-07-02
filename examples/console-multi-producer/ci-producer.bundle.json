@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 5,
+  "source": "ci-producer:run-2026-07-01",
+  "producerId": "ci-producer",
+  "claims": [
+    {
+      "id": "claim.shared.repo-identity",
+      "subjectType": "repository",
+      "subjectId": "acme/widgets",
+      "facet": "governance.identity",
+      "claimType": "repo-metadata",
+      "fieldOrBehavior": "canonical repository",
+      "value": "acme/widgets",
+      "createdAt": "2026-06-01T00:00:00.000Z",
+      "updatedAt": "2026-06-01T00:00:00.000Z"
+    },
+    {
+      "id": "claim.ci.unit-tests",
+      "subjectType": "repository",
+      "subjectId": "acme/widgets",
+      "facet": "ci.tests",
+      "claimType": "test-suite",
+      "fieldOrBehavior": "unit test suite passes",
+      "value": "passing",
+      "impactLevel": "high",
+      "createdAt": "2026-07-01T09:00:00.000Z",
+      "updatedAt": "2026-07-01T09:00:00.000Z"
+    },
+    {
+      "id": "claim.build.artifact-digest",
+      "subjectType": "artifact",
+      "subjectId": "acme/widgets@1.4.0",
+      "facet": "ci.build",
+      "claimType": "artifact-digest",
+      "fieldOrBehavior": "release artifact sha256 digest",
+      "value": "sha256:aaaa1111bbbb2222cccc3333dddd4444eeee5555ffff6666aaaa7777bbbb8888",
+      "impactLevel": "high",
+      "createdAt": "2026-07-01T09:05:00.000Z",
+      "updatedAt": "2026-07-01T09:05:00.000Z"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev.ci.unit-tests",
+      "claimId": "claim.ci.unit-tests",
+      "evidenceType": "test_output",
+      "method": "validation",
+      "sourceRef": "ci://acme/widgets/actions/runs/2026-07-01",
+      "excerptOrSummary": "412 unit tests passed, 0 failed.",
+      "observedAt": "2026-07-01T09:00:00.000Z",
+      "collectedBy": "ci-producer",
+      "passing": true
+    }
+  ],
+  "policies": [],
+  "events": [
+    {
+      "id": "ev.event.ci.unit-tests",
+      "claimId": "claim.ci.unit-tests",
+      "status": "verified",
+      "actor": "ci-producer",
+      "method": "validation",
+      "evidenceIds": ["ev.ci.unit-tests"],
+      "createdAt": "2026-07-01T09:00:05.000Z"
+    }
+  ]
+}

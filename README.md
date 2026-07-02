@@ -159,6 +159,21 @@ The full command surface, flags, and output contracts are in the [CLI reference]
 
 ![The Surface Console reviewing a producer run: verified claims, an attention band, and a stale rate-limit claim flagged for refresh](assets/screenshots/surface-console.png)
 
+### Merge multiple producers into one console view
+
+`surface console` accepts repeatable `--input` bundle paths (the same option shape as `surface report --input`). With more than one input, the console validates each producer bundle, merges them order-independently, and projects the merged ledger into a single console view — additive to the existing single `--read-model` path, which is unchanged.
+
+```bash
+# Golden demo: three producer bundles → one Surface console view
+npx surface console \
+  --input examples/console-multi-producer/ci-producer.bundle.json \
+  --input examples/console-multi-producer/review-producer.bundle.json \
+  --input examples/console-multi-producer/security-producer.bundle.json
+```
+
+The merged view attributes every claim to the producer(s) that asserted it (an identical shared claim across producers dedups to one card that names all of them), and surfaces merge collisions — same claim id, different content — in a dedicated section that names the colliding producers. Losing content is reported, never silently dropped (a merged bundle never carries a top-level `producerId`, so attribution is carried as projection metadata built during the merge). The three-bundle demo under [`examples/console-multi-producer/`](examples/console-multi-producer/) includes a shared claim that dedups and a build-digest collision between the CI and security producers.
+
+
 ## Show it to your users
 
 ![A product listing with the Built with Surface badge and an embedded trust panel disclosing a stale registration-status claim, its evidence, and the freshness gap](assets/screenshots/product-embed.png)

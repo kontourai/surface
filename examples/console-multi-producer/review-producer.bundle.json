@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 5,
+  "source": "review-producer:pr-4471",
+  "producerId": "review-producer",
+  "claims": [
+    {
+      "id": "claim.shared.repo-identity",
+      "subjectType": "repository",
+      "subjectId": "acme/widgets",
+      "facet": "governance.identity",
+      "claimType": "repo-metadata",
+      "fieldOrBehavior": "canonical repository",
+      "value": "acme/widgets",
+      "createdAt": "2026-06-01T00:00:00.000Z",
+      "updatedAt": "2026-06-01T00:00:00.000Z"
+    },
+    {
+      "id": "claim.review.human-signoff",
+      "subjectType": "pull-request",
+      "subjectId": "acme/widgets#4471",
+      "facet": "governance.review",
+      "claimType": "human-review",
+      "fieldOrBehavior": "senior engineer approved the release PR",
+      "value": "approved",
+      "impactLevel": "medium",
+      "createdAt": "2026-07-01T10:15:00.000Z",
+      "updatedAt": "2026-07-01T10:15:00.000Z"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev.review.human-signoff",
+      "claimId": "claim.review.human-signoff",
+      "evidenceType": "human_attestation",
+      "method": "attestation",
+      "sourceRef": "review-producer://pr/4471/review/9",
+      "excerptOrSummary": "Approved by @lead-eng after reviewing the release checklist.",
+      "observedAt": "2026-07-01T10:15:00.000Z",
+      "collectedBy": "review-producer"
+    }
+  ],
+  "policies": [],
+  "events": [
+    {
+      "id": "ev.event.review.human-signoff",
+      "claimId": "claim.review.human-signoff",
+      "status": "verified",
+      "actor": "review-producer",
+      "method": "attestation",
+      "evidenceIds": ["ev.review.human-signoff"],
+      "createdAt": "2026-07-01T10:15:05.000Z"
+    }
+  ]
+}

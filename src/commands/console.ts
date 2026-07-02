@@ -8,6 +8,10 @@ export async function runConsole(args: string[]): Promise<void> {
   let port: number | undefined;
   let readModelPath: string | undefined;
   let storePath: string | undefined;
+  // Repeatable producer bundle inputs, mirroring `surface report --input`
+  // semantics (src/commands/shared.ts). Additive to --read-model: any --input
+  // switches the console onto the merge-and-project path.
+  const inputs: string[] = [];
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -21,6 +25,8 @@ export async function runConsole(args: string[]): Promise<void> {
       readModelPath = requireValue(args, ++index, "--read-model");
     } else if (arg === "--store") {
       storePath = requireValue(args, ++index, "--store");
+    } else if (arg === "--input") {
+      inputs.push(resolve(requireValue(args, ++index, "--input")));
     } else {
       throw new Error(`Unknown console argument: ${arg}`);
     }
@@ -33,6 +39,7 @@ export async function runConsole(args: string[]): Promise<void> {
   if (port !== undefined) config = { ...config, port };
   if (readModelPath) config = { ...config, readModelPath };
   if (storePath) config = { ...config, storePath };
+  if (inputs.length > 0) config = { ...config, inputs };
 
   const { startConsoleServer } = await import("../console/server.js");
   await startConsoleServer(config);

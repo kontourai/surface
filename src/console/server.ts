@@ -7,6 +7,7 @@ import { buildConsoleHtml } from "./shell.js";
 import { CONSOLE_SCRIPT } from "./script.js";
 import { CONSOLE_CSS } from "./styles.js";
 import { buildSurfaceConsoleProjection, emptySurfaceConsoleProjection } from "./projection.js";
+import { loadMergedConsoleReadModel } from "./merged-read-model.js";
 import {
   parseImpactLevel,
   type ClaimDefinitionDraft,
@@ -116,19 +117,38 @@ async function resolveReadModelPath(configuredPath: string): Promise<string> {
   return configuredPath;
 }
 
+function projectionFromReadModel(readModel: unknown, config: SurfaceConsoleConfig, storePath: string): unknown {
+  return buildSurfaceConsoleProjection(readModel, { ...config, storePath, readModel, folderName: basename(cwd()) });
+}
+
 async function loadConsoleProjection(indexPath: string, config: SurfaceConsoleConfig, storePath: string): Promise<unknown> {
   const readModel = await loadReadModel(indexPath);
-  return buildSurfaceConsoleProjection(readModel, { ...config, storePath, readModel, folderName: basename(cwd()) });
+  return projectionFromReadModel(readModel, config, storePath);
 }
 
 export async function startConsoleServer(config: SurfaceConsoleConfig = {}): Promise<void> {
   const port = config.port ?? 4242;
   const readModelPath = config.readModelPath ?? SURFACE_RUNS_DEFAULT;
   const storePath = config.storePath ?? "veritas.claims.json";
+  // Producer bundle inputs (additive to --read-model). Any --input switches the
+  // console onto the merge-and-project path: each request rebuilds the read model
+  // by merging the bundles, so edits to any producer bundle refresh live.
+  const inputs = (config.inputs ?? []).map((p) => resolve(p));
+  const inputsMode = inputs.length > 0;
 
-  // Instantiate the SSE broadcaster, watching the configured read-model path
-  // (and the store file so claim mutations also trigger a refresh).
-  const broadcaster = new SseBroadcaster([resolve(readModelPath), resolve(storePath)]);
+  // Rebuild the merged read model from the producer bundles. Kept as a closure so
+  // request handlers can await a fresh merge on every fetch (mirrors the file-watch
+  // live-reload behavior of the read-model-artifact path).
+  async function mergedReadModel(): Promise<unknown> {
+    return loadMergedConsoleReadModel(inputs, { runId: "console-merge" });
+  }
+
+  // In inputs mode watch the producer bundles (not a pre-built read-model file) so
+  // any edit to a bundle triggers a live refresh; the store is watched in both modes.
+  const watchPaths = inputsMode
+    ? [...inputs, resolve(storePath)]
+    : [resolve(readModelPath), resolve(storePath)];
+  const broadcaster = new SseBroadcaster(watchPaths);
   broadcaster.start();
 
   const server = createServer(async (req, res) => {
@@ -162,6 +182,13 @@ export async function startConsoleServer(config: SurfaceConsoleConfig = {}): Pro
     }
 
     if (url === "/api/runs") {
+      // The run picker only applies to the read-model-artifact path; merged bundle
+      // inputs are a single synthesized view with no per-run archive to enumerate.
+      if (inputsMode) {
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify([]));
+        return;
+      }
       try {
         const dashDir = resolve(dirname(await resolveReadModelPath(readModelPath)));
         const files = await readdir(dashDir).catch(() => [] as string[]);
@@ -195,34 +222,30 @@ export async function startConsoleServer(config: SurfaceConsoleConfig = {}): Pro
 
     if (url === "/api/read-model") {
       const runParam = requestUrl.searchParams.get("run");
-      const resolvedBase = await resolveReadModelPath(readModelPath);
-      const effectivePath = runParam && runParam !== "latest"
-        ? resolve(dirname(resolvedBase), `${runParam}.console.json`)
-        : resolvedBase;
       try {
-        const readModel = await loadReadModel(effectivePath);
+        const readModel = inputsMode
+          ? await mergedReadModel()
+          : await loadReadModel(effectiveReadModelPath(readModelPath, runParam));
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify(readModel));
       } catch {
         res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify({ error: "read model not found", path: effectivePath }));
+        res.end(JSON.stringify({ error: "read model not found" }));
       }
       return;
     }
 
     if (url === "/api/console-model") {
       const runParam = requestUrl.searchParams.get("run");
-      const resolvedBase = await resolveReadModelPath(readModelPath);
-      const effectivePath = runParam && runParam !== "latest"
-        ? resolve(dirname(resolvedBase), `${runParam}.console.json`)
-        : resolvedBase;
       try {
-        const consoleModel = await loadConsoleProjection(effectivePath, config, storePath);
+        const consoleModel = inputsMode
+          ? projectionFromReadModel(await mergedReadModel(), config, storePath)
+          : await loadConsoleProjection(effectiveReadModelPath(readModelPath, runParam), config, storePath);
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify(consoleModel));
       } catch {
         res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify({ error: "console model not found", path: effectivePath }));
+        res.end(JSON.stringify({ error: "console model not found" }));
       }
       return;
     }
@@ -268,8 +291,9 @@ export async function startConsoleServer(config: SurfaceConsoleConfig = {}): Pro
     }
 
     try {
-      const resolvedPath = await resolveReadModelPath(readModelPath);
-      const readModel = await loadReadModel(resolvedPath);
+      const readModel = inputsMode
+        ? await mergedReadModel()
+        : await loadReadModel(await resolveReadModelPath(readModelPath));
       const folderName = basename(cwd());
       const consoleModel = buildSurfaceConsoleProjection(readModel, { ...config, storePath, readModel, folderName });
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
@@ -301,6 +325,13 @@ export async function startConsoleServer(config: SurfaceConsoleConfig = {}): Pro
   await new Promise<void>((resolveListen) => server.listen(port, resolveListen));
   server.on("close", () => broadcaster.stop());
   console.log(`Surface console running at http://localhost:${port}`);
+}
+
+function effectiveReadModelPath(readModelPath: string, runParam: string | null): string {
+  const base = resolve(readModelPath);
+  return runParam && runParam !== "latest"
+    ? resolve(dirname(base), `${runParam}.console.json`)
+    : base;
 }
 
 function registeredClaimTypes() {

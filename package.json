@@ -35,6 +35,8 @@
     "dist/src/",
     "schemas/",
     "examples/*.json",
+    "examples/console-multi-producer/*.json",
+    "examples/console-multi-producer/README.md",
     "examples/external-adapter/README.md",
     "examples/external-adapter/example-input.json",
     "examples/external-adapter/package.json",

@@ -32,6 +32,7 @@ const stylePartFiles = [
   "07-evidence-details.css",
   "08-authoring-modal.css",
   "09-responsive.css",
+  "10-multi-producer.css",
 ];
 
 const [scriptPartSources, stylePartSources] = await Promise.all([
