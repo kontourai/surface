@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.2](https://github.com/kontourai/surface/compare/v2.1.1...v2.1.2) (2026-07-03)
+
+
+### Fixes
+
+* **settings:** point utteranceCheck bundlePath at gitignored runtime dir ([#113](https://github.com/kontourai/surface/issues/113)) ([b09ffb3](https://github.com/kontourai/surface/commit/b09ffb38e8cf0ac669883522412b58b603de5ee3))
+
 ## [2.1.1](https://github.com/kontourai/surface/compare/v2.1.0...v2.1.1) (2026-07-02)
 
 
