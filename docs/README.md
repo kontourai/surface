@@ -46,6 +46,7 @@ Maintainer-only material stays repo-only: this index, brand language, ADRs, audi
 - [Claim Authoring](reference/claim-authoring.md) — authored claim stores and `surface claim` write commands
 - [Extension API](reference/extension-api.md) — producer branding, vocabulary, claim types, and policy templates
 - [Adapters](reference/adapters.md) — adapter registry and producer-owned input mapping
+- [Claim Subject Matching](reference/claim-subject-matching.md) — matching incoming child rows to existing claim subjects by natural key, and disposing of orphaned claims (new, minimal, shape may evolve)
 - [Schemas](reference/schemas.md) — JSON contracts for adapter authors and downstream systems
 - [Examples](reference/examples.md) — examples used by tests and docs
 - [Schema Versioning](reference/schema-versioning.md) — versioning rules for contract changes

@@ -188,6 +188,10 @@ _Avoid_: Assertion, check, rule
 A claim whose value is a list or repeated entity set, such as schedules, aliases, line items, officers, or public-record rows. Surface can represent aggregate repeated-field provenance like any other claim value; independent row-level provenance requires durable row identifiers or separate row claims supplied by the producer.
 _Avoid_: Implicit per-row verification, hidden array semantics
 
+**Claim Subject Matching**:
+A producer-side reconciliation helper (`matchClaimSubjects`/`deriveOrphanedSubjectDisposition`) for a Repeated Field Claim's child rows: matching a freshly re-extracted row list against previously known rows by a producer-chosen natural key, then disposing of the claims belonging to a row that no longer appears using Surface's own `TrustStatus`/`VerificationEvent` vocabulary. Distinct from Identity Link, which resolves cross-producer subject coreference rather than one producer's own row-to-row reconciliation between syncs. New and minimal; the shape may evolve with real usage.
+_Avoid_: Identity Link, cross-producer coreference, a producer-invented disposition vocabulary
+
 **Current Claim Status**:
 The current derived trust state of a claim across available evidence, events, freshness, and conflicts. Current claim status is the primary way to inspect a claim without starting from a producer run; runs remain provenance for how the status was observed or changed.
 _Avoid_: Run-only status, workflow status, final truth
