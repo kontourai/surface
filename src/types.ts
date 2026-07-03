@@ -133,14 +133,16 @@ export interface IdentityLink {
   mappingClaimId?: string;
 }
 
-export type SchemaVersion = 2 | 3 | 4 | 5;
+export type SchemaVersion = 2 | 3 | 4 | 5 | 6;
 
 /**
  * The schemaVersion this release of surface WRITES on every bundle/report it
  * emits (buildTrustReport, mergeBundles/mergeBundlesDetailed, TrustBundleBuilder,
  * the verification-endpoint responder). Reading tolerates 2-4 (see validate.ts's
- * legacy facet/surface read-tolerance shim); writing is always 5 (Hachure
- * facet rename, one deliberate hard break — `surface` renamed to `facet`).
+ * legacy facet/surface read-tolerance shim) and 6 (hachure 0.10: optional
+ * `proof` block; every 5-valid bundle is 6-valid). Writing stays 5 until
+ * surface emits `proof` blocks itself — a bundle without `proof` is valid at
+ * either declaration, and 5 is the more conservative claim.
  */
 export const CURRENT_SCHEMA_VERSION: SchemaVersion = 5;
 export type DerivationMethod =
@@ -466,6 +468,21 @@ export interface TrustBundle {
   identityLinks?: IdentityLink[];
   claimGroups?: ClaimGroup[];
   authorityTrace?: AuthorityTrace[];
+  /**
+   * OPTIONAL signing/anchoring block (hachure schemaVersion 6). Carries
+   * integrity anchors produced under the Assurance profile — e.g. a
+   * `transparency_log` anchor holding a Rekor entry UUID. Absence means the
+   * bundle is L0 (unsigned, producer-asserted). Presence never changes status
+   * derivation; it is verified out-of-band per the consumer's assurance
+   * policy. Like `producerId`, `proof` MUST be omitted from merged output —
+   * a producer's signature does not survive merging with other producers.
+   */
+  proof?: TrustBundleProof;
+}
+
+export interface TrustBundleProof {
+  anchors?: IntegrityAnchor[];
+  metadata?: Record<string, unknown>;
 }
 
 /**

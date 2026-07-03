@@ -406,3 +406,39 @@ test("content identity: array element reordering IS a distinct content — one c
   assert.equal(arrayOrderCollisions.length, 1, "array-position difference must be reported as a collision");
   assert.equal(arrayOrderCollisions[0].collection, "claims");
 });
+
+// --- 5. proof block (hachure schemaVersion 6) round-trip + omission-on-merge --
+
+test("validateTrustBundle round-trips the schemaVersion-6 proof block; merge omits it", () => {
+  const proof = {
+    anchors: [
+      {
+        id: "anchor.rekor.entry",
+        kind: "transparency_log" as const,
+        algorithm: "rekor",
+        value: "24296fb24b8ad77a-example-log-entry-uuid",
+        sourceRef: "https://rekor.sigstore.dev/api/v1/log/entries/example",
+      },
+    ],
+  };
+  const signed = validateTrustBundle({ ...bundle({ source: "a" }), schemaVersion: 6, proof } as unknown);
+  assert.equal(signed.schemaVersion, 6, "schemaVersion 6 is accepted on read");
+  assert.equal(signed.proof?.anchors?.[0]?.kind, "transparency_log", "proof survives validation verbatim");
+
+  const unsigned = validateTrustBundle(bundle({ source: "b" }) as unknown);
+  assert.equal("proof" in unsigned, false, "absent proof stays absent (additive)");
+
+  assert.throws(
+    () => validateTrustBundle({ ...bundle({ source: "a" }), schemaVersion: 6, proof: { signature: "x" } } as unknown),
+    /proof/,
+    "unknown keys inside proof are rejected",
+  );
+
+  // A producer's signature does not survive merging with other producers:
+  // like producerId, proof MUST be omitted from merged output.
+  const { bundle: merged } = mergeBundlesDetailed([
+    { ...bundle({ source: "a" }), schemaVersion: 6, proof },
+    { ...bundle({ source: "b" }), schemaVersion: 6 },
+  ]);
+  assert.equal("proof" in merged, false, "merged bundle omits proof");
+});
