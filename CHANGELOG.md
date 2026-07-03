@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.0](https://github.com/kontourai/surface/compare/v2.1.2...v2.2.0) (2026-07-03)
+
+
+### Features
+
+* **validate:** hachure 0.10.1 — accept schemaVersion 6, round-trip the proof block ([#116](https://github.com/kontourai/surface/issues/116)) ([1ca7857](https://github.com/kontourai/surface/commit/1ca7857e971fd4898480281b97b0651d3189f7d3))
+
 ## [2.1.2](https://github.com/kontourai/surface/compare/v2.1.1...v2.1.2) (2026-07-03)
 
 
