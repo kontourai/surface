@@ -1,4 +1,4 @@
-import type { TrustBundle } from "./types.js";
+import type { TrustBundle, TrustBundleProof } from "./types.js";
 import {
   CLAIM_KEYS,
   DERIVATION_EDGE_KEYS,
@@ -76,6 +76,10 @@ export function validateTrustBundle(input: unknown): TrustBundle {
   // already rejects empty strings, matching the "minLength 1 when present" rule
   // used for every other optional string field in this validator.
   const producerId = input.producerId === undefined ? undefined : requireString(input, "producerId");
+  // Optional signing/anchoring block (hachure schemaVersion 6). Validated and
+  // carried through verbatim so signed bundles round-trip without losing their
+  // proof; never consulted by status derivation.
+  const proof = input.proof === undefined ? undefined : validateTrustBundleProof(input.proof);
   const claims = requireArray(input, "claims").map(normalizeClaimFacetForRead);
   const evidence = requireArray(input, "evidence");
   const policies = requireArray(input, "policies");
@@ -324,5 +328,22 @@ export function validateTrustBundle(input: unknown): TrustBundle {
   if (identityLinks !== undefined) (result as TrustBundle).identityLinks = identityLinks as TrustBundle["identityLinks"];
   if (claimGroups !== undefined) (result as TrustBundle).claimGroups = claimGroups as TrustBundle["claimGroups"];
   if (authorityTrace !== undefined) (result as TrustBundle).authorityTrace = authorityTrace as TrustBundle["authorityTrace"];
+  if (proof !== undefined) (result as TrustBundle).proof = proof;
   return result;
+}
+
+function validateTrustBundleProof(value: unknown): TrustBundleProof {
+  if (!isObject(value)) throw new Error("Trust bundle proof must be an object");
+  rejectUnknownKeys(value, new Set(["anchors", "metadata"]), "trust bundle proof");
+  const proof: TrustBundleProof = {};
+  if (value.anchors !== undefined) {
+    if (!Array.isArray(value.anchors)) throw new Error("Trust bundle proof.anchors must be an array");
+    value.anchors.forEach((anchor, index) => validateIntegrityAnchor(anchor, `proof anchors[${index}]`));
+    proof.anchors = value.anchors as TrustBundleProof["anchors"];
+  }
+  if (value.metadata !== undefined) {
+    if (!isObject(value.metadata)) throw new Error("Trust bundle proof.metadata must be an object");
+    proof.metadata = value.metadata as Record<string, unknown>;
+  }
+  return proof;
 }

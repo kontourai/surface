@@ -6,7 +6,7 @@
   "additionalProperties": false,
   "required": ["schemaVersion", "source", "claims", "evidence", "policies", "events"],
   "properties": {
-    "schemaVersion": { "enum": [5] },
+    "schemaVersion": { "enum": [5, 6] },
     "source": { "type": "string" },
     "producerId": {
       "type": "string",
@@ -40,6 +40,18 @@
     "authorityTrace": {
       "type": "array",
       "items": { "$ref": "#/$defs/authorityTrace" }
+    },
+    "proof": {
+      "type": "object",
+      "description": "Optional signing/anchoring block (added at schemaVersion 6). Carries integrity anchors produced under the Assurance profile (assurance.md) -- e.g. a transparency_log anchor holding a Rekor entry UUID (interop-in-toto.md section 'Upload to Rekor directly'), or a signature anchor. Absence means the bundle is L0 (unsigned, producer-asserted). Presence never changes status derivation; it is verified out-of-band per the consumer's assurance policy.",
+      "additionalProperties": false,
+      "properties": {
+        "anchors": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/integrityAnchor" }
+        },
+        "metadata": { "type": "object" }
+      }
     }
   },
   "$defs": {

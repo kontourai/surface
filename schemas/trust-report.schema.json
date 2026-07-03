@@ -23,7 +23,7 @@
     "statusFunctionVersion"
   ],
   "properties": {
-    "schemaVersion": { "enum": [5] },
+    "schemaVersion": { "enum": [5, 6] },
     "id": { "type": "string" },
     "generatedAt": { "type": "string", "format": "date-time" },
     "source": { "type": "string" },
