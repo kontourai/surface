@@ -300,6 +300,10 @@ _Avoid_: Full raw audit log in every Trust Panel
 The normal lifecycle state for a claim that no longer applies but should remain available for history, auditability, and explanation. Hard deletion should be reserved for mistakes, sensitive data handling, or producer retention policy.
 _Avoid_: Silent deletion, active claim
 
+**Claim Store Adapter**:
+The pluggable storage seam (`ClaimStoreAdapter`) behind the authored claim store: `load()`/`save()` over a `ClaimStore`, implemented by the built-in file adapter (`createFileClaimStoreAdapter`) or by a producer-owned backend such as a database. Subject-scoped persistence is a property of how a specific adapter instance is constructed, not a second interface method.
+_Avoid_: New required interface method per backend, a database dependency inside Surface's core package
+
 **Authority Trace**:
 The inspectable path showing why an actor or system had authority to verify, attest, modify, approve, or own a claim. Authority trace may reference identity systems, role sources, licenses, CODEOWNERS, attestations, validity windows, revocation markers, and integrity references without requiring raw sensitive identity data.
 _Avoid_: Account profile, permission graph, raw auth log, Survey source-authority metadata

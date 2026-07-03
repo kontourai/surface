@@ -31,6 +31,34 @@ export function saveClaimStore(store: ClaimStore, path: string): void {
   writeFileSync(path, `${JSON.stringify(validateClaimStore(store), null, 2)}\n`, "utf8");
 }
 
+// Storage-adapter seam: `ClaimStoreAdapter` generalizes claim-catalog
+// persistence beyond the file-based CLI use case (e.g. a Postgres-backed
+// consumer scoping claims to a subject). Async-only by design — a
+// synchronous backend (the file adapter below) trivially satisfies an
+// async-typed contract, but an inherently async backend (a DB pool) could
+// never satisfy a sync-typed one. Subject-scoped queries are NOT a second
+// interface method: an adapter implementation that needs to scope
+// load()/save() to a subject does so via its own constructor parameters
+// (see examples/postgres-claim-store/), keeping this interface at exactly
+// two methods. See docs/reference/adapters.md.
+export interface ClaimStoreAdapter {
+  /** Adapter implementation name (e.g. "file", "postgres") — diagnostic only. */
+  readonly name: string;
+  load(): Promise<ClaimStore>;
+  save(store: ClaimStore): Promise<void>;
+}
+
+// Wraps the existing synchronous loadClaimStore/saveClaimStore — same
+// behavior (empty store on missing path, same validation, same JSON
+// formatting on write), exposed through the async ClaimStoreAdapter shape.
+export function createFileClaimStoreAdapter(path: string): ClaimStoreAdapter {
+  return {
+    name: "file",
+    load: async () => loadClaimStore(path),
+    save: async (store) => saveClaimStore(store, path),
+  };
+}
+
 export function addClaimToStore(store: ClaimStore, claim: ClaimDefinition): ClaimStore {
   const normalized = validateClaimDefinition(claim);
   if (store.claims.some((item) => item.id === normalized.id)) {

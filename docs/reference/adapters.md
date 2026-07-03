@@ -67,3 +67,32 @@ Surface does not discover adapters from `node_modules` or config. Registration i
 Surface no longer ships `npm-audit`, `field-attested-records`, or `fact-resolution` as built-in adapters. For npm audit-style evidence collection, use a Veritas plugin so the tool owner can own the evidence mapping.
 
 See the [external adapter example](../../examples/external-adapter/README.md) for a package-shaped reference implementation, and [Use Cases](../product/use-cases.md) for the domain scenarios these patterns serve.
+
+### Storage adapters
+
+A different concern from the ingestion adapter above: a storage adapter persists an authored claim store (the `ClaimStore` shape behind `veritas.claims.json` and the authored-claim-store pattern), not raw product output. Surface's built-in claim store is file-based (`loadClaimStore`/`saveClaimStore`), but a producer with a larger claim catalog may want a database-backed store instead — the `ClaimStoreAdapter` seam generalizes that without changing the file-based CLI path.
+
+Status: new, minimal interface — the shape may evolve based on real consumer feedback.
+
+```ts
+export interface ClaimStoreAdapter {
+  /** Adapter implementation name (e.g. "file", "postgres") — diagnostic only. */
+  readonly name: string;
+  load(): Promise<ClaimStore>;
+  save(store: ClaimStore): Promise<void>;
+}
+```
+
+`createFileClaimStoreAdapter(path)` wraps the existing synchronous `loadClaimStore`/`saveClaimStore` functions behind this async interface — same empty-store-on-missing-file behavior, same validation, same JSON formatting on write:
+
+```ts
+import { createFileClaimStoreAdapter } from "@kontourai/surface";
+
+const adapter = createFileClaimStoreAdapter("veritas.claims.json");
+const store = await adapter.load();
+await adapter.save(store);
+```
+
+The interface is deliberately minimal — exactly `load()`/`save()`, nothing scoped. A backend that needs to scope queries to a subject (so it never loads or saves an entire claim catalog on every operation) does that through its own constructor parameters instead of a wider interface: for example, a Postgres-backed adapter can be built as `createPostgresClaimStoreAdapter({ pool, subjectType, subjectId })`, and from the caller's point of view `load()` still returns "the whole store" — for that adapter instance, that means the claims/policies in scope for the subject it was constructed for.
+
+See [`examples/postgres-claim-store/`](../../examples/postgres-claim-store/README.md) for a runnable reference implementation against a real Postgres connection, following the same "copy and adapt, not import" shape as the external adapter example above. It is not compiled into `dist/` and does not add `pg` as a dependency of `@kontourai/surface` itself, which ships zero runtime dependencies.
