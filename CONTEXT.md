@@ -84,6 +84,10 @@ _Avoid_: Foundation format, UI-only integration
 The lightweight governance needed to keep Surface adoption meaningful, including versioned specs, changelogs, deprecations, conformance fixtures, and ADRs for major semantic changes. Formal governance can grow if external adoption warrants it.
 _Avoid_: Heavy standards body before adoption
 
+**Product Vocabulary**:
+The target product-language terms Surface adopts in human-facing docs and specs, distinct from implementation and schema names that may still appear in exact technical references. Decided by ADR and migrated deliberately (see the Migration Map pattern) rather than renamed ad hoc.
+_Avoid_: Renaming code identifiers to match product terms, treating implementation names as product language
+
 **End User**:
 Descriptive language for a person using a product built with Surface. Use **Viewer** as the Surface role for someone inspecting trust state.
 _Avoid_: Role name, operator, consumer
@@ -243,6 +247,10 @@ _Avoid_: Evidence in general, signature, approval without authority
 **Attestation Validity**:
 Whether an attestation has enough visible identity, authority, freshness, and integrity context to satisfy a policy. Attestation validity is separate from the truth of the attested claim.
 _Avoid_: Actor legitimacy guarantee, authorization system, automatic proof
+
+**Testimony**:
+A `ReviewOutcome`'s `authorizing` block: a self-contained, admissible record of how a human was asked and what authorized their answer, collected via one of three kinds (`explicit-statement`, `exchange`, `authorized-action`) matched to the collection channel (cli-interactive, delegated, ui). Testimony is distinct from Attestation: Testimony is Surface's admissibility taxonomy for reviewer decisions specifically, not a general evidence type.
+_Avoid_: Attestation (general evidence type), raw click/consent logging, silent hard-blocking on missing testimony
 
 **Evidence Trace**:
 The inspectable path showing how evidence was produced, including source, method, actor or system, timestamp, tool or run context, logs when relevant, and integrity scope. Surface standardizes evidence traceability without owning evidence collection.
