@@ -95,12 +95,15 @@ test("package scripts are classified active repo workflows", async () => {
     "check:console-assets",
     "check:console-token-drift",
     "check:content-boundary",
+    "check:decisions",
     "check:doc-links",
     "check:generated-boundaries",
     "check:package-contents",
     "check:trust-panel-module",
     "check:ui-assets",
     "docs:build",
+    "freeze:adrs",
+    "gen:decisions-index",
     "prepare",
     "release:trust-bundle",
     "setup:repo-hooks",
@@ -119,6 +122,7 @@ test("package scripts are classified active repo workflows", async () => {
     "verify:trust-bundle",
   ]);
   assert.match(packageJson.scripts?.verify ?? "", /check-content-boundary/);
+  assert.match(packageJson.scripts?.verify ?? "", /check:decisions/);
   assert.match(packageJson.scripts?.verify ?? "", /check:doc-links/);
   assert.match(packageJson.scripts?.verify ?? "", /check:generated-boundaries/);
   assert.match(packageJson.scripts?.verify ?? "", /check:package-contents/);

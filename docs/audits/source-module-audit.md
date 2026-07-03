@@ -91,6 +91,9 @@ Every `package.json` script is an active repo workflow, release guard, or contri
 | `prepare` | npm lifecycle | Builds the package before npm packaging/install lifecycle hooks need `dist/`. |
 | `release:trust-bundle` | Release guard | Generates a TrustBundle and TrustReport for the current release commit by running real checks and capturing evidence. |
 | `check:content-boundary` | Guard | Prevents terminology and content-boundary regressions. |
+| `check:decisions` | Guard | Validates `docs/decisions/*.md` topic-keyed decision records against the vendored schema and asserts `docs/decisions/index.md` is current (`context/contracts/decision-registry-contract.md` in kontourai/flow-agents). |
+| `gen:decisions-index` | Contributor utility | Regenerates `docs/decisions/index.md` deterministically from the current topic files. |
+| `freeze:adrs` | Contributor utility | Freezes `docs/adr/NNNN-*.md` files with an immutable-history banner, regenerates `docs/adr/index.md`, and seeds/updates `needs-decision` stubs in `docs/decisions/` (ADR freeze-and-index pattern, kontourai/traverse PR #17). |
 | `setup:repo-hooks` | Contributor utility | Installs repo-owned local Git hooks. |
 | `validate:repo-hooks` | Guard | Verifies the repo hook wiring and docs stay aligned. |
 | `verify:trust-bundle` | Release utility | `structural-only` trust-bundle inspection for a signed trust-bundle.dsse.json + trust-bundle.sigstore.json pair; full Sigstore cryptographic verification remains unavailable in this script and must be performed manually with a separate verifier. |
