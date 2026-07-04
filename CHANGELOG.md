@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.3.0](https://github.com/kontourai/surface/compare/v2.2.0...v2.3.0) (2026-07-04)
+
+
+### Features
+
+* add claim-subject identity matching ([#119](https://github.com/kontourai/surface/issues/119)) ([91c5796](https://github.com/kontourai/surface/commit/91c5796a597e9f1c456f214333530b78e2470310))
+* ClaimStore storage-adapter seam ([#118](https://github.com/kontourai/surface/issues/118)) ([2e6dd2b](https://github.com/kontourai/surface/commit/2e6dd2b5e518260bc575a25560ebe99b8abb535e))
+
 ## [2.2.0](https://github.com/kontourai/surface/compare/v2.1.2...v2.2.0) (2026-07-03)
 
 
