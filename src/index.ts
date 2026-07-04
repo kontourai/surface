@@ -7,6 +7,7 @@ export * from "./report.js";
 export * from "./validate.js";
 export * from "./adapter.js";
 export * from "./identity.js";
+export * from "./claim-subject-matching.js";
 export * from "./merge.js";
 export * from "./policy-resolver.js";
 export * from "./policy-helpers.js";
