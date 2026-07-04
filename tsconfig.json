@@ -12,6 +12,6 @@
     "skipLibCheck": true
   },
   "include": ["src/**/*.ts", "tests/**/*.ts", "examples/**/*.ts"],
-  "exclude": ["examples/external-adapter"]
+  "exclude": ["examples/external-adapter", "examples/postgres-claim-store"]
 }
 

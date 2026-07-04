@@ -42,6 +42,11 @@
     "examples/external-adapter/package.json",
     "examples/external-adapter/src/",
     "examples/external-adapter/tsconfig.json",
+    "examples/postgres-claim-store/README.md",
+    "examples/postgres-claim-store/package.json",
+    "examples/postgres-claim-store/schema.sql",
+    "examples/postgres-claim-store/src/",
+    "examples/postgres-claim-store/tsconfig.json",
     "docs/",
     "README.md",
     "LICENSE"
