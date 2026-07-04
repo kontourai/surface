@@ -1,0 +1,19 @@
+{
+  "name": "@kontourai/surface-postgres-claim-store-example",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "demo": "npm run build && node dist/index.js"
+  },
+  "dependencies": {
+    "@kontourai/surface": "file:../..",
+    "pg": "^8.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.2",
+    "@types/pg": "^8.15.0",
+    "typescript": "^6.0.3"
+  }
+}
