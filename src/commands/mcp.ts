@@ -8,6 +8,7 @@ import type { TrustReport } from "../types.js";
 import { loadReport, requireValue, type QueryOptions } from "./shared.js";
 import { projectClaimQuery, projectPolicyQuery } from "./query.js";
 import { buildTrustPanelUiResource } from "../mcp-ui/trust-panel-resource.js";
+import { deriveWaiverValidity, type WaiverValidity } from "../waiver.js";
 
 /**
  * Minimal Model Context Protocol server over stdio.
@@ -125,6 +126,29 @@ const tools: ToolDefinition[] = [
       const claimData = projectClaimQuery(report, claimId);
       if (options.noUi) return claimData;
       return { _claimData: claimData, _report: report, _ui: `claim-${claimId}` };
+    },
+  },
+  {
+    name: "surface_waiver_validity",
+    title: "Waiver validity",
+    description:
+      "Derive waiver validity for assumed/stale/revoked claims from claim.metadata.waiver: bare-assumed, complete-waiver, incomplete-waiver, stale-or-revoked-waiver, or command-backed-waiver-rejection. approverAuthenticated is always false (approved_by is unauthenticated free text). With claimId, returns just that claim's verdict; without it, returns the map for every claim in the report.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        claimId: { type: "string", description: "Optional claim id to inspect. Without it, every claim's verdict is returned." },
+        ...sharedToolProperties,
+      },
+    },
+    run: async (args, options) => {
+      const report = await loadToolReport(args, options);
+      const claimId = stringArg(args, "claimId");
+      const byClaimId = buildWaiverValidityByClaimId(report);
+      if (claimId) {
+        if (!(claimId in byClaimId)) throw new Error(`Unknown claim: ${claimId}`);
+        return { [claimId]: byClaimId[claimId] };
+      }
+      return byClaimId;
     },
   },
   {
@@ -318,6 +342,28 @@ async function loadToolReport(args: Record<string, unknown>, options: McpServerO
     input: input ? resolve(input) : options.input,
     adapter: adapter ?? options.adapter,
   });
+}
+
+/**
+ * Derives waiver validity per claim by calling `deriveWaiverValidity` directly
+ * against the report's already-derived claims and per-claim evidence, mirroring
+ * the exact `evidence.filter((item) => item.claimId === claim.id)` pattern
+ * `trust-snapshot.ts`/`query.ts` already use elsewhere in this file.
+ *
+ * `TrustReport.waiverValidityByClaimId` (Task S3) is not yet available on this
+ * report shape, so this tool computes the map itself rather than reading a
+ * report field. Once Task S3 lands, this can be simplified to
+ * `report.waiverValidityByClaimId`; both compute an identical result from the
+ * same `deriveWaiverValidity` function, since the report field is built via
+ * the same per-claim call site.
+ */
+function buildWaiverValidityByClaimId(report: TrustReport): Record<string, WaiverValidity> {
+  const byClaimId: Record<string, WaiverValidity> = {};
+  for (const claim of report.claims) {
+    const evidence = report.evidence.filter((item) => item.claimId === claim.id);
+    byClaimId[claim.id] = deriveWaiverValidity({ claim, status: claim.status, evidence });
+  }
+  return byClaimId;
 }
 
 function stringArg(args: Record<string, unknown>, key: string): string | undefined {

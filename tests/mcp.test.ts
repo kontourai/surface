@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { createInterface } from "node:readline";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 interface JsonRpcResponse {
   jsonrpc: string;
@@ -52,6 +55,7 @@ test("surface mcp serves trust state over the Model Context Protocol", async () 
       "surface_policy",
       "surface_stale_claims",
       "surface_summary",
+      "surface_waiver_validity",
     ]);
     for (const tool of toolsList.result.tools) {
       assert.equal(typeof tool.description, "string");
@@ -233,6 +237,130 @@ test("surface mcp --no-ui omits the UI resource entry", async () => {
   } finally {
     server.stdin.end();
     await once(server, "exit");
+  }
+});
+
+test("surface_waiver_validity tool: tools/list entry and call round-trip", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "surface-mcp-waiver-"));
+  const bundlePath = join(dir, "waiver-bundle.json");
+  const waivedClaimId = "claim.waiver-test.waived";
+  const bareClaimId = "claim.waiver-test.bare";
+  await writeFile(
+    bundlePath,
+    JSON.stringify({
+      schemaVersion: 3,
+      source: "surface-mcp-waiver-validity-test",
+      claims: [
+        {
+          id: waivedClaimId,
+          subjectType: "test-subject",
+          subjectId: "subject-waived",
+          claimType: "test-claim",
+          fieldOrBehavior: "status",
+          value: "OK",
+          status: "assumed",
+          createdAt: "2026-06-01T00:00:00.000Z",
+          updatedAt: "2026-06-01T00:00:00.000Z",
+          metadata: {
+            waiver: {
+              reason: "Deferred pending release.",
+              approved_by: "actor:eng-lead-1",
+              approved_at: "2026-06-01T00:00:00.000Z",
+            },
+          },
+        },
+        {
+          id: bareClaimId,
+          subjectType: "test-subject",
+          subjectId: "subject-bare",
+          claimType: "test-claim",
+          fieldOrBehavior: "status",
+          value: "OK",
+          status: "assumed",
+          createdAt: "2026-06-01T00:00:00.000Z",
+          updatedAt: "2026-06-01T00:00:00.000Z",
+        },
+      ],
+      evidence: [],
+      policies: [],
+      events: [],
+    }),
+    "utf8",
+  );
+
+  const server = spawn("node", ["bin/surface.mjs", "mcp", "--input", bundlePath, "--no-ui"], {
+    stdio: ["pipe", "pipe", "inherit"],
+  });
+  const responses = collectResponses(server.stdout);
+
+  try {
+    send(server, {
+      jsonrpc: "2.0",
+      id: 1,
+      method: "initialize",
+      params: {
+        protocolVersion: "2025-06-18",
+        capabilities: {},
+        clientInfo: { name: "surface-tests", version: "0.0.0" },
+      },
+    });
+    await responses.next(1);
+    send(server, { jsonrpc: "2.0", method: "notifications/initialized" });
+
+    send(server, { jsonrpc: "2.0", id: 2, method: "tools/list" });
+    const toolsList = await responses.next(2);
+    const waiverTool = toolsList.result.tools.find(
+      (tool: { name: string }) => tool.name === "surface_waiver_validity",
+    );
+    assert.ok(waiverTool, "surface_waiver_validity must be listed");
+    assert.equal(typeof waiverTool.description, "string");
+    assert.equal(waiverTool.inputSchema.type, "object");
+    assert.equal(waiverTool.inputSchema.properties.claimId.type, "string");
+
+    // Call without claimId: every claim in the report gets a verdict.
+    send(server, {
+      jsonrpc: "2.0",
+      id: 3,
+      method: "tools/call",
+      params: { name: "surface_waiver_validity", arguments: {} },
+    });
+    const all = await responses.next(3);
+    assert.equal(all.result.isError, false);
+    const allMap = JSON.parse(all.result.content[0].text);
+    assert.equal(allMap[waivedClaimId].verdict, "complete-waiver");
+    assert.equal(allMap[waivedClaimId].approverAuthenticated, false);
+    assert.equal(allMap[waivedClaimId].waiver.reason, "Deferred pending release.");
+    assert.equal(allMap[bareClaimId].verdict, "bare-assumed");
+    assert.equal(allMap[bareClaimId].approverAuthenticated, false);
+    assert.equal(allMap[bareClaimId].waiver, undefined);
+
+    // Call with claimId: only that claim's verdict comes back.
+    send(server, {
+      jsonrpc: "2.0",
+      id: 4,
+      method: "tools/call",
+      params: { name: "surface_waiver_validity", arguments: { claimId: waivedClaimId } },
+    });
+    const filtered = await responses.next(4);
+    assert.equal(filtered.result.isError, false);
+    const filteredMap = JSON.parse(filtered.result.content[0].text);
+    assert.deepEqual(Object.keys(filteredMap), [waivedClaimId]);
+    assert.equal(filteredMap[waivedClaimId].verdict, "complete-waiver");
+
+    // Unknown claimId is an error, mirroring surface_get_claim.
+    send(server, {
+      jsonrpc: "2.0",
+      id: 5,
+      method: "tools/call",
+      params: { name: "surface_waiver_validity", arguments: { claimId: "claim.does-not-exist" } },
+    });
+    const missing = await responses.next(5);
+    assert.equal(missing.result.isError, true);
+    assert.match(missing.result.content[0].text, /Unknown claim/);
+  } finally {
+    server.stdin.end();
+    await once(server, "exit");
+    await rm(dir, { recursive: true, force: true });
   }
 });
 
