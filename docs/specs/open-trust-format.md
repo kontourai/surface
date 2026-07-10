@@ -2,7 +2,7 @@
 
 Status: first pass
 
-The Open Trust Format is Surface's portability commitment: trust state must be schema-first, exportable, embeddable, locally inspectable, and usable without a proprietary hosted service.
+The Open Trust Format is Surface's portability commitment: trust state must be schema-first, exportable, embeddable, locally inspectable, and usable without a proprietary hosted service. The record shapes and status semantics are specified by the product-neutral Hachure spec (the `hachure.org/v1` namespace); Surface syncs its schemas from it and commits to keeping trust state portable and locally inspectable.
 
 ## Claim Package
 

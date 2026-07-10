@@ -10,7 +10,7 @@ A claim with no supporting evidence is `unknown`, not `false`. A claim whose pol
 - **Unsupported** — we have evidence, but not enough under the policy.
 - **Refuted** — we have evidence that the claim does not hold.
 
-Closing-world shortcuts (no row in a table → not a customer, null field → not high-gross) are the kind of silent failure Surface is built to prevent. Missing data should be visible as missing.
+Closing-world shortcuts (no row in a table → not a customer, null field → not high-gross) are the kind of silent failure Surface is built to make visible. Missing data should be visible as missing.
 
 ## Deterministic by default
 
@@ -18,7 +18,7 @@ Status, freshness, transparency gaps, and evidence requirements are derived from
 
 Models are welcome at the evidence edge — they can extract, summarize, observe, and attest. They are not welcome inside the trust derivation. Reasoning about what counts as verified happens once, in the kernel, and every downstream system reads the same answer.
 
-This is also a cost principle. An agent that reads a Surface report does not spend tokens to decide whether something is verified. The kernel already decided.
+Verification is decided once, in the kernel, and every downstream reader gets the same answer without re-deriving it.
 
 ## Stable kernel, evolving policies, broad evidence
 

@@ -140,7 +140,7 @@ Confidence basis records how much verification depth supports a claim. It captur
 - `reviewerAuthority`: who verified the claim (system, human, agent)
 - `evidenceStrength`: for technical evidence, the evidence strength (strong, moderate, weak)
 
-When claims depend on other claims (`derivedFrom` or `derivationEdges`), the confidence ceiling is determined by the weakest link in the chain. Surface applies derivation ceilings to prevent upstream weak links from inflating downstream confidence.
+When claims depend on other claims (`derivedFrom` or `derivationEdges`), the derived claim's status is capped by the weakest link in the chain. This is a status ceiling: an upstream weak link cannot surface as a confidently `verified` downstream claim. The authored `confidenceBasis` fields themselves travel through the report unchanged; they are recorded context, not recomputed.
 
 ## Derivation
 
