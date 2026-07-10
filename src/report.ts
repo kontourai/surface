@@ -15,6 +15,7 @@ import { deriveTrustSnapshot } from "./trust-snapshot.js";
 import type { SnapshotEventProbe } from "./trust-snapshot.js";
 import { statusFunctionVersion } from "./status.js";
 import { isUnsupportedStatus, TRUST_STATUS_ORDER } from "./status-taxonomy.js";
+import { waiverValidityFunctionVersion } from "./waiver.js";
 
 const TRANSPARENCY_GAP_TYPES: TransparencyGapType[] = [
   "contradiction",
@@ -69,6 +70,8 @@ export function buildTrustReport(input: TrustBundle, options: BuildTrustReportOp
     claimGroupRollups: snapshot.claimGroupRollups,
     summary: summarizeClaims(snapshot.claims, snapshot.transparencyGaps, snapshot.changeRecords),
     statusFunctionVersion,
+    waiverValidityByClaimId: snapshot.waiverValidityByClaimId,
+    waiverValidityFunctionVersion,
   };
 }
 

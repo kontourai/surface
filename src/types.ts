@@ -1,3 +1,5 @@
+import type { WaiverValidity } from "./waiver.js";
+
 export type TrustStatus =
   | "unknown"
   | "proposed"
@@ -613,6 +615,21 @@ export interface TrustReport extends TrustBundle {
    * tell whether a child report is still derivable under the same semantics.
    */
   statusFunctionVersion: string;
+  /**
+   * Per-claim waiver validity verdict, keyed by claim id (sibling map to
+   * `evidenceRequirementsByClaimId`). This is additive TS-only output: it is
+   * NOT yet declared in the vendored Hachure JSON schema, so a schema-only
+   * consumer will not see this field. See `docs/reference/waiver-validity.md`
+   * for the derivation semantics and `deriveWaiverValidity` in `waiver.ts`.
+   */
+  waiverValidityByClaimId: Record<string, WaiverValidity>;
+  /**
+   * Static version of the waiver validity derivation algorithm used to
+   * produce this report, mirroring `statusFunctionVersion`'s convention. Also
+   * additive TS-only output, not yet declared in the vendored JSON schema
+   * (see `docs/reference/waiver-validity.md`).
+   */
+  waiverValidityFunctionVersion: string;
 }
 
 /**

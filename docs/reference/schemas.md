@@ -123,6 +123,8 @@ Generated transparency gaps preserve claim `materiality` when present. Analytics
 
 Type: `TrustReport`, exported from the package. The report is a surface read-model with no separate shipped JSON Schema — the `schemas/` directory mirrors the canonical Hachure trust-format schemas (synced from the `hachure` dependency via `npm run sync:schemas`).
 
+`waiverValidityByClaimId` (and its companion `waiverValidityFunctionVersion`) is a Surface-only additive `TrustReport` field: it is populated by `buildTrustReport` and round-trips through `surface report` CLI JSON, but it is **not yet declared** in the vendored, `additionalProperties: false` `trust-report.schema.json` (byte-identical to the `hachure-org/spec` copy, synced via `npm run sync:schemas`). A strict external ajv validation of Surface's own report JSON against the shipped schema will not yet recognize this key — closing that gap requires a real Hachure-side schema PR, version bump, and npm publish. See [Waiver Validity](waiver-validity.md) for the field's shape and the disclosed stop-short risk.
+
 ## Eval Summary
 
 `EvalSummary` is a producer-agnostic record for post-hoc evaluation of a run. Producers such as Veritas write it into the run snapshot after a human reviews a completed run. The console displays it alongside live trust state.

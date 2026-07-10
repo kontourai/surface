@@ -18,6 +18,7 @@ import { deriveConflictTransparencyGaps } from "./conflict-derivation.js";
 import { applyDerivation } from "./derivation.js";
 import { buildIdentityIndex } from "./identity.js";
 import { statusFunctionVersion } from "./status.js";
+import { deriveWaiverValidity, type WaiverValidity } from "./waiver.js";
 
 export interface TrustSnapshotDerivation {
   claims: DerivedReportClaim[];
@@ -26,6 +27,13 @@ export interface TrustSnapshotDerivation {
   changeRecords: DerivationChangeRecord[];
   subjectGroups: SubjectGroup[];
   claimGroupRollups: ClaimGroupRollup[];
+  /**
+   * Per-claim waiver validity verdict, keyed by claim id (mirrors
+   * `evidenceRequirementsByClaimId`'s sibling-map shape). Additive TS-only
+   * output — not yet declared in the vendored Hachure JSON schema (see
+   * `docs/reference/waiver-validity.md`).
+   */
+  waiverValidityByClaimId: Record<string, WaiverValidity>;
 }
 
 export interface DeriveTrustSnapshotOptions {
@@ -131,6 +139,13 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
     return folded;
   });
 
+  // Null-prototype map: a claim id of `__proto__`, `toString`, or
+  // `constructor` must become an ordinary own key, never resolve through the
+  // prototype chain. `evidenceRequirementsByClaimId` above has the same
+  // latent plain-object-map defect but is intentionally NOT touched here
+  // (pre-existing, out of scope for this fix — named as a follow-up-issue
+  // candidate).
+  const waiverValidityByClaimId: Record<string, WaiverValidity> = Object.create(null);
   const claims = foldedClaims.map((folded) => {
     const outcome = applyDerivation({
       claim: folded.claim,
@@ -150,6 +165,11 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
     if (folded.producerStatus !== undefined && folded.producerStatus !== derived) {
       output.producerStatus = folded.producerStatus;
     }
+    waiverValidityByClaimId[folded.claim.id] = deriveWaiverValidity({
+      claim: folded.claim,
+      status: derived,
+      evidence: folded.evidence,
+    });
     return output;
   });
 
@@ -167,5 +187,6 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
     changeRecords,
     subjectGroups: identityIndex.groups,
     claimGroupRollups: deriveClaimGroupRollups({ claimGroups: input.claimGroups, claims }),
+    waiverValidityByClaimId,
   };
 }

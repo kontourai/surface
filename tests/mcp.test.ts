@@ -3,6 +3,10 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { createInterface } from "node:readline";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { buildTrustReport, deriveWaiverValidity, validateTrustBundle } from "../src/index.js";
 
 interface JsonRpcResponse {
   jsonrpc: string;
@@ -52,6 +56,7 @@ test("surface mcp serves trust state over the Model Context Protocol", async () 
       "surface_policy",
       "surface_stale_claims",
       "surface_summary",
+      "surface_waiver_validity",
     ]);
     for (const tool of toolsList.result.tools) {
       assert.equal(typeof tool.description, "string");
@@ -233,6 +238,416 @@ test("surface mcp --no-ui omits the UI resource entry", async () => {
   } finally {
     server.stdin.end();
     await once(server, "exit");
+  }
+});
+
+test("surface_waiver_validity tool: tools/list entry and call round-trip", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "surface-mcp-waiver-"));
+  const bundlePath = join(dir, "waiver-bundle.json");
+  const waivedClaimId = "claim.waiver-test.waived";
+  const bareClaimId = "claim.waiver-test.bare";
+  const staleClaimId = "claim.waiver-test.stale";
+  const commandBackedClaimId = "claim.waiver-test.command-backed";
+  const escReasonClaimId = "claim.waiver-test.esc-reason";
+  const bidiApprovedByClaimId = "claim.waiver-test.bidi-approved-by";
+  // Raw ESC byte in `reason` -- proves the double JSON.stringify encoding
+  // already neutralizes ANSI injection (finding 6, test (a)).
+  const escReason = "\x1b[31mhack\x1b[0m";
+  // Raw RTL-override character in `approved_by` -- proves the new
+  // stripUnsafeRenderingChars fix (finding 6, test (b)); JSON.stringify alone
+  // would let this character through untouched.
+  const bidiApprovedBy = "\u202eevil\u202c";
+
+  const bundle = {
+    schemaVersion: 3,
+    source: "surface-mcp-waiver-validity-test",
+    claims: [
+      {
+        id: waivedClaimId,
+        subjectType: "test-subject",
+        subjectId: "subject-waived",
+        claimType: "test-claim",
+        fieldOrBehavior: "status",
+        value: "OK",
+        status: "assumed",
+        createdAt: "2026-06-01T00:00:00.000Z",
+        updatedAt: "2026-06-01T00:00:00.000Z",
+        metadata: {
+          waiver: {
+            reason: "Deferred pending release.",
+            approved_by: "actor:eng-lead-1",
+            approved_at: "2026-06-01T00:00:00.000Z",
+          },
+        },
+      },
+      {
+        id: bareClaimId,
+        subjectType: "test-subject",
+        subjectId: "subject-bare",
+        claimType: "test-claim",
+        fieldOrBehavior: "status",
+        value: "OK",
+        status: "assumed",
+        createdAt: "2026-06-01T00:00:00.000Z",
+        updatedAt: "2026-06-01T00:00:00.000Z",
+      },
+      {
+        id: staleClaimId,
+        subjectType: "test-subject",
+        subjectId: "subject-stale",
+        claimType: "test-claim",
+        fieldOrBehavior: "status",
+        value: "OK",
+        status: "stale",
+        createdAt: "2026-06-01T00:00:00.000Z",
+        updatedAt: "2026-06-01T00:00:00.000Z",
+        metadata: {
+          waiver: {
+            reason: "Deferred pending release.",
+            approved_by: "actor:eng-lead-1",
+            approved_at: "2026-06-01T00:00:00.000Z",
+          },
+        },
+      },
+      {
+        id: commandBackedClaimId,
+        subjectType: "test-subject",
+        subjectId: "subject-command-backed",
+        claimType: "test-claim",
+        fieldOrBehavior: "status",
+        value: "OK",
+        status: "assumed",
+        createdAt: "2026-06-01T00:00:00.000Z",
+        updatedAt: "2026-06-01T00:00:00.000Z",
+        metadata: {
+          waiver: {
+            reason: "Deferred pending release.",
+            approved_by: "actor:eng-lead-1",
+            approved_at: "2026-06-01T00:00:00.000Z",
+          },
+        },
+      },
+      {
+        id: escReasonClaimId,
+        subjectType: "test-subject",
+        subjectId: "subject-esc-reason",
+        claimType: "test-claim",
+        fieldOrBehavior: "status",
+        value: "OK",
+        status: "assumed",
+        createdAt: "2026-06-01T00:00:00.000Z",
+        updatedAt: "2026-06-01T00:00:00.000Z",
+        metadata: {
+          waiver: {
+            reason: escReason,
+            approved_by: "actor:eng-lead-1",
+            approved_at: "2026-06-01T00:00:00.000Z",
+          },
+        },
+      },
+      {
+        id: bidiApprovedByClaimId,
+        subjectType: "test-subject",
+        subjectId: "subject-bidi-approved-by",
+        claimType: "test-claim",
+        fieldOrBehavior: "status",
+        value: "OK",
+        status: "assumed",
+        createdAt: "2026-06-01T00:00:00.000Z",
+        updatedAt: "2026-06-01T00:00:00.000Z",
+        metadata: {
+          waiver: {
+            reason: "Deferred pending release.",
+            approved_by: bidiApprovedBy,
+            approved_at: "2026-06-01T00:00:00.000Z",
+          },
+        },
+      },
+    ],
+    evidence: [
+      {
+        id: "evidence.command-backed-test-output",
+        claimId: commandBackedClaimId,
+        evidenceType: "test_output",
+        method: "validation",
+        sourceRef: "run:command-backed",
+        excerptOrSummary: "CI run",
+        observedAt: "2026-06-01T00:00:00.000Z",
+        collectedBy: "ci",
+      },
+    ],
+    policies: [],
+    // A status-driven event is required for the stale claim: `deriveTrustStatus`
+    // only honors a bare claim.status of "assumed"/"proposed" with no events at
+    // all -- "stale" needs an explicit event to derive as "stale" rather than
+    // falling through to "unknown" (which would make the waiver verdict
+    // "not-applicable" instead of "stale-or-revoked-waiver").
+    events: [
+      {
+        id: `event.${staleClaimId}.stale`,
+        claimId: staleClaimId,
+        status: "stale",
+        actor: "monitor",
+        method: "freshness-check",
+        evidenceIds: [],
+        createdAt: "2026-06-01T00:05:00.000Z",
+      },
+    ],
+  };
+  await writeFile(bundlePath, JSON.stringify(bundle), "utf8");
+
+  const server = spawn("node", ["bin/surface.mjs", "mcp", "--input", bundlePath, "--no-ui"], {
+    stdio: ["pipe", "pipe", "inherit"],
+  });
+  const responses = collectResponses(server.stdout);
+
+  try {
+    send(server, {
+      jsonrpc: "2.0",
+      id: 1,
+      method: "initialize",
+      params: {
+        protocolVersion: "2025-06-18",
+        capabilities: {},
+        clientInfo: { name: "surface-tests", version: "0.0.0" },
+      },
+    });
+    await responses.next(1);
+    send(server, { jsonrpc: "2.0", method: "notifications/initialized" });
+
+    send(server, { jsonrpc: "2.0", id: 2, method: "tools/list" });
+    const toolsList = await responses.next(2);
+    const waiverTool = toolsList.result.tools.find(
+      (tool: { name: string }) => tool.name === "surface_waiver_validity",
+    );
+    assert.ok(waiverTool, "surface_waiver_validity must be listed");
+    assert.equal(typeof waiverTool.description, "string");
+    assert.equal(waiverTool.inputSchema.type, "object");
+    assert.equal(waiverTool.inputSchema.properties.claimId.type, "string");
+    // All 6 verdicts must be enumerated, including "not-applicable" (finding 8).
+    assert.match(waiverTool.description, /not-applicable/);
+
+    // Call without claimId: every claim in the report gets a verdict.
+    send(server, {
+      jsonrpc: "2.0",
+      id: 3,
+      method: "tools/call",
+      params: { name: "surface_waiver_validity", arguments: {} },
+    });
+    const all = await responses.next(3);
+    assert.equal(all.result.isError, false);
+    const allMap = JSON.parse(all.result.content[0].text);
+    assert.equal(allMap[waivedClaimId].verdict, "complete-waiver");
+    assert.equal(allMap[waivedClaimId].approverAuthenticated, false);
+    assert.equal(allMap[waivedClaimId].waiver.reason, "Deferred pending release.");
+    assert.equal(allMap[bareClaimId].verdict, "bare-assumed");
+    assert.equal(allMap[bareClaimId].approverAuthenticated, false);
+    assert.equal(allMap[bareClaimId].waiver, undefined);
+    // MCP round-trip coverage for stale-or-revoked-waiver and
+    // command-backed-waiver-rejection (previously only exercised at the
+    // unit/report layer, per the code review INFO finding).
+    assert.equal(allMap[staleClaimId].verdict, "stale-or-revoked-waiver");
+    assert.equal(allMap[commandBackedClaimId].verdict, "command-backed-waiver-rejection");
+
+    // Call with claimId: only that claim's verdict comes back.
+    send(server, {
+      jsonrpc: "2.0",
+      id: 4,
+      method: "tools/call",
+      params: { name: "surface_waiver_validity", arguments: { claimId: waivedClaimId } },
+    });
+    const filtered = await responses.next(4);
+    assert.equal(filtered.result.isError, false);
+    const filteredMap = JSON.parse(filtered.result.content[0].text);
+    assert.deepEqual(Object.keys(filteredMap), [waivedClaimId]);
+    assert.equal(filteredMap[waivedClaimId].verdict, "complete-waiver");
+
+    // Parity proof: the tool's result for a given claim is deep-equal to
+    // buildTrustReport(...).waiverValidityByClaimId[claimId] (finding 3) --
+    // catches a future divergence between the report field and the tool.
+    const parsedBundle = validateTrustBundle(bundle);
+    const directReport = buildTrustReport(parsedBundle);
+    assert.deepEqual(
+      filteredMap[waivedClaimId],
+      directReport.waiverValidityByClaimId[waivedClaimId],
+    );
+
+    // Unknown claimId is an error, mirroring surface_get_claim.
+    send(server, {
+      jsonrpc: "2.0",
+      id: 5,
+      method: "tools/call",
+      params: { name: "surface_waiver_validity", arguments: { claimId: "claim.does-not-exist" } },
+    });
+    const missing = await responses.next(5);
+    assert.equal(missing.result.isError, true);
+    assert.match(missing.result.content[0].text, /Unknown claim/);
+
+    // claimId "toString" repro (Codex High/Medium finding, mcp.ts:148): before
+    // the Object.hasOwn fix, `"toString" in {}` was `true` via
+    // Object.prototype.toString, so this returned `{}` instead of erroring.
+    send(server, {
+      jsonrpc: "2.0",
+      id: 6,
+      method: "tools/call",
+      params: { name: "surface_waiver_validity", arguments: { claimId: "toString" } },
+    });
+    const toStringResult = await responses.next(6);
+    assert.equal(toStringResult.result.isError, true);
+    assert.match(toStringResult.result.content[0].text, /Unknown claim: toString/);
+
+    // ESC byte in `reason` round-trips as the literal six-character escape
+    // sequence "\u001b" in the raw JSON-RPC stdout text -- this is the
+    // (accidentally safe) double-JSON.stringify object-payload path: the
+    // payload passes through JSON.stringify once inside buildToolContent and
+    // again in send()'s outer envelope, so the ESC byte is already "cooked"
+    // into printable escape text before the sanitizer even runs. This does
+    // NOT generalize to bare-string payloads (see the surface_summary
+    // hostile-source test below, r2 MEDIUM finding) -- that path only passes
+    // through one JSON.stringify layer and relies on the sanitizer's own
+    // C0-control stripping, not on encoding alone.
+    send(server, {
+      jsonrpc: "2.0",
+      id: 7,
+      method: "tools/call",
+      params: { name: "surface_waiver_validity", arguments: { claimId: escReasonClaimId } },
+    });
+    const escResult = await responses.next(7);
+    assert.equal(escResult.result.isError, false);
+    const escText: string = escResult.result.content[0].text;
+    assert.ok(escText.includes("\\u001b"), "raw ESC byte must round-trip as the literal \\u001b escape sequence");
+    assert.ok(!escText.includes("\x1b"), "raw ESC byte must not appear unescaped in the stdout text");
+
+    // RTL-override character in `approved_by` is absent from the tool's text
+    // content after stripUnsafeRenderingChars runs -- proves the new fix,
+    // since JSON.stringify alone would have let it through (finding 6, test (b)).
+    send(server, {
+      jsonrpc: "2.0",
+      id: 8,
+      method: "tools/call",
+      params: { name: "surface_waiver_validity", arguments: { claimId: bidiApprovedByClaimId } },
+    });
+    const bidiResult = await responses.next(8);
+    assert.equal(bidiResult.result.isError, false);
+    const bidiText: string = bidiResult.result.content[0].text;
+    assert.ok(!bidiText.includes("\u202e"), "RTL-override character must be stripped from MCP text output");
+    assert.ok(!bidiText.includes("\u202c"), "PDF (pop directional formatting) character must be stripped too");
+    assert.ok(bidiText.includes("evil"), "the surrounding plain text must survive stripping");
+  } finally {
+    server.stdin.end();
+    await once(server, "exit");
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("surface mcp: sanitizer boundary covers bare-string surface_summary output and the tool-error path (r2 MEDIUM repros)", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "surface-mcp-sanitizer-"));
+  const bundlePath = join(dir, "sanitizer-bundle.json");
+  // Hostile `source` field: raw ESC (U+001B) + BEL (U+0007) bytes, exactly the
+  // review-security-r2.md/review-codex-r2.md repro shape. `surface_summary`'s
+  // `_summary` is a BARE STRING (src/report.ts formatTrustReportSummary), so
+  // it takes buildToolContent's single-JSON.stringify string branch -- unlike
+  // the object-payload ESC test above, a raw ESC/BEL byte here is NOT
+  // "encoded away" by JSON.stringify alone and must be stripped by
+  // stripUnsafeRenderingChars itself.
+  const hostileSource = "safe[31mRED[0mend";
+
+  const bundle = {
+    schemaVersion: 3,
+    source: hostileSource,
+    claims: [
+      {
+        id: "claim.sanitizer-test.verified",
+        subjectType: "test-subject",
+        subjectId: "subject-verified",
+        claimType: "test-claim",
+        fieldOrBehavior: "status",
+        value: "OK",
+        status: "verified",
+        createdAt: "2026-06-01T00:00:00.000Z",
+        updatedAt: "2026-06-01T00:00:00.000Z",
+      },
+    ],
+    evidence: [],
+    policies: [],
+    events: [],
+  };
+  await writeFile(bundlePath, JSON.stringify(bundle), "utf8");
+
+  const server = spawn("node", ["bin/surface.mjs", "mcp", "--input", bundlePath, "--no-ui"], {
+    stdio: ["pipe", "pipe", "inherit"],
+  });
+  const responses = collectResponses(server.stdout);
+
+  try {
+    send(server, {
+      jsonrpc: "2.0",
+      id: 1,
+      method: "initialize",
+      params: {
+        protocolVersion: "2025-06-18",
+        capabilities: {},
+        clientInfo: { name: "surface-tests", version: "0.0.0" },
+      },
+    });
+    await responses.next(1);
+    send(server, { jsonrpc: "2.0", method: "notifications/initialized" });
+
+    // (1) Hostile source string with a raw ESC byte -> sanitized in the
+    // surface_summary bare-string output (review-security-r2.md MEDIUM,
+    // review-codex-r2.md MEDIUM).
+    send(server, { jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "surface_summary", arguments: {} } });
+    const summary = await responses.next(2);
+    assert.equal(summary.result.isError, false);
+    const summaryText: string = summary.result.content[0].text;
+    assert.ok(!summaryText.includes("\x1b"), "raw ESC byte must be stripped from the bare-string surface_summary text");
+    assert.ok(!summaryText.includes("\x07"), "raw BEL byte must be stripped from the bare-string surface_summary text");
+    assert.ok(summaryText.includes("safe"), "surrounding plain text must survive stripping");
+    assert.ok(summaryText.includes("RED"), "surrounding plain text must survive stripping");
+    assert.ok(summaryText.includes("end"), "surrounding plain text must survive stripping");
+    // (3) Ordinary newlines are preserved in a legitimate multi-line summary
+    // (formatTrustReportSummary joins its lines with "\n") -- the sanitizer
+    // must not strip \n/\t/\r while stripping C0 controls.
+    assert.ok(summaryText.includes("\n"), "ordinary newlines in the summary must be preserved, not stripped");
+    assert.match(summaryText, /Kontour Surface report/);
+
+    // (2) claimId containing a bidi RTL-override character -> sanitized in
+    // the "Unknown claim" tool-error text, which previously bypassed
+    // buildToolContent (and its sanitizer) entirely (review-codex-r2.md
+    // mcp.ts:287 repro).
+    const rtlClaimId = "missing‮txt";
+    send(server, {
+      jsonrpc: "2.0",
+      id: 3,
+      method: "tools/call",
+      params: { name: "surface_waiver_validity", arguments: { claimId: rtlClaimId } },
+    });
+    const rtlError = await responses.next(3);
+    assert.equal(rtlError.result.isError, true);
+    const rtlErrorText: string = rtlError.result.content[0].text;
+    assert.match(rtlErrorText, /Unknown claim/);
+    assert.ok(!rtlErrorText.includes("\u202e"), "RTL-override character must be stripped from the error text");
+    assert.ok(rtlErrorText.includes("missing"), "surrounding plain text of the error message must survive stripping");
+    assert.ok(rtlErrorText.includes("txt"), "surrounding plain text of the error message must survive stripping");
+
+    // U+061C ARABIC LETTER MARK -> sanitized in the same error path (r2 LOW
+    // finding: the bidi denylist previously omitted U+061C).
+    const armClaimId = "؜";
+    send(server, {
+      jsonrpc: "2.0",
+      id: 4,
+      method: "tools/call",
+      params: { name: "surface_waiver_validity", arguments: { claimId: armClaimId } },
+    });
+    const armError = await responses.next(4);
+    assert.equal(armError.result.isError, true);
+    const armErrorText: string = armError.result.content[0].text;
+    assert.match(armErrorText, /Unknown claim/);
+    assert.ok(!armErrorText.includes("\u061c"), "Arabic Letter Mark must be stripped from the error text");
+  } finally {
+    server.stdin.end();
+    await once(server, "exit");
+    await rm(dir, { recursive: true, force: true });
   }
 });
 

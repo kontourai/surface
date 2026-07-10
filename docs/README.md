@@ -48,6 +48,7 @@ Maintainer-only material stays repo-only: this index, brand language, ADRs, audi
 - [Adapters](reference/adapters.md) — adapter registry and producer-owned input mapping
 - [Claim Subject Matching](reference/claim-subject-matching.md) — matching incoming child rows to existing claim subjects by natural key, and disposing of orphaned claims (new, minimal, shape may evolve)
 - [Schemas](reference/schemas.md) — JSON contracts for adapter authors and downstream systems
+- [Waiver Validity](reference/waiver-validity.md) — accepted-gap waiver validity projection: verdicts, precedence, residual, and Flow consumption paths
 - [Examples](reference/examples.md) — examples used by tests and docs
 - [Schema Versioning](reference/schema-versioning.md) — versioning rules for contract changes
 - [Trust Analytics Projection](reference/analytics.md) — evidence intelligence derived from `TrustReport`

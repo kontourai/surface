@@ -34,6 +34,7 @@ A typical MCP client configuration:
 | `surface_stale_claims` | `input?`, `adapter?` | Claims whose verification is no longer current under their freshness policy |
 | `surface_missing_evidence` | `input?`, `adapter?` | Policy-required evidence that has not been supplied |
 | `surface_get_claim` | `claimId`, `input?`, `adapter?` | One claim with evidence, events, policy, authority trace, transparency gaps, and derivation drilldown |
+| `surface_waiver_validity` | `claimId?`, `input?`, `adapter?` | Per-claim [accepted-gap waiver validity](waiver-validity.md) verdicts (not-applicable, bare-assumed, complete-waiver, incomplete-waiver, stale-or-revoked-waiver, command-backed-waiver-rejection); with `claimId`, just that claim's verdict, otherwise every claim in the report |
 | `surface_policy` | `policyId?`, `claimId?`, `input?`, `adapter?` | Policy drilldown, or all policies with claim ids and gap counts when called without arguments |
 
 `input` and `adapter` default to the values the server was started with. Every call re-derives the report from the input file, so agents always read current trust state — the same `TrustBundle` produces the same answer on every call, on every machine.
