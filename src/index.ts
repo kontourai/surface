@@ -1,5 +1,6 @@
 export * from "./types.js";
 export * from "./status.js";
+export * from "./waiver.js";
 export * from "./status-taxonomy.js";
 export * from "./claim-fold.js";
 export * from "./conflict-derivation.js";
