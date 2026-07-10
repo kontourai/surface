@@ -70,7 +70,10 @@ export interface SnapshotEventProbe {
 
 export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnapshotOptions = {}): TrustSnapshotDerivation {
   const now = options.now ?? new Date();
-  const evidenceRequirementsByClaimId: Record<string, EvidenceRequirement> = {};
+  // Null-prototype map: a claim id of `__proto__`, `toString`, or `constructor`
+  // must become an ordinary own key, never resolve through the prototype chain
+  // (mirrors `waiverValidityByClaimId` below; #127).
+  const evidenceRequirementsByClaimId: Record<string, EvidenceRequirement> = Object.create(null);
   const transparencyGaps: TransparencyGap[] = [];
   const changeRecords: DerivationChangeRecord[] = [];
   const identityIndex = buildIdentityIndex(input);
@@ -141,10 +144,8 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
 
   // Null-prototype map: a claim id of `__proto__`, `toString`, or
   // `constructor` must become an ordinary own key, never resolve through the
-  // prototype chain. `evidenceRequirementsByClaimId` above has the same
-  // latent plain-object-map defect but is intentionally NOT touched here
-  // (pre-existing, out of scope for this fix — named as a follow-up-issue
-  // candidate).
+  // prototype chain. (`evidenceRequirementsByClaimId` above uses the same
+  // guard — #127.)
   const waiverValidityByClaimId: Record<string, WaiverValidity> = Object.create(null);
   const claims = foldedClaims.map((folded) => {
     const outcome = applyDerivation({
