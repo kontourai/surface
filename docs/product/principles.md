@@ -20,6 +20,14 @@ Models are welcome at the evidence edge — they can extract, summarize, observe
 
 Verification is decided once, in the kernel, and every downstream reader gets the same answer without re-deriving it.
 
+## Learn only from verified claims
+
+Every claim carries an adjudication state (`unknown`, `proposed`, `assumed`, `verified`, `stale`, `disputed`, `superseded`, `rejected`). A consumer acting in the moment may read any of them, with the transparency gaps attached, and decide what to do. A consumer that **learns** — anything that turns claims into durable signal that shapes future behavior: a confidence-calibration loop, a correction-to-rule flywheel, a model or ruleset trained on outcomes — is different, and the contract holds it to a stricter rule.
+
+A learning consumer **MUST** filter to `status = verified` before treating a claim as training signal. Consuming `proposed`, `assumed`, `stale`, `disputed`, `unknown`, or any non-`verified` claim as learning signal is **non-conforming**.
+
+The reason is that the gate which makes a claim `verified` — a verification event plus the policy-required evidence — is the same gate that makes it safe to learn from. Training on unreviewed claims lets unreviewed output compound: a learner that feeds on `assumed`/`proposed` claims teaches itself that its own un-adjudicated guesses are ground truth. `verified` is the one state the kernel is willing to stand behind, so it is the only state a learner may stand on. This governs learning *consumption* only; it is a contract on which claims become durable signal, not a rule about how a learner is built, stored, or scheduled. See the [Learning consumption conformance expectation](../specs/conformance.md#learning-consumption).
+
 ## Stable kernel, evolving policies, broad evidence
 
 Surface is three layers with three different change cadences:
