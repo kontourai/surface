@@ -200,7 +200,7 @@ const WAIVER_KEYS = ["reason", "approved_by", "approved_at"] as const;
 // than RFC 3339 and non-deterministic across JS engines. This validator does
 // not call `Date`/`Date.parse` anywhere in the accept path.
 const RFC3339_DATE_TIME_RE =
-  /^(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:[Zz]|[+-]\d{2}:\d{2})$/;
+  /^(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:[Zz]|([+-])(\d{2}):(\d{2}))$/;
 
 function isLeapYear(year: number): boolean {
   return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
@@ -214,16 +214,35 @@ function daysInMonth(year: number, month: number): number {
 /**
  * Strict RFC 3339 `date-time` grammar check plus a real calendar-day-count
  * check (rejects e.g. `2026-02-30T00:00:00Z` even though it matches the
- * regex shape). Tolerates a leap second (`:60`) per RFC 3339. No `Date`/
- * `Date.parse` call — deterministic across JS engines.
+ * regex shape). Tolerates a leap second (`:60`) per RFC 3339 grammar, at any
+ * minute -- this parser validates RFC 3339 *grammar*, not leap-second
+ * placement (a real leap second only ever occurs at 23:59:60 UTC; see the
+ * "Leap seconds" note in docs/reference/waiver-validity.md for the disclosed
+ * policy). Also range-checks the numeric UTC offset (RFC 3339's
+ * `time-numoffset`: offset-hour 00-23, offset-minute 00-59) when one is
+ * present -- `Z`/`z` needs no such check. No `Date`/`Date.parse` call —
+ * deterministic across JS engines.
  */
 function isRfc3339DateTime(value: string): boolean {
   const m = RFC3339_DATE_TIME_RE.exec(value);
   if (!m) return false;
-  const [, y, mo, d, h, mi, s] = m.map(Number) as unknown as number[];
+  const [, yStr, moStr, dStr, hStr, miStr, sStr, offSign, offHStr, offMStr] = m;
+  const y = Number(yStr);
+  const mo = Number(moStr);
+  const d = Number(dStr);
+  const h = Number(hStr);
+  const mi = Number(miStr);
+  const s = Number(sStr);
   if (mo < 1 || mo > 12) return false;
   if (d < 1 || d > daysInMonth(y, mo)) return false;
   if (h > 23 || mi > 59 || s > 60) return false; // s===60 tolerates a leap second
+  if (offSign !== undefined) {
+    // Numeric offset present (not Z/z) -- range-check hh:mm per RFC 3339's
+    // time-numoffset production. The regex only checked digit-count shape.
+    const offH = Number(offHStr);
+    const offM = Number(offMStr);
+    if (offH > 23 || offM > 59) return false;
+  }
   return true;
 }
 

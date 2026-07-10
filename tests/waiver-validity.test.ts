@@ -178,6 +178,77 @@ test("complete-waiver: approved_at accepts a UTC-offset timestamp and a leap-sec
   }
 });
 
+test("incomplete-waiver: approved_at with an out-of-range numeric UTC offset (review-code-r2/review-security-r2/review-codex-r2 repros)", () => {
+  // Iteration-2 re-review (three reviewers converged, r2 MEDIUM): the regex
+  // accepted any two digits in each offset position without range-checking
+  // them. RFC 3339's time-numoffset production requires offset-hour 00-23
+  // and offset-minute 00-59, same as local time.
+  const invalidOffsetApprovedAtValues = [
+    "2026-05-01T00:00:00+25:00", // offset-hour 25 is out of range (00-23)
+    "2026-05-01T00:00:00+23:99", // offset-minute 99 is out of range (00-59)
+    "2026-05-01T00:00:00+00:99", // offset-minute 99 is out of range (00-59)
+  ];
+  for (const approved_at of invalidOffsetApprovedAtValues) {
+    const claim = makeClaim({
+      status: "assumed",
+      metadata: {
+        waiver: { reason: "reason text", approved_by: "actor:approver-1", approved_at },
+      },
+    });
+    const result = deriveWaiverValidity({ claim, status: "assumed", evidence: [] });
+    assert.equal(
+      result.verdict,
+      "incomplete-waiver",
+      `expected incomplete-waiver for approved_at ${JSON.stringify(approved_at)}`,
+    );
+    assert.deepEqual(
+      result.incompleteFields,
+      ["approved_at"],
+      `expected only approved_at incomplete for ${JSON.stringify(approved_at)}`,
+    );
+  }
+});
+
+test("complete-waiver: approved_at accepts in-range positive and negative UTC offsets at the boundary (+14:00 / -12:00)", () => {
+  const validOffsetApprovedAtValues = ["2026-05-01T00:00:00+14:00", "2026-05-01T00:00:00-12:00"];
+  for (const approved_at of validOffsetApprovedAtValues) {
+    const claim = makeClaim({
+      status: "assumed",
+      metadata: { waiver: { reason: "reason text", approved_by: "actor:approver-1", approved_at } },
+    });
+    const result = deriveWaiverValidity({ claim, status: "assumed", evidence: [] });
+    assert.equal(
+      result.verdict,
+      "complete-waiver",
+      `expected complete-waiver for approved_at ${JSON.stringify(approved_at)}`,
+    );
+    assert.equal(result.waiver?.approvedAt, approved_at);
+  }
+});
+
+test("complete-waiver: approved_at accepts a leap second (:60) at an arbitrary minute -- documented grammar-only policy, not instant-restricted", () => {
+  // review-codex-r2.md Medium: "Either enforce that restriction [leap seconds
+  // only at 23:59:60 UTC] or explicitly document that the parser validates
+  // the RFC3339 grammar without validating leap-second placement." Surface
+  // took the documentation route (docs/reference/waiver-validity.md, this
+  // repo's spec/waivers.md) rather than restricting :60 to 23:59:60 -- this
+  // test pins that deliberate choice so a future change to it is a visible
+  // diff, not a silent regression.
+  const claim = makeClaim({
+    status: "assumed",
+    metadata: {
+      waiver: {
+        reason: "reason text",
+        approved_by: "actor:approver-1",
+        approved_at: "2026-05-01T12:34:60Z",
+      },
+    },
+  });
+  const result = deriveWaiverValidity({ claim, status: "assumed", evidence: [] });
+  assert.equal(result.verdict, "complete-waiver");
+  assert.equal(result.waiver?.approvedAt, "2026-05-01T12:34:60Z");
+});
+
 test("incomplete-waiver: malformed shape (metadata.waiver is a string) lists all three fields", () => {
   const claim = makeClaim({ status: "assumed", metadata: { waiver: "approved verbally" } });
   const result = deriveWaiverValidity({ claim, status: "assumed", evidence: [] });

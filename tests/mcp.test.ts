@@ -497,9 +497,15 @@ test("surface_waiver_validity tool: tools/list entry and call round-trip", async
     assert.match(toStringResult.result.content[0].text, /Unknown claim: toString/);
 
     // ESC byte in `reason` round-trips as the literal six-character escape
-    // sequence "\u001b" in the raw JSON-RPC stdout text -- proves "safe by
-    // encoding" (double JSON.stringify), not by the new stripper (finding 6,
-    // test (a)).
+    // sequence "\u001b" in the raw JSON-RPC stdout text -- this is the
+    // (accidentally safe) double-JSON.stringify object-payload path: the
+    // payload passes through JSON.stringify once inside buildToolContent and
+    // again in send()'s outer envelope, so the ESC byte is already "cooked"
+    // into printable escape text before the sanitizer even runs. This does
+    // NOT generalize to bare-string payloads (see the surface_summary
+    // hostile-source test below, r2 MEDIUM finding) -- that path only passes
+    // through one JSON.stringify layer and relies on the sanitizer's own
+    // C0-control stripping, not on encoding alone.
     send(server, {
       jsonrpc: "2.0",
       id: 7,
@@ -527,6 +533,117 @@ test("surface_waiver_validity tool: tools/list entry and call round-trip", async
     assert.ok(!bidiText.includes("\u202e"), "RTL-override character must be stripped from MCP text output");
     assert.ok(!bidiText.includes("\u202c"), "PDF (pop directional formatting) character must be stripped too");
     assert.ok(bidiText.includes("evil"), "the surrounding plain text must survive stripping");
+  } finally {
+    server.stdin.end();
+    await once(server, "exit");
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("surface mcp: sanitizer boundary covers bare-string surface_summary output and the tool-error path (r2 MEDIUM repros)", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "surface-mcp-sanitizer-"));
+  const bundlePath = join(dir, "sanitizer-bundle.json");
+  // Hostile `source` field: raw ESC (U+001B) + BEL (U+0007) bytes, exactly the
+  // review-security-r2.md/review-codex-r2.md repro shape. `surface_summary`'s
+  // `_summary` is a BARE STRING (src/report.ts formatTrustReportSummary), so
+  // it takes buildToolContent's single-JSON.stringify string branch -- unlike
+  // the object-payload ESC test above, a raw ESC/BEL byte here is NOT
+  // "encoded away" by JSON.stringify alone and must be stripped by
+  // stripUnsafeRenderingChars itself.
+  const hostileSource = "safe[31mRED[0mend";
+
+  const bundle = {
+    schemaVersion: 3,
+    source: hostileSource,
+    claims: [
+      {
+        id: "claim.sanitizer-test.verified",
+        subjectType: "test-subject",
+        subjectId: "subject-verified",
+        claimType: "test-claim",
+        fieldOrBehavior: "status",
+        value: "OK",
+        status: "verified",
+        createdAt: "2026-06-01T00:00:00.000Z",
+        updatedAt: "2026-06-01T00:00:00.000Z",
+      },
+    ],
+    evidence: [],
+    policies: [],
+    events: [],
+  };
+  await writeFile(bundlePath, JSON.stringify(bundle), "utf8");
+
+  const server = spawn("node", ["bin/surface.mjs", "mcp", "--input", bundlePath, "--no-ui"], {
+    stdio: ["pipe", "pipe", "inherit"],
+  });
+  const responses = collectResponses(server.stdout);
+
+  try {
+    send(server, {
+      jsonrpc: "2.0",
+      id: 1,
+      method: "initialize",
+      params: {
+        protocolVersion: "2025-06-18",
+        capabilities: {},
+        clientInfo: { name: "surface-tests", version: "0.0.0" },
+      },
+    });
+    await responses.next(1);
+    send(server, { jsonrpc: "2.0", method: "notifications/initialized" });
+
+    // (1) Hostile source string with a raw ESC byte -> sanitized in the
+    // surface_summary bare-string output (review-security-r2.md MEDIUM,
+    // review-codex-r2.md MEDIUM).
+    send(server, { jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "surface_summary", arguments: {} } });
+    const summary = await responses.next(2);
+    assert.equal(summary.result.isError, false);
+    const summaryText: string = summary.result.content[0].text;
+    assert.ok(!summaryText.includes("\x1b"), "raw ESC byte must be stripped from the bare-string surface_summary text");
+    assert.ok(!summaryText.includes("\x07"), "raw BEL byte must be stripped from the bare-string surface_summary text");
+    assert.ok(summaryText.includes("safe"), "surrounding plain text must survive stripping");
+    assert.ok(summaryText.includes("RED"), "surrounding plain text must survive stripping");
+    assert.ok(summaryText.includes("end"), "surrounding plain text must survive stripping");
+    // (3) Ordinary newlines are preserved in a legitimate multi-line summary
+    // (formatTrustReportSummary joins its lines with "\n") -- the sanitizer
+    // must not strip \n/\t/\r while stripping C0 controls.
+    assert.ok(summaryText.includes("\n"), "ordinary newlines in the summary must be preserved, not stripped");
+    assert.match(summaryText, /Kontour Surface report/);
+
+    // (2) claimId containing a bidi RTL-override character -> sanitized in
+    // the "Unknown claim" tool-error text, which previously bypassed
+    // buildToolContent (and its sanitizer) entirely (review-codex-r2.md
+    // mcp.ts:287 repro).
+    const rtlClaimId = "missing‮txt";
+    send(server, {
+      jsonrpc: "2.0",
+      id: 3,
+      method: "tools/call",
+      params: { name: "surface_waiver_validity", arguments: { claimId: rtlClaimId } },
+    });
+    const rtlError = await responses.next(3);
+    assert.equal(rtlError.result.isError, true);
+    const rtlErrorText: string = rtlError.result.content[0].text;
+    assert.match(rtlErrorText, /Unknown claim/);
+    assert.ok(!rtlErrorText.includes("\u202e"), "RTL-override character must be stripped from the error text");
+    assert.ok(rtlErrorText.includes("missing"), "surrounding plain text of the error message must survive stripping");
+    assert.ok(rtlErrorText.includes("txt"), "surrounding plain text of the error message must survive stripping");
+
+    // U+061C ARABIC LETTER MARK -> sanitized in the same error path (r2 LOW
+    // finding: the bidi denylist previously omitted U+061C).
+    const armClaimId = "؜";
+    send(server, {
+      jsonrpc: "2.0",
+      id: 4,
+      method: "tools/call",
+      params: { name: "surface_waiver_validity", arguments: { claimId: armClaimId } },
+    });
+    const armError = await responses.next(4);
+    assert.equal(armError.result.isError, true);
+    const armErrorText: string = armError.result.content[0].text;
+    assert.match(armErrorText, /Unknown claim/);
+    assert.ok(!armErrorText.includes("\u061c"), "Arabic Letter Mark must be stripped from the error text");
   } finally {
     server.stdin.end();
     await once(server, "exit");

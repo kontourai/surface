@@ -52,7 +52,14 @@ Surface reads them verbatim and does not rename them on the way in:
   matches the grammar shape). This is a genuine strict RFC 3339 parser — not
   `Date.parse` (which accepts a much wider, engine-defined grammar including
   bare years, space-separated dates, and silently-rolled-over invalid
-  calendar dates) — so acceptance is deterministic across JS engines.
+  calendar dates) — so acceptance is deterministic across JS engines. The
+  numeric UTC offset (`±hh:mm`), when used instead of `Z`/`z`, is also
+  range-checked: offset-hour `00`-`23`, offset-minute `00`-`59` (e.g.
+  `+25:00` and `+00:99` are rejected). **Leap-second policy:** this parser
+  validates RFC 3339 *grammar*, not leap-second *placement* — a `:60` seconds
+  value is accepted at any minute, not only at an actual leap-second instant
+  (`23:59:60Z`); this is a deliberate, disclosed scope boundary, not an
+  oversight.
 
 Source: `kontourai/flow-agents` ADR 0020 §3, `parseWaiver` in
 `workflow-sidecar.ts`; the gap this projection closes is described in

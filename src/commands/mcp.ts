@@ -290,7 +290,11 @@ async function handleLine(line: string, options: McpServerOptions, serverVersion
         send({ jsonrpc: "2.0", id, result: { content, isError: false } });
       } catch (error) {
         const text = error instanceof Error ? error.message : String(error);
-        send({ jsonrpc: "2.0", id, result: { content: [{ type: "text", text }], isError: true } });
+        send({
+          jsonrpc: "2.0",
+          id,
+          result: { content: [{ type: "text", text: stripUnsafeRenderingChars(text) }], isError: true },
+        });
       }
     } else if (isNotification) {
       // Lifecycle notifications such as notifications/initialized need no reply.
@@ -305,21 +309,41 @@ async function handleLine(line: string, options: McpServerOptions, serverVersion
   }
 }
 
-// MCP text-content boundary sanitizer, scoped to `buildToolContent`'s output
-// only (not a codebase-wide free-text sanitizer -- `excerptOrSummary`,
+// MCP text-content boundary sanitizer -- applied at the single final
+// text-content emission point for BOTH the success path (`buildToolContent`)
+// and the tool-error path (the `tools/call` catch block below), so every
+// `content[].text` this server emits is sanitized the same way regardless of
+// whether the payload originated as an object, a bare string (e.g.
+// `surface_summary`'s `_summary`), or a thrown error message (e.g. "Unknown
+// claim: <id>"). This is scoped to the MCP text-content boundary only (not a
+// codebase-wide free-text sanitizer -- `excerptOrSummary`,
 // `TransparencyGap.message`, etc. are unchanged; see docs/reference/mcp.md).
 //
-// JSON string escaping (both `JSON.stringify` calls below, plus the outer
-// JSON-RPC envelope's `JSON.stringify` in `send()`) already mandatorily
-// escapes C0 control characters (U+0000-U+001F) and `\"`/`\\` as literal
-// six-character `\\uXXXX` escapes, so ESC-based ANSI terminal injection is
-// already neutralized by encoding alone. It does NOT escape C1 control
-// characters (U+0080-U+009F) or Unicode bidi format characters (U+200E,
-// U+200F, U+202A-U+202E, U+2066-U+2069) -- those pass through the JSON string
-// as literal codepoints and can still push a terminal-rendering MCP client
-// into cursor manipulation or right-to-left visual spoofing of e.g. an
-// `approved_by` string. Strip them here, once, at the text-content boundary.
-const UNSAFE_TEXT_CHARS_RE = /[\u0080-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
+// Iteration-2 re-review (review-security-r2.md, review-codex-r2.md) proved
+// the earlier assumption that JSON string escaping alone "already
+// neutralizes" C0 control characters (U+0000-U+001F, e.g. ESC/BEL) was
+// incorrect: that only holds when a payload passes through *two* layers of
+// `JSON.stringify` (once inside `buildToolContent` for an object payload,
+// once again for the outer JSON-RPC envelope in `send()`) -- a client's
+// single `JSON.parse` of the wire envelope only undoes the outer layer. A
+// bare-string payload (`surface_summary`'s `_summary`, sourced from
+// attacker-controlled `report.source`/claim-id lists via
+// `formatTrustReportSummary`) only ever passes through one `JSON.stringify`
+// layer, so a raw ESC/BEL byte survives a single client-side `JSON.parse`
+// intact and reaches a terminal-rendering client uncooked. C0 controls are
+// therefore stripped here directly rather than relied upon to be "encoded
+// away" -- `\n`/`\t`/`\r` are deliberately preserved so legitimate
+// multi-line summary text still renders.
+//
+// Also stripped: C1 control characters (U+0080-U+009F); the bidi format
+// characters U+200E/U+200F (LRM/RLM), U+202A-U+202E (embedding/override),
+// U+2066-U+2069 (isolates); U+061C (Arabic Letter Mark, another bidi format
+// character omitted from the first pass); and the deprecated Unicode format
+// characters U+206A-U+206F (symmetric-swapping/Arabic-form-shaping/digit-
+// shape controls), which sit in the same "invisible rendering control" class
+// as the bidi isolates immediately preceding them in the codepoint range.
+const UNSAFE_TEXT_CHARS_RE =
+  /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u0080-\u009f\u061c\u200e\u200f\u202a-\u202e\u2066-\u206f]/g;
 
 function stripUnsafeRenderingChars(text: string): string {
   return text.replace(UNSAFE_TEXT_CHARS_RE, "");
