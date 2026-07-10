@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hachure.org/schemas/trust-report-waivers.schema.json",
+  "title": "Hachure TrustReport — Waivers extension",
+  "$comment": "OPTIONAL extension companion to the Waivers profile (waivers.md). A producer that adopts the waivers profile may attach a derived waiver-validity projection to its TrustReport: a per-claim verdict answering 'is this assumed claim's accepted-gap waiver valid'. This schema is the strict validation surface for such a report — it references the neutral core field set (trust-report.schema.json#/$defs/core) and adds exactly the two waiver-validity fields, closing the combined set with unevaluatedProperties:false. A consumer that expects waiver-validity fields validates against THIS schema; a consumer that does not validates against trust-report.schema.json (which rejects these fields as unknown). Core trust-report semantics and the status function are unchanged: waiver validity is a downstream consumer projection, never a status-derivation input. The verdict vocabulary mirrors the consumer-derivation outcomes described in waivers.md.",
+  "type": "object",
+  "allOf": [{ "$ref": "trust-report.schema.json#/$defs/core" }],
+  "properties": {
+    "waiverValidityFunctionVersion": {
+      "type": "string",
+      "$comment": "Version of the waiver-validity derivation algorithm, mirroring statusFunctionVersion's role for the status function. Lets a consumer know which derivation produced the verdicts."
+    },
+    "waiverValidityByClaimId": {
+      "type": "object",
+      "$comment": "Map of claim id -> derived WaiverValidity. Keys are arbitrary claim ids (including ids such as \"__proto__\"); consumers MUST treat this as a plain data map of own keys.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["verdict", "approverAuthenticated"],
+        "properties": {
+          "verdict": {
+            "enum": [
+              "not-applicable",
+              "bare-assumed",
+              "complete-waiver",
+              "incomplete-waiver",
+              "stale-or-revoked-waiver",
+              "command-backed-waiver-rejection"
+            ]
+          },
+          "approverAuthenticated": {
+            "type": "boolean",
+            "$comment": "Whether the waiver's approver identity is cryptographically authenticated. Under the waivers profile as defined today this is always false (approved_by is free text — the disclosed unauthenticated-approver residual in waivers.md); typed as boolean rather than const:false so a future identity-binding profile (e.g. Assurance L1/L2) can set it true without a breaking schema change."
+          },
+          "waiver": {
+            "type": "object",
+            "$comment": "The waiver facts the verdict was derived from, when present. Loosely typed here (the normative field shape lives in the waivers profile, on claim.metadata.waiver)."
+          },
+          "incompleteFields": {
+            "type": "array",
+            "items": {
+              "enum": ["reason", "approved_by", "approved_at"]
+            },
+            "$comment": "For an incomplete-waiver verdict: which of the three required waiver fields were missing or malformed."
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "unevaluatedProperties": false
+}

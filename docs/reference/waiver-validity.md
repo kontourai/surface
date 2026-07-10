@@ -197,9 +197,11 @@ interface TrustReport {
 }
 ```
 
-See [Schemas](schemas.md#trust-report) for the note on why
-`waiverValidityByClaimId` is not yet declared in the vendored
-`trust-report.schema.json`.
+These fields are declared in the vendored `trust-report-waivers.schema.json`
+extension schema (Hachure ≥ 0.12.0); see [Schemas](schemas.md#trust-report)
+for how a strict consumer validates a waiver-bearing report against the
+extension while the neutral core `trust-report.schema.json` stays
+field-minimal.
 
 ## Non-goals
 

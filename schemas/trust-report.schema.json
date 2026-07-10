@@ -2,85 +2,92 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://hachure.org/schemas/trust-report.schema.json",
   "title": "Hachure TrustReport",
-  "$comment": "transparencyGaps, changeRecords, subjectGroups, claimGroupRollups, summary, and evidenceRequirementsByClaimId are intentionally loosely typed pending dedicated normative sub-schemas (no existing schema for TransparencyGap/DerivationChangeRecord/SubjectGroup/ClaimGroupRollup/TrustReportSummary/EvidenceRequirement exists anywhere in the ecosystem today); only the top-level report shape and the pass-through bundle fields are strictly validated.",
+  "$comment": "transparencyGaps, changeRecords, subjectGroups, claimGroupRollups, summary, and evidenceRequirementsByClaimId are intentionally loosely typed pending dedicated normative sub-schemas (no existing schema for TransparencyGap/DerivationChangeRecord/SubjectGroup/ClaimGroupRollup/TrustReportSummary/EvidenceRequirement exists anywhere in the ecosystem today); only the top-level report shape and the pass-through bundle fields are strictly validated. The core field set lives in $defs/core (an OPEN building block) so that optional extension profiles can $ref it and add profile-specific report fields without re-declaring the core shape (see trust-report-waivers.schema.json). This top-level schema closes the core field set with unevaluatedProperties:false: validating a report against it alone is byte-for-byte as strict as the previous flat additionalProperties:false schema — any field not in $defs/core is rejected.",
   "type": "object",
-  "additionalProperties": false,
-  "required": [
-    "schemaVersion",
-    "id",
-    "generatedAt",
-    "source",
-    "claims",
-    "evidence",
-    "policies",
-    "events",
-    "evidenceRequirementsByClaimId",
-    "transparencyGaps",
-    "changeRecords",
-    "subjectGroups",
-    "claimGroupRollups",
-    "summary",
-    "statusFunctionVersion"
-  ],
-  "properties": {
-    "schemaVersion": { "enum": [5, 6] },
-    "id": { "type": "string" },
-    "generatedAt": { "type": "string", "format": "date-time" },
-    "source": { "type": "string" },
-    "claims": {
-      "type": "array",
-      "items": {
-        "allOf": [
-          { "$ref": "claim.schema.json" },
-          { "type": "object", "required": ["status"] }
-        ]
-      }
-    },
-    "evidence": {
-      "type": "array",
-      "items": { "$ref": "evidence.schema.json" }
-    },
-    "policies": {
-      "type": "array",
-      "items": { "$ref": "verification-policy.schema.json" }
-    },
-    "events": {
-      "type": "array",
-      "items": { "$ref": "verification-event.schema.json" }
-    },
-    "identityLinks": {
-      "type": "array",
-      "items": { "$ref": "trust-bundle.schema.json#/$defs/identityLink" }
-    },
-    "claimGroups": {
-      "type": "array",
-      "items": { "$ref": "trust-bundle.schema.json#/$defs/claimGroup" }
-    },
-    "authorityTrace": {
-      "type": "array",
-      "items": { "$ref": "trust-bundle.schema.json#/$defs/authorityTrace" }
-    },
-    "evidenceRequirementsByClaimId": {
+  "allOf": [{ "$ref": "#/$defs/core" }],
+  "unevaluatedProperties": false,
+  "$defs": {
+    "core": {
+      "$comment": "The neutral TrustReport core field set. OPEN by design (no additionalProperties/unevaluatedProperties): a closing keyword here would reject an extension profile's added fields when this building block is referenced from an extension schema's allOf. Strictness is applied by each REFERRING schema (this file, and each extension) via unevaluatedProperties:false, never by the shared building block.",
       "type": "object",
-      "additionalProperties": { "type": "object" }
-    },
-    "transparencyGaps": {
-      "type": "array",
-      "items": { "type": "object" }
-    },
-    "changeRecords": {
-      "type": "array",
-      "items": { "type": "object" }
-    },
-    "subjectGroups": {
-      "type": "array",
-      "items": { "type": "object" }
-    },
-    "claimGroupRollups": {
-      "type": "array",
-      "items": { "type": "object" }
-    },
-    "summary": { "type": "object" },
-    "statusFunctionVersion": { "type": "string" }
+      "required": [
+        "schemaVersion",
+        "id",
+        "generatedAt",
+        "source",
+        "claims",
+        "evidence",
+        "policies",
+        "events",
+        "evidenceRequirementsByClaimId",
+        "transparencyGaps",
+        "changeRecords",
+        "subjectGroups",
+        "claimGroupRollups",
+        "summary",
+        "statusFunctionVersion"
+      ],
+      "properties": {
+        "schemaVersion": { "enum": [5, 6] },
+        "id": { "type": "string" },
+        "generatedAt": { "type": "string", "format": "date-time" },
+        "source": { "type": "string" },
+        "claims": {
+          "type": "array",
+          "items": {
+            "allOf": [
+              { "$ref": "claim.schema.json" },
+              { "type": "object", "required": ["status"] }
+            ]
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": { "$ref": "evidence.schema.json" }
+        },
+        "policies": {
+          "type": "array",
+          "items": { "$ref": "verification-policy.schema.json" }
+        },
+        "events": {
+          "type": "array",
+          "items": { "$ref": "verification-event.schema.json" }
+        },
+        "identityLinks": {
+          "type": "array",
+          "items": { "$ref": "trust-bundle.schema.json#/$defs/identityLink" }
+        },
+        "claimGroups": {
+          "type": "array",
+          "items": { "$ref": "trust-bundle.schema.json#/$defs/claimGroup" }
+        },
+        "authorityTrace": {
+          "type": "array",
+          "items": { "$ref": "trust-bundle.schema.json#/$defs/authorityTrace" }
+        },
+        "evidenceRequirementsByClaimId": {
+          "type": "object",
+          "additionalProperties": { "type": "object" }
+        },
+        "transparencyGaps": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "changeRecords": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "subjectGroups": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "claimGroupRollups": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "summary": { "type": "object" },
+        "statusFunctionVersion": { "type": "string" }
+      }
+    }
   }
 }
