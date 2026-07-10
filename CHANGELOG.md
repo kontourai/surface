@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.4.0](https://github.com/kontourai/surface/compare/v2.3.0...v2.4.0) (2026-07-10)
+
+
+### Features
+
+* **schema:** validate waiver-validity report fields against Hachure extension schema ([#128](https://github.com/kontourai/surface/issues/128)) ([#130](https://github.com/kontourai/surface/issues/130)) ([33579de](https://github.com/kontourai/surface/commit/33579ded2db8cc3f7844b3c94b85c0e3962d90f4))
+* **waiver:** derive and expose canonical accepted-gap waiver validity ([#123](https://github.com/kontourai/surface/issues/123)) ([#126](https://github.com/kontourai/surface/issues/126)) ([1f42353](https://github.com/kontourai/surface/commit/1f42353d0adc7744c42d054623b37807fc36c388))
+
+
+### Fixes
+
+* **trust-snapshot:** prototype-safe evidenceRequirementsByClaimId map ([#127](https://github.com/kontourai/surface/issues/127)) ([#129](https://github.com/kontourai/surface/issues/129)) ([611bc6b](https://github.com/kontourai/surface/commit/611bc6b0e42a529ce13743826556c9b81a9c7a7e))
+
+
+### Documentation
+
+* **language:** derived-deterministically pass; align claims with actual kernel behavior ([#124](https://github.com/kontourai/surface/issues/124)) ([79993aa](https://github.com/kontourai/surface/commit/79993aa1da70574b2d404c20490772d4376c9e87))
+
 ## [2.3.0](https://github.com/kontourai/surface/compare/v2.2.0...v2.3.0) (2026-07-04)
 
 
