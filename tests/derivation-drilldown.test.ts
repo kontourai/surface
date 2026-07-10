@@ -61,6 +61,8 @@ function minimalReport(claims: TrustReport["claims"]): TrustReport {
     id: "report-drilldown-regression",
     generatedAt: "2026-06-01T00:00:00.000Z",
     statusFunctionVersion: "2",
+    waiverValidityByClaimId: {},
+    waiverValidityFunctionVersion: "1",
     source: "derivation-drilldown-test",
     claims,
     evidence: [],

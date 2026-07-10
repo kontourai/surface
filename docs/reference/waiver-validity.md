@@ -38,7 +38,7 @@ Surface reads them verbatim and does not rename them on the way in:
 {
   "reason": "string, non-empty",
   "approved_by": "string, non-empty",
-  "approved_at": "string, RFC3339 date-time"
+  "approved_at": "string, strict RFC3339 date-time: YYYY-MM-DDThh:mm:ss[.sss](Z|±hh:mm), real calendar date"
 }
 ```
 
@@ -46,8 +46,13 @@ Surface reads them verbatim and does not rename them on the way in:
 - `approved_by` — free-text identifier of the approver. This is **not**
   authenticated (see [Residual](#residual-approverauthenticated-is-always-false)
   below).
-- `approved_at` — an ISO 8601 / RFC3339 timestamp for when the waiver was
-  granted.
+- `approved_at` — must match the exact grammar
+  `YYYY-MM-DDThh:mm:ss(.sss)?(Z|±hh:mm)` (the RFC 3339 `date-time` production,
+  fractional seconds optional) with a real calendar date (e.g. `2026-02-30` is rejected even though it
+  matches the grammar shape). This is a genuine strict RFC 3339 parser — not
+  `Date.parse` (which accepts a much wider, engine-defined grammar including
+  bare years, space-separated dates, and silently-rolled-over invalid
+  calendar dates) — so acceptance is deterministic across JS engines.
 
 Source: `kontourai/flow-agents` ADR 0020 §3, `parseWaiver` in
 `workflow-sidecar.ts`; the gap this projection closes is described in
@@ -83,9 +88,9 @@ export type WaiverVerdict =
 | Verdict | Meaning |
 | --- | --- |
 | `not-applicable` | The claim's derived status is neither `assumed` nor a waiver-bearing `stale`/`revoked`. There is nothing for waiver validity to say about this claim. |
-| `bare-assumed` | The claim's derived status is `assumed` and `claim.metadata.waiver` is absent. A bare `assumed` claim is **never** acceptable by default — this verdict exists so a consumer cannot mistake "no waiver" for "waived." |
-| `complete-waiver` | The claim's derived status is `assumed`, `claim.metadata.waiver` is present, and `reason`/`approved_by`/`approved_at` all pass shape validation (non-empty strings, parseable date-time). Note: `approverAuthenticated` is still `false` on this verdict — "complete" describes shape completeness, not identity trust. |
-| `incomplete-waiver` | The claim's derived status is `assumed`, `claim.metadata.waiver` is present, but one or more of `reason`/`approved_by`/`approved_at` fails shape validation (missing, empty, or unparseable). `incompleteFields` names exactly which wire key(s) failed. A non-object `waiver` value lists all three fields as incomplete. |
+| `bare-assumed` | The claim's derived status is `assumed` and `claim.metadata.waiver` is absent, or present with the JS-only value `undefined` (JSON cannot encode `undefined`, so this only matters for direct `deriveWaiverValidity` callers, not JSON-bundle producers). A bare `assumed` claim is **never** acceptable by default — this verdict exists so a consumer cannot mistake "no waiver" for "waived." |
+| `complete-waiver` | The claim's derived status is `assumed`, `claim.metadata.waiver` is present, and `reason`/`approved_by`/`approved_at` all pass shape validation (non-empty strings, a strict RFC3339 date-time). Note: `approverAuthenticated` is still `false` on this verdict — "complete" describes shape completeness, not identity trust. |
+| `incomplete-waiver` | The claim's derived status is `assumed`, `claim.metadata.waiver` is present, but one or more of `reason`/`approved_by`/`approved_at` fails shape validation (missing, empty, or malformed), **including `claim.metadata.waiver: null`** (a present-but-null value is malformed, not absent). `incompleteFields` names exactly which wire key(s) failed. A non-object `waiver` value lists all three fields as incomplete. |
 | `stale-or-revoked-waiver` | The claim's derived status is `stale` or `revoked` and `claim.metadata.waiver` is still present on it — a waiver that was stamped for a status that has since moved past `assumed`. This is inferred from whatever `metadata.waiver` happens to still be attached; if a producer strips `metadata.waiver` when a claim goes stale/revoked, that history is invisible to Surface. |
 | `command-backed-waiver-rejection` | The claim's derived status is `assumed`, evidence for the claim includes command-backed evidence (`isCommandBackedEvidence`), and `claim.metadata.waiver` is present. Per ADR 0020 §3, "a command-backed check cannot be waived" — this verdict makes that divergence rule natively derivable in Surface instead of requiring flow-agents to re-implement it. |
 

@@ -8,7 +8,6 @@ import type { TrustReport } from "../types.js";
 import { loadReport, requireValue, type QueryOptions } from "./shared.js";
 import { projectClaimQuery, projectPolicyQuery } from "./query.js";
 import { buildTrustPanelUiResource } from "../mcp-ui/trust-panel-resource.js";
-import { deriveWaiverValidity, type WaiverValidity } from "../waiver.js";
 
 /**
  * Minimal Model Context Protocol server over stdio.
@@ -132,7 +131,7 @@ const tools: ToolDefinition[] = [
     name: "surface_waiver_validity",
     title: "Waiver validity",
     description:
-      "Derive waiver validity for assumed/stale/revoked claims from claim.metadata.waiver: bare-assumed, complete-waiver, incomplete-waiver, stale-or-revoked-waiver, or command-backed-waiver-rejection. approverAuthenticated is always false (approved_by is unauthenticated free text). With claimId, returns just that claim's verdict; without it, returns the map for every claim in the report.",
+      "Derive waiver validity for every claim from claim.metadata.waiver: not-applicable, bare-assumed, complete-waiver, incomplete-waiver, stale-or-revoked-waiver, or command-backed-waiver-rejection. approverAuthenticated is always false (approved_by is unauthenticated free text). With claimId, returns just that claim's verdict; without it, returns the map for every claim in the report.",
     inputSchema: {
       type: "object",
       properties: {
@@ -143,9 +142,9 @@ const tools: ToolDefinition[] = [
     run: async (args, options) => {
       const report = await loadToolReport(args, options);
       const claimId = stringArg(args, "claimId");
-      const byClaimId = buildWaiverValidityByClaimId(report);
+      const byClaimId = report.waiverValidityByClaimId;
       if (claimId) {
-        if (!(claimId in byClaimId)) throw new Error(`Unknown claim: ${claimId}`);
+        if (!Object.hasOwn(byClaimId, claimId)) throw new Error(`Unknown claim: ${claimId}`);
         return { [claimId]: byClaimId[claimId] };
       }
       return byClaimId;
@@ -306,6 +305,26 @@ async function handleLine(line: string, options: McpServerOptions, serverVersion
   }
 }
 
+// MCP text-content boundary sanitizer, scoped to `buildToolContent`'s output
+// only (not a codebase-wide free-text sanitizer -- `excerptOrSummary`,
+// `TransparencyGap.message`, etc. are unchanged; see docs/reference/mcp.md).
+//
+// JSON string escaping (both `JSON.stringify` calls below, plus the outer
+// JSON-RPC envelope's `JSON.stringify` in `send()`) already mandatorily
+// escapes C0 control characters (U+0000-U+001F) and `\"`/`\\` as literal
+// six-character `\\uXXXX` escapes, so ESC-based ANSI terminal injection is
+// already neutralized by encoding alone. It does NOT escape C1 control
+// characters (U+0080-U+009F) or Unicode bidi format characters (U+200E,
+// U+200F, U+202A-U+202E, U+2066-U+2069) -- those pass through the JSON string
+// as literal codepoints and can still push a terminal-rendering MCP client
+// into cursor manipulation or right-to-left visual spoofing of e.g. an
+// `approved_by` string. Strip them here, once, at the text-content boundary.
+const UNSAFE_TEXT_CHARS_RE = /[\u0080-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
+
+function stripUnsafeRenderingChars(text: string): string {
+  return text.replace(UNSAFE_TEXT_CHARS_RE, "");
+}
+
 /**
  * Build the tool result content array.  For tools that embed a UI resource
  * the result object carries special private fields (_summary/_claimData for
@@ -320,7 +339,9 @@ function buildToolContent(
     const r = result as { _ui: string | null; _report?: TrustReport; _summary?: unknown; _claimData?: unknown };
     // Extract the actual data payload for the text entry
     const textPayload = r._summary !== undefined ? r._summary : r._claimData;
-    const text = typeof textPayload === "string" ? textPayload : JSON.stringify(textPayload, null, 2);
+    const text = stripUnsafeRenderingChars(
+      typeof textPayload === "string" ? textPayload : JSON.stringify(textPayload, null, 2),
+    );
     const content: Array<{ type: string; text?: string; resource?: unknown }> = [{ type: "text", text }];
     if (!options.noUi && r._ui !== null && r._report !== undefined) {
       const uri =
@@ -331,7 +352,7 @@ function buildToolContent(
     }
     return content;
   }
-  const text = typeof result === "string" ? result : JSON.stringify(result, null, 2);
+  const text = stripUnsafeRenderingChars(typeof result === "string" ? result : JSON.stringify(result, null, 2));
   return [{ type: "text", text }];
 }
 
@@ -342,28 +363,6 @@ async function loadToolReport(args: Record<string, unknown>, options: McpServerO
     input: input ? resolve(input) : options.input,
     adapter: adapter ?? options.adapter,
   });
-}
-
-/**
- * Derives waiver validity per claim by calling `deriveWaiverValidity` directly
- * against the report's already-derived claims and per-claim evidence, mirroring
- * the exact `evidence.filter((item) => item.claimId === claim.id)` pattern
- * `trust-snapshot.ts`/`query.ts` already use elsewhere in this file.
- *
- * `TrustReport.waiverValidityByClaimId` (Task S3) is not yet available on this
- * report shape, so this tool computes the map itself rather than reading a
- * report field. Once Task S3 lands, this can be simplified to
- * `report.waiverValidityByClaimId`; both compute an identical result from the
- * same `deriveWaiverValidity` function, since the report field is built via
- * the same per-claim call site.
- */
-function buildWaiverValidityByClaimId(report: TrustReport): Record<string, WaiverValidity> {
-  const byClaimId: Record<string, WaiverValidity> = {};
-  for (const claim of report.claims) {
-    const evidence = report.evidence.filter((item) => item.claimId === claim.id);
-    byClaimId[claim.id] = deriveWaiverValidity({ claim, status: claim.status, evidence });
-  }
-  return byClaimId;
 }
 
 function stringArg(args: Record<string, unknown>, key: string): string | undefined {

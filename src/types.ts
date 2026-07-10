@@ -622,17 +622,14 @@ export interface TrustReport extends TrustBundle {
    * consumer will not see this field. See `docs/reference/waiver-validity.md`
    * for the derivation semantics and `deriveWaiverValidity` in `waiver.ts`.
    */
-  waiverValidityByClaimId?: Record<string, WaiverValidity>;
+  waiverValidityByClaimId: Record<string, WaiverValidity>;
   /**
    * Static version of the waiver validity derivation algorithm used to
    * produce this report, mirroring `statusFunctionVersion`'s convention. Also
    * additive TS-only output, not yet declared in the vendored JSON schema
-   * (see `docs/reference/waiver-validity.md`). Optional (rather than
-   * required like `statusFunctionVersion`) purely so that pre-existing
-   * hand-constructed `TrustReport` fixtures in tests remain valid; every
-   * report produced by `buildTrustReport` always populates both fields.
+   * (see `docs/reference/waiver-validity.md`).
    */
-  waiverValidityFunctionVersion?: string;
+  waiverValidityFunctionVersion: string;
 }
 
 /**

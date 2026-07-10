@@ -121,20 +121,61 @@ test("incomplete-waiver: empty-string reason and approved_by are treated as miss
   assert.equal(result.approverAuthenticated, false);
 });
 
-test("incomplete-waiver: approved_at is not a parseable date", () => {
-  const claim = makeClaim({
-    status: "assumed",
-    metadata: {
-      waiver: { reason: "reason text", approved_by: "actor:approver-1", approved_at: "not-a-date" },
-    },
-  });
-  const result = deriveWaiverValidity({ claim, status: "assumed", evidence: [] });
-  assert.equal(result.verdict, "incomplete-waiver");
-  assert.equal(result.approverAuthenticated, false);
-  assert.deepEqual(result.incompleteFields, ["approved_at"]);
-  assert.equal(result.waiver?.reason, "reason text");
-  assert.equal(result.waiver?.approvedBy, "actor:approver-1");
-  assert.equal(result.waiver?.approvedAt, undefined);
+test("incomplete-waiver: approved_at fails strict RFC3339 validation for every reviewer-reported non-conformant shape", () => {
+  // Reviewer reproductions (review-codex.md High finding + review-security.md
+  // MEDIUM #1): each of these was accepted by the old Date.parse-based check
+  // and must now be rejected by construction.
+  const invalidApprovedAtValues = [
+    "0",
+    "2026-02-30T00:00:00Z", // full RFC3339 grammar shape, impossible calendar date
+    "2026-05-01", // no T + time component
+    "05/01/2026", // wrong separators, locale-ambiguous
+    "2026-05-01 00:00:00", // space instead of "T"
+    "not-a-date",
+  ];
+  for (const approved_at of invalidApprovedAtValues) {
+    const claim = makeClaim({
+      status: "assumed",
+      metadata: {
+        waiver: { reason: "reason text", approved_by: "actor:approver-1", approved_at },
+      },
+    });
+    const result = deriveWaiverValidity({ claim, status: "assumed", evidence: [] });
+    assert.equal(
+      result.verdict,
+      "incomplete-waiver",
+      `expected incomplete-waiver for approved_at ${JSON.stringify(approved_at)}`,
+    );
+    assert.equal(result.approverAuthenticated, false);
+    assert.deepEqual(
+      result.incompleteFields,
+      ["approved_at"],
+      `expected only approved_at incomplete for ${JSON.stringify(approved_at)}`,
+    );
+    assert.equal(result.waiver?.reason, "reason text");
+    assert.equal(result.waiver?.approvedBy, "actor:approver-1");
+    assert.equal(result.waiver?.approvedAt, undefined);
+  }
+});
+
+test("complete-waiver: approved_at accepts a UTC-offset timestamp and a leap-second-tolerant timestamp", () => {
+  const validApprovedAtValues = [
+    "2026-05-01T00:00:00+05:00",
+    "2024-02-29T23:59:60Z", // 2024 is a leap year -- Feb 29 is valid; :60 tolerates a leap second
+  ];
+  for (const approved_at of validApprovedAtValues) {
+    const claim = makeClaim({
+      status: "assumed",
+      metadata: { waiver: { reason: "reason text", approved_by: "actor:approver-1", approved_at } },
+    });
+    const result = deriveWaiverValidity({ claim, status: "assumed", evidence: [] });
+    assert.equal(
+      result.verdict,
+      "complete-waiver",
+      `expected complete-waiver for approved_at ${JSON.stringify(approved_at)}`,
+    );
+    assert.equal(result.waiver?.approvedAt, approved_at);
+  }
 });
 
 test("incomplete-waiver: malformed shape (metadata.waiver is a string) lists all three fields", () => {
@@ -144,6 +185,86 @@ test("incomplete-waiver: malformed shape (metadata.waiver is a string) lists all
   assert.equal(result.approverAuthenticated, false);
   assert.deepEqual(result.incompleteFields, ["reason", "approved_by", "approved_at"]);
   assert.deepEqual(result.waiver, {});
+});
+
+test("incomplete-waiver: metadata.waiver is an array lists all three fields (hostile-shape regression)", () => {
+  const claim = makeClaim({
+    status: "assumed",
+    metadata: { waiver: ["reason", "approved_by", "approved_at"] },
+  });
+  const result = deriveWaiverValidity({ claim, status: "assumed", evidence: [] });
+  assert.equal(result.verdict, "incomplete-waiver");
+  assert.equal(result.approverAuthenticated, false);
+  assert.deepEqual(result.incompleteFields, ["reason", "approved_by", "approved_at"]);
+  assert.deepEqual(result.waiver, {});
+});
+
+test("incomplete-waiver: metadata.waiver is explicitly null (present-but-null is malformed, not absent)", () => {
+  const claim = makeClaim({ status: "assumed", metadata: { waiver: null } });
+  const result = deriveWaiverValidity({ claim, status: "assumed", evidence: [] });
+  assert.equal(result.verdict, "incomplete-waiver");
+  assert.equal(result.approverAuthenticated, false);
+  assert.deepEqual(result.incompleteFields, ["reason", "approved_by", "approved_at"]);
+  assert.deepEqual(result.waiver, {});
+});
+
+test("bare-assumed: metadata.waiver is the JS-only value undefined (present own key, undefined value, treated as absent)", () => {
+  const claim = makeClaim({ status: "assumed", metadata: { waiver: undefined } });
+  const result = deriveWaiverValidity({ claim, status: "assumed", evidence: [] });
+  assert.equal(result.verdict, "bare-assumed");
+  assert.equal(result.approverAuthenticated, false);
+  assert.equal(result.waiver, undefined);
+});
+
+test("bare-assumed: inherited-only metadata.waiver (prototype forgery) is treated as absent, not forged-complete (Codex repro)", () => {
+  const metadata = Object.create({
+    waiver: {
+      reason: "prototype waiver",
+      approved_by: "prototype approver",
+      approved_at: "2026-01-01T00:00:00Z",
+    },
+  });
+  const claim = makeClaim({ status: "assumed", metadata });
+  const result = deriveWaiverValidity({ claim, status: "assumed", evidence: [] });
+  assert.equal(result.verdict, "bare-assumed");
+  assert.equal(result.approverAuthenticated, false);
+  assert.equal(result.waiver, undefined);
+});
+
+test("incomplete-waiver: inherited-only reason/approved_by/approved_at on an own waiver object are treated as missing", () => {
+  const waiver = Object.create({
+    reason: "prototype reason",
+    approved_by: "prototype approver",
+    approved_at: "2026-01-01T00:00:00Z",
+  });
+  const claim = makeClaim({ status: "assumed", metadata: { waiver } });
+  const result = deriveWaiverValidity({ claim, status: "assumed", evidence: [] });
+  assert.equal(result.verdict, "incomplete-waiver");
+  assert.equal(result.approverAuthenticated, false);
+  assert.deepEqual(result.incompleteFields, ["reason", "approved_by", "approved_at"]);
+  assert.deepEqual(result.waiver, {});
+});
+
+test("complete-waiver: a genuine class instance with real own reason/approved_by/approved_at properties still validates (no over-rejection)", () => {
+  class SomeWaiverProducer {}
+  const waiver = Object.assign(Object.create(SomeWaiverProducer.prototype), completeWaiver);
+  const claim = makeClaim({ status: "assumed", metadata: { waiver } });
+  const result = deriveWaiverValidity({ claim, status: "assumed", evidence: [] });
+  assert.equal(result.verdict, "complete-waiver");
+  assert.equal(result.approverAuthenticated, false);
+  assert.deepEqual(result.waiver, {
+    reason: completeWaiver.reason,
+    approvedBy: completeWaiver.approved_by,
+    approvedAt: completeWaiver.approved_at,
+  });
+});
+
+test("command-backed-waiver-rejection fires even when the waiver's own shape is also incomplete (precedence step 1 ignores shape validity)", () => {
+  const claim = makeClaim({ status: "assumed", metadata: { waiver: { reason: "only reason" } } });
+  const evidence = [makeEvidence({ evidenceType: "test_output" })];
+  const result = deriveWaiverValidity({ claim, status: "assumed", evidence });
+  assert.equal(result.verdict, "command-backed-waiver-rejection");
+  assert.equal(result.approverAuthenticated, false);
 });
 
 test("stale-or-revoked-waiver: stale claim retaining a waiver in metadata", () => {

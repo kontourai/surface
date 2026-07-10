@@ -170,13 +170,20 @@ export function deriveWaiverValidity(input: {
  * assumed. Returns `undefined` when no waiver key is present at all;
  * otherwise returns the raw (possibly malformed) value for downstream
  * validation.
+ *
+ * Uses `Object.hasOwn` (not `"waiver" in metadata`) so an *inherited-only*
+ * `waiver` property (e.g. `Object.create({waiver: {...}})`) is treated
+ * identically to a genuinely absent key — the `in` operator walks the
+ * prototype chain and would otherwise let a hostile/malformed producer forge
+ * a waiver via prototype inheritance rather than an own property on the
+ * parsed JSON object.
  */
 function readRawWaiver(claim: Claim): unknown | undefined {
   const metadata = claim.metadata;
   if (metadata === undefined || metadata === null || typeof metadata !== "object") {
     return undefined;
   }
-  if (!("waiver" in metadata)) {
+  if (!Object.hasOwn(metadata, "waiver")) {
     return undefined;
   }
   return (metadata as Record<string, unknown>).waiver;
@@ -184,13 +191,57 @@ function readRawWaiver(claim: Claim): unknown | undefined {
 
 const WAIVER_KEYS = ["reason", "approved_by", "approved_at"] as const;
 
+// Strict RFC 3339 `date-time` production: full calendar date + time-of-day +
+// (fractional seconds)? + (Z | numeric offset). Deliberately NOT `Date.parse`
+// — `Date.parse` is an implementation-defined, engine-specific grammar (it
+// accepts bare years, bare year-months, space-separated dates, US-locale
+// slash dates, free-text English dates, and silently rolls over impossible
+// calendar dates like Feb 30 into the following month) which is both looser
+// than RFC 3339 and non-deterministic across JS engines. This validator does
+// not call `Date`/`Date.parse` anywhere in the accept path.
+const RFC3339_DATE_TIME_RE =
+  /^(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:[Zz]|[+-]\d{2}:\d{2})$/;
+
+function isLeapYear(year: number): boolean {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+}
+
+function daysInMonth(year: number, month: number): number {
+  const days = [31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return days[month - 1];
+}
+
+/**
+ * Strict RFC 3339 `date-time` grammar check plus a real calendar-day-count
+ * check (rejects e.g. `2026-02-30T00:00:00Z` even though it matches the
+ * regex shape). Tolerates a leap second (`:60`) per RFC 3339. No `Date`/
+ * `Date.parse` call — deterministic across JS engines.
+ */
+function isRfc3339DateTime(value: string): boolean {
+  const m = RFC3339_DATE_TIME_RE.exec(value);
+  if (!m) return false;
+  const [, y, mo, d, h, mi, s] = m.map(Number) as unknown as number[];
+  if (mo < 1 || mo > 12) return false;
+  if (d < 1 || d > daysInMonth(y, mo)) return false;
+  if (h > 23 || mi > 59 || s > 60) return false; // s===60 tolerates a leap second
+  return true;
+}
+
 /**
  * Validates a raw `metadata.waiver` value against the expected shape:
  * `{reason: string (non-empty), approved_by: string (non-empty), approved_at:
- * string (RFC3339 date-time, parseable)}`. A non-object `waiver` value fails
- * all three fields. Returns the successfully-read fields (camelCase echo) and
- * the list of field names (snake_case, matching the wire format) that failed
- * validation.
+ * string (strict RFC 3339 date-time, real calendar date)}`. A non-object
+ * `waiver` value fails all three fields. Returns the successfully-read fields
+ * (camelCase echo) and the list of field names (snake_case, matching the wire
+ * format) that failed validation.
+ *
+ * Each field is read only when `Object.hasOwn(source, "<field>")` is true —
+ * an *inherited-only* `reason`/`approved_by`/`approved_at` (e.g. a value
+ * whose prototype, not its own properties, carries the field) is treated
+ * identically to a missing field. This keeps prototype-chain values from
+ * forging a `complete-waiver` verdict while still accepting genuine own
+ * properties on any object shape (plain object, `Object.create(null)`, or a
+ * class instance with real own properties).
  */
 function validateWaiverShape(rawWaiver: unknown): {
   facts: WaiverFacts;
@@ -205,22 +256,22 @@ function validateWaiverShape(rawWaiver: unknown): {
 
   const source = rawWaiver as Record<string, unknown>;
 
-  const reason = source.reason;
+  const reason = Object.hasOwn(source, "reason") ? source.reason : undefined;
   if (typeof reason === "string" && reason.length > 0) {
     facts.reason = reason;
   } else {
     incompleteFields.push("reason");
   }
 
-  const approvedBy = source.approved_by;
+  const approvedBy = Object.hasOwn(source, "approved_by") ? source.approved_by : undefined;
   if (typeof approvedBy === "string" && approvedBy.length > 0) {
     facts.approvedBy = approvedBy;
   } else {
     incompleteFields.push("approved_by");
   }
 
-  const approvedAt = source.approved_at;
-  if (typeof approvedAt === "string" && approvedAt.length > 0 && Number.isFinite(Date.parse(approvedAt))) {
+  const approvedAt = Object.hasOwn(source, "approved_at") ? source.approved_at : undefined;
+  if (typeof approvedAt === "string" && isRfc3339DateTime(approvedAt)) {
     facts.approvedAt = approvedAt;
   } else {
     incompleteFields.push("approved_at");

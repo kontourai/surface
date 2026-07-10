@@ -139,7 +139,13 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
     return folded;
   });
 
-  const waiverValidityByClaimId: Record<string, WaiverValidity> = {};
+  // Null-prototype map: a claim id of `__proto__`, `toString`, or
+  // `constructor` must become an ordinary own key, never resolve through the
+  // prototype chain. `evidenceRequirementsByClaimId` above has the same
+  // latent plain-object-map defect but is intentionally NOT touched here
+  // (pre-existing, out of scope for this fix — named as a follow-up-issue
+  // candidate).
+  const waiverValidityByClaimId: Record<string, WaiverValidity> = Object.create(null);
   const claims = foldedClaims.map((folded) => {
     const outcome = applyDerivation({
       claim: folded.claim,

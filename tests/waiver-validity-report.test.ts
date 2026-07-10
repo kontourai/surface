@@ -253,3 +253,36 @@ test(
     }
   },
 );
+
+test(
+  "waiverValidityByClaimId is immune to a claim id of literal \"__proto__\" (own-property-safe map, Codex repro)",
+  () => {
+    const protoClaimId = "__proto__";
+    const bundle = validateTrustBundle({
+      schemaVersion: 3,
+      source: "waiver-validity-report-proto-claim-id-test",
+      claims: [
+        {
+          ...baseClaim,
+          id: protoClaimId,
+          fieldOrBehavior: "assumed-complete-waiver",
+          value: "OPEN",
+          metadata: { waiver: completeWaiver },
+        },
+      ],
+      evidence: [],
+      policies: [],
+      events: [assumedEvent(protoClaimId)],
+      authorityTrace: [resolverAuthorityTrace],
+    });
+    const report = buildTrustReport(bundle, { now });
+
+    // Before the null-prototype-map fix, `__proto__` as a claim id silently
+    // resolved through the prototype chain instead of landing as an own key,
+    // so `Object.keys(...)` reported `[]` and the verdict was lost.
+    assert.deepEqual(Object.keys(report.waiverValidityByClaimId ?? {}), [protoClaimId]);
+    assert.ok(Object.hasOwn(report.waiverValidityByClaimId ?? {}, protoClaimId));
+    assert.equal(report.waiverValidityByClaimId?.[protoClaimId]?.verdict, "complete-waiver");
+    assert.equal(report.waiverValidityByClaimId?.[protoClaimId]?.approverAuthenticated, false);
+  },
+);
