@@ -42,4 +42,4 @@ A human reviewing a few decisions a day can hold the missing context in their he
 
 When the same workflow is delegated to an agent making thousands of decisions, that informal layer disappears. There is no reviewer to catch a misread subject, a stale verification, or a quiet contradiction between two systems. The trust state has to be derivable from the contract itself — readable, deterministic, and the same answer for every Viewer, Operator, Builder, Verifier, or agent that asks.
 
-Surface is built for that shift. The kernel does not ask the agent to be careful. It returns a status, the evidence behind it, the freshness window, and the transparency gaps that make a claim unsafe to rely on. The agent's job is to read; the kernel's job is to be right by construction.
+Surface is built for that shift. The kernel does not ask the agent to be careful. It returns a status, the evidence behind it, the freshness window, and the transparency gaps that make a claim unsafe to rely on. The agent's job is to read; the kernel's job is to derive the same verdict, deterministically, from the same inputs.

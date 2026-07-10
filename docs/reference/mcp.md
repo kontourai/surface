@@ -83,4 +83,4 @@ The panel is offered under both UI conventions, so one server renders across hos
 
 ## The discipline the kernel hands the agent
 
-The server's instructions to clients state the intended use: act on `verified` claims, reverify `stale` ones, escalate `disputed` ones, and treat transparency gaps as a reason to ask before acting. The agent's job is to read; the kernel's job is to be right by construction. See [Use Cases](../product/use-cases.md) for how this plays out per domain.
+The server's instructions to clients state the intended use: act on `verified` claims, reverify `stale` ones, escalate `disputed` ones, and treat transparency gaps as a reason to ask before acting. The agent's job is to read; the kernel's job is to derive the same verdict, deterministically, from the same inputs. See [Use Cases](../product/use-cases.md) for how this plays out per domain.

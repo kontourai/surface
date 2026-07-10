@@ -20,7 +20,7 @@ Surface connects evidence provenance to product claims through a portable, open 
 - **Transparency Gaps** — what is missing, stale, private, disputed, unavailable, or unsupported
 - **Trust Snapshot** — a point-in-time report that can drive a Trust Panel, the Surface Console, an API, or an agent resource
 
-Status is derived by construction — not summarized by a model, not hidden behind a confidence score. If a claim is weak, stale, or disputed, the system makes that visible.
+Status is derived deterministically from the trust bundle and evaluation time — not summarized by a model, not hidden behind a confidence score. If a claim is weak, stale, or disputed, the system makes that visible.
 
 ## Where teams use it
 

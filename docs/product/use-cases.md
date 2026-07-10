@@ -37,7 +37,7 @@ The scenarios are not hypothetical shapes. Each one is grounded in an example th
 
 **The mapping.** Each resolved fact becomes a claim; extraction candidates, confidence context, and review rationale become Evidence and metadata; explicit human verification becomes a verification event. The [fact resolution example](https://github.com/kontourai/surface/blob/main/examples/fact-resolution-export.json) shows a user-verified filing status deriving as `verified` while a document-imported capital gain that conflicts with a worksheet derives with the conflict visible and `needsVerification` preserved — not averaged away into a confidence score.
 
-**Why it matters.** Status is derived by construction. The workflow can let an agent proceed on verified facts and route disputed ones to a human, using the same report.
+**Why it matters.** **Status is derived deterministically** from the trust bundle and evaluation time. The workflow can let an agent proceed on verified facts and route disputed ones to a human, using the same report.
 
 ## Dependency Audit
 
