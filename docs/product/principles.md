@@ -22,7 +22,7 @@ Verification is decided once, in the kernel, and every downstream reader gets th
 
 ## Learn only from verified claims
 
-Every claim carries an adjudication state (`unknown`, `proposed`, `assumed`, `verified`, `stale`, `disputed`, `superseded`, `rejected`). A consumer acting in the moment may read any of them, with the transparency gaps attached, and decide what to do. A consumer that **learns** — anything that turns claims into durable signal that shapes future behavior: a confidence-calibration loop, a correction-to-rule flywheel, a model or ruleset trained on outcomes — is different, and the contract holds it to a stricter rule.
+Every claim carries an adjudication state (`unknown`, `proposed`, `assumed`, `verified`, `stale`, `disputed`, `superseded`, `rejected`, `revoked`). A consumer acting in the moment may read any of them, with the transparency gaps attached, and decide what to do. A consumer that **learns** — anything that turns claims into durable signal that shapes future behavior: a confidence-calibration loop, a correction-to-rule flywheel, a model or ruleset trained on outcomes — is different, and the contract holds it to a stricter rule.
 
 A learning consumer **MUST** filter to `status = verified` before treating a claim as training signal. Consuming `proposed`, `assumed`, `stale`, `disputed`, `unknown`, or any non-`verified` claim as learning signal is **non-conforming**.
 
