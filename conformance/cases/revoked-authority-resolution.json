@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 6,
+  "source": "surface-conformance:revoked-authority-resolution",
+  "claims": [
+    {
+      "id": "claim.deploy-key.grant",
+      "subjectType": "credential",
+      "subjectId": "access:deploy-key-7",
+      "facet": "access-control.grants",
+      "claimType": "software-evidence",
+      "fieldOrBehavior": "deploy key is authorized",
+      "value": true,
+      "createdAt": "2026-05-01T00:00:00.000Z",
+      "updatedAt": "2026-06-01T00:10:00.000Z",
+      "impactLevel": "high"
+    }
+  ],
+  "evidence": [],
+  "policies": [],
+  "events": [
+    {
+      "id": "event.claim.deploy-key.grant.verified",
+      "claimId": "claim.deploy-key.grant",
+      "status": "verified",
+      "actor": "ci",
+      "method": "validation",
+      "evidenceIds": [],
+      "createdAt": "2026-05-01T00:05:00.000Z"
+    },
+    {
+      "id": "event.dispute-resolution.claim.deploy-key.grant.2026-06-01T00:10:00.000Z",
+      "claimId": "claim.deploy-key.grant",
+      "status": "revoked",
+      "actor": "actor:reviewer-1",
+      "method": "dispute-resolution",
+      "evidenceIds": [],
+      "createdAt": "2026-06-01T00:10:00.000Z",
+      "resolvesDispute": true,
+      "authorityRef": "role:domain-expert",
+      "notes": "Key compromised; grant revoked by the domain authority."
+    }
+  ],
+  "authorityTrace": [
+    {
+      "id": "authority.reviewer-1",
+      "subject": {
+        "subjectType": "credential",
+        "subjectId": "access:deploy-key-7"
+      },
+      "actorRef": "actor:reviewer-1",
+      "authorityType": "role",
+      "authorityRef": "role:domain-expert",
+      "sourceRef": "directory:security-team",
+      "observedAt": "2026-01-01T00:00:00.000Z",
+      "validFrom": "2026-01-01T00:00:00.000Z",
+      "validUntil": "2026-12-31T23:59:59.000Z"
+    }
+  ]
+}

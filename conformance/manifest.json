@@ -31,6 +31,15 @@
       }
     },
     {
+      "name": "revoked-authority-resolution",
+      "input": "cases/revoked-authority-resolution.json",
+      "expect": {
+        "valid": true,
+        "statusByClaimId": { "claim.deploy-key.grant": "revoked" },
+        "transparencyGapTypesByClaimId": { "claim.deploy-key.grant": ["provenance_gap"] }
+      }
+    },
+    {
       "name": "invalid-missing-subject",
       "input": "cases/invalid-missing-subject.json",
       "expect": {

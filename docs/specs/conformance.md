@@ -7,10 +7,12 @@ The [Open Trust Format](open-trust-format.md) is only portable if two implementa
 An implementation of the Open Trust Format conforms when, for every case in the suite, it:
 
 1. **Accepts** the valid inputs and **rejects** the invalid ones, with an error that identifies the violated constraint.
-2. **Derives the same claim status** (`unknown`, `proposed`, `assumed`, `verified`, `stale`, `disputed`, `superseded`, `rejected`) for every claim.
+2. **Derives the same claim status** (`unknown`, `proposed`, `assumed`, `verified`, `stale`, `disputed`, `superseded`, `rejected`, `revoked`) for every claim.
 3. **Surfaces the same transparency gap types** (`provenance_gap`, `policy_violation`, `freshness_breach`, …) for every claim.
 
 Conformance covers derivation semantics, not presentation. A conforming implementation may render, store, or transport reports differently; it must not disagree about what is verified, stale, or unsupported.
+
+`revoked` is the ninth status and the narrowest: a claim **derives** to `revoked` only through an authority-gated dispute resolution — an event with `resolvesDispute: true` and `status: "revoked"` whose actor holds an `AuthorityTrace` active at the decision time, with no newer blocking evidence re-opening the dispute (ADR 0003 §8). A bare `revoked` event, or an `invalidation`-type `revoked` event, folds to `stale` instead (matching the Hachure single-claim status function); `revoked` as a derived claim status is reachable only via that authorized path. The `revoked-authority-resolution` case below observes it.
 
 ## The suite
 
@@ -26,6 +28,7 @@ Current cases cover the core derivation contract:
 | `verified-commit-evidence` | Policy-required evidence plus a verification event at the current integrity ref | `verified`, no gaps |
 | `unknown-no-evidence` | A claim with a policy but no evidence or events | `unknown`, with `provenance_gap` and `policy_violation` |
 | `stale-expired-window` | A duration validity rule whose verification aged out | `stale`, with `freshness_breach` |
+| `revoked-authority-resolution` | An authorized reviewer's dispute-resolution event revokes a prior verification | `revoked`, with `provenance_gap` |
 | `invalid-missing-subject` | A claim missing `subjectId` | Validation rejection naming the missing field |
 
 ## Running the suite
