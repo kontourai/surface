@@ -7,7 +7,7 @@
  */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildTrustReport, validateTrustBundle } from "../src/index.js";
+import { buildTrustReport, mergeBundles, validateTrustBundle } from "../src/index.js";
 import type { ConclusionConfidence } from "../src/index.js";
 
 function bundleWithClaim(extra: Record<string, unknown>) {
@@ -61,6 +61,17 @@ test("conclusionConfidence must be an object at the runtime validator (matches c
   // consumers and covered in the hachure ajv suite, consistent with how
   // confidenceBasis is treated).
   assert.throws(() => validateTrustBundle(bundleWithClaim({ conclusionConfidence: "not-an-object" })));
+});
+
+test("conclusionConfidence survives a multi-producer merge", () => {
+  // Field-agnostic merge must preserve the calibrated value on the surviving claim.
+  const withCC = validateTrustBundle(bundleWithClaim({ conclusionConfidence }));
+  const other = validateTrustBundle({
+    schemaVersion: 6, source: "other-producer", claims: [], evidence: [], policies: [], events: [],
+  });
+  const merged = mergeBundles([withCC, other]);
+  const claim = merged.claims.find((c) => c.id === "claim.conclusion.1");
+  assert.deepEqual(claim?.conclusionConfidence, conclusionConfidence);
 });
 
 test("conclusionConfidence is separate from confidenceBasis (both can coexist)", () => {
