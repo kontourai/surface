@@ -7,11 +7,12 @@ The server is dependency-free and speaks MCP over stdio, so any MCP-capable clie
 ## Start the server
 
 ```bash
-surface mcp --input path/to/trust-bundle.json
+surface mcp                                              # input-agnostic: input supplied per call
+surface mcp --input path/to/trust-bundle.json            # optional single-report default
 surface mcp --input path/to/export.json --adapter my-producer
 ```
 
-`--input` defaults to `examples/surface-example-bundle.json` and `--adapter` to the native `surface` passthrough, matching `surface report`.
+`--input` is **optional**. With it, the given file is the default input for every call. Without it, the server runs **input-agnostic** — it holds no default and each tool call supplies its own `input` (see [Multiple or evolving inputs](#multiple-or-evolving-inputs)). There is deliberately no baked-in example fallback: a server with no input configured returns an honest "No trust input configured" error rather than silently deriving demo data. `--adapter` defaults to the native `surface` passthrough, matching `surface report`.
 
 A typical MCP client configuration:
 
@@ -38,6 +39,10 @@ A typical MCP client configuration:
 | `surface_policy` | `policyId?`, `claimId?`, `input?`, `adapter?` | Policy drilldown, or all policies with claim ids and gap counts when called without arguments |
 
 `input` and `adapter` default to the values the server was started with. Every call re-derives the report from the input file, so agents always read current trust state — the same `TrustBundle` produces the same answer on every call, on every machine.
+
+### Multiple or evolving inputs
+
+`--input` is a single-report default, but a producer that emits many, evolving trust inputs (e.g. a workflow engine with per-task `trust.bundle` files) does not need to restart the server or reconfigure `--input`: pass the per-call `input` argument on any tool to point that call at a different file. This is the supported multi-input pattern. A `veritas` evidence-record envelope can be unwrapped per call with `adapter: "veritas"`. A `current`-aware resolver that follows a moving "current" subject without per-call path threading is a deferred, tracked direction (see the [MCP Trust-Input Ingestion decision](../decisions/mcp-input-ingestion.md)).
 
 ## A realistic session
 

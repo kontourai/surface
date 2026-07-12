@@ -62,10 +62,10 @@ test("CLI unknown adapter error lists registered adapters", async () => {
       const stderr = "stderr" in error && typeof error.stderr === "string" ? error.stderr : "";
       assert.match(stderr, /Unknown adapter: unknown/);
       assert.match(stderr, /surface/);
+      assert.match(stderr, /veritas/); // now a built-in envelope-unwrap preset (#84)
       assert.doesNotMatch(stderr, /fact-resolution/);
       assert.doesNotMatch(stderr, /field-attested-records/);
       assert.doesNotMatch(stderr, /npm-audit/);
-      assert.doesNotMatch(stderr, /veritas/);
       return true;
     },
   );

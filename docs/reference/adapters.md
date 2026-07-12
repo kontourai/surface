@@ -33,12 +33,15 @@ Claims are stable across runs. A claim with no evidence collected in the current
 
 The appropriate pattern for one-shot analysis or for producers that own their own claim generation. The adapter receives raw product output and returns a complete `TrustBundle` — claims, evidence, policies, and events — in one pass.
 
-The only built-in adapter is `surface`, a passthrough for already formatted Surface input:
+Two adapters are built in. `surface` is a passthrough for already formatted Surface input; `veritas` unwraps a Veritas evidence-record envelope, extracting the Trust Bundle it carries at `trust.bundle` (so a consumer no longer has to hand-extract it):
 
 ```bash
 surface report --input examples/surface-example-bundle.json
 surface report --adapter surface --input path/to/trust-bundle.json
+surface report --adapter veritas --input path/to/veritas-evidence-record.json
 ```
+
+`veritas` is a thin preset of a neutral envelope-unwrap primitive — Surface owns the generic unwrap (`createEnvelopeAdapter({ name, unwrapPath })`), not producer-specific parsing — so the "producers own their adapters" boundary holds. It also tolerates an already-unwrapped bundle, so either the wrapped or bare shape can be fed.
 
 Custom adapters are registered explicitly through the public registry:
 
