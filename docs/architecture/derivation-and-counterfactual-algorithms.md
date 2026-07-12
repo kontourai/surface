@@ -43,7 +43,7 @@ where `ownStatus(x)` is the status the claim earns from its own evidence and eve
 ceiling(x) = min over all transitive inputs i of ownStatus(i)
 ```
 
-The walk uses a shared `visited` set, so each ancestor is folded once and cycles terminate. A cycle attaches an `unsupported_inference` transparency gap and a `blocked` change record; a missing input attaches a `provenance`-style gap. The status *value* is still well-defined because `min` is idempotent — revisiting an already-folded input cannot change the ceiling.
+The walk uses a shared `visited` set, so each ancestor is folded once and cycles terminate. Both a cycle and a missing input attach an `unsupported_inference` transparency gap and a `blocked` change record (with reason `derivation-cycle` and `input-missing` respectively); a missing input also contributes `unknown` to the ceiling. The status *value* is still well-defined because `min` is idempotent — revisiting an already-folded input cannot change the ceiling.
 
 An equivalent, more useful way to state the same thing is the **recursive identity**:
 
@@ -72,7 +72,7 @@ A claim's `ownStatus` and its transparency gaps both depend on the same underlyi
 
 > A claim derived `verified` never carries an unmet-requirement gap, and a claim held back to `proposed` for an unmet requirement always carries the gap that explains it.
 
-Status and the gaps that justify it are now two projections of a single evaluation, so they cannot contradict each other. This is verified end-to-end in the test suite over the example bundles.
+Status and the gaps that justify it are now two projections of a single evaluation, so they cannot contradict each other. This is verified end-to-end in the test suite over the example bundle.
 
 ## Counterfactual traversal
 
