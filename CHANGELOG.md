@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.6.0](https://github.com/kontourai/surface/compare/v2.5.0...v2.6.0) (2026-07-12)
+
+
+### Features
+
+* **console:** add Claim Detail Projection; render detail sheet from projected fields ([#4](https://github.com/kontourai/surface/issues/4)) ([#138](https://github.com/kontourai/surface/issues/138)) ([e10cfd8](https://github.com/kontourai/surface/commit/e10cfd8c44193d719870a7c309a15dc3787e77b8))
+* **evaluation:** centralize claim evidence/policy satisfaction facts ([#1](https://github.com/kontourai/surface/issues/1)) ([#136](https://github.com/kontourai/surface/issues/136)) ([880a7da](https://github.com/kontourai/surface/commit/880a7da6429900f489afb16d202849702fa62dbb))
+
+
+### Refactoring
+
+* **console:** extract SurfaceConsoleRuntime from the HTTP server ([#2](https://github.com/kontourai/surface/issues/2)) ([#139](https://github.com/kontourai/surface/issues/139)) ([df89652](https://github.com/kontourai/surface/commit/df89652767861cb22d99bee8c21d2004da660c60))
+
 ## [2.5.0](https://github.com/kontourai/surface/compare/v2.4.0...v2.5.0) (2026-07-12)
 
 
