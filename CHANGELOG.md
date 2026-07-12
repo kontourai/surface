@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.7.0](https://github.com/kontourai/surface/compare/v2.6.0...v2.7.0) (2026-07-12)
+
+
+### Features
+
+* **counterfactual:** add derived trust impact traversal ([#17](https://github.com/kontourai/surface/issues/17)) ([#140](https://github.com/kontourai/surface/issues/140)) ([ff7aff5](https://github.com/kontourai/surface/commit/ff7aff591471c744de969afbeef42de9f09f0e9d))
+
 ## [2.6.0](https://github.com/kontourai/surface/compare/v2.5.0...v2.6.0) (2026-07-12)
 
 
