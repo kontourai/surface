@@ -47,6 +47,34 @@ export interface ConfidenceBasis {
   impactLevel?: ImpactLevel;
 }
 
+/**
+ * Calibrated confidence ON a conclusion (Hachure 0.14, Surface #25), distinct
+ * from {@link ConfidenceBasis}: `ConfidenceBasis` carries the raw signals that
+ * fed an assessment; `ConclusionConfidence` carries a calibrated probability
+ * that the conclusion is correct, plus a producer-populated comfort-zone signal.
+ *
+ * Carried, not produced: Surface passes this through unchanged and never derives
+ * or consults it during status derivation. It is orthogonal to
+ * `confidenceBasis.reviewerAuthority` — a domain-expert-reviewed claim may carry
+ * low `value`, and an unreviewed claim high `value`. `method` and
+ * `comfortZone.reason` are free-form, producer-owned vocabulary.
+ */
+export interface ConclusionConfidence {
+  /** Calibrated probability in [0,1] that the conclusion is correct. */
+  value?: number;
+  /** How the value was calibrated (provenance label, e.g. "ensemble-disagreement"). Free-form. */
+  method?: string;
+  /** Optional calibrated interval around `value`. */
+  interval?: { low: number; high: number };
+  /** Structured comfort-zone signal; the producer (e.g. Survey) populates this. */
+  comfortZone?: {
+    /** Whether the conclusion falls within the calibrated comfort zone. */
+    within: boolean;
+    /** Structured reason when outside (free-form, producer-owned vocabulary). */
+    reason?: string;
+  };
+}
+
 export interface SubjectRef {
   subjectType: string;
   subjectId: string;
@@ -237,6 +265,7 @@ export interface Claim {
   currentIntegrityAnchor?: IntegrityAnchor;
   verificationPolicyId?: string;
   confidenceBasis?: ConfidenceBasis;
+  conclusionConfidence?: ConclusionConfidence;
   subjectAliases?: SubjectRef[];
   derivedFrom?: string[];
   derivationEdges?: DerivationEdge[];

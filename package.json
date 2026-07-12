@@ -89,7 +89,7 @@
     "@playwright/test": "^1.60.0",
     "@types/node": "^25.9.2",
     "ajv": "^8.20.0",
-    "hachure": "^0.13.0",
+    "hachure": "^0.14.0",
     "typescript": "^6.0.3"
   },
   "engines": {

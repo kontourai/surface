@@ -147,6 +147,9 @@ export function validateClaim(claim: unknown): void {
   if (claim.currentIntegrityAnchor !== undefined) validateIntegrityAnchor(claim.currentIntegrityAnchor, `claim ${claim.id} currentIntegrityAnchor`);
   if (claim.verificationPolicyId !== undefined) requireString(claim, "verificationPolicyId");
   if (claim.confidenceBasis !== undefined) requireObject(claim.confidenceBasis, "claim.confidenceBasis");
+  // Calibrated conclusion confidence is carried, not derived; the vendored JSON
+  // schema validates its shape, so the runtime check only asserts it is an object.
+  if (claim.conclusionConfidence !== undefined) requireObject(claim.conclusionConfidence, "claim.conclusionConfidence");
   if (claim.subjectAliases !== undefined) {
     const aliases = requireArray(claim, "subjectAliases");
     for (const alias of aliases) {
