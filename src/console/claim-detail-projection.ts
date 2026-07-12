@@ -223,7 +223,9 @@ function buildGaps(
       kindLabel: GAP_KIND_LABEL[classified.kind] ?? classified.kind,
       title: classified.title,
       hint: classified.hint,
-      severity: stringValue(record.severity) || "medium",
+      // Nullish fallback (mirrors the original `item.severity ?? "medium"`): an
+      // explicit empty-string severity is preserved, not replaced by "medium".
+      severity: typeof record.severity === "string" ? record.severity : "medium",
       message,
     };
     if (typeof record.blocking === "boolean") gap.blocking = record.blocking;
@@ -334,7 +336,9 @@ function collectIntegrityDetails(
           const record = ref as Record<string, unknown>;
           const configRef: SurfaceConsoleIntegrityConfigRef = {
             kind,
-            name: stringValue(record.name) || kind,
+            // Nullish fallback (mirrors the original `ref.name ?? kind`): an
+            // explicit empty-string name is preserved, not replaced by kind.
+            name: typeof record.name === "string" ? record.name : kind,
             hash: stringValue(record.hash),
           };
           const path = stringValue(record.path);

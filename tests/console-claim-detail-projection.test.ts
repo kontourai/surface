@@ -143,6 +143,19 @@ test("evidence is matched by evidenceIds membership only (mirrors the former bro
   assert.deepEqual(detail.integrityScope.sourceRefs, []);
 });
 
+test("nullish fallbacks: an explicit empty-string config name / gap severity is preserved, not replaced", () => {
+  const detail = buildClaimDetail(
+    { id: "claim-1", status: "proposed", evidenceIds: ["e1"], transparencyGapIds: ["g1"] },
+    {
+      transparencyGaps: [{ id: "g1", claimId: "claim-1", type: "provenance_gap", severity: "", message: "Missing required evidence: x." }],
+      evidence: [{ id: "e1", metadata: { integrity: { configRefs: { policy: { name: "", hash: "sha256:cfg" } } } } }],
+    },
+  );
+  // Mirrors the original browser `?? ` semantics (empty string is a real value).
+  assert.equal(detail.gaps[0].severity, "");
+  assert.equal(detail.integrityScope.configRefs[0].name, "");
+});
+
 test("buildClaimDetails keys the projection by claim id and is embedded in the console projection", () => {
   const projection = buildSurfaceConsoleProjection({
     producer: { runId: "run-1", name: "surface" },
