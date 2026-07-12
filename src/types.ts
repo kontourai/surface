@@ -157,12 +157,25 @@ export type DerivationMethod =
   | "normalization"
   | "manual";
 
+/**
+ * Optional sensitivity range for a quantitative derivation edge: a threshold
+ * or estimate travels with its bounds and basis so it is never a bare number
+ * (kontourai/surface#24). Pass-through metadata; not consulted by the status
+ * function.
+ */
+export interface DerivationEdgeSensitivity {
+  low: number;
+  high: number;
+  basis: string;
+}
+
 export interface DerivationEdge {
   inputClaimId: string;
   method?: DerivationMethod;
   role?: string;
   supportStrength?: SupportStrength;
   rationale?: string;
+  sensitivity?: DerivationEdgeSensitivity;
   metadata?: Record<string, unknown>;
 }
 
