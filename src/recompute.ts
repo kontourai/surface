@@ -39,6 +39,12 @@ export interface RecomputeInputChange {
   valueChanged: boolean;
 }
 
+/**
+ * A before/after recompute record for one derived claim. Unlike
+ * {@link DerivationChangeRecord} (an in-derivation audit event with
+ * id/reason/action/createdAt), this is a pure comparison result between two
+ * reports and carries no audit-log fields.
+ */
 export interface RecomputeChangeRecord {
   /** The derived claim this record is about. */
   claimId: string;
@@ -76,6 +82,13 @@ interface ClaimSnapshot {
  * still reported (with `statusChanged`/`valueChanged` false) — an *unchanged
  * recompute* — so callers can distinguish "recomputed, no effect" from "not
  * recomputed at all".
+ *
+ * Precondition for the cascade guarantee: `prior` and `next` are each the output
+ * of a full derivation (`buildTrustReport`), so every claim's status/value
+ * already reflects the recomputed ceiling. Given that, a multi-depth cascade is
+ * captured through direct inputs alone — in `A → B → C`, `B`'s already-recomputed
+ * status reflects `A`, so `C`'s record cites the `B` change. This function does
+ * not itself re-derive; it diffs two derivations.
  */
 export function recomputeChangeRecords(prior: TrustReport, next: TrustReport): RecomputeChangeRecord[] {
   const priorById = snapshotByClaimId(prior);
@@ -140,22 +153,41 @@ function snapshotByClaimId(report: TrustReport): Map<string, ClaimSnapshot> {
 }
 
 /**
- * Structural value comparison for change detection. Values are producer-authored
- * `unknown`; a stable JSON serialization is sufficient to detect a change (and
- * treats two absent values as equal).
+ * Structural value comparison for change detection. Claim values are
+ * producer-authored `unknown`; a key-stable JSON serialization detects a change
+ * for the JSON-native values the Hachure schema admits, and treats two absent
+ * values as equal.
+ *
+ * Hardened against the two ways a naive JSON compare misleads: (1) a value that
+ * cannot be serialized (a `BigInt`, a circular reference) makes `JSON.stringify`
+ * throw — here that degrades to "changed" for that one claim rather than
+ * aborting the whole batch; (2) `NaN`, `Infinity`, and `null` all serialize to
+ * `"null"` by default — the replacer tags non-finite numbers and bigints
+ * distinctly so a real change between them is not masked.
  */
 function valuesEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
-  return stableStringify(a) === stableStringify(b);
+  const sa = safeStableStringify(a);
+  const sb = safeStableStringify(b);
+  // An unserializable value (undefined result) is conservatively treated as a
+  // change: better to over-report a recompute than to silently miss one.
+  if (sa === undefined || sb === undefined) return false;
+  return sa === sb;
 }
 
-function stableStringify(value: unknown): string {
-  return JSON.stringify(value, (_key, val) => {
-    if (val && typeof val === "object" && !Array.isArray(val)) {
-      return Object.fromEntries(
-        Object.entries(val as Record<string, unknown>).sort(([x], [y]) => x.localeCompare(y)),
-      );
-    }
-    return val;
-  });
+function safeStableStringify(value: unknown): string | undefined {
+  try {
+    return JSON.stringify(value, (_key, val) => {
+      if (typeof val === "bigint") return `__bigint__:${val.toString()}`;
+      if (typeof val === "number" && !Number.isFinite(val)) return `__num__:${String(val)}`; // NaN, ±Infinity
+      if (val && typeof val === "object" && !Array.isArray(val)) {
+        return Object.fromEntries(
+          Object.entries(val as Record<string, unknown>).sort(([x], [y]) => x.localeCompare(y)),
+        );
+      }
+      return val;
+    });
+  } catch {
+    return undefined;
+  }
 }

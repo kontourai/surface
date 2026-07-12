@@ -9,8 +9,8 @@
  */
 import test from "node:test";
 import assert from "node:assert/strict";
-import type { TrustReport, TrustStatus } from "../src/types.js";
-import { recomputeChangeRecords } from "../src/recompute.js";
+import type { Claim, TrustBundle, TrustReport, TrustStatus } from "../src/types.js";
+import { buildTrustReport, recomputeChangeRecords, validateTrustBundle } from "../src/index.js";
 
 interface ClaimSpec {
   id: string;
@@ -134,4 +134,85 @@ test("value comparison is structural (object key order does not spuriously repor
   ]);
   const records = recomputeChangeRecords(prior, next);
   assert.equal(records[0].valueChanged, false); // same object, different key order
+});
+
+test("value comparison is crash-safe and does not collide NaN / Infinity / null", () => {
+  // A BigInt value would make a naive JSON.stringify throw; the diff must not abort.
+  const priorBig = report([{ id: "A", status: "verified", value: 1 }, { id: "D", status: "verified", value: 10n, derivedFrom: ["A"] }]);
+  const nextBig = report([{ id: "A", status: "disputed", value: 1 }, { id: "D", status: "verified", value: 11n, derivedFrom: ["A"] }]);
+  const bigRecords = recomputeChangeRecords(priorBig, nextBig); // must not throw
+  assert.equal(bigRecords[0].valueChanged, true); // 10n → 11n is a change
+
+  // NaN, Infinity, and null all serialize to "null" naively; a real change between them must be detected.
+  const priorNum = report([{ id: "A", status: "verified", value: 1 }, { id: "D", status: "verified", value: NaN, derivedFrom: ["A"] }]);
+  const nextNum = report([{ id: "A", status: "disputed", value: 1 }, { id: "D", status: "verified", value: Infinity, derivedFrom: ["A"] }]);
+  assert.equal(recomputeChangeRecords(priorNum, nextNum)[0].valueChanged, true);
+
+  const priorNull = report([{ id: "A", status: "verified", value: 1 }, { id: "D", status: "verified", value: null, derivedFrom: ["A"] }]);
+  const nextNull = report([{ id: "A", status: "disputed", value: 1 }, { id: "D", status: "verified", value: NaN, derivedFrom: ["A"] }]);
+  assert.equal(recomputeChangeRecords(priorNull, nextNull)[0].valueChanged, true); // null vs NaN is a change
+});
+
+test("derivationEdges inputs (not just derivedFrom) are diffed", () => {
+  const prior = report([
+    { id: "A", status: "verified", value: 1 },
+    { id: "D", status: "verified", value: 1, derivationEdges: [{ inputClaimId: "A" }] },
+  ]);
+  const next = report([
+    { id: "A", status: "disputed", value: 1 },
+    { id: "D", status: "disputed", value: 1, derivationEdges: [{ inputClaimId: "A" }] },
+  ]);
+  const records = recomputeChangeRecords(prior, next);
+  assert.deepEqual(records.map((r) => [r.claimId, r.changedInputs[0].inputClaimId]), [["D", "A"]]);
+});
+
+test("a newly-appeared derived claim (absent from prior) is not reported", () => {
+  const prior = report([{ id: "A", status: "verified", value: 1 }]);
+  const next = report([
+    { id: "A", status: "disputed", value: 1 },
+    { id: "D", status: "disputed", value: 1, derivedFrom: ["A"] }, // new
+  ]);
+  assert.deepEqual(recomputeChangeRecords(prior, next), []);
+});
+
+test("integration: cascade holds against two real buildTrustReport derivations", () => {
+  // Proves the cascade guarantee against the actual derivation kernel, not a
+  // hand-authored fixture: an input claim's event flips verified → rejected
+  // between two full derivations, and the derived claim's recompute record
+  // reflects the kernel-recomputed ceiling.
+  const baseClaim: Omit<Claim, "id" | "value" | "fieldOrBehavior"> = {
+    subjectType: "repo", subjectId: "repo-A", facet: "governance.evidence",
+    claimType: "software-evidence", createdAt: "2026-04-25T00:00:00.000Z", updatedAt: "2026-04-25T00:00:00.000Z",
+  };
+  const bundle = (inputEventStatus: TrustStatus): TrustBundle => validateTrustBundle({
+    schemaVersion: 3,
+    source: "recompute-integration",
+    claims: [
+      { ...baseClaim, id: "input", fieldOrBehavior: "check-passes", value: true },
+      { ...baseClaim, id: "derived", fieldOrBehavior: "release-ready", value: true, derivedFrom: ["input"] },
+    ],
+    evidence: [],
+    policies: [],
+    events: [
+      { id: "ev-1", claimId: "input", status: inputEventStatus, actor: "owner", method: "attestation", evidenceIds: [], createdAt: "2026-04-25T01:00:00.000Z" },
+      // The derived claim earns its own verified own-status; the ceiling from its
+      // input is what then bounds it down when the input flips.
+      { id: "ev-2", claimId: "derived", status: "verified", actor: "owner", method: "attestation", evidenceIds: [], createdAt: "2026-04-25T01:00:00.000Z" },
+    ],
+  } as unknown as TrustBundle);
+
+  const now = new Date("2026-04-26T00:00:00.000Z");
+  const prior = buildTrustReport(bundle("verified"), { now });
+  const next = buildTrustReport(bundle("rejected"), { now });
+
+  // Sanity: the kernel actually moved both the input and the derived conclusion.
+  assert.equal(prior.claims.find((c) => c.id === "derived")?.status, "verified");
+  assert.equal(next.claims.find((c) => c.id === "derived")?.status, "rejected");
+
+  const records = recomputeChangeRecords(prior, next);
+  const derivedRecord = records.find((r) => r.claimId === "derived");
+  assert.ok(derivedRecord, "derived claim has a recompute record");
+  assert.deepEqual([derivedRecord.fromStatus, derivedRecord.toStatus], ["verified", "rejected"]);
+  assert.equal(derivedRecord.changedInputs[0].inputClaimId, "input");
+  assert.deepEqual([derivedRecord.changedInputs[0].fromStatus, derivedRecord.changedInputs[0].toStatus], ["verified", "rejected"]);
 });
