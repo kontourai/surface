@@ -97,9 +97,14 @@ test("a conclusion already weaker than the hypothesised ceiling is not reported 
   // not move B — the derivation ceiling only bounds downward.
   const r = chain({ B: "rejected" });
   const result = analyzeCounterfactual(r, "A", "disputed");
-  // C derives from the already-rejected B, so C is bounded to rejected regardless
-  // of A; B itself does not change and must not appear.
+  // B does not change (already weaker than the disputed ceiling) and must not appear.
   assert.equal(result.affected.some((a) => a.claimId === "B"), false);
+  // ...but C still derives THROUGH the already-rejected B and is bounded to
+  // rejected — this asserts propagation reads the projected (not baseline) status
+  // of an unchanged intermediate node.
+  assert.deepEqual(result.affected, [
+    { claimId: "C", fromStatus: "verified", toStatus: "rejected", depth: 2 },
+  ]);
 });
 
 test("an input with no dependents yields no affected conclusions", () => {
@@ -122,6 +127,50 @@ test("cycles are traversed safely without looping", () => {
   assert.deepEqual(traceDependencies(r, "A").map((d) => d.claimId).sort(), ["B"]);
   const result = analyzeCounterfactual(r, "A", "disputed");
   assert.equal(result.affected.some((a) => a.claimId === "B"), true);
+});
+
+test("traceDependents / traceDependencies order deterministically by depth then id on a diamond", () => {
+  // A → B, A → C, and D derives from both B and C.
+  const r = report([
+    { id: "A", status: "verified" },
+    { id: "C", status: "verified", derivedFrom: ["A"] },
+    { id: "B", status: "verified", derivedFrom: ["A"] },
+    { id: "D", status: "verified", derivedFrom: ["B", "C"] },
+  ]);
+  assert.deepEqual(traceDependents(r, "A"), [
+    { claimId: "B", depth: 1 },
+    { claimId: "C", depth: 1 },
+    { claimId: "D", depth: 2 },
+  ]);
+  assert.deepEqual(traceDependencies(r, "D"), [
+    { claimId: "B", depth: 1 },
+    { claimId: "C", depth: 1 },
+    { claimId: "A", depth: 2 },
+  ]);
+});
+
+test("an id unknown to the graph is rejected (not silently treated as no-impact)", () => {
+  const r = chain();
+  assert.throws(() => traceDependents(r, "nope"), /Unknown claim: nope/);
+  assert.throws(() => traceDependencies(r, "nope"), /Unknown claim: nope/);
+  assert.throws(() => analyzeCounterfactual(r, "nope", "disputed"), /Unknown claim: nope/);
+  // A dangling input reference (referenced but not itself a claim record) is a
+  // legitimate forward-traversal origin, not an unknown id.
+  const dangling = report([{ id: "B", status: "verified", derivedFrom: ["ghost"] }]);
+  assert.deepEqual(traceDependents(dangling, "ghost"), [{ claimId: "B", depth: 1 }]);
+});
+
+test("a self-loop is traversed safely and terminates", () => {
+  const r = report([{ id: "A", status: "verified", derivedFrom: ["A"] }]);
+  assert.deepEqual(traceDependents(r, "A"), []); // A depends on itself; no other dependents
+  assert.deepEqual(traceDependencies(r, "A"), []);
+  assert.deepEqual(analyzeCounterfactual(r, "A", "disputed").affected, []);
+});
+
+test("an empty report yields empty results without throwing for a referenced id", () => {
+  const r = report([{ id: "A", status: "verified" }]);
+  assert.deepEqual(traceDependents(r, "A"), []);
+  assert.deepEqual(analyzeCounterfactual(r, "A", "disputed").affected, []);
 });
 
 test("affected conclusions are ordered weakest-first by depth then id", () => {

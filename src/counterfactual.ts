@@ -57,21 +57,26 @@ export interface CounterfactualResult {
 /**
  * Forward reachability: every derived claim that depends on `inputClaimId`,
  * directly or transitively, with its shortest derivation distance. Cycle-safe.
+ * Ordered deterministically by depth then claim id. Throws if `inputClaimId` is
+ * unknown to the graph (neither a claim nor referenced as any claim's input).
  */
 export function traceDependents(report: TrustReport, inputClaimId: string): DerivationDependent[] {
+  assertKnownClaim(report, inputClaimId);
   const dependents = buildDependentsMap(report);
-  return bfsReachable(inputClaimId, (id) => dependents.get(id) ?? []).map(({ claimId, depth }) => ({ claimId, depth }));
+  return sortByDepthThenId(bfsReachable(inputClaimId, (id) => dependents.get(id) ?? []));
 }
 
 /**
  * Reverse reachability: every claim `claimId` derives from, directly or
  * transitively, with its shortest derivation distance. Cycle-safe. For the full
  * annotated input tree (edges, evidence context, diagnostics) use
- * `buildDerivationDrilldown`.
+ * `buildDerivationDrilldown`. Ordered deterministically by depth then claim id.
+ * Throws if `claimId` is unknown to the graph.
  */
 export function traceDependencies(report: TrustReport, claimId: string): DerivationDependency[] {
+  assertKnownClaim(report, claimId);
   const inputs = buildDirectInputsMap(report);
-  return bfsReachable(claimId, (id) => inputs.get(id) ?? []).map(({ claimId: id, depth }) => ({ claimId: id, depth }));
+  return sortByDepthThenId(bfsReachable(claimId, (id) => inputs.get(id) ?? []));
 }
 
 /**
@@ -84,6 +89,7 @@ export function analyzeCounterfactual(
   targetClaimId: string,
   hypotheticalStatus: TrustStatus,
 ): CounterfactualResult {
+  assertKnownClaim(report, targetClaimId);
   const baseline = buildStatusMap(report);
   const directInputs = buildDirectInputsMap(report);
 
@@ -134,6 +140,27 @@ export function analyzeCounterfactual(
 }
 
 // ── graph helpers ─────────────────────────────────────────────────────────────
+
+/**
+ * Throw if `id` is unknown to the derivation graph — neither a claim in the
+ * report nor referenced as any claim's derivation input. This catches a
+ * mistyped id (which would otherwise return an empty, falsely-reassuring "no
+ * impact" result) while still allowing a legitimate dangling input reference as
+ * a forward-traversal origin. Mirrors `buildDerivationDrilldown`'s convention of
+ * rejecting unknown claim ids.
+ */
+function assertKnownClaim(report: TrustReport, id: string): void {
+  for (const claim of report.claims) {
+    if (claim.id === id) return;
+    if (derivationInputIds(claim).includes(id)) return;
+  }
+  throw new Error(`Unknown claim: ${id}`);
+}
+
+/** Deterministic ordering: weakest-reachable-first by depth, then claim id. */
+function sortByDepthThenId<T extends { claimId: string; depth: number }>(nodes: T[]): T[] {
+  return [...nodes].sort((a, b) => (a.depth - b.depth) || a.claimId.localeCompare(b.claimId));
+}
 
 /** claim id → its derived report status. */
 function buildStatusMap(report: TrustReport): Map<string, TrustStatus> {
