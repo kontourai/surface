@@ -176,7 +176,9 @@ export class SurfaceConsoleRuntime {
   async htmlModel(): Promise<ConsoleHtmlModel> {
     const folderName = basename(cwd());
     const claimTypes = registeredClaimTypes();
-    const emptyConsoleModel = this.emptyConsoleModel();
+    // The empty projection is built inside each branch (not hoisted) so the
+    // whole page assembly stays within the try/catch, matching the original
+    // route's fault tolerance.
     try {
       const readModel = await this.loadReadModel();
       const consoleModel = this.buildConsoleModel(readModel);
@@ -188,11 +190,12 @@ export class SurfaceConsoleRuntime {
           claimTypes,
           readModel,
           consoleModel,
-          emptyConsoleModel,
+          emptyConsoleModel: this.emptyConsoleModel(),
           folderName,
         }),
       };
     } catch {
+      const emptyConsoleModel = this.emptyConsoleModel();
       return {
         readModel: null,
         html: buildConsoleHtml({
