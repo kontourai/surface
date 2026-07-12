@@ -40,7 +40,13 @@ interface JsonRpcRequest {
 }
 
 interface McpServerOptions {
-  input: string;
+  /**
+   * The optional startup default trust input. Undefined when the server is
+   * launched input-agnostic (no `--input`), in which case every tool call must
+   * supply its own `input`. There is deliberately no baked-in example fallback:
+   * an unconfigured server reports that honestly rather than serving demo data.
+   */
+  input: string | undefined;
   adapter: string;
   noUi: boolean;
 }
@@ -67,11 +73,13 @@ function uiResourceMeta(resourceUri: string): Record<string, unknown> {
 const sharedToolProperties = {
   input: {
     type: "string",
-    description: "Optional path to a trust input file. Defaults to the input the server was started with.",
+    description:
+      "Path to a trust input file for THIS call. Defaults to the input the server was started with (--input), if any. When the server was started without --input it is input-agnostic and this argument is required; a call with no input configured returns an error. This is the supported way to point Surface at many, evolving trust inputs (e.g. per-task trust.bundle files) without restarting the server: pass the input path per call.",
   },
   adapter: {
     type: "string",
-    description: "Optional registered adapter name. Defaults to the adapter the server was started with.",
+    description:
+      "Optional registered adapter name for THIS call (e.g. \"surface\", \"veritas\"). Defaults to the adapter the server was started with. Use \"veritas\" to unwrap a Veritas evidence-record envelope.",
   },
 };
 
@@ -166,7 +174,9 @@ const tools: ToolDefinition[] = [
     run: async (args, options) => {
       const report = await loadToolReport(args, options);
       const queryOptions: QueryOptions = {
-        input: options.input,
+        // The report is already loaded; projectPolicyQuery reads only
+        // policyId/claimId. `input` is inert here but required by the shape.
+        input: options.input ?? "",
         adapter: options.adapter,
         policyId: stringArg(args, "policyId"),
         claimId: stringArg(args, "claimId"),
@@ -265,6 +275,10 @@ async function handleLine(line: string, options: McpServerOptions, serverVersion
       const uri = typeof params?.uri === "string" ? params.uri : "";
       if (options.noUi || uri !== SUMMARY_PANEL_URI) {
         send({ jsonrpc: "2.0", id, error: { code: -32602, message: `Unknown resource: ${uri || "(missing uri)"}` } });
+        return;
+      }
+      if (!options.input) {
+        send({ jsonrpc: "2.0", id, error: { code: -32602, message: "No trust input configured. Start the server with `surface mcp --input <file>` to serve the trust panel resource." } });
         return;
       }
       const report = await loadReport({ input: options.input, adapter: options.adapter });
@@ -383,8 +397,14 @@ function buildToolContent(
 async function loadToolReport(args: Record<string, unknown>, options: McpServerOptions): Promise<TrustReport> {
   const input = stringArg(args, "input");
   const adapter = stringArg(args, "adapter");
+  const resolvedInput = input ? resolve(input) : options.input;
+  if (!resolvedInput) {
+    throw new Error(
+      "No trust input configured. Pass `input` on this call, or start the server with `surface mcp --input <file>`.",
+    );
+  }
   return loadReport({
-    input: input ? resolve(input) : options.input,
+    input: resolvedInput,
     adapter: adapter ?? options.adapter,
   });
 }
@@ -395,7 +415,9 @@ function stringArg(args: Record<string, unknown>, key: string): string | undefin
 }
 
 function parseMcpArgs(args: string[]): McpServerOptions {
-  let input = resolve("examples/surface-example-bundle.json");
+  // No baked-in default: an unconfigured server is input-agnostic and takes the
+  // input per tool call (issue #95). `--input` is an optional convenience default.
+  let input: string | undefined;
   let adapter = "surface";
   let noUi = false;
 

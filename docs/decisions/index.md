@@ -11,6 +11,7 @@ Numbered ADRs under `docs/adr/` are frozen history and are not listed here.
 | Topic | Status | Decision |
 | --- | --- | --- |
 | [inquiry](./inquiry.md) | needs-decision | Inquiry |
+| [mcp-input-ingestion](./mcp-input-ingestion.md) | current | MCP Trust-Input Ingestion |
 | [product-vocabulary](./product-vocabulary.md) | needs-decision | Product Vocabulary |
 | [testimony](./testimony.md) | needs-decision | Testimony |
 | [trust-bundle](./trust-bundle.md) | needs-decision | Trust Bundle |

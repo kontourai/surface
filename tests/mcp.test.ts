@@ -651,6 +651,47 @@ test("surface mcp: sanitizer boundary covers bare-string surface_summary output 
   }
 });
 
+test("surface mcp launched without --input is input-agnostic: honest error, no silent example data (#95)", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "surface-mcp-noinput-"));
+  const bundlePath = join(dir, "trust-bundle.json");
+  await writeFile(bundlePath, JSON.stringify(validateTrustBundle({
+    schemaVersion: 5, source: "producer", claims: [], evidence: [], policies: [], events: [],
+  })), "utf8");
+
+  // No --input: the server must NOT fall back to the bundled example bundle. UI
+  // is left enabled so the resources/read no-input guard is exercised too.
+  const server = spawn("node", ["bin/surface.mjs", "mcp"], { stdio: ["pipe", "pipe", "inherit"] });
+  const responses = collectResponses(server.stdout);
+
+  try {
+    send(server, { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "t", version: "0" } } });
+    await responses.next(1);
+    send(server, { jsonrpc: "2.0", method: "notifications/initialized" });
+
+    // A call with no per-call input and no startup input → clear error, not example data.
+    send(server, { jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "surface_summary", arguments: {} } });
+    const noInput = await responses.next(2);
+    assert.equal(noInput.result.isError, true);
+    assert.match(noInput.result.content[0].text, /No trust input configured/);
+
+    // resources/read for the trust panel with no input configured → honest JSON-RPC error, not a crash.
+    send(server, { jsonrpc: "2.0", id: 3, method: "resources/read", params: { uri: "ui://surface/trust-panel/summary" } });
+    const noInputResource = await responses.next(3);
+    assert.ok(noInputResource.error, "resources/read returns an error when no input is configured");
+    assert.match(noInputResource.error!.message, /No trust input configured/);
+
+    // A per-call input makes the same server serve that input (first-class multi-input).
+    send(server, { jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "surface_summary", arguments: { input: bundlePath } } });
+    const withInput = await responses.next(4);
+    assert.equal(withInput.result.isError, false);
+    assert.match(withInput.result.content[0].text, /Kontour Surface report/);
+  } finally {
+    server.stdin.end();
+    await once(server, "exit");
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 function send(server: ReturnType<typeof spawn>, message: unknown): void {
   server.stdin!.write(`${JSON.stringify(message)}\n`);
 }

@@ -62,13 +62,35 @@ test("CLI unknown adapter error lists registered adapters", async () => {
       const stderr = "stderr" in error && typeof error.stderr === "string" ? error.stderr : "";
       assert.match(stderr, /Unknown adapter: unknown/);
       assert.match(stderr, /surface/);
+      assert.match(stderr, /veritas/); // now a built-in envelope-unwrap preset (#84)
       assert.doesNotMatch(stderr, /fact-resolution/);
       assert.doesNotMatch(stderr, /field-attested-records/);
       assert.doesNotMatch(stderr, /npm-audit/);
-      assert.doesNotMatch(stderr, /veritas/);
       return true;
     },
   );
+});
+
+test("CLI: `surface report --adapter veritas` unwraps a Veritas evidence-record envelope end-to-end", async () => {
+  const { mkdtemp, writeFile, rm } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const dir = await mkdtemp(join(tmpdir(), "surface-veritas-cli-"));
+  const envelopePath = join(dir, "veritas-evidence-record.json");
+  // A Veritas evidence record: the Trust Bundle is nested at trust.bundle.
+  const envelope = {
+    kind: "veritas-evidence-record",
+    trust: { bundle: { schemaVersion: 5, source: "veritas-producer", claims: [], evidence: [], policies: [], events: [] } },
+  };
+  await writeFile(envelopePath, JSON.stringify(envelope), "utf8");
+  try {
+    const { stdout } = await execFileAsync("node", ["bin/surface.mjs", "report", "--adapter", "veritas", "--input", envelopePath]);
+    const report = JSON.parse(stdout);
+    assert.equal(report.source, "veritas-producer"); // the inner bundle was unwrapped and derived
+    assert.ok(Array.isArray(report.claims));
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });
 
 test("surface adapter is the built-in passthrough", () => {
