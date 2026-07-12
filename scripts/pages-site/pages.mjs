@@ -206,6 +206,12 @@ export const navGroups = [
         "Surface Foundation",
         "The boundary rule that keeps Surface portable: trust semantics live in the kernel, workflow stays in products, dependencies point one way.",
       ],
+      [
+        "derivation-and-counterfactual-algorithms",
+        "docs/architecture/derivation-and-counterfactual-algorithms.md",
+        "Derivation & Counterfactual Algorithms",
+        "How Surface bounds derived trust with the derivation ceiling, keeps status and gaps in agreement through one claim evaluation, and answers forward impact and reverse drilldown — with the soundness argument for each.",
+      ],
     ],
   },
   {

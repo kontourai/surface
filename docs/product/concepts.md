@@ -122,7 +122,7 @@ A Trust Snapshot is product language for the point-in-time trust state behind a 
 
 `buildTrustReport(input, options?)` is the stable public API that turns a validated Trust Bundle (API type `TrustBundle`) into a `TrustReport`. The report carries claims, evidence, policies, events, current `claimGroups`, and current `authorityTrace` field data, then adds derived status, freshness outcomes, requirement fields, `transparencyGaps` annotations, derivation `changeRecords`, subject groups, claim group rollups, and summary counts.
 
-Producers should project product-specific workflow data into `TrustBundle`, call `validateTrustBundle`, and then call `buildTrustReport`. Product layers may persist a compact report summary, but Surface remains responsible for deriving statuses such as `verified`, `assumed`, `stale`, `disputed`, and `rejected`.
+Producers should project product-specific workflow data into `TrustBundle`, call `validateTrustBundle`, and then call `buildTrustReport`. Product layers may persist a compact report summary, but Surface remains responsible for deriving statuses such as `verified`, `assumed`, `stale`, `disputed`, `rejected`, and `revoked`.
 
 ## Trust Panel
 
@@ -144,7 +144,7 @@ When claims depend on other claims (`derivedFrom` or `derivationEdges`), the der
 
 ## Derivation
 
-When one claim depends on another, the dependent claim can carry `derivedFrom` for simple claim-id links or `derivationEdges` for typed links. A derivation edge records the input claim, method, optional role, and support strength. This chains the provenance so reviewers and systems can:
+When one claim depends on another, the dependent claim can carry `derivedFrom` for simple claim-id links or `derivationEdges` for typed links. A derivation edge records the input claim, method, optional role, support strength, and an optional `sensitivity` range (how much the derived value moves if the input moves). This chains the provenance so reviewers and systems can:
 
 - Detect when upstream claims become stale
 - Apply confidence ceilings (derived claims cannot be stronger than their sources)

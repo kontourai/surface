@@ -65,8 +65,9 @@ Surface keeps its own standalone Surface Console. Keep product-specific trust be
 | Area | Location | Purpose |
 |------|----------|---------|
 | CLI command | `src/cli.ts`, `src/commands/console.ts` | Parses `surface console` flags and starts the local server. |
-| Local server and API routes | `src/console/server.ts` | Serves the HTML shell, static assets, read model, projection, run list, and claim authoring endpoints. |
-| Projection contract | `src/console/projection.ts`, `src/console/types.ts` | Converts producer read models into the UI shape consumed by the Console. |
+| Local server and API routes | `src/console/server.ts` | HTTP transport only: routing, SSE, and request/response mechanics. Delegates domain orchestration to the runtime. |
+| Console runtime | `src/console/runtime.ts` | `SurfaceConsoleRuntime` owns read-model loading, run catalog, projection creation, HTML assembly, and Claim Package authoring — usable without starting an HTTP server. |
+| Projection contract | `src/console/projection.ts`, `src/console/claim-detail-projection.ts`, `src/console/types.ts` | Converts producer read models into the UI shape consumed by the Console, including the per-claim detail projection (guidance, gap labels, policy facts, integrity scope) the browser renders from. |
 | Standalone UI shell | `src/console/shell.ts` | Owns the dependency-free HTML shell served by `/`. |
 | Standalone UI asset sources | `src/console/client/parts/`, `src/console/styles/parts/` | Owns the editable browser behavior and Console Kit-compatible token aliases for the standalone Surface Console. |
 | Generated UI asset constants | `scripts/build-console-assets.mjs`, `src/console/client/index.js`, `src/console/styles/index.css`, `src/console/assets.generated.ts`, `src/console/script.ts`, `src/console/styles.ts` | Concatenates ordered client and CSS parts, then converts JS/CSS assets into TypeScript constants consumed by `/console.js` and `/console.css`; regenerate with `npm run build:console-assets`. |
