@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.9.0](https://github.com/kontourai/surface/compare/v2.8.0...v2.9.0) (2026-07-12)
+
+
+### Features
+
+* **schema:** carry conclusionConfidence on claims ([#25](https://github.com/kontourai/surface/issues/25)) ([#148](https://github.com/kontourai/surface/issues/148)) ([6af01af](https://github.com/kontourai/surface/commit/6af01afd0abf9b824223f8e37edc75f0baeb308d))
+
+
+### Documentation
+
+* **decision:** propose Conclusion Confidence shape ([#25](https://github.com/kontourai/surface/issues/25)) ([#146](https://github.com/kontourai/surface/issues/146)) ([cbfb636](https://github.com/kontourai/surface/commit/cbfb636c6559c1b0f6ccced2534c1e4fbaf9155f))
+
 ## [2.8.0](https://github.com/kontourai/surface/compare/v2.7.0...v2.8.0) (2026-07-12)
 
 
