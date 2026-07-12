@@ -1,5 +1,5 @@
 ---
-status: needs-decision
+status: current
 subject: Conclusion Confidence
 decided: 2026-07-12
 evidence:
@@ -12,14 +12,14 @@ evidence:
 ---
 # Conclusion Confidence
 
-Proposed design for issue #25 — a **calibrated confidence value on a conclusion**,
-distinct from `ConfidenceBasis`, plus a structured **comfort-zone** signal that
-Survey (#18) can populate. This record proposes the shape and the cross-repo
-path; it is **needs-decision** because the field is producer-authored and lands
-on the Hachure claim schema, so ratifying it commits to an owner-gated cross-repo
-change. Scope is **carry, not produce** — how a calibrated value is computed
-(ensemble disagreement, perturbation, reference comparison; #25 §9) is explicitly
-out of scope.
+**Ratified design** for issue #25 — a **calibrated confidence value on a
+conclusion**, distinct from `ConfidenceBasis`, plus a structured **comfort-zone**
+signal that Survey (#18) can populate. The *shape* below is the agreed answer;
+the *implementation* is a tracked, owner-gated cross-repo change (the field is
+producer-authored and lands on the Hachure claim schema — see the path below).
+Scope is **carry, not produce** — how a calibrated value is computed (ensemble
+disagreement, perturbation, reference comparison; #25 §9) is explicitly out of
+scope.
 
 ## The problem this fixes
 
@@ -99,7 +99,10 @@ computes `{ within, reason }`; Surface carries and exposes it. Before the Hachur
 schema change, confirm the `comfortZone.reason` vocabulary with Survey #18 so the
 two sides agree on the reason codes rather than trading free-form strings.
 
-## To ratify
+## Status
 
-On owner approval of this shape, flip `status` to `current`, then execute the
-cross-repo path above (Hachure publish stays owner-gated).
+The shape is **ratified** (2026-07-12). What remains is execution of the
+owner-gated cross-repo path above: the Hachure schema change and publish stay
+owner-gated, and `comfortZone.reason` vocabulary should be reconciled with Survey
+#18 before the schema change lands. Until then, no `conclusionConfidence` field is
+carried in Surface — this record holds the agreed target.
