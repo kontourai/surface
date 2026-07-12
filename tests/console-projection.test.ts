@@ -70,6 +70,10 @@ test("buildSurfaceConsoleProjection derives Operator-facing metrics and narrativ
     transparencyGapCount: 0,
   }]);
   assert.deepEqual(projection.attentionClaims.map((claim) => claim.id), ["claim-1"]);
+
+  // Per-claim detail projection is keyed by claim id (issue #4).
+  assert.deepEqual(Object.keys(projection.claimDetails).sort(), ["claim-1", "claim-2"]);
+  assert.equal(projection.claimDetails["claim-2"].guidance, null); // verified needs no guidance
 });
 
 test("emptySurfaceConsoleProjection carries a renderable empty state", () => {

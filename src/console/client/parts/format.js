@@ -57,48 +57,9 @@ function observedResultForEvidence(item) {
   return { summary, expected, status, command, exitCode, stdout, stderr, combined };
 }
 
-function uniqueBy(items, keyFn) {
-  const seen = new Set();
-  return items.filter(item => {
-    const key = keyFn(item);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-function collectIntegrityDetails(claim, evidence) {
-  const sourceRefs = uniqueBy([
-    claim.currentIntegrityRef,
-    ...evidence.map(item => item.integrityRef),
-    ...evidence.map(item => item.metadata?.integrity?.sourceRef),
-  ].filter(Boolean), value => value);
-
-  const configRefs = uniqueBy(evidence.flatMap(item => {
-    const refs = item.metadata?.integrity?.configRefs ?? item.metadata?.configIntegrity ?? {};
-    return Object.entries(refs)
-      .filter(([, ref]) => ref?.hash)
-      .map(([kind, ref]) => ({
-        kind,
-        name: ref.name ?? kind,
-        hash: ref.hash,
-        path: ref.path,
-      }));
-  }), item => [item.kind, item.name, item.hash, item.path].filter(Boolean).join(":"));
-
-  const fileRefs = uniqueBy(evidence.flatMap(item => {
-    const refs = item.metadata?.integrity?.fileRefs ?? item.metadata?.fileIntegrity ?? [];
-    return refs.filter(ref => ref?.path).map(ref => ({
-      path: ref.path,
-      hash: ref.hash,
-      status: ref.status,
-      sizeBytes: ref.sizeBytes,
-    }));
-  }), item => [item.path, item.hash, item.status].filter(Boolean).join(":"));
-
-  return { sourceRefs, configRefs, fileRefs };
-}
-
+// Integrity scope (source/config/file anchors) is derived server-side in the
+// claim detail projection; this browser layer only renders the projected data
+// via renderIntegrityScope (issue #4).
 function shortIntegrityRef(value) {
   const text = String(value ?? "");
   if (text.startsWith("sha256:") && text.length > 24) return text.slice(0, 19) + "…" + text.slice(-8);
@@ -179,47 +140,10 @@ function animateCount(el, target) {
   requestAnimationFrame(tick);
 }
 
-function statusGuidance(status, evidenceCount) {
-  if (status === "verified") return null;
-  if (status === "unknown") {
-    return evidenceCount === 0
-      ? "This claim has never been evaluated — no evidence has been collected yet."
-      : "Evidence exists but trust status could not be determined from it.";
-  }
-  const m = {
-    assumed: "This claim depends on an explicit assumption. Review the assumption before relying on downstream conclusions.",
-    proposed: "Awaiting first evidence collection run.",
-    stale:    "Evidence is outdated — collected against a different version of the code. Stale claims are refreshed one run at a time.",
-    disputed: "Surface derived a different status than the producer declared. Resolve the transparency gaps above.",
-    rejected: "Verification failed. Check the transparency gaps above for specific remediation steps.",
-  };
-  return m[status] ?? null;
-}
-
 function updateConsoleChromeMetrics() {
   const header = document.querySelector(".dash-header");
   const height = header ? Math.ceil(header.getBoundingClientRect().height) : 96;
   document.documentElement.style.setProperty("--dash-header-height", height + "px");
-}
-
-function suggestCommand(claim, evidence, readModel) {
-  const producer = readModel?.producer ?? {};
-  const needsEvidence = ["unknown", "stale", "assumed", "proposed", "rejected"].includes(claim.status);
-  if (!needsEvidence) return null;
-
-  if (claim.metadata?.command) {
-    return { command: claim.metadata.command, note: "Runs the evidence check and captures output as evidence." };
-  }
-
-  const isVeritas = producer.name === "veritas" || (claim.claimType ?? "").startsWith("veritas");
-  if (isVeritas) {
-    if (claim.status === "stale") {
-      return { command: "veritas checkin", note: "Refreshes this claim’s evidence. Run once per stale claim until all are resolved." };
-    }
-    return { command: "veritas checkin", note: "Collects evidence and updates trust status for in-scope surfaces." };
-  }
-
-  return null;
 }
 
 function claimTypeLabel(claimType) {
@@ -236,7 +160,3 @@ function confidenceTier(claim) {
   if (hasGaps || strength === "weak") return " card-weak";
   return "";
 }
-
-// ── gap classification ─────────────────────────────────
-// Maps gap/gap types to a root-cause category and prescriptive hint.
-// Returns { kind, title, hint } where kind is: setup | config | workflow | quality | policy
