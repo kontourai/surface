@@ -1,4 +1,5 @@
 import type { AuthorityTrace, Claim, Evidence, TrustStatus, VerificationEvent, VerificationPolicy } from "./types.js";
+import { type ClaimEvidenceEvaluation, evaluateClaimEvidence } from "./claim-evaluation.js";
 import { evidenceEntailsClaim, partitionEvidenceBySupport } from "./evidence-support.js";
 import { resolvePolicyForClaim } from "./policy-resolver.js";
 
@@ -11,6 +12,14 @@ export function deriveTrustStatus(input: {
   events: VerificationEvent[];
   now?: Date;
   authorityTrace?: AuthorityTrace[];
+  /**
+   * The shared claim evidence evaluation for this claim, when the caller has
+   * already computed it (the snapshot pipeline does, once, in `foldClaim`).
+   * Omitted by standalone callers (`deriveClaimStatus`), in which case the
+   * verified-path requirement check computes an evaluation on demand from the
+   * entailing evidence. Either way the requirement decision is identical.
+   */
+  evaluation?: ClaimEvidenceEvaluation;
 }): TrustStatus {
   const now = input.now ?? new Date();
   const claimEvents = input.events
@@ -60,16 +69,11 @@ export function deriveTrustStatus(input: {
     }
 
     if (input.policy) {
-      const entailingEvidence = input.evidence.filter(evidenceEntailsClaim);
-      const evidenceTypes = new Set(entailingEvidence.map((evidence) => evidence.evidenceType));
-      const evidenceMethods = new Set(entailingEvidence.map((evidence) => evidence.method));
-      const missingTypes = input.policy.requiredEvidence.filter((type) => !evidenceTypes.has(type));
-      const missingMethods = (input.policy.requiredMethods ?? []).filter((method) => !evidenceMethods.has(method));
-      if (
-        missingTypes.length > 0 ||
-        missingMethods.length > 0 ||
-        (input.policy.requiresCorroboration && entailingEvidence.length < 2)
-      ) {
+      const evaluation = input.evaluation ?? evaluateClaimEvidence({
+        entailingEvidence: input.evidence.filter(evidenceEntailsClaim),
+        policy: input.policy,
+      });
+      if (evaluation.requirementUnmet) {
         return "proposed";
       }
     }
