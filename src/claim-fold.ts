@@ -9,6 +9,7 @@ import type {
   VerificationEvent,
   VerificationPolicy,
 } from "./types.js";
+import { type ClaimEvidenceEvaluation, evaluateClaimEvidence, evidenceRequirementFromPolicy } from "./claim-evaluation.js";
 import { partitionEvidenceBySupport } from "./evidence-support.js";
 import { resolvePolicyForClaim } from "./policy-resolver.js";
 import { claimIntrinsicExpiry, deriveTrustStatus, reapplyVerifiedFreshness } from "./status.js";
@@ -54,6 +55,10 @@ export interface ClaimFoldResult {
 export function foldClaim(input: ClaimFoldInput): ClaimFoldResult {
   const { entailingEvidence } = partitionEvidenceBySupport(input.evidence);
   const policy = resolvePolicyForClaim(input.claim, input.policies);
+  // Compute the shared evidence/policy satisfaction facts ONCE here, then thread
+  // the same evaluation into both the status decision and gap derivation so they
+  // cannot drift (issue #1). Standalone status callers recompute on demand.
+  const evaluation = policy ? evaluateClaimEvidence({ entailingEvidence, policy }) : undefined;
   const checkpointMark = input.checkpointMark;
   const tailEvents = !input.checkpointUsable || checkpointMark === undefined
     ? input.events
@@ -84,6 +89,7 @@ export function foldClaim(input: ClaimFoldInput): ClaimFoldResult {
       events: input.events,
       now: input.now,
       authorityTrace: input.authorityTrace,
+      evaluation,
     });
     eventsFolded = input.events.length;
   }
@@ -96,8 +102,8 @@ export function foldClaim(input: ClaimFoldInput): ClaimFoldResult {
     evidence: input.evidence,
     entailingEvidence,
     evidenceRequirement: policy ? evidenceRequirementFromPolicy(policy) : undefined,
-    transparencyGaps: policy
-      ? deriveTransparencyGaps({ claim: input.claim, evidence: input.evidence, entailingEvidence, policy, status: ownStatus, now: input.now })
+    transparencyGaps: policy && evaluation
+      ? deriveTransparencyGaps({ claim: input.claim, evidence: input.evidence, entailingEvidence, policy, evaluation, status: ownStatus, now: input.now })
       : input.evidence.length === 0 ? [noPolicyEvidenceGap(input.claim, input.now)] : [],
     eventsFolded,
     eventsTotal: input.events.length,
@@ -125,16 +131,6 @@ function freshnessForClaim(claim: Claim, events: VerificationEvent[], status: Tr
   return freshness;
 }
 
-function evidenceRequirementFromPolicy(policy: VerificationPolicy): EvidenceRequirement {
-  return {
-    requiredEvidenceTypes: policy.requiredEvidence,
-    requiredMethods: policy.requiredMethods,
-    requiresCorroboration: policy.requiresCorroboration,
-    requiredAuthority: policy.reviewAuthority,
-    notes: policy.acceptanceCriteria.join("; "),
-  };
-}
-
 function noPolicyEvidenceGap(claim: Claim, now: Date): TransparencyGap {
   return {
     id: `${claim.id}.gap.provenance-gap`,
@@ -153,15 +149,16 @@ function deriveTransparencyGaps(input: {
   evidence: Evidence[];
   entailingEvidence: Evidence[];
   policy: VerificationPolicy;
+  evaluation: ClaimEvidenceEvaluation;
   status: TrustStatus;
   now: Date;
 }): TransparencyGap[] {
   const transparencyGaps: TransparencyGap[] = [];
   const createdAt = input.now.toISOString();
-  const evidenceTypes = new Set(input.entailingEvidence.map((item) => item.evidenceType));
-  const evidenceMethods = new Set(input.entailingEvidence.map((item) => item.method));
-  const missingEvidence = input.policy.requiredEvidence.filter((type) => !evidenceTypes.has(type));
-  const missingMethods = (input.policy.requiredMethods ?? []).filter((method) => !evidenceMethods.has(method));
+  // Shared satisfaction facts — computed once in `foldClaim` and threaded in, so
+  // the gaps emitted here always agree with the status decision (issue #1).
+  const missingEvidence = input.evaluation.missingEvidenceTypes;
+  const missingMethods = input.evaluation.missingMethods;
   const citedEvidenceIds = input.evidence
     .filter((item) => !input.entailingEvidence.some((entailing) => entailing.id === item.id))
     .map((item) => item.id);
@@ -195,7 +192,7 @@ function deriveTransparencyGaps(input: {
     });
   }
 
-  if (input.policy.requiresCorroboration && input.entailingEvidence.length < 2) {
+  if (input.evaluation.corroborationMissing) {
     transparencyGaps.push({
       id: `${input.claim.id}.gap.corroboration-absent`,
       claimId: input.claim.id,
@@ -213,7 +210,7 @@ function deriveTransparencyGaps(input: {
   if (
     input.evidence.length > 0 &&
     citedEvidenceIds.length > 0 &&
-    (missingEvidence.length > 0 || missingMethods.length > 0 || (input.policy.requiresCorroboration && input.entailingEvidence.length < 2))
+    input.evaluation.requirementUnmet
   ) {
     const hasProducerUnsupportedInferenceHint = input.evidence.some((item) => {
       const hints = item.metadata?.transparencyGapHints;
