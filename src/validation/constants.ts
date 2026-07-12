@@ -80,7 +80,8 @@ export const CLAIM_KEYS = new Set([
   "producerStatus",
   "freshness",
 ]);
-export const DERIVATION_EDGE_KEYS = new Set(["inputClaimId", "method", "role", "supportStrength", "rationale", "metadata"]);
+export const DERIVATION_EDGE_KEYS = new Set(["inputClaimId", "method", "role", "supportStrength", "rationale", "sensitivity", "metadata"]);
+export const DERIVATION_EDGE_SENSITIVITY_KEYS = new Set(["low", "high", "basis"]);
 export const EVIDENCE_KEYS = new Set([
   "id",
   "claimId",

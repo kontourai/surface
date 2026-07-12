@@ -5,6 +5,7 @@ import {
   CLAIM_GROUP_KINDS,
   CLAIM_KEYS,
   DERIVATION_EDGE_KEYS,
+  DERIVATION_EDGE_SENSITIVITY_KEYS,
   DERIVATION_METHODS,
   EVENT_KEYS,
   EVENT_TYPES,
@@ -174,6 +175,17 @@ export function validateClaim(claim: unknown): void {
       if (edge.role !== undefined) requireString(edge, "role");
       if (edge.supportStrength !== undefined) requireEnum(edge, "supportStrength", SUPPORT_STRENGTHS);
       if (edge.rationale !== undefined) requireString(edge, "rationale");
+      if (edge.sensitivity !== undefined) {
+        const sensitivity = edge.sensitivity;
+        requireObject(sensitivity, `claim ${claim.id} derivationEdge sensitivity`);
+        rejectUnknownKeys(sensitivity, DERIVATION_EDGE_SENSITIVITY_KEYS, `claim ${claim.id} derivationEdge sensitivity`);
+        for (const bound of ["low", "high"] as const) {
+          if (typeof sensitivity[bound] !== "number" || !Number.isFinite(sensitivity[bound] as number)) {
+            throw new Error(`Claim ${claim.id} derivationEdge sensitivity.${bound} must be a number`);
+          }
+        }
+        requireString(sensitivity, "basis");
+      }
       if (edge.metadata !== undefined) requireObject(edge.metadata, "derivationEdge.metadata");
     }
   }

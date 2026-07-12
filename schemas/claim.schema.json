@@ -58,6 +58,17 @@
           "role": { "type": "string" },
           "supportStrength": { "enum": ["weak", "moderate", "strong"] },
           "rationale": { "type": "string" },
+          "sensitivity": {
+            "type": "object",
+            "$comment": "Optional sensitivity range for a quantitative derivation edge: a threshold/estimate travels with its bounds and basis so it is never a bare number. Pass-through metadata; not consulted by the status function.",
+            "required": ["low", "high", "basis"],
+            "properties": {
+              "low": { "type": "number" },
+              "high": { "type": "number" },
+              "basis": { "type": "string" }
+            },
+            "additionalProperties": false
+          },
           "metadata": { "type": "object" }
         },
         "additionalProperties": false
