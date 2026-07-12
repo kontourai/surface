@@ -61,6 +61,7 @@ Maintainer-only material stays repo-only: this index, brand language, ADRs, audi
 - [Architecture](architecture/index.md) — how the kernel, adapters, and product packages fit together
 - [Developer Architecture](architecture/developer-architecture.md) — Surface trust/evidence flow and cross-product boundaries
 - [Surface Foundation Boundary](architecture/surface-foundation.md) — one-way dependency rule for product layers
+- [Derivation & Counterfactual Algorithms](architecture/derivation-and-counterfactual-algorithms.md) — the derivation ceiling, claim evaluation invariant, and counterfactual traversal, with the soundness argument for each
 - [Minimum Trust Panel Spec](specs/minimum-trust-panel.md) — Viewer-facing inspection requirements
 - [Minimum Surface Console Spec](specs/minimum-surface-console.md) — Operator-facing workspace requirements
 - [Hachure Spec](https://github.com/hachure-org/spec) — product-neutral format specification: record shapes, status semantics, and executable conformance
