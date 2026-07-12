@@ -122,6 +122,12 @@ Because derivation only bounds *downward*, a *strengthening* hypothetical produc
 - **Explainable conclusions.** Reverse drilldown lets any derived `verified` (or `disputed`) claim be traced back to the source evidence and the specific input responsible.
 - **Consume-never-fork.** Both directions are pure read models over an existing `TrustReport`. Producers emit the bundle; Surface answers the impact questions without re-deriving or mutating state.
 
+## Recompute change records
+
+Surface derives trust *statelessly* — every `buildTrustReport` re-runs the derivation from scratch — so "re-run a derivation method when inputs change" is a **diff between two derivations**, not a live re-execution. `recomputeChangeRecords(prior, next)` (`src/recompute.ts`) compares a prior report against a newer one and emits a before/after record for each derived claim whose direct inputs changed: which inputs moved (status and/or value), and how the derived claim's own status and value moved. An *unchanged recompute* — inputs moved but the derived result did not — is still reported (flagged unchanged), so a consumer can tell "recomputed, no effect" apart from "not recomputed". The cascade across depths is captured directly: in an `A → B → C` chain where `A` flips, `B`'s record cites the `A` change and `C`'s cites the `B` change.
+
+**This lives in Surface core.** The recompute diff is a pure function of two reports — no state, no file watcher, no background process — so it belongs beside `diffFreshness` and the derivation kernel. A separate `@kontourai/surface-derive` package is only warranted for the genuinely heavier runtime this anticipated: a **stateful watcher** that observes producer inputs and triggers re-derivation, and an **arithmetic method executor** that recomputes a derived *value* from its inputs (e.g. actually summing input values for a `method: "sum"` edge). Neither is needed here — derived values are producer-owned, and Surface reports value *changes* by diffing the two reports rather than executing the method. That heavier runtime is deferred until a concrete consume-side need appears; the stateless core diff is the foundation it would build on.
+
 ## Derivation edge sensitivity
 
 A `derivationEdge` may carry an optional `sensitivity` range (`DerivationEdgeSensitivity`: `{ low, high, basis }`) describing how much a derived value would move if that input moved — the quantitative companion to the qualitative status ceiling. Surface carries and validates the range as portable, domain-neutral metadata; producers own how they calibrate it. See [Schemas](../reference/schemas.md) for the field shape.
@@ -134,6 +140,7 @@ A `derivationEdge` may carry an optional `sensitivity` range (`DerivationEdgeSen
 | Claim evaluation | `src/claim-evaluation.ts` | `evaluateClaimEvidence` |
 | Reverse drilldown (tree) | `src/derivation-drilldown.ts` | `buildDerivationDrilldown` |
 | Counterfactual traversal | `src/counterfactual.ts` | `traceDependents`, `traceDependencies`, `analyzeCounterfactual` |
+| Recompute change records | `src/recompute.ts` | `recomputeChangeRecords` |
 | Status order | `src/status-taxonomy.ts` | `weakerStatus`, `compareStatusStrength` |
 
 For the data shapes these produce, see the Trust Report section of [Schemas](../reference/schemas.md) and the `derivation` field in the [CLI reference](../reference/cli.md). For where derivation sits in the overall flow, see [Developer Architecture](developer-architecture.md).
