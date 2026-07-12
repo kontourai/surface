@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.5.0](https://github.com/kontourai/surface/compare/v2.4.0...v2.5.0) (2026-07-12)
+
+
+### Features
+
+* **derivation:** optional sensitivity range on DerivationEdge ([#24](https://github.com/kontourai/surface/issues/24)) ([#135](https://github.com/kontourai/surface/issues/135)) ([ca782fe](https://github.com/kontourai/surface/commit/ca782fe2df53b518632465a5929ff485d224dd88))
+
+
+### Documentation
+
+* gate-filtered learning principle — learners consume only verified claims ([#121](https://github.com/kontourai/surface/issues/121)) ([#131](https://github.com/kontourai/surface/issues/131)) ([54fbd0e](https://github.com/kontourai/surface/commit/54fbd0ed72913bb546e22ed3b1b0d5d7d0d5f9cc))
+* **status:** document `revoked`, the 9th trust status, + conformance case ([#134](https://github.com/kontourai/surface/issues/134)) ([a63f5cc](https://github.com/kontourai/surface/commit/a63f5cc2d641da5a0fbd77229b7ad82eea5d7d28))
+
+
+### Refactoring
+
+* **validate:** extract per-record shape validators ([#3](https://github.com/kontourai/surface/issues/3)) ([#133](https://github.com/kontourai/surface/issues/133)) ([d24e8df](https://github.com/kontourai/surface/commit/d24e8df5b20d6b052000dec2824d10c5db0de511))
+
 ## [2.4.0](https://github.com/kontourai/surface/compare/v2.3.0...v2.4.0) (2026-07-10)
 
 
