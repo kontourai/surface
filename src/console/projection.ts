@@ -1,4 +1,5 @@
 import type { SurfaceConsoleRuntimeConfig } from "./types.js";
+import { buildClaimDetails, type SurfaceConsoleClaimDetail } from "./claim-detail-projection.js";
 
 export interface SurfaceConsoleMetric {
   label: string;
@@ -17,6 +18,12 @@ export interface SurfaceConsoleProjection {
   claimCards: SurfaceConsoleClaimCard[];
   attentionClaims: SurfaceConsoleClaimCard[];
   claims: Array<Record<string, unknown>>;
+  /**
+   * Per-claim detail projection (guidance, gap labels, policy facts, integrity
+   * scope), keyed by claim id. The browser detail sheet renders from these
+   * precomputed fields instead of deriving them inline (issue #4).
+   */
+  claimDetails: Record<string, SurfaceConsoleClaimDetail>;
   facetCounts: Record<string, number>;
   /**
    * Distinct producer identities contributing to this view, sorted. Empty for a
@@ -103,6 +110,7 @@ export function buildSurfaceConsoleProjection(
     claimCards,
     attentionClaims: claimCards.filter((claim) => isAttentionStatus(claim.status)),
     claims,
+    claimDetails: buildClaimDetails(claims, model),
     // Tolerant of a read-model JSON produced before this rename (an
     // un-migrated producer, or an archived local run artifact).
     facetCounts: numberRecord(isRecord(summary.facetCounts) ? summary.facetCounts : summary.surfaceCounts),
@@ -140,6 +148,7 @@ export function emptySurfaceConsoleProjection(config: SurfaceConsoleRuntimeConfi
     claimCards: [],
     attentionClaims: [],
     claims: [],
+    claimDetails: {},
     facetCounts: {},
     producers: [],
     collisions: [],

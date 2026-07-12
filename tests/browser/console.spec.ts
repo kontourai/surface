@@ -386,6 +386,12 @@ test("live refresh: metrics and feed update after read-model file mutation witho
     const detailTitle = await page.locator("#detailTitle").textContent();
     expect(detailTitle).toContain("npm test");
 
+    // Guidance renders from the server-side claim detail projection (issue #4):
+    // the stale claim's guidance text must reach the DOM without the browser
+    // deriving it inline.
+    await expect(page.locator("#detailGuidance")).toBeVisible();
+    await expect(page.locator("#detailGuidance")).toContainText("Evidence is outdated");
+
     // Wait for the live indicator to show "live" before mutating the file
     await expect(page.locator("#liveIndicator")).toHaveAttribute("data-live-state", "live", { timeout: 8000 });
 

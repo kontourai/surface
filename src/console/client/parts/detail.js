@@ -3,32 +3,46 @@ function showClaimDetail(claim, readModel, cardEl, pushHistory = true) {
   document.querySelectorAll(".claim-card.card-selected").forEach(c => c.classList.remove("card-selected"));
   if (cardEl) cardEl.classList.add("card-selected");
   const detail = collectClaimDetailContext(claim, readModel);
+  // Business derivation (guidance, gap labels, policy facts, integrity scope) is
+  // precomputed server-side and shipped in the projection, keyed by claim id
+  // (issue #4). The browser renders from these projected fields.
+  const projected = currentData?.claimDetails?.[claim.id] ?? emptyClaimDetail();
   renderDetailHeader(claim, detail.evidence, detail.policy);
   renderDetailSheetActions(claim);
   renderDetailDivergence(claim);
-  renderDetailGuidance(claim, detail.evidence, readModel);
-  renderDetailGaps(detail.transparencyGaps, detail.claimGaps);
-  renderDetailPolicyGap(claim, detail.policy);
+  renderDetailGuidance(claim, projected);
+  renderDetailGaps(projected.gaps);
+  renderDetailPolicyGap(projected.policyGap);
   renderDetailWhatWasChecked(claim, detail.evidence);
   renderDetailActions(claim);
-  renderDetailAccordions(claim, detail);
+  renderDetailAccordions(claim, detail, projected);
 
   if (pushHistory) pushUrlState();
   openSheet();
+}
+
+// Fallback when a projection predating claim detail is in memory (e.g. an older
+// cached /api/console-model response). Keeps the detail sheet resilient.
+function emptyClaimDetail() {
+  return {
+    guidance: null,
+    suggestedCommand: null,
+    gaps: [],
+    policyGap: null,
+    integrityScope: { sourceRefs: [], configRefs: [], fileRefs: [] },
+  };
 }
 
 function collectClaimDetailContext(claim, readModel) {
   const allEvidence = readModel?.evidence ?? [];
   const allTransparencyGaps = readModel?.transparencyGaps ?? [];
   const allPolicies = readModel?.policies ?? [];
-  const allGaps = readModel?.analytics?.evidenceRequirementGaps ?? [];
   return {
     evidence: allEvidence.filter(e => claim.evidenceIds?.includes(e.id)),
     transparencyGaps: allTransparencyGaps.filter(fl =>
       claim.transparencyGapIds?.includes(fl.id) || fl.claimId === claim.id
     ),
     policy: allPolicies.find(p => p.id === claim.verificationPolicyId),
-    claimGaps: allGaps.filter(g => g.claimId === claim.id),
   };
 }
 
@@ -116,9 +130,9 @@ function renderDetailDivergence(claim) {
 // ── Item 2: Mobile-friendly guidance layout ────────────────
 // Guidance text is clamped to 2 lines with a "more" expander.
 // The CLI command gets its own full-width block with the copy button below.
-function renderDetailGuidance(claim, evidence, readModel) {
-  const guidance = statusGuidance(claim.status, evidence.length);
-  const suggested = suggestCommand(claim, evidence, readModel);
+function renderDetailGuidance(claim, projected) {
+  const guidance = projected.guidance;
+  const suggested = projected.suggestedCommand;
   let guidanceEl = document.getElementById("detailGuidance");
   if (guidance || suggested) {
     if (!guidanceEl) {
@@ -146,31 +160,25 @@ function renderDetailGuidance(claim, evidence, readModel) {
 }
 
 // ── Item 4: Gap badge + severity tone + clamped description ──
-function renderDetailGaps(transparencyGaps, claimGaps) {
-  const allGapItems = [
-    ...transparencyGaps.map(fl => ({ ...fl })),
-    ...claimGaps.filter(g => !transparencyGaps.some(fl => fl.type === g.gapType))
-  ];
-
-  if (allGapItems.length) {
-    const hasBlocking = allGapItems.some(g => g.blocking !== false);
+function renderDetailGaps(gaps) {
+  if (gaps.length) {
+    const hasBlocking = gaps.some(g => g.blocking !== false);
     // Update the section label: "Why this isn't verified" for blocking gaps, otherwise "Gaps"
     const gapLabelEl = el("detailGapLabel");
     if (gapLabelEl) {
       const gapLabelText = hasBlocking ? "Why this isn't verified" : "Non-blocking gaps";
       gapLabelEl.firstChild.textContent = gapLabelText + " ";
     }
-    el("detailGaps").innerHTML = allGapItems.map(item => {
-      const classified = classifyGap(item.type ?? item.gapType, item.message);
-      const kindLabel  = gapKindLabel[classified.kind] ?? classified.kind;
-      const severity   = item.severity ?? "medium";
+    // Gap kind/title/hint labels are precomputed in the claim detail projection.
+    el("detailGaps").innerHTML = gaps.map(item => {
+      const severity = item.severity ?? "medium";
       // Severity tone class: high/critical → bad, medium → warn, low → info
       const severityTone = (severity === "high" || severity === "critical") ? "gap-severity-high"
         : severity === "low" ? "gap-severity-low" : "gap-severity-medium";
-      return `<div class="gap-item gap-${esc(severity)} gap-kind-${esc(classified.kind)}">
+      return `<div class="gap-item gap-${esc(severity)} gap-kind-${esc(item.kind)}">
         <div class="gap-head">
-          <span class="gap-kind">${esc(kindLabel)}</span>
-          <span class="gap-type">${esc(classified.title)}</span>
+          <span class="gap-kind">${esc(item.kindLabel)}</span>
+          <span class="gap-type">${esc(item.title)}</span>
           <span class="gap-severity-badge ${esc(severityTone)}">${esc(severity)}</span>
           ${item.blocking === false ? `<span class="nonblocking-pill">non-blocking</span>` : ""}
         </div>
@@ -178,7 +186,7 @@ function renderDetailGaps(transparencyGaps, claimGaps) {
           <summary class="gap-msg gap-msg--clamped">${esc(item.message ?? "")}</summary>
           <p class="gap-msg gap-msg--expanded">${esc(item.message ?? "")}</p>
         </details>
-        ${classified.hint ? `<p class="gap-hint">${esc(classified.hint)}</p>` : ""}
+        ${item.hint ? `<p class="gap-hint">${esc(item.hint)}</p>` : ""}
       </div>`;
     }).join("");
     show("detailGapBlock");
@@ -187,8 +195,7 @@ function renderDetailGaps(transparencyGaps, claimGaps) {
   }
 }
 
-function renderDetailPolicyGap(claim, policy) {
-  const gap = policyGapAnalysis(claim, policy);
+function renderDetailPolicyGap(gap) {
   if (gap) {
     const gapSummary = gap.hasEvidence.length || gap.hasMethods.length
       ? "Surface compared the collected evidence against this claim's policy. The rows below show which requirement is still unmet."
@@ -294,10 +301,10 @@ function renderDetailActions(claim) {
 // ── collapsed accordion sections ─────────────────────────
 // Verification rule/policy, files in scope, integrity anchors, and raw
 // metadata are all secondary detail moved into <details> accordions.
-function renderDetailAccordions(claim, detail) {
+function renderDetailAccordions(claim, detail, projected) {
   renderDetailValue(claim);
   renderDetailFilesAccordion(detail.evidence);
-  renderDetailIntegrityAccordion(claim, detail.evidence);
+  renderDetailIntegrityAccordion(projected.integrityScope);
   renderDetailPolicyAccordion(claim);
   renderDetailMetadata(claim, detail);
 }
@@ -328,9 +335,8 @@ function renderDetailFilesAccordion(evidence) {
   }
 }
 
-function renderDetailIntegrityAccordion(claim, evidence) {
-  const integrityDetails = collectIntegrityDetails(claim, evidence);
-  const integrityHtml = renderIntegrityScope(integrityDetails);
+function renderDetailIntegrityAccordion(integrityScope) {
+  const integrityHtml = renderIntegrityScope(integrityScope);
   if (integrityHtml) {
     el("detailIntegrity").innerHTML = integrityHtml;
     show("detailIntegrityAccordion");
