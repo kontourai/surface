@@ -48,3 +48,14 @@ test("a missing intermediate path segment yields the not-an-envelope error, not 
   assert.throws(() => adapter.adapt({ a: { x: 1 } }), /deep adapter: expected an envelope/);
   assert.throws(() => adapter.adapt(null), /deep adapter: expected an envelope/);
 });
+
+test("a broken unwrap path is NOT masked by an envelope's own top-level schemaVersion", () => {
+  const veritas = getAdapter("veritas")!;
+  // An envelope that carries a top-level schemaVersion for its own versioning but
+  // whose trust.bundle path is absent must surface the actionable error, not be
+  // silently treated as the bundle (it has no `claims` array).
+  assert.throws(
+    () => veritas.adapt({ schemaVersion: 1, kind: "veritas-evidence-record", evidence: {} }),
+    /veritas adapter: expected an envelope/,
+  );
+});

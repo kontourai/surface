@@ -37,8 +37,12 @@ export function createEnvelopeAdapter(config: {
       if (isRecord(unwrapped)) {
         return unwrapped as unknown as TrustBundle;
       }
-      // Tolerate an already-unwrapped bundle so either shape can be fed.
-      if (isRecord(record) && "schemaVersion" in record) {
+      // Tolerate an already-unwrapped bundle so either shape can be fed. Require
+      // a stronger bundle-shape signal than a lone `schemaVersion` (a `claims`
+      // array): otherwise an envelope that carries its own top-level
+      // `schemaVersion` but whose unwrap path is broken would silently pass
+      // through as its own bundle instead of surfacing the actionable error.
+      if (isRecord(record) && "schemaVersion" in record && Array.isArray(record.claims)) {
         return record as unknown as TrustBundle;
       }
       throw new Error(
