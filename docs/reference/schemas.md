@@ -26,6 +26,19 @@ derivationEdges?: Array<{
 
 Derived claims remain ordinary claims in `TrustReport.claims`: consumers can keep reading their `status`, `value`, evidence, events, policy, and transparency gaps without using a special claim type. Consumers that need to explain a derivation can call `buildDerivationDrilldown(report, claimId)` or inspect the `surface get` projection. The drilldown preserves the target claim, direct inputs, nested inputs, leaf claims, leaf evidence, and derivation diagnostics while leaving the underlying claims unchanged.
 
+`conclusionConfidence` (optional, Hachure 0.14) carries a **calibrated** confidence on the conclusion — distinct from `confidenceBasis`, which carries the raw signals that fed an assessment:
+
+```typescript
+conclusionConfidence?: {
+  value?: number;                       // calibrated P(conclusion correct), [0,1]
+  method?: string;                      // provenance label, free-form
+  interval?: { low: number; high: number };
+  comfortZone?: { within: boolean; reason?: string };
+};
+```
+
+It is **carried, not produced**: Surface passes it through unchanged and never derives or consults it during status derivation. It is orthogonal to `confidenceBasis.reviewerAuthority` (an expert-reviewed claim may carry low `value`; an unreviewed one high). `method` and `comfortZone.reason` are free-form producer-owned vocabulary — the producer (e.g. Survey) populates and owns them, they are never enumerated in the schema.
+
 Schema: `schemas/claim.schema.json`
 
 ## Evidence

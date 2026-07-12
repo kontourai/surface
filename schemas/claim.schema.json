@@ -31,6 +31,33 @@
     "currentIntegrityAnchor": { "$ref": "#/$defs/integrityAnchor" },
     "verificationPolicyId": { "type": "string" },
     "confidenceBasis": { "type": "object" },
+    "conclusionConfidence": {
+      "type": "object",
+      "$comment": "Optional calibrated confidence ON the conclusion (distinct from confidenceBasis, which carries raw signals): a probability the conclusion is correct, plus a producer-populated comfort-zone signal. Carried, not produced; the status function never consults it. `method` and `comfortZone.reason` are free-form producer-owned vocabulary, never enumerated here.",
+      "properties": {
+        "value": { "type": "number", "minimum": 0, "maximum": 1 },
+        "method": { "type": "string" },
+        "interval": {
+          "type": "object",
+          "properties": {
+            "low": { "type": "number" },
+            "high": { "type": "number" }
+          },
+          "required": ["low", "high"],
+          "additionalProperties": false
+        },
+        "comfortZone": {
+          "type": "object",
+          "properties": {
+            "within": { "type": "boolean" },
+            "reason": { "type": "string" }
+          },
+          "required": ["within"],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
     "subjectAliases": {
       "type": "array",
       "items": {

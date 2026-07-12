@@ -69,6 +69,7 @@ export const CLAIM_KEYS = new Set([
   "currentIntegrityAnchor",
   "verificationPolicyId",
   "confidenceBasis",
+  "conclusionConfidence",
   "subjectAliases",
   "derivedFrom",
   "derivationEdges",

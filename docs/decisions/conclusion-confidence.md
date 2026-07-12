@@ -101,8 +101,10 @@ two sides agree on the reason codes rather than trading free-form strings.
 
 ## Status
 
-The shape is **ratified** (2026-07-12). What remains is execution of the
-owner-gated cross-repo path above: the Hachure schema change and publish stay
-owner-gated, and `comfortZone.reason` vocabulary should be reconciled with Survey
-#18 before the schema change lands. Until then, no `conclusionConfidence` field is
-carried in Surface — this record holds the agreed target.
+**Ratified and implemented** (2026-07-12). `conclusionConfidence` shipped in
+Hachure `0.14.0` (additive, no schemaVersion bump — `method`/`comfortZone.reason`
+are free-form per the boundary rule) and is carried through Surface unchanged
+(the `Claim.conclusionConfidence` type, validator allowlist, and round-trip
+tests). Surface derives nothing from it. Remaining follow-on is producer-side and
+out of this repo: Survey (#18) agrees the `comfortZone.reason` vocabulary with its
+consumers — a producer-layer contract, deliberately not a kernel enum.
