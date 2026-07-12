@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.8.0](https://github.com/kontourai/surface/compare/v2.7.0...v2.8.0) (2026-07-12)
+
+
+### Features
+
+* **mcp:** veritas envelope adapter + input-agnostic server ([#84](https://github.com/kontourai/surface/issues/84), [#95](https://github.com/kontourai/surface/issues/95)) ([#145](https://github.com/kontourai/surface/issues/145)) ([0fd2e6f](https://github.com/kontourai/surface/commit/0fd2e6f0e24db42ac9a2f6111607dbf87d4db401))
+* **recompute:** emit recompute change records for derived claims ([#16](https://github.com/kontourai/surface/issues/16)) ([#144](https://github.com/kontourai/surface/issues/144)) ([130b6fb](https://github.com/kontourai/surface/commit/130b6fbb49447b59094ec59690b1c8e3984b6dc6))
+
+
+### Documentation
+
+* derivation & counterfactual algorithms page + docs refresh ([#142](https://github.com/kontourai/surface/issues/142)) ([08fc6f2](https://github.com/kontourai/surface/commit/08fc6f22abce3231c24ed3d96349948bbcc51996))
+
 ## [2.7.0](https://github.com/kontourai/surface/compare/v2.6.0...v2.7.0) (2026-07-12)
 
 
