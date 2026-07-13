@@ -15,8 +15,9 @@ badge they have to take on faith.**
 - *"A vendor told us their AI passed its evals. We have a number. We can't see
   what was tested, and we can't tell if it's still true."*
 - *"Our auditor wants continuous evidence now — screenshots and a point-in-time
-  report don't cut it anymore."* (This is real: 2026 SOC 2 guidance says
-  continuous monitoring is "an evidence expectation, not a differentiator.")
+  report don't cut it anymore."* (Directionally real: compliance-audit practice is
+  shifting from point-in-time reports toward continuous, freshness-tested
+  evidence.)
 - *"When our own AI claims cross to a customer or a regulator, they land as a PDF.
   All the proof is gone."*
 
@@ -62,8 +63,10 @@ across the boundary. No adopted AI-attestation format has it.
 ## Why now
 
 - Regulators and auditors have all converged on **continuous** + **cross-boundary**
-  evidence (EU AI Act post-market monitoring, NIST's manage loop, 2026 SOC 2
-  continuous-evidence expectation) — the two conditions that break sealed badges.
+  evidence (EU AI Act post-market monitoring, NIST's manage loop, the shift toward
+  continuous compliance evidence) — the two conditions that break sealed badges.
+  *(None of them mandates recomputable trust yet — sell the trajectory, not a
+  requirement; see Guardrails.)*
 - AI raises the stakes: eval results are the highest-value place "trust me" stops
   being acceptable, and buyers are actively burned by unproven claims.
 
