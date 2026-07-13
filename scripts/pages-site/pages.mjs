@@ -13,6 +13,12 @@ export const navGroups = [
         "Kontour Surface is the open trust format and transparency foundation that connects evidence provenance to the claims products ask humans and AI agents to trust.",
       ],
       [
+        "start-here",
+        "docs/product/start-here.md",
+        "The Problem in Plain Terms",
+        "New to this space? Why verification degrades to a badge across a hand-off, how recomputable trust fixes it, and why it's useful — no jargon.",
+      ],
+      [
         "getting-started",
         "docs/guides/getting-started.md",
         "Getting Started",
@@ -52,6 +58,12 @@ export const navGroups = [
         "docs/product/principles.md",
         "Principles",
         "The kernel principles behind Kontour Surface: unverified is not denied, deterministic by default, no single confidence score.",
+      ],
+      [
+        "where-kontour-fits",
+        "docs/product/where-kontour-fits.md",
+        "Where Kontour Fits",
+        "Kontour's place in the trust/attestation/provenance landscape, with adversarially-verified evidence: the recomputable-appraisal niche is unoccupied, and the AI-evaluation wedge.",
       ],
     ],
   },
