@@ -13,6 +13,12 @@ export const navGroups = [
         "Kontour Surface is the open trust format and transparency foundation that connects evidence provenance to the claims products ask humans and AI agents to trust.",
       ],
       [
+        "start-here",
+        "docs/product/start-here.md",
+        "The Problem in Plain Terms",
+        "New to this space? Why verification degrades to a badge across a hand-off, how recomputable trust fixes it, and why it's useful — no jargon.",
+      ],
+      [
         "getting-started",
         "docs/guides/getting-started.md",
         "Getting Started",
@@ -29,12 +35,6 @@ export const navGroups = [
   {
     label: "Product",
     pages: [
-      [
-        "start-here",
-        "docs/product/start-here.md",
-        "Start Here",
-        "New to this space? The problem in plain terms — why verification degrades to a badge across a hand-off, how recomputable trust fixes it, and why it's useful.",
-      ],
       [
         "vision",
         "docs/product/vision.md",
