@@ -30,6 +30,12 @@ export const navGroups = [
     label: "Product",
     pages: [
       [
+        "start-here",
+        "docs/product/start-here.md",
+        "Start Here",
+        "New to this space? The problem in plain terms — why verification degrades to a badge across a hand-off, how recomputable trust fixes it, and why it's useful.",
+      ],
+      [
         "vision",
         "docs/product/vision.md",
         "Vision",
@@ -52,6 +58,12 @@ export const navGroups = [
         "docs/product/principles.md",
         "Principles",
         "The kernel principles behind Kontour Surface: unverified is not denied, deterministic by default, no single confidence score.",
+      ],
+      [
+        "where-kontour-fits",
+        "docs/product/where-kontour-fits.md",
+        "Where Kontour Fits",
+        "Kontour's place in the trust/attestation/provenance landscape, with adversarially-verified evidence: the recomputable-appraisal niche is unoccupied, and the AI-evaluation wedge.",
       ],
     ],
   },

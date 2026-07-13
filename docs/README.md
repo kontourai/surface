@@ -27,11 +27,14 @@ Maintainer-only material stays repo-only: this index, brand language, ADRs, audi
 ## Product Model
 
 - [Overview](index.md) — public homepage source for the generated docs site
+- [Start Here](product/start-here.md) — plain-language explainer of the problem, the recomputable-trust solution, and why it's useful (newcomer entry point)
 - [Concepts](product/concepts.md) — the trust model: claims, evidence traces, policies, Trust Snapshots, claim groups, status, and transparency gaps
 - [Use Cases](product/use-cases.md) — repo governance, public data trust, fact resolution, dependency audit
 - [Vision](product/vision.md) — product transparency thesis
 - [Principles](product/principles.md) — kernel and adapter rules
+- [Where Kontour Fits](product/where-kontour-fits.md) — Kontour's place in the trust/attestation landscape, with verified evidence, and the AI-evaluation wedge
 - [Brand Language](product/brand-language.md) — product language and positioning
+- [Selling Kontour](product/selling-kontour.md) — **repo-only** internal sales enablement (honest pitch, buyers, objection handles, guardrails); not published to the docs site
 
 ## Building With Surface
 
