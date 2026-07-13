@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.9.1](https://github.com/kontourai/surface/compare/v2.9.0...v2.9.1) (2026-07-13)
+
+
+### Documentation
+
+* **product:** where Kontour fits (validated) + newcomer explainer + seller enablement ([#149](https://github.com/kontourai/surface/issues/149)) ([01bc031](https://github.com/kontourai/surface/commit/01bc031a75632cc24ce070f2a108c20b683d5c4c))
+
 ## [2.9.0](https://github.com/kontourai/surface/compare/v2.8.0...v2.9.0) (2026-07-12)
 
 
