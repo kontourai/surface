@@ -16,6 +16,7 @@ export * from "./consumer-sdk.js";
 export * from "./attestation.js";
 export * from "./derivation.js";
 export * from "./derivation-drilldown.js";
+export * from "./claim-explanation.js";
 export * from "./counterfactual.js";
 export * from "./recompute.js";
 export * from "./claim-groups.js";
