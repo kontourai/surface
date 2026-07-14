@@ -45,10 +45,11 @@ test("packed npm artifact installs, imports, and exposes the CLI from a fresh co
         "--input-type=module",
         "--eval",
         [
-          "import { TrustBundleBuilder, buildTrustReport, validateTrustBundle } from '@kontourai/surface';",
+          "import { TrustBundleBuilder, buildTrustReport, validateTrustBundle, explainClaim } from '@kontourai/surface';",
           "if (typeof TrustBundleBuilder !== 'function') throw new Error('TrustBundleBuilder missing');",
           "if (typeof buildTrustReport !== 'function') throw new Error('buildTrustReport missing');",
           "if (typeof validateTrustBundle !== 'function') throw new Error('validateTrustBundle missing');",
+          "if (typeof explainClaim !== 'function') throw new Error('explainClaim missing');",
           "try {",
           "  await import('@kontourai/surface/dist/src/console/projection.js');",
           "  throw new Error('deep import unexpectedly resolved');",
