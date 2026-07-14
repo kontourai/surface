@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.10.0](https://github.com/kontourai/surface/compare/v2.9.1...v2.10.0) (2026-07-14)
+
+
+### Features
+
+* add explainClaim(report, claimId) claim-explanation projection ([#151](https://github.com/kontourai/surface/issues/151)) ([d33672c](https://github.com/kontourai/surface/commit/d33672c7aaad28134e220dd3a186d4a5858540f4))
+
 ## [2.9.1](https://github.com/kontourai/surface/compare/v2.9.0...v2.9.1) (2026-07-13)
 
 
