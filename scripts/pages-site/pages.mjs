@@ -213,6 +213,12 @@ export const navGroups = [
         "The trust and evidence flow through Kontour Surface and the ownership boundaries between Surface and the products built on it.",
       ],
       [
+        "portfolio-layer-doctrine",
+        "docs/architecture/portfolio-layer-doctrine.md",
+        "Portfolio Layer Doctrine",
+        "The cross-product four-layer stack — open trust format, building-block tools, Surface, and the products — and the one-way dependency rule that keeps them from drifting.",
+      ],
+      [
         "surface-foundation",
         "docs/architecture/surface-foundation.md",
         "Surface Foundation",
