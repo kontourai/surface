@@ -25,6 +25,16 @@ import type { CanonicalClaimTarget } from "./canonical.js";
 import { canonicalClaimKey } from "./canonical.js";
 import { checkAuthorityActive, deriveClaimStatus, statusFunctionVersion } from "./status.js";
 import { weakerStatus } from "./derivation.js";
+import {
+  isObject,
+  rejectUnknownKeys,
+  requireDateTime,
+  requireEnum,
+  requireObject,
+  requireString,
+  requireStringArray,
+} from "./validation/primitives.js";
+import { TRUST_STATUSES } from "./validation/constants.js";
 
 // ---------------------------------------------------------------------------
 // Public API — Step 3: exact-match resolution
@@ -536,4 +546,76 @@ function evaluateCorroboration(
     }
   }
   return actors.size >= minActors;
+}
+
+// ---------------------------------------------------------------------------
+// Validation — the symmetric read-side half of validateTrustBundle for
+// InquiryRecords (portfolio layer doctrine: Surface owns the OTF read side, so
+// a consumer validates inquiry records through Surface instead of resolving the
+// raw `hachure` inquiry-record schema itself). Equivalent-or-stronger than that
+// schema: it checks required fields, the outcome/status enums, and the nested
+// inquiry / resolutionPath / inputSnapshot / answer shapes.
+// ---------------------------------------------------------------------------
+
+const INQUIRY_OUTCOMES = ["matched", "derived", "unsupported"] as const;
+
+const INQUIRY_RECORD_KEYS = new Set([
+  "id",
+  "inquiry",
+  "outcome",
+  "resolutionPath",
+  "answer",
+  "inputSnapshot",
+  "statusFunctionVersion",
+  "resolvedAt",
+]);
+
+export function validateInquiryRecord(input: unknown): InquiryRecord {
+  if (!isObject(input)) throw new Error("Inquiry record must be an object");
+  rejectUnknownKeys(input, INQUIRY_RECORD_KEYS, "inquiry record");
+  requireString(input, "id");
+  const outcome = requireEnum(input, "outcome", INQUIRY_OUTCOMES);
+  validateInquiry(input.inquiry);
+  validateResolutionPath(input.resolutionPath);
+  validateInputSnapshot(input.inputSnapshot);
+  requireString(input, "statusFunctionVersion");
+  requireDateTime(input, "resolvedAt");
+  if (input.answer !== undefined) validateInquiryAnswer(input.answer);
+  // Every field validated above and carried through verbatim; outcome is read
+  // to prove the enum check ran, then re-attached from the validated input.
+  void outcome;
+  return input as unknown as InquiryRecord;
+}
+
+function validateInquiry(value: unknown): void {
+  requireObject(value, "inquiry record inquiry");
+  requireString(value, "id");
+  requireString(value, "question");
+  requireString(value, "askedBy");
+  requireDateTime(value, "askedAt");
+  // `target` and `metadata` are optional and free-form; carried through verbatim.
+}
+
+function validateResolutionPath(value: unknown): void {
+  requireObject(value, "inquiry record resolutionPath");
+  requireStringArray(value, "claimIds");
+  if (value.ruleId !== undefined) requireString(value, "ruleId");
+  if (value.ruleVersion !== undefined) requireString(value, "ruleVersion");
+  if (value.identityLinkIds !== undefined) requireStringArray(value, "identityLinkIds");
+  if (value.transitiveRuleIds !== undefined) requireStringArray(value, "transitiveRuleIds");
+}
+
+function validateInputSnapshot(value: unknown): void {
+  if (!Array.isArray(value)) throw new Error("Inquiry record inputSnapshot must be an array");
+  value.forEach((entry, index) => {
+    requireObject(entry, `inquiry record inputSnapshot[${index}]`);
+    requireString(entry, "claimId");
+    requireEnum(entry, "status", TRUST_STATUSES);
+  });
+}
+
+function validateInquiryAnswer(value: unknown): void {
+  requireObject(value, "inquiry record answer");
+  if (!("value" in value)) throw new Error("Inquiry record answer.value is required");
+  requireEnum(value, "status", TRUST_STATUSES);
 }
