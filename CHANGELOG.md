@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.11.0](https://github.com/kontourai/surface/compare/v2.10.0...v2.11.0) (2026-07-16)
+
+
+### Features
+
+* add validateInquiryRecord — the symmetric OTF read-side validator ([#157](https://github.com/kontourai/surface/issues/157)) ([de27d93](https://github.com/kontourai/surface/commit/de27d93c7b4aee30800faabe3dccdec617262d80))
+
+
+### Documentation
+
+* add Portfolio Layer Doctrine as the canonical cross-product architecture ([#155](https://github.com/kontourai/surface/issues/155)) ([284f875](https://github.com/kontourai/surface/commit/284f8751995f16dd85da8336f1937da098513144))
+
 ## [2.10.0](https://github.com/kontourai/surface/compare/v2.9.1...v2.10.0) (2026-07-14)
 
 
