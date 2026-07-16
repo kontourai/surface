@@ -9,8 +9,11 @@ linked inline.
 ## The layers
 
 - **[Hachure](https://github.com/hachure-org/spec) is the open, vendor-neutral trust format** Kontour created and stewards. It defines portable records — claims, evidence, verification policies, append-only events — and a *published, versioned status function* `status = f(evidence, policy, now)` that any consumer recomputes.
-- **Surface is Kontour's kernel** — the implementation that derives trust state from Hachure bundles (status, transparency gaps, freshness, merge, projections) and exposes it (CLI, the Surface Console, the MCP surface).
-- **Kontour's products sit on top** — evaluation and evidence producers (e.g. Survey) emit Hachure bundles; consumers read derived trust over the MCP surface. Producers own their domain; the kernel owns portable trust primitives; dependencies point one way.
+- **The building-block tools** — forage (crawl), traverse (extract), lookout (drift) — emit hachure-evidence-shaped output but depend on nothing in the trust layer; a consumer lifts their output into a bundle.
+- **Surface is the integration surface** — the reference implementation of Hachure that derives and validates trust state from bundles and exposes it (CLI, the Surface Console, the MCP surface). Every product speaks the format through Surface.
+- **Kontour's products sit on top** — evaluation and evidence producers (e.g. Survey) project through Surface; consumers read derived trust over the MCP surface. Producers own their domain; Surface owns portable trust primitives; dependencies point one way.
+
+For the engineering-canonical version of this stack — the four layers, dependency direction, and today-vs-target state — see the [Portfolio Layer Doctrine](../architecture/portfolio-layer-doctrine.md).
 
 ## The gap nobody else fills
 

@@ -10,7 +10,9 @@ Surface      ->  trust derivation      -> status, conflicts, transparency gaps, 
 
 Product systems sit above these layers and keep their own workflow language. Producers such as Veritas collect evidence against authored claims. Surface remains the product-neutral shared foundation and trust derivation.
 
-Surface has four internal layers.
+Surface has four internal layers. (These are the layers *inside* Surface — not the portfolio's
+four-layer stack of open format → building-block tools → Surface → products, which is the
+[Portfolio Layer Doctrine](portfolio-layer-doctrine.md).)
 
 ## 1. Kernel
 

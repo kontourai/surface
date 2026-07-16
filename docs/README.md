@@ -62,6 +62,7 @@ Maintainer-only material stays repo-only: this index, brand language, ADRs, audi
 ## Architecture And Specs
 
 - [Architecture](architecture/index.md) — how the kernel, adapters, and product packages fit together
+- [Portfolio Layer Doctrine](architecture/portfolio-layer-doctrine.md) — the cross-product four-layer stack (open format → building-block tools → Surface → products) and its one-way dependency rule
 - [Developer Architecture](architecture/developer-architecture.md) — Surface trust/evidence flow and cross-product boundaries
 - [Surface Foundation Boundary](architecture/surface-foundation.md) — one-way dependency rule for product layers
 - [Derivation & Counterfactual Algorithms](architecture/derivation-and-counterfactual-algorithms.md) — the derivation ceiling, claim evaluation invariant, and counterfactual traversal, with the soundness argument for each
