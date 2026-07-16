@@ -7,6 +7,7 @@ import { readFile } from "node:fs/promises";
 import {
   evaluateDerivationRule,
   resolveInquiry,
+  validateInquiryRecord,
   validateTrustBundle,
   statusFunctionVersion,
 } from "../src/index.js";
@@ -15,6 +16,7 @@ import type {
   DerivationRule,
   Evidence,
   Inquiry,
+  InquiryRecord,
   TrustBundle,
   VerificationEvent,
   VerificationPolicy,
@@ -1426,4 +1428,57 @@ test('corroboration + requiresActiveAuthority: both predicates evaluated togethe
   });
   const revokedResult = evaluateDerivationRule(combinedRule, revokedBundle, { now: NOW_IN_WINDOW });
   assert.equal(revokedResult.satisfied, false);
+});
+
+// ---------------------------------------------------------------------------
+// validateInquiryRecord — the symmetric read-side validator (portfolio layer
+// doctrine: consumers validate inquiry records through Surface, not raw hachure)
+// ---------------------------------------------------------------------------
+
+function makeInquiryRecord(overrides: Partial<InquiryRecord> = {}): InquiryRecord {
+  return {
+    id: "ir-1",
+    inquiry: {
+      id: "q-1",
+      question: "Is claim c-1 trusted?",
+      askedBy: "tester",
+      askedAt: "2026-07-15T00:00:00.000Z",
+    },
+    outcome: "matched",
+    resolutionPath: { claimIds: ["c-1"] },
+    answer: { value: true, status: "verified" },
+    inputSnapshot: [{ claimId: "c-1", status: "verified" }],
+    statusFunctionVersion: "2",
+    resolvedAt: "2026-07-15T00:00:00.000Z",
+    ...overrides,
+  };
+}
+
+test("validateInquiryRecord accepts a well-formed record and returns it", () => {
+  const record = makeInquiryRecord();
+  const validated = validateInquiryRecord(record);
+  assert.deepEqual(validated, record);
+});
+
+test("validateInquiryRecord rejects malformed records", () => {
+  assert.throws(() => validateInquiryRecord(null), /must be an object/);
+  assert.throws(() => validateInquiryRecord(makeInquiryRecord({ id: undefined as unknown as string })), /id/);
+  assert.throws(
+    () => validateInquiryRecord(makeInquiryRecord({ outcome: "bogus" as unknown as InquiryRecord["outcome"] })),
+    /outcome/,
+  );
+  assert.throws(
+    () => validateInquiryRecord(makeInquiryRecord({
+      inputSnapshot: [{ claimId: "c-1", status: "nope" as unknown as InquiryRecord["inputSnapshot"][number]["status"] }],
+    })),
+    /status/,
+  );
+  assert.throws(
+    () => validateInquiryRecord(makeInquiryRecord({ resolutionPath: {} as unknown as InquiryRecord["resolutionPath"] })),
+    /claimIds/,
+  );
+  assert.throws(
+    () => validateInquiryRecord({ ...makeInquiryRecord(), unexpected: 1 } as unknown),
+    /inquiry record/,
+  );
 });
