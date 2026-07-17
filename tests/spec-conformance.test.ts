@@ -35,6 +35,10 @@ test("hachure package contains at least five test vector files", () => {
     vectorFiles.length >= 5,
     `Expected at least 5 test vector files, found ${vectorFiles.length}: ${vectorFiles.join(", ")}`,
   );
+  assert.ok(
+    vectorFiles.includes("sf-runtime-observation-required.json"),
+    `Expected hachure 0.15 runtime-observation vector; found: ${vectorFiles.join(", ")}`,
+  );
 });
 
 test("statusFunctionVersion is '2'", () => {

@@ -52,6 +52,10 @@ export function buildTrustReport(input: TrustBundle, options: BuildTrustReportOp
   const snapshot = deriveTrustSnapshot(input, { now, since: options.since, instrument: options.instrument });
 
   return {
+    // Hachure 0.15 widens the embedded Evidence/VerificationPolicy schemas for
+    // v7 vocabulary, but trust-report.schema.json still permits only top-level
+    // schemaVersion 5 or 6. Keep reports at 5 until that upstream contract is
+    // widened; bundle emissions use content-sensitive stamping separately.
     schemaVersion: CURRENT_SCHEMA_VERSION,
     id: options.id ?? `surface-${now.getTime()}`,
     generatedAt: now.toISOString(),

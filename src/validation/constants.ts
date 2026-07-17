@@ -15,6 +15,7 @@ export const EVIDENCE_METHODS = [
 export const EVIDENCE_TYPES = [
   "source_excerpt",
   "test_output",
+  "runtime_observation",
   "human_attestation",
   "attestation",
   "calculation_trace",
@@ -107,6 +108,7 @@ export const EXECUTION_KEYS = new Set([
   "exitCode",
   "isError",
   "durationMs",
+  "environment",
   "metadata",
 ]);
 export const POLICY_KEYS = new Set([

@@ -8,7 +8,7 @@ import type {
   VerificationEvent,
   VerificationPolicy,
 } from "./types.js";
-import { CURRENT_SCHEMA_VERSION } from "./types.js";
+import { requiredBundleSchemaVersion } from "./bundle-schema-version.js";
 
 /**
  * A collision between records that share an `id` but differ in content.  When
@@ -89,15 +89,6 @@ export function mergeBundlesDetailed(bundles: TrustBundle[]): MergeResult {
     throw new Error("mergeBundles: at least one bundle is required");
   }
 
-  // A merged bundle is a freshly synthesized artifact (like `source` below,
-  // which is synthesized as `merged:<a>+<b>` rather than copied from any one
-  // input) — it always self-declares the CURRENT schemaVersion, regardless of
-  // what schemaVersion any individual input bundle declared. This lets legacy
-  // (schemaVersion 2-4, `facet` already normalized by validateTrustBundle's
-  // read-tolerance shim) and current (schemaVersion 5) bundles merge together;
-  // there is no mismatch to reject, only a single always-current output.
-  const schemaVersion = CURRENT_SCHEMA_VERSION;
-
   const collisions: MergeCollision[] = [];
 
   // Defensive normalization at the merge API boundary (hachure facet rename,
@@ -147,6 +138,10 @@ export function mergeBundlesDetailed(bundles: TrustBundle[]): MergeResult {
   // producer, so `producerId` is intentionally NOT copied onto this literal —
   // the omission is the contract, not an accidental gap. (`source`, by contrast,
   // IS synthesized above as `merged:<a>+<b>`.)
+  // The declaration is content-sensitive: retain v5 compatibility for pure-v5
+  // unions, but declare v7 when verbatim-unioned evidence or policies use the
+  // runtime-observation vocabulary.
+  const schemaVersion = requiredBundleSchemaVersion({ evidence, policies });
   const bundle: TrustBundle = {
     schemaVersion,
     source,

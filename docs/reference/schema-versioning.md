@@ -4,12 +4,30 @@ Surface schemas are product contracts. They should change more slowly than imple
 
 ## Current version
 
-Surface **writes** `schemaVersion: 5` on every bundle/report it emits. On
-**read**, it accepts `schemaVersion: 2` through `5` (see
+Surface **writes** TrustBundles as schema version 5 or 7 according to their
+content, and writes TrustReports as version 5. On **read**, it accepts
+`schemaVersion: 2` through `7` (see
 [v3 to v5 migration](#v3-to-v5-migration) for the one-release read-tolerance
 shim that covers 2-4). Each version is a strict superset of the one before
-it: every v2 input remains a valid v3 input, and so on through v5. New fields
-are additive and optional, so adapters can adopt them on their own cadence.
+it except for the deliberate v5 `surface` to `facet` wire rename documented
+below. The v6 and v7 fields are additive and optional, so adapters can adopt
+them on their own cadence.
+
+Version 7 adds `runtime_observation` evidence and the optional
+`execution.environment` field (`test`, `staging`, or `production`). A policy
+can require `runtime_observation` when passing tests alone must not verify a
+claim about deployed behavior. Surface stamps emitted TrustBundles
+content-sensitively: bundles using either v7 evidence field, or a policy that
+requires `runtime_observation`, declare version 7; pure-v5 content remains at
+version 5 so Hachure 0.14 and older receivers do not reject it. An explicitly
+versioned `TrustBundleBuilder` fails when its declaration is too old for its
+content.
+
+Hachure 0.15's `trust-report.schema.json` still permits only top-level versions
+5 and 6, even though its embedded evidence and policy references accept the v7
+vocabulary. `buildTrustReport` therefore continues declaring version 5 while
+carrying those widened pass-through records. This is an upstream schema
+limitation, not a different evidence interpretation.
 
 Version 3 covers everything v2 covers plus:
 
@@ -78,13 +96,17 @@ Version 5 is a deliberate hard break on the wire schema, following the
 Hachure spec's facet rename: `Claim.surface` and `ClaimDefinition.surface`
 are renamed to `facet` (and made optional). `schemas/claim.schema.json`,
 `schemas/trust-bundle.schema.json`, and `schemas/trust-report.schema.json`
-now declare `"schemaVersion": { "enum": [5] }` — the enum was reset to a
-single value rather than widened, because every bundle or report this
-release **writes** always self-declares `schemaVersion: 5`
+declared `"schemaVersion": { "enum": [5] }` when the rename shipped — the enum
+was reset to a single value rather than widened, because every bundle or report
+Surface wrote at that release self-declared `schemaVersion: 5`
 (`CURRENT_SCHEMA_VERSION` in `src/types.ts`). There is no `schemaVersion: 4`
 in the wild to widen the enum for; version 4 only ever existed as an
 in-progress marker for the `expiresAt`/`ttlSeconds` validity-window fields
 before this rename shipped.
+
+The current Hachure schemas widen the readable TrustBundle contract to
+`[5, 6, 7]`; Surface-generated TrustReports remain version 5, and generated
+TrustBundles follow the content-sensitive rule above.
 
 To adopt v5 as a producer:
 

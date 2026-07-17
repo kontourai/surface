@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 7,
+  "source": "runtime-observation-policy-example",
+  "claims": [
+    {
+      "id": "claim.service.test-only",
+      "subjectType": "deployed-service",
+      "subjectId": "service:test-only",
+      "facet": "runtime.health",
+      "claimType": "runtime-health",
+      "fieldOrBehavior": "healthEndpoint",
+      "value": "healthy",
+      "createdAt": "2026-06-01T00:00:00.000Z",
+      "updatedAt": "2026-06-01T00:00:00.000Z",
+      "impactLevel": "high",
+      "verificationPolicyId": "policy.runtime-health.live"
+    },
+    {
+      "id": "claim.service.live-backed",
+      "subjectType": "deployed-service",
+      "subjectId": "service:live-backed",
+      "facet": "runtime.health",
+      "claimType": "runtime-health",
+      "fieldOrBehavior": "healthEndpoint",
+      "value": "healthy",
+      "createdAt": "2026-06-01T00:00:00.000Z",
+      "updatedAt": "2026-06-01T00:00:00.000Z",
+      "impactLevel": "high",
+      "verificationPolicyId": "policy.runtime-health.live"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "evidence.service.test-only.output",
+      "claimId": "claim.service.test-only",
+      "evidenceType": "test_output",
+      "method": "validation",
+      "sourceRef": "ci:health-check",
+      "excerptOrSummary": "The health endpoint passed against a test double.",
+      "observedAt": "2026-06-01T00:00:00.000Z",
+      "collectedBy": "ci",
+      "execution": {
+        "runner": "bash",
+        "label": "health endpoint test",
+        "exitCode": 0,
+        "environment": "test"
+      }
+    },
+    {
+      "id": "evidence.service.live-backed.output",
+      "claimId": "claim.service.live-backed",
+      "evidenceType": "test_output",
+      "method": "validation",
+      "sourceRef": "ci:health-check",
+      "excerptOrSummary": "The health endpoint passed before deployment.",
+      "observedAt": "2026-06-01T00:00:00.000Z",
+      "collectedBy": "ci",
+      "execution": {
+        "runner": "bash",
+        "label": "health endpoint test",
+        "exitCode": 0,
+        "environment": "test"
+      }
+    },
+    {
+      "id": "evidence.service.live-backed.runtime",
+      "claimId": "claim.service.live-backed",
+      "evidenceType": "runtime_observation",
+      "method": "observation",
+      "sourceRef": "https://service.example/health",
+      "excerptOrSummary": "The deployed production health endpoint returned healthy.",
+      "observedAt": "2026-06-01T00:05:00.000Z",
+      "collectedBy": "runtime-monitor",
+      "execution": {
+        "runner": "bash",
+        "label": "production health probe",
+        "exitCode": 0,
+        "environment": "production"
+      }
+    }
+  ],
+  "policies": [
+    {
+      "id": "policy.runtime-health.live",
+      "claimType": "runtime-health",
+      "requiredEvidence": ["runtime_observation"],
+      "requiredMethods": [],
+      "requiresCorroboration": false,
+      "acceptanceCriteria": ["service behavior is observed in a running environment"],
+      "reviewAuthority": "runtime-monitor",
+      "validityRule": { "kind": "duration", "durationDays": 30 },
+      "stalenessTriggers": ["deployment changes"],
+      "conflictRules": [],
+      "impactLevel": "high"
+    }
+  ],
+  "events": [
+    {
+      "id": "event.service.test-only.verified",
+      "claimId": "claim.service.test-only",
+      "status": "verified",
+      "actor": "runtime-monitor",
+      "method": "automated-check",
+      "evidenceIds": ["evidence.service.test-only.output"],
+      "createdAt": "2026-06-01T00:05:00.000Z",
+      "verifiedAt": "2026-06-01T00:05:00.000Z"
+    },
+    {
+      "id": "event.service.live-backed.verified",
+      "claimId": "claim.service.live-backed",
+      "status": "verified",
+      "actor": "runtime-monitor",
+      "method": "automated-check",
+      "evidenceIds": [
+        "evidence.service.live-backed.output",
+        "evidence.service.live-backed.runtime"
+      ],
+      "createdAt": "2026-06-01T00:05:00.000Z",
+      "verifiedAt": "2026-06-01T00:05:00.000Z"
+    }
+  ]
+}

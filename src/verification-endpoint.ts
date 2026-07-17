@@ -28,7 +28,7 @@
  */
 
 import type { AuthorityTrace, Claim, Evidence, TrustBundle, VerificationEvent } from "./types.js";
-import { CURRENT_SCHEMA_VERSION } from "./types.js";
+import { requiredBundleSchemaVersion } from "./bundle-schema-version.js";
 import { toDsseEnvelope, toInTotoStatement } from "./interop/in-toto.js";
 import type { DsseEnvelope, Signer } from "./interop/in-toto.js";
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -209,7 +209,7 @@ export function createVerificationResponder(
     };
 
     const bundle: VerificationBundle = {
-      schemaVersion: CURRENT_SCHEMA_VERSION,
+      schemaVersion: requiredBundleSchemaVersion({ evidence: allEvidence, policies: [] }),
       source,
       claims: allClaims,
       evidence: allEvidence,

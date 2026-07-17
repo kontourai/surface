@@ -12,7 +12,7 @@
       "description": "Evidence-to-Claim support strength. Omitted means entails for legacy claimId producers; cited means reference/context only and does not satisfy policy support."
     },
     "evidenceType": {
-      "enum": ["source_excerpt", "test_output", "human_attestation", "attestation", "calculation_trace", "document_citation", "crawl_observation", "policy_rule"]
+      "enum": ["source_excerpt", "test_output", "runtime_observation", "human_attestation", "attestation", "calculation_trace", "document_citation", "crawl_observation", "policy_rule"]
     },
     "method": {
       "enum": ["observation", "extraction", "validation", "corroboration", "attestation", "auditability", "anchoring", "monitoring"]
@@ -48,6 +48,7 @@
         "exitCode": { "type": "integer" },
         "isError": { "type": "boolean" },
         "durationMs": { "type": "number" },
+        "environment": { "enum": ["test", "staging", "production"] },
         "metadata": { "type": "object" }
       },
       "additionalProperties": false

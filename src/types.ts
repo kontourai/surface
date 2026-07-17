@@ -19,6 +19,7 @@ export type EvidenceSupportStrength = "cited" | "entails";
 export type EvidenceType =
   | "source_excerpt"
   | "test_output"
+  | "runtime_observation"
   | "human_attestation"
   | "attestation"
   | "calculation_trace"
@@ -163,16 +164,15 @@ export interface IdentityLink {
   mappingClaimId?: string;
 }
 
-export type SchemaVersion = 2 | 3 | 4 | 5 | 6;
+export type SchemaVersion = 2 | 3 | 4 | 5 | 6 | 7;
 
 /**
- * The schemaVersion this release of surface WRITES on every bundle/report it
- * emits (buildTrustReport, mergeBundles/mergeBundlesDetailed, TrustBundleBuilder,
- * the verification-endpoint responder). Reading tolerates 2-4 (see validate.ts's
- * legacy facet/surface read-tolerance shim) and 6 (hachure 0.10: optional
- * `proof` block; every 5-valid bundle is 6-valid). Writing stays 5 until
- * surface emits `proof` blocks itself — a bundle without `proof` is valid at
- * either declaration, and 5 is the more conservative claim.
+ * The conservative schemaVersion for Surface-generated output. Bundle emitters
+ * upgrade this to 7 when their content uses runtime-observation vocabulary;
+ * pure-v5 bundles remain 5 for compatibility with older receivers. TrustReport
+ * output remains 5 because Hachure 0.15's trust-report schema still permits
+ * only 5 or 6 at the top level. Reading tolerates 2-4 (see validate.ts's legacy
+ * facet/surface shim), 6, and 7.
  */
 export const CURRENT_SCHEMA_VERSION: SchemaVersion = 5;
 export type DerivationMethod =
@@ -346,6 +346,7 @@ export interface Evidence {
     exitCode?: number;
     isError?: boolean;
     durationMs?: number;
+    environment?: "test" | "staging" | "production";
     metadata?: Record<string, unknown>;
   };
 }

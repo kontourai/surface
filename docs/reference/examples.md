@@ -24,6 +24,15 @@ It uses `schemaVersion: 2`, required evidence methods, structured policy method 
 
 `examples/reputation-integrity-trust-export.json` distinguishes observed popularity signals, heuristic suspicion, and unsupported owner-intent accusations. It shows Surface can make a verification gap visible without converting weak evidence into a stronger claim.
 
+## Runtime Observation Policy Example
+
+`examples/runtime-observation-policy.json` applies one policy requiring
+`runtime_observation` to two otherwise equivalent service-health claims. The
+test-only claim derives as `proposed` with a blocking `provenance_gap`; the
+claim backed by a production observation derives as `verified`. The optional
+`execution.environment` field makes the collection environment explicit, while
+the evidence type is what makes the live observation load-bearing.
+
 ## Example contract
 
 An example is not just sample data. It is a regression contract for what the company means by trust: source, evidence, freshness, failure mode, and reviewability must remain visible.

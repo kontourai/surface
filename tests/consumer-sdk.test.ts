@@ -9,6 +9,49 @@ import {
   buildTrustReport,
 } from "../src/index.js";
 
+function runtimeObservationBuilder(schemaVersion?: 5): TrustBundleBuilder {
+  const claimId = "sdk.service.runtime-health";
+  const builder = new TrustBundleBuilder({ source: "sdk:runtime", schemaVersion });
+  builder.addClaim(buildClaim({
+    id: claimId,
+    subjectType: "deployed-service",
+    subjectId: "service:runtime",
+    claimType: "runtime-health",
+    fieldOrBehavior: "healthEndpoint",
+    value: "healthy",
+    createdAt: "2026-06-01T00:00:00.000Z",
+    updatedAt: "2026-06-01T00:00:00.000Z",
+  }));
+  builder.addEvidence(buildEvidence({
+    id: "sdk.service.runtime-health.evidence",
+    claimId,
+    evidenceType: "runtime_observation",
+    method: "observation",
+    sourceRef: "https://service.example/health",
+    excerptOrSummary: "Production health endpoint returned healthy.",
+    observedAt: "2026-06-01T00:05:00.000Z",
+    collectedBy: "runtime-monitor",
+    execution: {
+      runner: "bash",
+      label: "production health probe",
+      exitCode: 0,
+      environment: "production",
+    },
+  }));
+  return builder;
+}
+
+test("TrustBundleBuilder infers schemaVersion 7 for runtime-observation vocabulary", () => {
+  assert.equal(runtimeObservationBuilder().build().schemaVersion, 7);
+});
+
+test("TrustBundleBuilder rejects an explicit schemaVersion 5 with runtime-observation vocabulary", () => {
+  assert.throws(
+    () => runtimeObservationBuilder(5).build(),
+    /schemaVersion 5 is insufficient for runtime-observation vocabulary/,
+  );
+});
+
 test("TrustBundleBuilder creates validated input and links evidence fluently", () => {
   const claimId = "sdk.ticket-1.status";
   const evidenceId = `${claimId}.evidence`;

@@ -115,6 +115,26 @@ test("known ref → bundle source matches options.source", async () => {
   assert.equal(bundle.source, SOURCE);
 });
 
+test("known ref → runtime-observation vocabulary declares schemaVersion 7", async () => {
+  const runtimeEvidence: Evidence = {
+    ...EVIDENCE_A,
+    evidenceType: "runtime_observation",
+    execution: {
+      runner: "bash",
+      label: "production health probe",
+      exitCode: 0,
+      environment: "production",
+    },
+  };
+  const store = makeFakeStore({
+    "sha256:aaaa": { claims: [CLAIM_A], evidence: [runtimeEvidence], events: [EVENT_A] },
+  });
+  const responder = createVerificationResponder(store, { source: SOURCE, statusFunctionVersion: SFV });
+  const { bundle } = await responder(["sha256:aaaa"], { now: FIXED_NOW });
+
+  assert.equal(bundle.schemaVersion, 7);
+});
+
 test("known ref → metadata.respondedAt equals now.toISOString()", async () => {
   const store = makeFakeStore({
     "sha256:aaaa": { claims: [], evidence: [], events: [] },
