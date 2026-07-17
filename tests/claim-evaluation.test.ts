@@ -163,3 +163,36 @@ test("runtime-observation example distinguishes test-only from live-backed evide
     false,
   );
 });
+
+test("contract env-passthrough example validates and exposes missing live evidence", async () => {
+  const raw = await readFile("examples/contract-claim-env-passthrough.json", "utf8");
+  const bundle = validateTrustBundle(JSON.parse(raw));
+  assert.equal(bundle.schemaVersion, 7);
+
+  const report = buildTrustReport(bundle, { now: new Date("2026-07-05T00:00:00.000Z") });
+  const claim = report.claims.find((candidate) => candidate.id === "claim.contract.env-passthrough");
+  assert.equal(claim?.status, "proposed");
+
+  const gaps = report.transparencyGaps.filter(
+    (gap) => gap.claimId === "claim.contract.env-passthrough",
+  );
+  assert.deepEqual(gaps.map((gap) => gap.type), ["provenance_gap", "policy_violation"]);
+  assert.match(gaps[0]?.message ?? "", /Missing required evidence: runtime_observation/);
+  assert.equal(gaps[0]?.blocking, true);
+  assert.match(gaps[1]?.message ?? "", /Missing required verification method: observation/);
+  assert.equal(gaps[1]?.blocking, true);
+});
+
+test("contract payload-shape example validates and derives verified from a live receipt", async () => {
+  const raw = await readFile("examples/contract-claim-payload-shape.json", "utf8");
+  const bundle = validateTrustBundle(JSON.parse(raw));
+  assert.equal(bundle.schemaVersion, 7);
+
+  const report = buildTrustReport(bundle, { now: new Date("2026-07-05T00:00:00.000Z") });
+  const claim = report.claims.find((candidate) => candidate.id === "claim.contract.payload-shape");
+  assert.equal(claim?.status, "verified");
+  assert.equal(
+    report.transparencyGaps.some((gap) => gap.claimId === "claim.contract.payload-shape"),
+    false,
+  );
+});

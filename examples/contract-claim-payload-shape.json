@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 7,
+  "source": "contract-claim-payload-shape-example",
+  "claims": [
+    {
+      "id": "claim.contract.payload-shape",
+      "subjectType": "integration",
+      "subjectId": "integration:release-manifest-download",
+      "facet": "runtime.contract",
+      "claimType": "contract",
+      "fieldOrBehavior": "payload-shape",
+      "value": true,
+      "qualifiers": {
+        "provider": "release-manifest-api",
+        "consumer": "release-manifest-parser",
+        "contract": "release manifest response matches parser expectation"
+      },
+      "createdAt": "2026-07-01T00:00:00.000Z",
+      "updatedAt": "2026-07-01T00:00:00.000Z",
+      "impactLevel": "critical",
+      "verificationPolicyId": "policy.contract.live-exercise"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "evidence.contract.payload-shape.runtime",
+      "claimId": "claim.contract.payload-shape",
+      "evidenceType": "runtime_observation",
+      "method": "observation",
+      "supportStrength": "entails",
+      "sourceRef": "probe:production-release-manifest-download",
+      "excerptOrSummary": "A production download contained the required manifest fields and was accepted by the consuming parser.",
+      "observedAt": "2026-07-01T00:10:00.000Z",
+      "collectedBy": "runtime-contract-probe",
+      "passing": true,
+      "execution": {
+        "runner": "bash",
+        "label": "production release manifest contract probe",
+        "exitCode": 0,
+        "environment": "production"
+      }
+    }
+  ],
+  "policies": [
+    {
+      "id": "policy.contract.live-exercise",
+      "claimType": "contract",
+      "requiredEvidence": ["runtime_observation"],
+      "requiredMethods": ["observation"],
+      "requiresCorroboration": false,
+      "acceptanceCriteria": [
+        "the provider-to-consumer path is exercised in a running target environment",
+        "the observed result directly entails the stated contract"
+      ],
+      "reviewAuthority": "deployment-verifier",
+      "validityRule": { "kind": "duration", "durationDays": 7 },
+      "stalenessTriggers": [
+        "provider configuration changes",
+        "consumer version changes",
+        "target environment is redeployed"
+      ],
+      "conflictRules": ["a blocking failed live exercise disputes the claim"],
+      "impactLevel": "critical"
+    }
+  ],
+  "events": [
+    {
+      "id": "event.contract.payload-shape.verified",
+      "claimId": "claim.contract.payload-shape",
+      "status": "verified",
+      "actor": "deployment-verifier",
+      "method": "automated-check",
+      "evidenceIds": ["evidence.contract.payload-shape.runtime"],
+      "createdAt": "2026-07-01T00:10:00.000Z",
+      "verifiedAt": "2026-07-01T00:10:00.000Z"
+    }
+  ]
+}
