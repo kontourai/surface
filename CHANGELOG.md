@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.12.0](https://github.com/kontourai/surface/compare/v2.11.0...v2.12.0) (2026-07-17)
+
+
+### Features
+
+* **examples:** contract-claim profiles and policy template (hachure contract-claims) ([#160](https://github.com/kontourai/surface/issues/160)) ([4889013](https://github.com/kontourai/surface/commit/488901345f626ad15469b9647469d44da4181724)), closes [#154](https://github.com/kontourai/surface/issues/154)
+* **schema:** adopt hachure 0.15.0 — runtime_observation + content-sensitive schemaVersion stamping ([#158](https://github.com/kontourai/surface/issues/158)) ([4f2c336](https://github.com/kontourai/surface/commit/4f2c336e24c974fc05ed23424713d55e4399d35c)), closes [#153](https://github.com/kontourai/surface/issues/153)
+
 ## [2.11.0](https://github.com/kontourai/surface/compare/v2.10.0...v2.11.0) (2026-07-16)
 
 
