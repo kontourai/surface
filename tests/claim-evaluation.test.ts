@@ -144,3 +144,22 @@ test("status/gap parity: no `verified` claim carries an unmet-requirement gap", 
   }
   assert.ok(report.claims.length > 0, "example bundle should contain claims");
 });
+
+test("runtime-observation example distinguishes test-only from live-backed evidence", async () => {
+  const raw = await readFile("examples/runtime-observation-policy.json", "utf8");
+  const bundle = validateTrustBundle(JSON.parse(raw));
+  const report = buildTrustReport(bundle, { now: new Date("2026-06-10T00:00:00.000Z") });
+
+  const statusByClaimId = Object.fromEntries(report.claims.map((claim) => [claim.id, claim.status]));
+  assert.equal(statusByClaimId["claim.service.test-only"], "proposed");
+  assert.equal(statusByClaimId["claim.service.live-backed"], "verified");
+
+  const testOnlyGaps = report.transparencyGaps.filter((gap) => gap.claimId === "claim.service.test-only");
+  assert.deepEqual(testOnlyGaps.map((gap) => gap.type), ["provenance_gap"]);
+  assert.match(testOnlyGaps[0]?.message ?? "", /Missing required evidence: runtime_observation/);
+  assert.equal(testOnlyGaps[0]?.blocking, true);
+  assert.equal(
+    report.transparencyGaps.some((gap) => gap.claimId === "claim.service.live-backed"),
+    false,
+  );
+});

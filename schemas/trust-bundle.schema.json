@@ -6,7 +6,7 @@
   "additionalProperties": false,
   "required": ["schemaVersion", "source", "claims", "evidence", "policies", "events"],
   "properties": {
-    "schemaVersion": { "enum": [5, 6] },
+    "schemaVersion": { "enum": [5, 6, 7] },
     "source": { "type": "string" },
     "producerId": {
       "type": "string",
@@ -175,7 +175,7 @@
       "properties": {
         "requiredEvidence": {
           "type": "array",
-          "items": { "enum": ["source_excerpt", "test_output", "human_attestation", "attestation", "calculation_trace", "document_citation", "crawl_observation", "policy_rule"] }
+          "items": { "enum": ["source_excerpt", "test_output", "runtime_observation", "human_attestation", "attestation", "calculation_trace", "document_citation", "crawl_observation", "policy_rule"] }
         },
         "requiredMethods": {
           "type": "array",

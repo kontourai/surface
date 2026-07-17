@@ -10,7 +10,7 @@
     "parentType": { "type": "string" },
     "requiredEvidence": {
       "type": "array",
-      "items": { "enum": ["source_excerpt", "test_output", "human_attestation", "attestation", "calculation_trace", "document_citation", "crawl_observation", "policy_rule"] }
+      "items": { "enum": ["source_excerpt", "test_output", "runtime_observation", "human_attestation", "attestation", "calculation_trace", "document_citation", "crawl_observation", "policy_rule"] }
     },
     "requiredMethods": {
       "type": "array",

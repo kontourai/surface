@@ -243,6 +243,14 @@ export function validateEvidence(item: unknown): void {
     if (execution.durationMs !== undefined && typeof execution.durationMs !== "number") {
       throw new Error(`Evidence ${item.id} execution.durationMs must be a number`);
     }
+    if (
+      execution.environment !== undefined &&
+      execution.environment !== "test" &&
+      execution.environment !== "staging" &&
+      execution.environment !== "production"
+    ) {
+      throw new Error(`Evidence ${item.id} execution.environment must be "test", "staging", or "production"`);
+    }
     if (execution.metadata !== undefined) requireObject(execution.metadata, "evidence.execution.metadata");
   }
   if (item.metadata !== undefined) requireObject(item.metadata, "evidence.metadata");

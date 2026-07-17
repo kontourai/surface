@@ -77,10 +77,12 @@ test("validateTrustBundle accepts execution with all optional fields", () => {
     exitCode: 0,
     isError: false,
     durationMs: 1234.5,
+    environment: "staging",
     metadata: { transport: "stdio" },
   }));
   assert.equal(bundle.evidence[0].execution?.runner, "mcp");
   assert.equal(bundle.evidence[0].execution?.durationMs, 1234.5);
+  assert.equal(bundle.evidence[0].execution?.environment, "staging");
 });
 
 test("validateTrustBundle rejects execution with an unknown field", () => {
@@ -108,6 +110,13 @@ test("validateTrustBundle rejects execution with null durationMs (omit instead)"
   assert.throws(
     () => validateTrustBundle(makeInput({ runner: "bash", label: "npm test", durationMs: null })),
     /execution\.durationMs must be a number/,
+  );
+});
+
+test("validateTrustBundle rejects execution with an invalid environment", () => {
+  assert.throws(
+    () => validateTrustBundle(makeInput({ runner: "bash", label: "npm test", environment: "local" })),
+    /execution\.environment must be "test", "staging", or "production"/,
   );
 });
 

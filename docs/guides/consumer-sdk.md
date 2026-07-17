@@ -83,6 +83,12 @@ const report = buildTrustReport(input);
 
 `build()` calls `validateTrustBundle` before returning, so malformed timestamps, broken references, unsupported enum values, and missing required fields fail before the product stores or publishes the input.
 
+When `schemaVersion` is omitted, `TrustBundleBuilder` infers it from the final
+content: pure-v5 vocabulary emits version 5, while runtime-observation
+vocabulary emits version 7. If a caller sets an explicit version below what the
+content requires, `build()` throws instead of emitting an under-versioned
+bundle.
+
 Claim groups are optional. The current API calls them `claimGroups`; use them when your product has a broader domain framework, compliance map, repo standards, checklist, or requirement set and you want users to start at the broader assertion while still drilling down to the exact claim and evidence.
 
 ## What the derived report looks like

@@ -8,7 +8,10 @@ import type {
   VerificationEvent,
   VerificationPolicy,
 } from "./types.js";
-import { CURRENT_SCHEMA_VERSION } from "./types.js";
+import {
+  assertBundleSchemaVersionSufficient,
+  requiredBundleSchemaVersion,
+} from "./bundle-schema-version.js";
 import { validateTrustBundle } from "./validate.js";
 
 export type ClaimDraft = Claim;
@@ -53,7 +56,7 @@ export function buildPolicy(policy: VerificationPolicyDraft): VerificationPolicy
 
 export class TrustBundleBuilder {
   readonly source: string;
-  readonly schemaVersion: SchemaVersion;
+  private readonly explicitSchemaVersion: SchemaVersion | undefined;
   private readonly claims: Claim[] = [];
   private readonly evidence: Evidence[] = [];
   private readonly policies: VerificationPolicy[] = [];
@@ -63,7 +66,14 @@ export class TrustBundleBuilder {
 
   constructor(args: TrustBundleBuilderArgs) {
     this.source = args.source;
-    this.schemaVersion = args.schemaVersion ?? CURRENT_SCHEMA_VERSION;
+    this.explicitSchemaVersion = args.schemaVersion;
+  }
+
+  get schemaVersion(): SchemaVersion {
+    return this.explicitSchemaVersion ?? requiredBundleSchemaVersion({
+      evidence: this.evidence,
+      policies: this.policies,
+    });
   }
 
   addClaim(claim: ClaimDraft): this {
@@ -118,8 +128,12 @@ export class TrustBundleBuilder {
   }
 
   build(): TrustBundle {
+    const content = { evidence: this.evidence, policies: this.policies };
+    if (this.explicitSchemaVersion !== undefined) {
+      assertBundleSchemaVersionSufficient(this.explicitSchemaVersion, content);
+    }
     const input: TrustBundle = {
-      schemaVersion: this.schemaVersion,
+      schemaVersion: this.explicitSchemaVersion ?? requiredBundleSchemaVersion(content),
       source: this.source,
       claims: [...this.claims],
       evidence: [...this.evidence],
