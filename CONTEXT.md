@@ -1,11 +1,21 @@
 # Kontour Surface
 
-Kontour Surface is a foundation product and product-neutral transparency standard for turning product-specific claims and evidence into deterministic trust reports. This glossary defines the domain language users and agents should share when discussing the product.
+Kontour Surface is the product-facing integration layer that turns
+Hachure-compatible claims and evidence into deterministic trust reports and
+inspectable product surfaces. Hachure owns the product-neutral format and its
+normative semantics; this glossary defines the language users and agents should
+share when discussing Surface's integration behavior.
 
 ## Language
 
 **Surface**:
-The foundation product and transparency standard for making product claims, evidence, policies, freshness, and conflicts inspectable by humans and agents. Surface is a foundational primitive that other Kontour products build on. Surface is primarily proven through vertical products that use it, rather than through direct end-user workflow adoption. As a data field, `surface` is a producer-defined grouping or namespace for related claims, not the primary thing users evaluate.
+The Kontour integration surface for making product claims, evidence, policies,
+freshness, and conflicts inspectable by humans and agents. Surface constructs,
+validates, derives, and projects Hachure-compatible records for Kontour products;
+it does not redefine the upstream format. Surface is primarily proven through
+products that use it, rather than through direct end-user workflow adoption. As
+a legacy data field, `surface` is a producer-defined grouping or namespace for
+related claims, not the primary thing users evaluate.
 _Avoid_: Treating "surface" as the canonical noun for a page, dataset, workflow, repository area, or evaluated object.
 
 **Product Transparency**:
@@ -61,7 +71,12 @@ A portable, point-in-time package of trust state from one producer, including cl
 _Avoid_: Claim Package, Trust Input, monolithic trust object, console state
 
 **Open Trust Format**:
-The portability principle that Surface trust state should be schema-first, exportable, embeddable, locally inspectable, and usable without a proprietary hosted service. Hosted Surface services may add storage, monitoring, discovery, and Console features, but should not be required to understand the trust state.
+The product-neutral Hachure format: normative schemas, derivation and merge
+semantics, assurance, and conformance vectors in the `hachure.org/v1` namespace.
+Surface consumes and re-exports compatible contracts so Kontour products do not
+need to integrate with Hachure independently. Hosted Surface services may add
+storage, monitoring, discovery, and Console features, but are not required to
+understand the portable records.
 _Avoid_: Proprietary handshake, hosted-only trust
 
 **Kontour Resource Shape**:
@@ -81,7 +96,10 @@ A first-class integration channel for agents to query trust snapshots, material 
 _Avoid_: Foundation format, UI-only integration
 
 **Spec Governance**:
-The lightweight governance needed to keep Surface adoption meaningful, including versioned specs, changelogs, deprecations, conformance fixtures, and ADRs for major semantic changes. Formal governance can grow if external adoption warrants it.
+Hachure governs the normative format, schemas, algorithms, assurance, and
+conformance vectors. Surface governs its compatibility boundary, product-facing
+extensions, builders, validators, projections, deprecations, and ADRs. A Surface
+document must not silently compete with the upstream specification.
 _Avoid_: Heavy standards body before adoption
 
 **Product Vocabulary**:

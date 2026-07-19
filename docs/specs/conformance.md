@@ -1,22 +1,31 @@
-# Conformance
+# Surface Compatibility and Conformance
 
-The [Open Trust Format](open-trust-format.md) is only portable if two implementations derive the same trust state from the same input. The conformance suite makes that testable: a set of fixed inputs with the statuses and transparency gaps a conforming implementation must produce.
+The [Hachure specification](https://github.com/hachure-org/spec) owns normative
+format conformance and publishes the canonical schemas and vectors. Surface runs
+those contracts through its integration layer and adds product-facing projection
+checks for Surface reports and transparency gaps. The local suite therefore
+proves **Surface compatibility**, not a competing definition of Hachure.
 
-## What conformance means
+## What Surface compatibility means
 
-An implementation of the Open Trust Format conforms when, for every case in the suite, it:
+Surface is compatible when, for every applicable Hachure vector and every local
+integration case, it:
 
 1. **Accepts** the valid inputs and **rejects** the invalid ones, with an error that identifies the violated constraint.
 2. **Derives the same claim status** (`unknown`, `proposed`, `assumed`, `verified`, `stale`, `disputed`, `superseded`, `rejected`, `revoked`) for every claim.
 3. **Surfaces the same transparency gap types** (`provenance_gap`, `policy_violation`, `freshness_breach`, …) for every claim.
 
-Conformance covers derivation semantics, not presentation. A conforming implementation may render, store, or transport reports differently; it must not disagree about what is verified, stale, or unsupported.
+The Hachure vectors cover normative validation, derivation, and merge semantics.
+Surface's local cases cover the adapter, report, and transparency-gap behavior
+that sits above that core. Presentation may vary, but Surface must not disagree
+with Hachure about the underlying portable status.
 
 `revoked` is the ninth status and the narrowest: a claim **derives** to `revoked` only through an authority-gated dispute resolution — an event with `resolvesDispute: true` and `status: "revoked"` whose actor holds an `AuthorityTrace` active at the decision time, with no newer blocking evidence re-opening the dispute (ADR 0003 §8). A bare `revoked` event, or an `invalidation`-type `revoked` event, folds to `stale` instead (matching the Hachure single-claim status function); `revoked` as a derived claim status is reachable only via that authorized path. The `revoked-authority-resolution` case below observes it.
 
 ## The suite
 
-The suite lives in [`conformance/`](https://github.com/kontourai/surface/tree/main/conformance) in the Surface repo:
+Surface-specific compatibility cases live in
+[`conformance/`](https://github.com/kontourai/surface/tree/main/conformance):
 
 - `manifest.json` — the case list with expected outcomes.
 - `cases/*.json` — one `TrustBundle` per case.
@@ -39,7 +48,11 @@ The reference implementation runs the suite as part of its own test gate:
 npm test   # includes tests/conformance.test.ts
 ```
 
-An external implementation conforms by loading `manifest.json`, running each case input through its own validation and derivation, and comparing against the expectations — the manifest is plain JSON precisely so this does not require Surface's TypeScript.
+An alternate Hachure implementation should use the canonical
+[`hachure-org/spec` vectors](https://github.com/hachure-org/spec/tree/main/conformance)
+to claim format conformance. An alternate Surface-compatible integration may
+also load this repository's `manifest.json`, run each case through its own
+adapter and report projection, and compare the Surface-specific expectations.
 
 ## Learning consumption
 
@@ -51,4 +64,8 @@ This expectation is judged at the consumer, not in the derivation suite: a learn
 
 ## Versioning
 
-The suite carries a `version` and grows additively. Cases change only when the spec changes, alongside a schema version bump and a note in [Schema Versioning](../reference/schema-versioning.md). New kernel semantics are expected to land with new conformance cases; a derivation behavior the suite cannot observe is not yet part of the portable contract.
+The Surface suite carries a `version` and grows additively. Normative format
+changes originate in Hachure and arrive here through an explicit compatibility
+update. Surface-only integration or projection changes land with local cases and
+a note in [Schema Versioning](../reference/schema-versioning.md). A local test
+must not be presented as changing the upstream portable contract.

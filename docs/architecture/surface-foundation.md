@@ -1,20 +1,24 @@
 # Surface Foundation Boundary
 
-Surface is the portable product transparency foundation for Kontour AI products. Product-specific systems can use their own workflow language, but portable transparency concepts should map back to Surface primitives.
+Surface is Kontour's product-facing integration layer for portable trust state.
+Hachure owns the product-neutral schemas and derivation semantics; Surface keeps
+Kontour products compatible with that format and exposes product-facing
+builders, validators, reports, and inspection surfaces. Product-specific systems
+can use their own workflow language, but their portable transparency concepts
+should map through Surface rather than integrating independently with Hachure.
 
 ## Boundary Rule
 
-Portable truth concepts go to Surface; product and workflow mechanics stay in the product layer.
+Normative format concepts go to Hachure, Kontour integration concepts go to
+Surface, and product or workflow mechanics stay in the owning product layer.
 
-Surface owns:
+Surface owns the Kontour integration for:
 
-- subjects and claims
-- evidence
-- verification policies
-- verification events
-- freshness and status
+- Hachure-compatible subjects, claims, evidence, policies, and events
+- schema synchronization, validation, re-exports, and bundle construction
+- freshness and status derivation through the compatible implementation
 - conflict and transparency gap generation
-- evidence requirements
+- product-facing evidence requirements and extensions
 - owner and confidence basis
 - generated Trust Snapshots and current `TrustReport` outputs
 
