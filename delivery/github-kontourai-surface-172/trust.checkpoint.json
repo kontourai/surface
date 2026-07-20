@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "slug": "github-kontourai-surface-172",
+  "work_item": null,
+  "status": "in_progress",
+  "phase": "release",
+  "sealed_at": "2026-07-20T21:42:17Z",
+  "commit_sha": "1448b410af32275cbda3aead244c928b71e95491",
+  "checkpoint": {
+    "asOf": "2026-07-20T21:42:17.812Z",
+    "statusByClaimId": {
+      "github-kontourai-surface-172-gate-claim-selected-work.flow-agents-workflow.work-item-github-kontourai-surface-172-is-durably-assigned-to-the-active-workflow-actor-assignment-sha256-5855d69d3d45bf7bc155daf82675bd9e18077b77231f5b3bd1546ceff0c4cb69-gate-visit-2026-07-20t21-39-03z": "verified",
+      "github-kontourai-surface-172-gate-claim-pickup-probe-readiness.flow-agents-workflow.pr-172-is-bounded-to-a-reviewed-proposal-artifact-with-canonical-verification-already-identified-gate-visit-2026-07-20t21-39-43-501z": "verified",
+      "github-kontourai-surface-172-gate-claim-probe-decisions-or-accepted-gaps.flow-agents-workflow.decision-preserve-all-authored-governance-and-external-boundaries-because-explore-found-no-uncovered-surface-work-areas-gate-visit-2026-07-20t21-39-44-137z": "verified",
+      "github-kontourai-surface-172-gate-claim-implementation-plan.flow-agents-workflow.plan-reviews-preservation-runs-canonical-verification-and-publishes-trust-evidence-gate-visit-2026-07-20t21-39-44-862z": "verified",
+      "github-kontourai-surface-172-gate-claim-implementation-scope.flow-agents-workflow.added-only-the-reviewed-deterministic-proposal-artifact-gate-visit-2026-07-20t21-39-45-593z": "verified",
+      "github-kontourai-surface-172-gate-claim-tests-evidence.flow-agents-workflow.canonical-surface-verification-passed-gate-visit-2026-07-20t21-40-58-936z": "verified",
+      "github-kontourai-surface-172-gate-claim-merge-readiness.flow-agents-workflow.proposal-only-change-is-review-clean-and-canonical-surface-verification-passed-gate-visit-2026-07-20t21-42-17-349z": "verified",
+      "github-kontourai-surface-172-proposal-preserves-authored-governance-and-external-authority-boundaries.flow-agents-workflow.proposal-preserves-authored-governance-and-external-authority-boundaries-verified-2026-07-20t21-40-58-936z": "verified",
+      "github-kontourai-surface-172-canonical-repository-verification-passes.flow-agents-workflow.canonical-repository-verification-passes-verified-2026-07-20t21-40-58-936z": "verified",
+      "github-kontourai-surface-172-final-code-review.flow-agents-workflow.review-found-no-authored-governance-drift-or-external-boundary-regression-reviewed-2026-07-20t21-39-46-270z": "verified"
+    },
+    "throughEventCreatedAt": "2026-07-20T21:42:17.349Z",
+    "throughEventCreatedAtByClaimId": {
+      "github-kontourai-surface-172-gate-claim-selected-work.flow-agents-workflow.work-item-github-kontourai-surface-172-is-durably-assigned-to-the-active-workflow-actor-assignment-sha256-5855d69d3d45bf7bc155daf82675bd9e18077b77231f5b3bd1546ceff0c4cb69-gate-visit-2026-07-20t21-39-03z": "2026-07-20T21:42:17.349Z",
+      "github-kontourai-surface-172-gate-claim-pickup-probe-readiness.flow-agents-workflow.pr-172-is-bounded-to-a-reviewed-proposal-artifact-with-canonical-verification-already-identified-gate-visit-2026-07-20t21-39-43-501z": "2026-07-20T21:42:17.349Z",
+      "github-kontourai-surface-172-gate-claim-probe-decisions-or-accepted-gaps.flow-agents-workflow.decision-preserve-all-authored-governance-and-external-boundaries-because-explore-found-no-uncovered-surface-work-areas-gate-visit-2026-07-20t21-39-44-137z": "2026-07-20T21:42:17.349Z",
+      "github-kontourai-surface-172-gate-claim-implementation-plan.flow-agents-workflow.plan-reviews-preservation-runs-canonical-verification-and-publishes-trust-evidence-gate-visit-2026-07-20t21-39-44-862z": "2026-07-20T21:42:17.349Z",
+      "github-kontourai-surface-172-gate-claim-implementation-scope.flow-agents-workflow.added-only-the-reviewed-deterministic-proposal-artifact-gate-visit-2026-07-20t21-39-45-593z": "2026-07-20T21:42:17.349Z",
+      "github-kontourai-surface-172-gate-claim-tests-evidence.flow-agents-workflow.canonical-surface-verification-passed-gate-visit-2026-07-20t21-40-58-936z": "2026-07-20T21:42:17.349Z",
+      "github-kontourai-surface-172-gate-claim-merge-readiness.flow-agents-workflow.proposal-only-change-is-review-clean-and-canonical-surface-verification-passed-gate-visit-2026-07-20t21-42-17-349z": "2026-07-20T21:42:17.349Z",
+      "github-kontourai-surface-172-proposal-preserves-authored-governance-and-external-authority-boundaries.flow-agents-workflow.proposal-preserves-authored-governance-and-external-authority-boundaries-verified-2026-07-20t21-40-58-936z": "2026-07-20T21:40:58.936Z",
+      "github-kontourai-surface-172-canonical-repository-verification-passes.flow-agents-workflow.canonical-repository-verification-passes-verified-2026-07-20t21-40-58-936z": "2026-07-20T21:40:58.936Z",
+      "github-kontourai-surface-172-final-code-review.flow-agents-workflow.review-found-no-authored-governance-drift-or-external-boundary-regression-reviewed-2026-07-20t21-39-46-270z": "2026-07-20T21:42:17.349Z"
+    },
+    "statusFunctionVersion": "2"
+  }
+}
