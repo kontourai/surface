@@ -102,6 +102,12 @@ Authority Trace is the first-class producer-neutral way to describe why an actor
 
 Do not use `authorityTrace` for Survey's producer-declared source authority unless the producer has a neutral actor or system authority record to emit. Until then, keep that declaration under `Evidence.metadata.sourceAuthority`.
 
+Reviewed extraction provenance can use the versioned
+`Evidence.metadata.reviewedExtraction` profile while retaining its generic
+source, exact locator, and prepared-artifact integrity anchors in `sourceRef`,
+`sourceLocator`, and `integrityRef`. See
+[Reviewed Extraction Evidence](../guides/reviewed-extraction-evidence.md).
+
 ```typescript
 interface AuthorityTrace {
   id: string;

@@ -85,6 +85,7 @@
     "sync:schemas": "node scripts/sync-schemas.mjs"
   },
   "devDependencies": {
+    "@kontourai/survey": "^1.18.0",
     "@kontourai/ui": "^1.1.0",
     "@playwright/test": "^1.60.0",
     "@types/node": "^25.9.2",

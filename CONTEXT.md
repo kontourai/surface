@@ -278,6 +278,10 @@ _Avoid_: Attestation (general evidence type), raw click/consent logging, silent 
 The inspectable path showing how evidence was produced, including source, method, actor or system, timestamp, tool or run context, logs when relevant, and integrity scope. Surface standardizes evidence traceability without owning evidence collection.
 _Avoid_: Evidence-only workflow, collection workflow, raw logs
 
+**Reviewed Extraction Evidence**:
+A reversible Surface projection of a Survey extraction import, ReviewItem, and ReviewDecision into ordinary Hachure-compatible Evidence. Generic anchors remain in `sourceRef`, `sourceLocator`, and `integrityRef`; exact extraction, type-origin, attempt, review, collector, artifact-state, and format details stay in a digest-bound evidence-metadata profile. Confidence, review disposition, and structural trust remain separate. Unsafe or non-accepted evidence is cited rather than entailing, and provenance failures remain typed in-band gaps.
+_Avoid_: Parallel evidence schema, treating review as structural validation, treating extraction confidence as trust
+
 **Evidence Result**:
 The outcome of evaluating one evidence item, such as passed, failed, warned, inconclusive, or not captured. Evidence results explain whether the evidence supports or challenges a claim, but they are not themselves broad product validity claims.
 _Avoid_: Claim status, domain validity, action decision
