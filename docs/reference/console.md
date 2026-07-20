@@ -60,7 +60,7 @@ Implementation note: `surface console`, `*.console.json`, `/console.js`, and `/c
 
 ## Developer map
 
-Surface keeps its own standalone Surface Console. Keep product-specific trust behavior in this repo, and use Console Kit only as the shared UI system for presentation consistency across Kontour products.
+Surface keeps its own standalone Surface Console. Keep product-specific trust behavior in this repo, and use Kontour UI only as the shared presentation system across Kontour products.
 
 | Area | Location | Purpose |
 |------|----------|---------|
@@ -69,11 +69,11 @@ Surface keeps its own standalone Surface Console. Keep product-specific trust be
 | Console runtime | `src/console/runtime.ts` | `SurfaceConsoleRuntime` owns read-model loading, run catalog, projection creation, HTML assembly, and Claim Package authoring — usable without starting an HTTP server. |
 | Projection contract | `src/console/projection.ts`, `src/console/claim-detail-projection.ts`, `src/console/types.ts` | Converts producer read models into the UI shape consumed by the Console, including the per-claim detail projection (guidance, gap labels, policy facts, integrity scope) the browser renders from. |
 | Standalone UI shell | `src/console/shell.ts` | Owns the dependency-free HTML shell served by `/`. |
-| Standalone UI asset sources | `src/console/client/parts/`, `src/console/styles/parts/` | Owns the editable browser behavior and Console Kit-compatible token aliases for the standalone Surface Console. |
+| Standalone UI asset sources | `src/console/client/parts/`, `src/console/styles/parts/` | Owns the editable browser behavior and Kontour UI-compatible token aliases for the standalone Surface Console. |
 | Generated UI asset constants | `scripts/build-console-assets.mjs`, `src/console/client/index.js`, `src/console/styles/index.css`, `src/console/assets.generated.ts`, `src/console/script.ts`, `src/console/styles.ts` | Concatenates ordered client and CSS parts, then converts JS/CSS assets into TypeScript constants consumed by `/console.js` and `/console.css`; regenerate with `npm run build:console-assets`. |
 | Browser coverage | `tests/browser/console.spec.ts` | Starts `bin/surface.mjs console` and verifies the real standalone page on desktop and mobile. |
 | Docs-site Kontour UI assets | `scripts/sync-ui-assets.mjs`, `docs-site/vendor/kontourai-ui/` | Copies token CSS from the installed public `@kontourai/ui` package for generated docs pages. |
-| Package boundary guard | `tests/package-files.test.ts`, `scripts/check-package-contents.mjs` | Keeps Console Kit dev-only, prevents React/runtime leakage, and verifies published package contents. |
+| Package boundary guard | `tests/package-files.test.ts`, `scripts/check-package-contents.mjs` | Keeps Kontour UI dev-only, prevents React/runtime leakage, and verifies published package contents. |
 
 ## Run directory convention
 

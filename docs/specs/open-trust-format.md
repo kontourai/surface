@@ -1,8 +1,15 @@
 # Open Trust Format and Claim Package Shape
 
-Status: first pass
+Status: Surface compatibility guide; Hachure is normative
 
-The Open Trust Format is Surface's portability commitment: trust state must be schema-first, exportable, embeddable, locally inspectable, and usable without a proprietary hosted service. The record shapes and status semantics are specified by the product-neutral Hachure spec (the `hachure.org/v1` namespace); Surface syncs its schemas from it and commits to keeping trust state portable and locally inspectable.
+The Open Trust Format is [Hachure](https://github.com/hachure-org/spec), whose
+`hachure.org/v1` schemas, derivation and merge semantics, assurance rules, and
+conformance vectors are normative. This document describes Surface's
+compatibility commitment: Surface constructs, validates, derives, re-exports,
+and presents Hachure-compatible trust state while keeping it exportable,
+embeddable, locally inspectable, and usable without a proprietary hosted
+service. If this guide and the Hachure specification disagree, Hachure wins and
+Surface must reconcile the integration.
 
 ## Claim Package
 
@@ -33,7 +40,7 @@ Claims describe what a producer says is true enough to inspect. Evidence support
 
 Evidence uses `claimId` as the compatibility link to its claim. Consumers that only need the single-hop graph can continue reading `claimId`. Consumers that evaluate whether a claim is supported should also read `evidence.supportStrength`: omitted means `entails` for legacy packages, `entails` means the evidence can satisfy policy support, and `cited` means reference/context evidence that remains visible but is insufficient to verify the claim by itself.
 
-Trace and integrity records explain how evidence or authority was produced, who or what produced it, when it was observed, and what source state it was anchored to. Surface standardizes the representation; producers own claimGroup and verification workflows.
+Trace and integrity records explain how evidence or authority was produced, who or what produced it, when it was observed, and what source state it was anchored to. Hachure standardizes the portable core representation; Surface owns its product-facing integration and extensions. Producers own claim-group and verification workflows.
 
 For Survey-produced source-of-authority observations, producer-declared source authority belongs under `Evidence.metadata.sourceAuthority`. It is evidence metadata unless the producer can emit a producer-neutral actor or system authority record.
 
@@ -77,7 +84,8 @@ Authority Trace is not a Surface-owned authorization engine. Producers own authe
 
 ## Required Properties
 
-An Open Trust Format package must be:
+A package emitted or consumed through Surface must preserve these portability
+properties in addition to the normative Hachure requirements:
 
 - deterministic: same input produces the same derived trust state
 - inspectable: humans and agents can see claims, evidence, freshness, and gaps

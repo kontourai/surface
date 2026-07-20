@@ -6,7 +6,12 @@ Start here when you need the architecture in Surface vocabulary first. For the c
 
 ## Scope And Non-Goals
 
-**Current implementation:** Surface owns portable claims, evidence, verification policies, verification events, Authority Trace, trust derivation, Trust Reports, Trust Snapshots, analytics projections, and the Surface Console projection. Producers emit `TrustBundle`; Surface validates and derives report-only trust state.
+**Current implementation:** Surface owns the Kontour-facing builders, validators,
+compatibility adapters, Trust Reports, Trust Snapshots, analytics projections,
+and Surface Console projection around Hachure-compatible claims, evidence,
+policies, events, and Authority Trace records. Hachure owns their normative core
+shape and single-claim semantics. Producers emit `TrustBundle`; Surface validates
+and derives the product-facing report state.
 
 **Future Resource Contract alignment:** future slices may wrap durable Surface packages, reports, run models, claim stores, or extension records in `surface.kontourai.io/v1alpha1` Resource Contract shapes. That direction is tracked on the [Roadmap](../roadmap/index.md). This guide does not implement those migrations.
 
@@ -133,7 +138,7 @@ The current source layout is intentionally small and layer-oriented. Keep the pu
 | Builder and stores | `src/consumer-sdk.ts`, `src/claim-authoring.ts`, `src/store.ts`, `src/policy-helpers.ts`, `src/attestation.ts` | Helps Builders author claim packages, evidence, attestations, and local claim stores | Store persistence or claim authoring gains another durable adapter |
 | Extension and adapters | `src/extension.ts`, `src/adapter.ts`, `src/adapters/` | Registers producer vocabulary, claim types, and explicit adapter mappings | Two or more concrete adapters need shared lifecycle or configuration |
 | CLI | `src/cli.ts`, `src/commands/` | Exposes local report, query, claim-store, and Surface Console commands | Command parsing or output formatting needs a smaller tested interface |
-| Surface Console | `src/console/` | Runs the local Operator Console and serves its projection, HTML, CSS, and client script. Shared Console Kit assets may provide presentation consistency, but Surface owns Console behavior and trust semantics. | Console assets need independent build tooling or repeated Surface-owned UI modules emerge |
+| Surface Console | `src/console/` | Runs the local Operator Console and serves its projection, HTML, CSS, and client script. Shared Kontour UI assets may provide presentation consistency, but Surface owns Console behavior and trust semantics. | Console assets need independent build tooling or repeated Surface-owned UI modules emerge |
 
 The largest files today are Console assets, `validate.ts`, and `types.ts`. Their size alone is not a reason to move folders: split them when the new module would give maintainers locality or hide meaningful implementation complexity behind a smaller interface.
 

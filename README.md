@@ -20,7 +20,13 @@ Each of these ships as a runnable example in [`examples/`](docs/reference/exampl
 
 ## What Surface is not
 
-Surface is not a promise of perfect truth, a certification business, or a hosted-only evidence collector. Producers collect domain evidence and make domain decisions. Surface defines the open trust format, derives portable trust state, and makes that state inspectable through reports, a Trust Panel, the Surface Console, APIs, and agent-readable resources. If a claim is weak, stale, or disputed, Surface makes that obvious instead of papering over it.
+Surface is not a promise of perfect truth, a certification business, a hosted-only
+evidence collector, or the owner of the underlying open format. Producers collect
+domain evidence and make domain decisions. [Hachure](https://github.com/hachure-org/spec)
+owns the normative schemas and derivation semantics; Surface is Kontour's
+integration layer and reference implementation for constructing, validating,
+deriving, and presenting that portable trust state. If a claim is weak, stale,
+or disputed, Surface makes that obvious instead of papering over it.
 
 ## Where Surface fits
 
@@ -28,13 +34,16 @@ Kontour AI shows the work behind AI. Surface is the foundation the rest of the f
 
 | Product | Owns |
 | --- | --- |
-| **Surface** | Portable trust state: claims, evidence, policies, trust snapshots |
+| **[Hachure](https://github.com/hachure-org/spec)** | Open-format schemas, derivation and merge semantics, assurance, and conformance vectors |
+| **Surface** | Kontour integration: bundle construction and validation, trust derivation, product-facing compatibility, reports, snapshots, and inspection surfaces |
 | **[Survey](https://kontourai.io/survey)** | Producer evidence: source → extraction → candidate → review → claim, projected into Surface |
 | **[Flow](https://kontourai.io/flow)** | Process transparency: steps, gates, transitions — gates consume Surface-shaped evidence |
 | **[Veritas](https://kontourai.io/veritas)** | Code/change transparency: repo standards and merge readiness, authored as Surface claims |
 | **[Flow Agents](https://kontourai.io/flow-agents)** | Agent-facing distribution: skills, kits, runtime adapters, hooks |
 
-Each product stands alone; Surface requires none of them.
+Kontour product layers integrate with the open format through Surface. Hachure
+remains independently usable, and Surface does not depend on the other Kontour
+product layers listed above.
 
 ---
 
@@ -181,7 +190,11 @@ The merged view attributes every claim to the producer(s) that asserted it (an i
 - **Trust Panel embed** — ship the dependency-free [`<surface-trust-panel>`](docs/reference/trust-panel.md) element so viewers can inspect claims, evidence, freshness, and gaps inside your product.
 - **Snapshot Viewer** — paste any derived report into the [hosted viewer](https://kontourai.github.io/surface/viewer.html); parsing happens entirely in the browser.
 - **Built with Surface badge** — the [inspectability signal](docs/specs/built-with-surface-badge.md): your product exposes inspectable trust state, with no certification implied.
-- **Conformance** — alternate implementations of the [Open Trust Format](docs/specs/open-trust-format.md) can verify they derive the same trust state with the [conformance suite](docs/specs/conformance.md).
+- **Compatibility and conformance** — Hachure publishes the normative
+  [specification and vectors](https://github.com/hachure-org/spec); Surface's
+  [format compatibility guide](docs/specs/open-trust-format.md) and
+  [conformance checks](docs/specs/conformance.md) explain how this integration
+  preserves those contracts and tests Surface-specific projections.
 
 ## Public package surface
 
