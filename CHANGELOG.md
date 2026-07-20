@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.13.0](https://github.com/kontourai/surface/compare/v2.12.0...v2.13.0) (2026-07-20)
+
+
+### Features
+
+* evaluate reviewed grounding policies ([c8b57e9](https://github.com/kontourai/surface/commit/c8b57e918d2fa7308cc970cff3ad9fc82434a65f))
+* evaluate reviewed grounding policies ([be4e9c8](https://github.com/kontourai/surface/commit/be4e9c82c7d1c2af1bd7ae16ea1fda6bfd67bdb3))
+* project reviewed extraction evidence ([caf103c](https://github.com/kontourai/surface/commit/caf103cb2b781e1a7d15944c21abb76e2e2e7d2f))
+* project reviewed extraction evidence ([b5944a0](https://github.com/kontourai/surface/commit/b5944a02ac142d26b95a8330f314211d57bcbc50))
+
+
+### Documentation
+
+* clarify Hachure and Surface boundaries ([#163](https://github.com/kontourai/surface/issues/163)) ([6472086](https://github.com/kontourai/surface/commit/64720864edbba8d430f8d0df69a44262059f60e2))
+
 ## [2.12.0](https://github.com/kontourai/surface/compare/v2.11.0...v2.12.0) (2026-07-17)
 
 
