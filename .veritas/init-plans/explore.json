@@ -1,0 +1,641 @@
+{
+  "schema_version": 1,
+  "mode": "explore",
+  "target_root": "/Users/brian/dev/github/kontourai/governance-rollout-worktrees/surface",
+  "project_name": "surface",
+  "evidenceCheck": "npm run verify",
+  "repo_insights": {
+    "repoKind": "application",
+    "sourceRoots": [
+      "src/",
+      "docs/"
+    ],
+    "toolingRoots": [
+      "scripts/"
+    ],
+    "testRoots": [
+      "tests/"
+    ],
+    "productRoots": [
+      "assets/",
+      "bin/",
+      "conformance/",
+      "context/",
+      "examples/",
+      "schemas/"
+    ],
+    "externalBoundaries": [
+      {
+        "id": "hachure-authority",
+        "authority": "https://github.com/hachure-org/spec",
+        "relationship": "documented-external-authority",
+        "package": "hachure",
+        "source": "repository documentation"
+      },
+      {
+        "id": "survey-authority",
+        "authority": "https://kontourai.io/survey",
+        "relationship": "documented-external-authority",
+        "package": "@kontourai/survey",
+        "source": "repository documentation"
+      }
+    ],
+    "hasWorkflows": true,
+    "evidenceCheck": "npm run verify",
+    "enableWorkAreaEvidenceRouting": true,
+    "baseRef": "chore/veritas-governance-rollout",
+    "packageManager": "npm",
+    "matchedScripts": [
+      "verify",
+      "test",
+      "build"
+    ],
+    "evidenceCheckConfidence": "high",
+    "evidenceCheckSource": "package.json scripts",
+    "existingVerification": {
+      "detected": true,
+      "items": [
+        {
+          "kind": "package-script",
+          "id": "verify:trust-bundle",
+          "command": "node scripts/verify-trust-bundle.mjs",
+          "recommendedDisposition": "candidate",
+          "reason": "Existing custom verification-shaped package script detected during brownfield init."
+        }
+      ],
+      "authoritativeCommands": [],
+      "selectedAuthoritativeCommand": null,
+      "provenance": [],
+      "conflicts": [],
+      "recommendedEvidenceInventoryDefaults": {
+        "unknownCatchEvidenceDefault": "candidate",
+        "requiredNeedsOwner": true,
+        "requiredNeedsReviewTrigger": true,
+        "productBehaviorNeedsReplacementTest": true
+      }
+    }
+  },
+  "artifact_payloads": {
+    ".veritas/README.md": "# Veritas Starter Kit\n\nThis repo was bootstrapped for `surface` with a conservative starter kit for agent-guided development.\n\n## Generated Files\n\n- `.veritas/README.md`\n- `.veritas/GOVERNANCE.md`\n- `.veritas/repo-map.json`\n- `.veritas/repo-standards/default.repo-standards.json`\n- `.veritas/authority/default.authority-settings.json`\n\n## Inferred Repo Shape\n\n- Repo kind: `application`\n- Source roots: `src/`, `docs/`\n- Tooling roots: `scripts/`\n- Test roots: `tests/`\n- GitHub workflows detected: `yes`\n- Matching scripts seen: `verify`, `test`, `build`\n\n## What To Do Next\n\n1. Confirm the inferred source/test roots match the real repo layout.\n2. Replace the suggested evidenceCheck if a stronger project health command exists.\n3. Keep uncertain requirements in Observe or Guide until evidence shows they should be required.\n\n## Initialization Recommendation\n\n- Mode: guided initialization artifact\n- Repo kind: `application`\n- Evidence Check: `npm run verify`\n- Selected instruction targets: `AGENTS.md`\n\n\n\n## Suggested Commands\n\n```bash\nnpm exec --yes --package=@kontourai/veritas@1.5.2 -- veritas readiness --working-tree\nnpm exec --yes --package=@kontourai/veritas@1.5.2 -- veritas readiness --check coverage --working-tree\nnpm exec --yes --package=@kontourai/veritas@1.5.2 -- veritas integrations codex status\nnpm exec --yes --package=@kontourai/veritas@1.5.2 -- veritas attest bootstrap --actor <authority-id> --approval-ref <human-approval-reference> --non-interactive\n```\n\nIf you prefer explicit paths:\n\n```bash\nnpm exec --yes --package=@kontourai/veritas@1.5.2 -- veritas readiness --check evidence \\\n  --repo-map ./.veritas/repo-map.json \\\n  --repo-standards ./.veritas/repo-standards/default.repo-standards.json \\\n  package.json\n```\n\n## Suggested Evidence Check\n\n`npm run verify`\n\n## Work-Area Evidence Routing\n\nThis repo shape justifies work-area evidence routing, so the starter Repo Map also includes `defaultEvidenceCheckIds` and `uncoveredPathPolicy` alongside explicit evidence-check objects.\n\n## Why This Exists\n\nThe goal is to give developers and agents just-in-time repo guidance from day one, while keeping review and CI grounded in the same starter standards.\n",
+    ".veritas/GOVERNANCE.md": "# Veritas Governance\n\nProtected Standards require authority-backed review. Do not modify without a fresh Veritas attestation:\n- `.veritas/repo-map.json`\n- `.veritas/repo-standards/`\n- `.veritas/authority/`\n\nAuthority-backed attestations require an explicit human approval reference. Agents may prepare\n`veritas attest ... --approval-ref <ref>` commands, but must not invent the reference or record\nthe attestation without a durable approval artifact from the human authority.\n\nStandards Growth is additive. Developers and agents may propose:\n- new work areas for new feature directories\n- advisory requirements for new work areas\n- clearer change guidance backed by evidence\n\nDo not weaken or delete existing standards without the required authority.\n\nGenerated Evidence is output, not the source of standards:\n- `.kontourai/veritas/evidence/`\n- `.kontourai/veritas/standards-feedback-drafts/`\n- `.kontourai/veritas/standards-feedback/`\n- `.kontourai/veritas/repo-conformance/`\n",
+    ".veritas/repo-map.json": "{\n  \"name\": \"surface\",\n  \"kind\": \"repo-map\",\n  \"policy\": {\n    \"defaultFalsePositiveReview\": \"unknown\",\n    \"defaultPromotionCandidate\": false,\n    \"defaultExceptionAllowed\": false\n  },\n  \"graph\": {\n    \"version\": 1,\n    \"defaultResolution\": {\n      \"phase\": \"Phase 0 (Bootstrap)\",\n      \"workstream\": \"Initial Project Setup\",\n      \"matchedArtifacts\": [\n        \"README.md\"\n      ]\n    },\n    \"nonSliceableInvariants\": [\n      \"baseline evidenceCheck\",\n      \"repo-local guidance\",\n      \"tracked standards artifacts\"\n    ],\n    \"resolverPrecedence\": [\n      \"explicit task or issue reference\",\n      \"matching local artifact under .veritas/**\",\n      \"active repo roadmap or README guidance\",\n      \"multi-workstream fallback suppresses promotion\"\n    ],\n    \"resolutionRules\": [\n      {\n        \"id\": \"veritas-files\",\n        \"match\": {\n          \"patterns\": [\n            \".veritas/\"\n          ]\n        },\n        \"resolution\": {\n          \"phase\": \"Phase 0 (Bootstrap)\",\n          \"workstream\": \"Initial Project Setup\",\n          \"matchedArtifacts\": [\n            \".veritas/**\"\n          ]\n        }\n      }\n    ],\n    \"nodes\": [\n      {\n        \"id\": \"governance.guidance\",\n        \"kind\": \"protected-area\",\n        \"label\": \".veritas/**\",\n        \"patterns\": [\n          \".veritas/\"\n        ],\n        \"governance-locked\": true\n      },\n      {\n        \"id\": \"governance.root-manifests\",\n        \"kind\": \"protected-area\",\n        \"label\": \"root manifests\",\n        \"patterns\": [\n          \"package.json\",\n          \"package-lock.json\",\n          \"README.md\",\n          \".gitignore\",\n          \"AGENTS.md\"\n        ]\n      },\n      {\n        \"id\": \"product.additional-areas\",\n        \"kind\": \"product-area\",\n        \"label\": \"Additional repository product areas\",\n        \"patterns\": [\n          \"assets/\",\n          \"bin/\",\n          \"conformance/\",\n          \"context/\",\n          \"docs-site/\",\n          \"examples/\",\n          \"schemas/\"\n        ]\n      },\n      {\n        \"id\": \"delivery.workflows\",\n        \"kind\": \"delivery-area\",\n        \"label\": \".github/**\",\n        \"patterns\": [\n          \".github/\"\n        ]\n      },\n      {\n        \"id\": \"tooling.scripts\",\n        \"kind\": \"tooling-area\",\n        \"label\": \"scripts/**\",\n        \"patterns\": [\n          \"scripts/\"\n        ]\n      },\n      {\n        \"id\": \"app.src\",\n        \"kind\": \"product-area\",\n        \"label\": \"src/**\",\n        \"patterns\": [\n          \"src/\"\n        ]\n      },\n      {\n        \"id\": \"docs.docs\",\n        \"kind\": \"product-area\",\n        \"label\": \"docs/**\",\n        \"patterns\": [\n          \"docs/\"\n        ]\n      },\n      {\n        \"id\": \"verification.tests\",\n        \"kind\": \"verification-area\",\n        \"label\": \"tests/**\",\n        \"patterns\": [\n          \"tests/\"\n        ]\n      }\n    ]\n  },\n  \"evidence\": {\n    \"artifactDir\": \".kontourai/veritas/evidence\",\n    \"evidenceChecks\": [\n      {\n        \"id\": \"required-evidence-check\",\n        \"command\": \"npm run verify\",\n        \"method\": \"validation\",\n        \"summary\": \"Default repository evidenceCheck.\"\n      }\n    ],\n    \"requiredEvidenceCheckIds\": [\n      \"required-evidence-check\"\n    ],\n    \"reportTransport\": \"local-json\",\n    \"defaultEvidenceCheckIds\": [\n      \"required-evidence-check\"\n    ],\n    \"uncoveredPathPolicy\": \"warn\"\n  },\n  \"activation\": {\n    \"aiInstructionFiles\": [\n      {\n        \"path\": \"AGENTS.md\",\n        \"tool\": \"codex\",\n        \"required\": true\n      }\n    ]\n  }\n}\n",
+    ".veritas/repo-standards/default.repo-standards.json": "{\n  \"version\": 1,\n  \"name\": \"surface-default\",\n  \"description\": \"Conservative starter Repo Standards for a newly bootstrapped Veritas-enabled repository.\",\n  \"rules\": [\n    {\n      \"id\": \"required-veritas-artifacts\",\n      \"kind\": \"required-artifacts\",\n      \"classification\": \"hard-invariant\",\n      \"enforcementLevel\": \"Require\",\n      \"message\": \"The bootstrap Veritas artifacts must stay present so agents and reviewers share the same baseline.\",\n      \"owner\": \"repo-core\",\n      \"rollback_switch\": null,\n      \"match\": {\n        \"artifacts\": [\n          \".veritas/README.md\",\n          \".veritas/GOVERNANCE.md\",\n          \".veritas/repo-map.json\",\n          \".veritas/repo-standards/default.repo-standards.json\",\n          \".veritas/authority/default.authority-settings.json\"\n        ]\n      }\n    },\n    {\n      \"id\": \"ai-instruction-files-synced\",\n      \"kind\": \"governance-block\",\n      \"classification\": \"hard-invariant\",\n      \"enforcementLevel\": \"Guide\",\n      \"message\": \"All required AI tool instruction files must contain the Veritas guidance block.\",\n      \"owner\": \"repo-maintainers\",\n      \"rollback_switch\": null,\n      \"match\": {\n        \"governance-block\": [\n          \"AGENTS.md\"\n        ]\n      }\n    },\n    {\n      \"id\": \"prefer-veritas-routed-delivery\",\n      \"kind\": \"required-artifacts\",\n      \"classification\": \"promotable-policy\",\n      \"enforcementLevel\": \"Observe\",\n      \"message\": \"Prefer running new AI-guided changes through Veritas readiness checks and the documented evidenceCheck before review.\",\n      \"owner\": \"repo-maintainers\",\n      \"rollback_switch\": \"soften-veritas-route\",\n      \"match\": {\n        \"artifacts\": [\n          \".veritas/README.md\"\n        ]\n      }\n    }\n  ]\n}\n",
+    ".veritas/authority/default.authority-settings.json": "{\n  \"version\": 1,\n  \"id\": \"surface-default\",\n  \"name\": \"surface Default\",\n  \"description\": \"Conservative starter settings: observe first, learn from evidence, and only require what has earned trust.\",\n  \"defaults\": {\n    \"mode\": \"observe\",\n    \"new_rule_enforcement_level\": \"Observe\"\n  },\n  \"review_preferences\": {\n    \"human_signoff_required_for_stage_promotion\": true,\n    \"reviewer_confidence_scale\": [\n      \"low\",\n      \"medium\",\n      \"high\"\n    ],\n    \"major_rewrite_definition\": \"A major rewrite replaces the main structure or requirement flow instead of making local edits.\",\n    \"attestation_approval_ref_policy\": {\n      \"mode\": \"reference-only\",\n      \"allowed_prefixes\": []\n    }\n  },\n  \"promotion_preferences\": {\n    \"evidence_checks_required_before_require\": [\n      \"npm run verify\"\n    ],\n    \"warnings_block_in_ci\": false,\n    \"require_consistent_feedback_before_promotion\": true\n  }\n}\n",
+    "AGENTS.md": "# Surface Agent Guidance\n\nSurface is the canonical source for this repo. Treat generated agent bundles, session prompts, and Flow Agents runtime artifacts as local coordination state unless a tracked source file explicitly says otherwise.\n\n## Source Of Truth\n\n- Product and architecture context lives in `CONTEXT.md`, `README.md`, and `docs/`.\n- Public package entry points are `src/index.ts`, `bin/surface.mjs`, package `exports`, and package `bin`.\n- Source docs live under `docs/`. `docs-site/` is generated by `npm run docs:build` as a curated public subset and should not be edited directly.\n- Generated/local artifacts such as `dist/`, `test-results/`, `playwright-report/`, `.surface/`, and `.flow-agents/` should be regenerated or inspected for evidence, not treated as product source.\n\n## Development Rules\n\n- Keep Surface behavior stable unless the task explicitly asks for runtime changes: validation, trust derivation, report projection, adapters, extension registry, CLI, and Console routes are compatibility-sensitive.\n- Prefer small edits that match existing TypeScript and docs style.\n- Do not add empty placeholder directories. Current adapter docs and examples are `docs/reference/adapters.md` and `examples/external-adapter/`.\n- Do not hand-edit generated Pages output in `docs-site/`.\n- Do not revert unrelated user or agent changes.\n\n## Pull More Context When Needed\n\n- Workflow and hook questions: read `docs/maintenance/repo-hooks.md`.\n- Generated output, ignored runtime state, `.agents/`, `.flow-agents/`, package contents, or checked generated Console assets: read `docs/maintenance/generated-artifacts.md`.\n- Public docs, published Pages inventory, or where a doc belongs: read `docs/README.md`.\n- Release, package, npm publish, provenance, or pre-release confidence checks: read `docs/maintenance/RELEASING.md`.\n- Public API, module boundaries, or future split candidates: read `docs/audits/source-module-audit.md`.\n- Product/runtime boundary questions between Surface and product layers: read `docs/architecture/surface-foundation.md` and `docs/architecture/developer-architecture.md`.\n\n## Match Checks To Change Type\n\n- Docs-only changes: run `npm run check:doc-links`; run `npm run docs:build` when published Pages output or navigation can change.\n- Generated/source-boundary changes: run `npm run check:generated-boundaries`.\n- Public API, package metadata, exports, or files changes: run `npm run check:package-contents`, `npm run test:package-smoke`, and `npm run test:external-adapter`.\n- CLI, trust derivation, schemas, adapters, or Console runtime changes: run `npm test`; prefer `npm run verify` before pushing.\n- Browser-visible Console or docs-site changes: run `npm run test:browser`.\n- Release or publish changes: run `npm run verify` and read `docs/maintenance/RELEASING.md`.\n\n## Useful Commands\n\n- `npm run build`\n- `npm test`\n- `npm run check:doc-links`\n- `npm run check:generated-boundaries`\n- `npm run check:package-contents`\n- `npm run docs:build`\n- `npm run test:browser`\n- `npm run verify`\n\n<!-- veritas:governance-block:start -->\nThis repo uses Veritas for AI governance. Read `.veritas/GOVERNANCE.md` before making changes.\nAfter changes, run `npm exec --yes --package=@kontourai/veritas@1.5.2 -- veritas readiness` and address any FAIL lines before finishing.\n<!-- veritas:governance-block:end -->\n"
+  },
+  "artifact_hashes": {
+    ".veritas/README.md": "7edf1efa2db2d27f1fa3dc4c1e3e5dd1cef921e6d21c94ae6c3e88b67f67a961",
+    ".veritas/GOVERNANCE.md": "1b0520568cf6ff0bf54ab09b0bedd3a02056dd78e6365ffcd0f230f3e8f885a2",
+    ".veritas/repo-map.json": "6218a7d9a285ba845b4a59a797f3bc2d920b0d1625eb2041b32b63d893504c9d",
+    ".veritas/repo-standards/default.repo-standards.json": "a86218febeb226018fdddf5d45c461d07ae74b8b182f24361b241cee4da93504",
+    ".veritas/authority/default.authority-settings.json": "db9ae5af663554d795695c9528d16c6fa5f941aeb8e52b538ceae774a1df136a",
+    "AGENTS.md": "9a5c78bec831eb821bd7ef740fd3eba0e7eb76127b0525917646f58f71f3b799"
+  },
+  "recommended_repo_map": {
+    "name": "surface",
+    "kind": "repo-map",
+    "policy": {
+      "defaultFalsePositiveReview": "unknown",
+      "defaultPromotionCandidate": false,
+      "defaultExceptionAllowed": false
+    },
+    "graph": {
+      "version": 1,
+      "defaultResolution": {
+        "phase": "Phase 0 (Bootstrap)",
+        "workstream": "Initial Project Setup",
+        "matchedArtifacts": [
+          "README.md"
+        ]
+      },
+      "nonSliceableInvariants": [
+        "baseline evidenceCheck",
+        "repo-local guidance",
+        "tracked standards artifacts"
+      ],
+      "resolverPrecedence": [
+        "explicit task or issue reference",
+        "matching local artifact under .veritas/**",
+        "active repo roadmap or README guidance",
+        "multi-workstream fallback suppresses promotion"
+      ],
+      "resolutionRules": [
+        {
+          "id": "veritas-files",
+          "match": {
+            "patterns": [
+              ".veritas/"
+            ]
+          },
+          "resolution": {
+            "phase": "Phase 0 (Bootstrap)",
+            "workstream": "Initial Project Setup",
+            "matchedArtifacts": [
+              ".veritas/**"
+            ]
+          }
+        }
+      ],
+      "nodes": [
+        {
+          "id": "governance.guidance",
+          "kind": "protected-area",
+          "label": ".veritas/**",
+          "patterns": [
+            ".veritas/"
+          ],
+          "governance-locked": true
+        },
+        {
+          "id": "governance.root-manifests",
+          "kind": "protected-area",
+          "label": "root manifests",
+          "patterns": [
+            "package.json",
+            "package-lock.json",
+            "README.md",
+            ".gitignore",
+            "AGENTS.md"
+          ]
+        },
+        {
+          "id": "product.additional-areas",
+          "kind": "product-area",
+          "label": "Additional repository product areas",
+          "patterns": [
+            "assets/",
+            "bin/",
+            "conformance/",
+            "context/",
+            "docs-site/",
+            "examples/",
+            "schemas/"
+          ]
+        },
+        {
+          "id": "delivery.workflows",
+          "kind": "delivery-area",
+          "label": ".github/**",
+          "patterns": [
+            ".github/"
+          ]
+        },
+        {
+          "id": "tooling.scripts",
+          "kind": "tooling-area",
+          "label": "scripts/**",
+          "patterns": [
+            "scripts/"
+          ]
+        },
+        {
+          "id": "app.src",
+          "kind": "product-area",
+          "label": "src/**",
+          "patterns": [
+            "src/"
+          ]
+        },
+        {
+          "id": "docs.docs",
+          "kind": "product-area",
+          "label": "docs/**",
+          "patterns": [
+            "docs/"
+          ]
+        },
+        {
+          "id": "verification.tests",
+          "kind": "verification-area",
+          "label": "tests/**",
+          "patterns": [
+            "tests/"
+          ]
+        }
+      ]
+    },
+    "evidence": {
+      "artifactDir": ".kontourai/veritas/evidence",
+      "evidenceChecks": [
+        {
+          "id": "required-evidence-check",
+          "command": "npm run verify",
+          "method": "validation",
+          "summary": "Default repository evidenceCheck."
+        }
+      ],
+      "requiredEvidenceCheckIds": [
+        "required-evidence-check"
+      ],
+      "reportTransport": "local-json",
+      "defaultEvidenceCheckIds": [
+        "required-evidence-check"
+      ],
+      "uncoveredPathPolicy": "warn"
+    },
+    "activation": {
+      "aiInstructionFiles": [
+        {
+          "path": "AGENTS.md",
+          "tool": "codex",
+          "required": true
+        }
+      ]
+    }
+  },
+  "recommended_repo_standards": {
+    "version": 1,
+    "name": "surface-default",
+    "description": "Conservative starter Repo Standards for a newly bootstrapped Veritas-enabled repository.",
+    "rules": [
+      {
+        "id": "required-veritas-artifacts",
+        "kind": "required-artifacts",
+        "classification": "hard-invariant",
+        "enforcementLevel": "Require",
+        "message": "The bootstrap Veritas artifacts must stay present so agents and reviewers share the same baseline.",
+        "owner": "repo-core",
+        "rollback_switch": null,
+        "match": {
+          "artifacts": [
+            ".veritas/README.md",
+            ".veritas/GOVERNANCE.md",
+            ".veritas/repo-map.json",
+            ".veritas/repo-standards/default.repo-standards.json",
+            ".veritas/authority/default.authority-settings.json"
+          ]
+        }
+      },
+      {
+        "id": "ai-instruction-files-synced",
+        "kind": "governance-block",
+        "classification": "hard-invariant",
+        "enforcementLevel": "Guide",
+        "message": "All required AI tool instruction files must contain the Veritas guidance block.",
+        "owner": "repo-maintainers",
+        "rollback_switch": null,
+        "match": {
+          "governance-block": [
+            "AGENTS.md"
+          ]
+        }
+      },
+      {
+        "id": "prefer-veritas-routed-delivery",
+        "kind": "required-artifacts",
+        "classification": "promotable-policy",
+        "enforcementLevel": "Observe",
+        "message": "Prefer running new AI-guided changes through Veritas readiness checks and the documented evidenceCheck before review.",
+        "owner": "repo-maintainers",
+        "rollback_switch": "soften-veritas-route",
+        "match": {
+          "artifacts": [
+            ".veritas/README.md"
+          ]
+        }
+      }
+    ]
+  },
+  "recommended_authority_settings": {
+    "version": 1,
+    "id": "surface-default",
+    "name": "surface Default",
+    "description": "Conservative starter settings: observe first, learn from evidence, and only require what has earned trust.",
+    "defaults": {
+      "mode": "observe",
+      "new_rule_enforcement_level": "Observe"
+    },
+    "review_preferences": {
+      "human_signoff_required_for_stage_promotion": true,
+      "reviewer_confidence_scale": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "major_rewrite_definition": "A major rewrite replaces the main structure or requirement flow instead of making local edits.",
+      "attestation_approval_ref_policy": {
+        "mode": "reference-only",
+        "allowed_prefixes": []
+      }
+    },
+    "promotion_preferences": {
+      "evidence_checks_required_before_require": [
+        "npm run verify"
+      ],
+      "warnings_block_in_ci": false,
+      "require_consistent_feedback_before_promotion": true
+    }
+  },
+  "recommended_evidence_checks": [
+    {
+      "id": "required-evidence-check",
+      "command": "npm run verify",
+      "method": "validation",
+      "reason": "Selected from package script priority; matched scripts: verify, test, build.",
+      "confidence": "high",
+      "source": "package.json scripts"
+    }
+  ],
+  "recommended_evidence_inventory": [
+    {
+      "id": "verify-trust-bundle",
+      "source_kind": "package-script",
+      "source": "node scripts/verify-trust-bundle.mjs",
+      "default_disposition": "candidate",
+      "recent_catch_evidence": "unknown",
+      "owner": null,
+      "replacement_test_available": null,
+      "review_trigger": "review before promoting this existing check to required",
+      "rationale": "Existing custom verification-shaped package script detected during brownfield init."
+    }
+  ],
+  "existing_verification": {
+    "detected": true,
+    "items": [
+      {
+        "kind": "package-script",
+        "id": "verify:trust-bundle",
+        "command": "node scripts/verify-trust-bundle.mjs",
+        "recommendedDisposition": "candidate",
+        "reason": "Existing custom verification-shaped package script detected during brownfield init."
+      }
+    ],
+    "authoritativeCommands": [],
+    "selectedAuthoritativeCommand": null,
+    "provenance": [],
+    "conflicts": [],
+    "recommendedEvidenceInventoryDefaults": {
+      "unknownCatchEvidenceDefault": "candidate",
+      "requiredNeedsOwner": true,
+      "requiredNeedsReviewTrigger": true,
+      "productBehaviorNeedsReplacementTest": true
+    }
+  },
+  "external_boundaries": [
+    {
+      "id": "hachure-authority",
+      "authority": "https://github.com/hachure-org/spec",
+      "relationship": "documented-external-authority",
+      "package": "hachure",
+      "source": "repository documentation"
+    },
+    {
+      "id": "survey-authority",
+      "authority": "https://kontourai.io/survey",
+      "relationship": "documented-external-authority",
+      "package": "@kontourai/survey",
+      "source": "repository documentation"
+    }
+  ],
+  "existing_governance": {
+    "detected": true,
+    "present_paths": [
+      ".veritas/README.md",
+      ".veritas/GOVERNANCE.md",
+      ".veritas/repo-map.json",
+      ".veritas/repo-standards/default.repo-standards.json",
+      ".veritas/authority/default.authority-settings.json"
+    ],
+    "detected_existing_governance": true,
+    "preserved_existing_governance": true,
+    "explicit_replacement_requested": false,
+    "appended_work_area_node_ids": []
+  },
+  "recommended_surfaces": [
+    {
+      "id": "governance.guidance",
+      "kind": "protected-area",
+      "label": ".veritas/**",
+      "patterns": [
+        ".veritas/"
+      ],
+      "governance-locked": true,
+      "risk": "high",
+      "reason": "Detected .veritas/** as protected-area."
+    },
+    {
+      "id": "governance.root-manifests",
+      "kind": "protected-area",
+      "label": "root manifests",
+      "patterns": [
+        "package.json",
+        "package-lock.json",
+        "README.md",
+        ".gitignore",
+        "AGENTS.md"
+      ],
+      "risk": "high",
+      "reason": "Detected root manifests as protected-area."
+    },
+    {
+      "id": "delivery.workflows",
+      "kind": "delivery-area",
+      "label": ".github/**",
+      "patterns": [
+        ".github/"
+      ],
+      "risk": "medium",
+      "reason": "Detected .github/** as delivery-area."
+    },
+    {
+      "id": "tooling.scripts",
+      "kind": "tooling-area",
+      "label": "scripts/**",
+      "patterns": [
+        "scripts/"
+      ],
+      "risk": "medium",
+      "reason": "Detected scripts/** as tooling-area."
+    },
+    {
+      "id": "app.src",
+      "kind": "product-area",
+      "label": "src/**",
+      "patterns": [
+        "src/"
+      ],
+      "risk": "medium",
+      "reason": "Detected src/** as product-area."
+    },
+    {
+      "id": "docs.docs",
+      "kind": "product-area",
+      "label": "docs/**",
+      "patterns": [
+        "docs/"
+      ],
+      "risk": "medium",
+      "reason": "Detected docs/** as product-area."
+    },
+    {
+      "id": "verification.tests",
+      "kind": "verification-area",
+      "label": "tests/**",
+      "patterns": [
+        "tests/"
+      ],
+      "risk": "medium",
+      "reason": "Detected tests/** as verification-area."
+    },
+    {
+      "id": "product.assets",
+      "kind": "product-area",
+      "label": "assets/**",
+      "patterns": [
+        "assets/"
+      ],
+      "risk": "medium",
+      "reason": "Detected assets/** as product-area."
+    },
+    {
+      "id": "product.bin",
+      "kind": "product-area",
+      "label": "bin/**",
+      "patterns": [
+        "bin/"
+      ],
+      "risk": "medium",
+      "reason": "Detected bin/** as product-area."
+    },
+    {
+      "id": "product.conformance",
+      "kind": "product-area",
+      "label": "conformance/**",
+      "patterns": [
+        "conformance/"
+      ],
+      "risk": "medium",
+      "reason": "Detected conformance/** as product-area."
+    },
+    {
+      "id": "product.context",
+      "kind": "product-area",
+      "label": "context/**",
+      "patterns": [
+        "context/"
+      ],
+      "risk": "medium",
+      "reason": "Detected context/** as product-area."
+    },
+    {
+      "id": "product.examples",
+      "kind": "product-area",
+      "label": "examples/**",
+      "patterns": [
+        "examples/"
+      ],
+      "risk": "medium",
+      "reason": "Detected examples/** as product-area."
+    },
+    {
+      "id": "product.schemas",
+      "kind": "product-area",
+      "label": "schemas/**",
+      "patterns": [
+        "schemas/"
+      ],
+      "risk": "medium",
+      "reason": "Detected schemas/** as product-area."
+    }
+  ],
+  "recommended_instruction_targets": [
+    {
+      "path": "AGENTS.md",
+      "tool": "codex",
+      "required": true,
+      "exists": true,
+      "selected": true,
+      "has_governance_block": true,
+      "reason": "Selected for starter governance block activation."
+    },
+    {
+      "path": "CLAUDE.md",
+      "tool": "claude-code",
+      "required": true,
+      "exists": false,
+      "selected": false,
+      "has_governance_block": false,
+      "reason": "Known optional AI instruction surface; review before selecting."
+    },
+    {
+      "path": ".cursorrules",
+      "tool": "cursor",
+      "required": false,
+      "exists": false,
+      "selected": false,
+      "has_governance_block": false,
+      "reason": "Known optional AI instruction surface; review before selecting."
+    },
+    {
+      "path": ".github/copilot-instructions.md",
+      "tool": "github-copilot",
+      "required": false,
+      "exists": false,
+      "selected": false,
+      "has_governance_block": false,
+      "reason": "Known optional AI instruction surface; review before selecting."
+    }
+  ],
+  "selected_instruction_targets": [
+    {
+      "path": "AGENTS.md",
+      "tool": "codex",
+      "required": true
+    }
+  ],
+  "generated_output_ignores": [
+    ".kontourai/"
+  ],
+  "owner_questions": [
+    {
+      "id": "canonical-evidenceCheck",
+      "group": "evidenceCheck",
+      "question": "Is `npm run verify` the command that should prove repo health before AI-authored changes are considered ready?"
+    },
+    {
+      "id": "protected-paths",
+      "group": "boundaries",
+      "question": "Which files or directories should agents avoid changing without explicit human approval?"
+    },
+    {
+      "id": "coding-style",
+      "group": "style",
+      "question": "What coding style or local conventions should Veritas surface in repo guidance?"
+    },
+    {
+      "id": "release-expectations",
+      "group": "release",
+      "question": "Which checks distinguish a local change from a release-ready change?"
+    },
+    {
+      "id": "instruction-targets",
+      "group": "activation",
+      "question": "Which AI instruction files should Veritas mutate during apply?"
+    },
+    {
+      "id": "existing-verification-inventory",
+      "group": "brownfield",
+      "question": "Which existing verification checks have recent catch evidence, and which should move to tests, stay candidate, or retire?"
+    },
+    {
+      "id": "external-authority-boundaries",
+      "group": "boundaries",
+      "question": "Are the repository-declared external authorities and dependency directions complete and current?"
+    },
+    {
+      "id": "replace-existing-governance",
+      "group": "brownfield",
+      "question": "Veritas detected existing authored governance. Should re-authoring explicitly replace it instead of preserving it and adding only uncovered work areas?"
+    }
+  ],
+  "owner_answers": {},
+  "apply_command": "npx @kontourai/veritas init --apply --plan <path-to-this-artifact>",
+  "reasoning_summary": [
+    "Detected repo kind `application`.",
+    "Selected evidenceCheck `npm run verify`.",
+    "Selected instruction targets: AGENTS.md.",
+    "Preserved existing authored Repo Standards, authority settings, governance guidance, and repository context; appended 0 uncovered work-area node(s).",
+    "Preserved 2 repository-declared external authority boundary hint(s)."
+  ],
+  "output_path": ".veritas/init-plans/explore.json"
+}
