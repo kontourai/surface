@@ -66,6 +66,20 @@
         ]
       },
       {
+        "id": "product.additional-areas",
+        "kind": "product-area",
+        "label": "Additional repository product areas",
+        "patterns": [
+          "assets/",
+          "bin/",
+          "conformance/",
+          "context/",
+          "docs-site/",
+          "examples/",
+          "schemas/"
+        ]
+      },
+      {
         "id": "delivery.workflows",
         "kind": "delivery-area",
         "label": ".github/**",
