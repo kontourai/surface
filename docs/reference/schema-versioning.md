@@ -117,17 +117,18 @@ To adopt v5 as a producer:
 
 **Reading** is more forgiving than writing. `validateTrustBundle`
 (`src/validate.ts`), the local claim-authoring store reader (`src/store.ts`),
-and `mergeBundles`/`mergeBundlesDetailed` (`src/merge.ts`) all carry a
-one-release, owner-ratified TOLERANCE SHIM: a claim that still carries
-`surface` (with no `facet` already present) has that value copied onto
-`facet`, `surface` is stripped and never re-emitted, and a deprecation
-warning is printed once per process (not once per claim) the first time the
-shim actually does something. Bundles self-declaring `schemaVersion` 2, 3, or
-4 are still accepted on read for the same reason. This shim is read-tolerance
-only — it exists so `@kontourai/surface`'s own reader keeps archived or
-not-yet-migrated bundles usable for one release while producers catch up. It
-is not a permanent feature: the next major release is expected to drop it,
-and the wire schema itself never accepted `surface` again after this bump.
+and `mergeBundles`/`mergeBundlesDetailed` (`src/merge.ts`) all carry an
+owner-ratified TOLERANCE SHIM, kept until the next major release: a claim
+that still carries `surface` (with no `facet` already present) has that
+value copied onto `facet`, `surface` is stripped and never re-emitted, and a
+deprecation warning is printed once per process (not once per claim) the
+first time the shim actually does something. Bundles self-declaring
+`schemaVersion` 2, 3, or 4 are still accepted on read for the same reason.
+This shim is read-tolerance only — it exists so `@kontourai/surface`'s own
+reader keeps archived or not-yet-migrated bundles usable while producers
+catch up. It is not a permanent feature: the next major release is expected
+to drop it, and the wire schema itself never accepted `surface` again after
+this bump.
 
 The [Quickstart](../../README.md#quickstart) intentionally ships
 `examples/surface-example-bundle.json` still in this legacy `surface` /
