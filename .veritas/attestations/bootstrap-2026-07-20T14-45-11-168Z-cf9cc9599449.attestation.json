@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "id": "bootstrap-2026-07-20T14-45-11-168Z-cf9cc9599449",
+  "kind": "bootstrap",
+  "actor": {
+    "id": "briananderson1222",
+    "displayName": "Brian Anderson",
+    "identityEvidence": {
+      "gitEmail": "brian.anderson1222@gmail.com",
+      "signingKeyFingerprint": null
+    }
+  },
+  "attestedAt": "2026-07-20T14:45:11.168Z",
+  "repoStandardsHash": "sha256:a86218febeb226018fdddf5d45c461d07ae74b8b182f24361b241cee4da93504",
+  "repoMapHash": "sha256:75c5f0857805e6a7cc3dd0d9a69dc734a25aa9a752d2e79d3a92555610e2b1d2",
+  "authoritySettingsHash": "sha256:db9ae5af663554d795695c9528d16c6fa5f941aeb8e52b538ceae774a1df136a",
+  "priorAttestationId": null,
+  "validUntilDays": 90,
+  "notes": "",
+  "metadata": {
+    "protectedStandardsPaths": {
+      "repoStandardsPath": ".veritas/repo-standards/default.repo-standards.json",
+      "repoMapPath": ".veritas/repo-map.json",
+      "authoritySettingsPath": ".veritas/authority/default.authority-settings.json"
+    },
+    "supersedes": null,
+    "approvalRef": "https://github.com/kontourai/veritas/issues/135#issuecomment-5023543387",
+    "approvalRefPolicy": {
+      "mode": "reference-only",
+      "matchedPrefix": null,
+      "requiresResolution": false
+    },
+    "approvalResolution": null
+  },
+  "surface": {
+    "claim": {
+      "id": "veritas.attestation.bootstrap-2026-07-20T14-45-11-168Z-cf9cc9599449",
+      "subjectType": "veritas-protected-standards",
+      "subjectId": "protected-standards",
+      "facet": "veritas.attestations",
+      "claimType": "veritas-human-attestation",
+      "fieldOrBehavior": "bootstrap",
+      "value": {
+        "contentHash": "175b3031e7e5bb1443f5163d36338e940d0063bdedba300729550551ba06f9e3",
+        "validUntil": "2026-10-18T14:45:11.168Z"
+      },
+      "createdAt": "2026-07-20T14:45:11.168Z",
+      "updatedAt": "2026-07-20T14:45:11.168Z",
+      "status": "verified",
+      "impactLevel": "high",
+      "confidenceBasis": {
+        "sourceQuality": "strong",
+        "reviewerAuthority": "human",
+        "evidenceStrength": "strong",
+        "impactLevel": "high"
+      }
+    },
+    "evidence": {
+      "id": "evidence.attestation.veritas.attestation.bootstrap-2026-07-20T14-45-11-168Z-cf9cc9599449",
+      "claimId": "veritas.attestation.bootstrap-2026-07-20T14-45-11-168Z-cf9cc9599449",
+      "evidenceType": "attestation",
+      "method": "attestation",
+      "sourceRef": "veritas:protected-standards",
+      "excerptOrSummary": "Authority-backed bootstrap attestation for Veritas Protected Standards.",
+      "observedAt": "2026-07-20T14:45:11.168Z",
+      "collectedBy": "briananderson1222",
+      "integrityRef": "175b3031e7e5bb1443f5163d36338e940d0063bdedba300729550551ba06f9e3",
+      "metadata": {
+        "actor": {
+          "id": "briananderson1222",
+          "displayName": "Brian Anderson"
+        },
+        "attestedAt": "2026-07-20T14:45:11.168Z",
+        "validUntil": "2026-10-18T14:45:11.168Z",
+        "contentHash": "175b3031e7e5bb1443f5163d36338e940d0063bdedba300729550551ba06f9e3"
+      },
+      "sourceLocator": ".veritas/attestations"
+    },
+    "event": {
+      "id": "veritas.attestation.bootstrap-2026-07-20T14-45-11-168Z-cf9cc9599449.verified",
+      "claimId": "veritas.attestation.bootstrap-2026-07-20T14-45-11-168Z-cf9cc9599449",
+      "status": "verified",
+      "actor": "briananderson1222",
+      "method": "human attestation",
+      "evidenceIds": [
+        "evidence.attestation.veritas.attestation.bootstrap-2026-07-20T14-45-11-168Z-cf9cc9599449"
+      ],
+      "createdAt": "2026-07-20T14:45:11.168Z",
+      "verifiedAt": "2026-07-20T14:45:11.168Z"
+    }
+  }
+}
