@@ -71,3 +71,19 @@ configuration, secret-bearing references, and unnecessary personal data before
 projection. The projector rejects authorization-bearing references,
 credential-shaped stable identities, malformed digests, forged prepared-artifact
 references, incoherent locator/excerpt spans, and non-lossless JSON values.
+
+## Additive action policy
+
+`evaluateReviewedGroundingPolicy` lets a consumer require reviewed extraction,
+an exact locator, prepared-artifact integrity, accepted review, validated
+structure, and a current source for one named downstream action. It does not
+modify `VerificationPolicy`, claim status derivation, or the evidence schema.
+
+The result is either `allowed` or `refused` and cites every evaluated claim,
+Evidence ID, ReviewItem name, and ReviewDecision name. Its dimensions expose
+candidate confidence, reviewer disposition, structural trust, type origin,
+locator, artifact state, and source state separately. A source observation with
+`status: "drifted"` remains visible and blocks a policy that requires a current
+source even when `extractedValueChanged` is false. Missing artifacts, digest
+mismatches, unresolved source state, and the profile's typed provenance gaps
+remain explicit refusal reasons.
