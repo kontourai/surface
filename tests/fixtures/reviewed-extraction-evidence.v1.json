@@ -1,0 +1,62 @@
+{
+  "evidenceId": "survey.extraction.6dc1144025c5dd071941.source-evidence",
+  "claimId": "claim.directory.title",
+  "proposalIndex": 0,
+  "importRecord": {
+    "apiVersion": "survey.kontourai.io/v1alpha1",
+    "kind": "ExtractionEnvelopeImport",
+    "metadata": { "name": "directory-refresh-17", "producerNamespace": "directory-producer" },
+    "spec": {
+      "envelope": {
+        "format": "traverse-extraction-result",
+        "version": 1,
+        "source": { "ref": "source:fixture-v1", "snapshotRef": "snapshot:fixture-v1" },
+        "result": {
+          "proposals": [{
+            "candidateValue": "Alpha", "confidence": 0.8, "extractor": "portable-fixture", "fieldPath": "title", "inferenceType": "explicit", "valueType": "string",
+            "provenance": { "excerpt": "Alpha", "locator": "chars:0-5", "occurrence": { "ambiguous": true, "count": 2, "hintUsed": false, "resolverVersion": "exact-occurrence-v1", "selected": { "end": 5, "index": 0, "start": 0 }, "selection": "source-order" } }
+          }],
+          "provider": "portable-fixture", "providerCalls": 2, "raw": { "tokensUsed": 12 },
+          "runId": "traverse-extraction-run:00000000-0000-4000-8000-000000000001",
+          "model": "generic-model", "extractedAt": "2026-07-20T00:00:00.000Z", "totalTokensUsed": 12,
+          "outcome": { "status": "success" },
+          "taskDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "exampleDigests": ["sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"],
+          "preparedArtifact": {
+            "contentLength": 16, "digest": "0cba7385060c5667414b6f19f8b5d7d7b8ca229e14f1d62a4816688d495f2a31", "format": "traverse-prepared-artifact", "preparationMode": "text", "preparationVersion": "1",
+            "ref": "traverse-prepared-artifact:v1:sha256:ff5c8333ed2feb8e1c657f0bf8a68dbcf3e86b09082465f61f029ff5d221baea", "sourceSnapshotRef": "snapshot:fixture-v1", "version": 1
+          },
+          "preparedArtifactState": {
+            "status": "available", "requestedRef": "traverse-prepared-artifact:v1:sha256:ff5c8333ed2feb8e1c657f0bf8a68dbcf3e86b09082465f61f029ff5d221baea", "canonicalRef": "traverse-prepared-artifact:v1:sha256:ff5c8333ed2feb8e1c657f0bf8a68dbcf3e86b09082465f61f029ff5d221baea"
+          }
+        }
+      },
+      "sourceKind": "api-record",
+      "claimTargets": [{ "subjectType": "directory-entry", "subjectId": "17", "facet": "directory.registration", "claimType": "directory.field", "fieldOrBehavior": "title", "impactLevel": "medium" }]
+    },
+    "status": { "state": "grounded", "diagnostics": [] }
+  },
+  "reviewItem": {
+    "apiVersion": "survey.kontourai.io/v1alpha1", "kind": "ReviewItem",
+    "metadata": { "name": "extraction-envelope.5bfdf37f230ab6e21807", "producer": { "survey.kontourai.io/extraction-envelope": { "importName": "directory-refresh-17", "evidenceId": "survey.extraction.6dc1144025c5dd071941.source-evidence", "source": { "ref": "source:fixture-v1", "snapshotRef": "snapshot:fixture-v1" } } } },
+    "spec": {
+      "target": "title", "candidateSetStatus": "needs-review", "valueDescriptor": { "type": "string" }, "editable": false,
+      "candidates": [{
+        "id": "extraction-envelope.5bfdf37f230ab6e21807.proposed", "role": "proposed", "value": "Alpha", "confidence": 0.8,
+        "source": { "sourceRef": "source:fixture-v1", "sourceId": "snapshot:fixture-v1", "kind": "api-record", "observedAt": "2026-07-20T00:00:00.000Z", "checksum": "0cba7385060c5667414b6f19f8b5d7d7b8ca229e14f1d62a4816688d495f2a31", "locatorScheme": "text-span" },
+        "locator": { "scheme": "text-span", "locator": "chars:0-5", "excerpt": "Alpha" },
+        "extraction": { "extractionId": "extraction-envelope.5bfdf37f230ab6e21807", "target": "title", "confidence": 0.8, "extractor": "portable-fixture", "model": "generic-model" },
+        "claimTarget": { "subjectType": "directory-entry", "subjectId": "17", "facet": "directory.registration", "claimType": "directory.field", "fieldOrBehavior": "title", "impactLevel": "medium" },
+        "producer": { "survey.kontourai.io/extraction-envelope": { "importName": "directory-refresh-17", "proposalIndex": 0, "evidenceId": "survey.extraction.6dc1144025c5dd071941.source-evidence", "runId": "traverse-extraction-run:00000000-0000-4000-8000-000000000001", "provider": "portable-fixture", "model": "generic-model", "taskDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "exampleDigests": ["sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"], "valueType": { "type": "string", "origin": "explicit" }, "occurrence": { "ambiguous": true, "count": 2, "hintUsed": false, "resolverVersion": "exact-occurrence-v1", "selected": { "end": 5, "index": 0, "start": 0 }, "selection": "source-order" }, "attempt": { "id": "traverse-extraction-run:00000000-0000-4000-8000-000000000001", "providerCalls": 2 }, "outcome": { "status": "success" } } }
+      }]
+    },
+    "status": { "observedCandidateCount": 1 }
+  },
+  "reviewDecision": {
+    "apiVersion": "survey.kontourai.io/v1alpha1", "kind": "ReviewDecision", "metadata": { "name": "decision.directory.title" },
+    "spec": { "reviewItemName": "extraction-envelope.5bfdf37f230ab6e21807", "candidateId": "extraction-envelope.5bfdf37f230ab6e21807.proposed", "status": "verified", "actor": { "id": "reviewer:fixture", "displayName": "Fixture reviewer" }, "reviewedAt": "2026-07-20T00:05:00.000Z", "rationale": "The exact source span supports the selected value." },
+    "status": { "appliedToClaimIds": ["claim.directory.title"] }
+  },
+  "collectedBy": "survey-importer:fixture",
+  "structuralTrust": "validated"
+}
