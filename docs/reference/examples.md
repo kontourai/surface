@@ -10,7 +10,7 @@ Examples are the first evidence that Surface is not just a concept document. The
 - field-attested public-data freshness
 - fact-resolution verified facts and discrepancy review
 
-It uses `schemaVersion: 2`, required evidence methods, structured policy method requirements, report-derived requirement fields, and typed transparency gap output through the current `transparencyGaps` field.
+It uses `schemaVersion: 3`, required evidence methods, structured policy method requirements, report-derived requirement fields, and typed transparency gap output through the current `transparencyGaps` field.
 
 ## Field-Attested Records Example
 
@@ -32,6 +32,26 @@ test-only claim derives as `proposed` with a blocking `provenance_gap`; the
 claim backed by a production observation derives as `verified`. The optional
 `execution.environment` field makes the collection environment explicit, while
 the evidence type is what makes the live observation load-bearing.
+
+## Package-Safety (npm audit) Example
+
+`examples/npm-audit-export.json` is raw `npm audit --json` output. It shows
+how a producer maps a third-party audit report into Evidence that supports or
+challenges an authored package-safety claim — see [Use Cases](../product/use-cases.md)
+for the full mapping and why a freshness policy keeps the claim from staying
+`verified` on the strength of a stale scan.
+
+## System Card Demo
+
+`examples/system-card/` is the flagship demo for `@kontourai/surface`: a
+fictional model/system card (`bundle.json`) decomposed into evidenced claims,
+driven end to end by `run-demo.ts` (`npm run build && node
+dist/examples/system-card/run-demo.js`). It walks all three ADR 0003 verbs —
+Assert, Observe, Resolve — including staleness over time, exact/derived/
+unsupported `resolveInquiry` outcomes, dispute resolution via
+`buildDisputeResolutionEvent`, and in-toto/DSSE assertion. See
+[`examples/system-card/README.md`](../../examples/system-card/README.md) for
+the full walkthrough.
 
 ## Contract-Claim Examples And Policy Template
 

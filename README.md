@@ -85,37 +85,45 @@ Any system that can emit a `TrustBundle` is a producer. The fluent SDK keeps the
 ```ts
 import { TrustBundleBuilder, buildTrustReport } from "@kontourai/surface";
 
-const input = new TrustBundleBuilder({ source: "my-producer:local" })
-  .addClaim({
-    id: "claim.api.rate-limit",
-    subjectType: "api",
-    subjectId: "public-api",
-    claimType: "software-evidence",
-    facet: "api",
-    fieldOrBehavior: "rate limit is enforced",
-    value: "100 requests/minute",
-    currentIntegrityRef: "commit:abc123",
-  })
-  .addEvidence({
-    id: "evidence.api.rate-limit.test",
-    claimId: "claim.api.rate-limit",
-    evidenceType: "test_output",
-    method: "validation",
-    sourceRef: "ci:1847",
-    excerptOrSummary: "Rate-limit tests passed.",
-    integrityRef: "commit:abc123",
-  })
-  .addEvent({
-    id: "event.api.rate-limit.verified",
-    claimId: "claim.api.rate-limit",
-    status: "verified",
-    actor: "ci",
-    method: "npm test",
-    evidenceIds: ["evidence.api.rate-limit.test"],
-  })
-  .build();
+const builder = new TrustBundleBuilder({ source: "my-producer:local" });
 
-const report = buildTrustReport(input);
+builder.addClaim({
+  id: "claim.api.rate-limit",
+  subjectType: "api",
+  subjectId: "public-api",
+  claimType: "software-evidence",
+  facet: "api",
+  fieldOrBehavior: "rate limit is enforced",
+  value: "100 requests/minute",
+  currentIntegrityRef: "commit:abc123",
+  createdAt: "2026-07-20T00:00:00.000Z",
+  updatedAt: "2026-07-20T00:00:00.000Z",
+});
+
+// addEvidence() returns an EvidenceLink, not the builder — call .linkTo()
+// to attach it to a claim (see docs/guides/consumer-sdk.md).
+builder.addEvidence({
+  id: "evidence.api.rate-limit.test",
+  evidenceType: "test_output",
+  method: "validation",
+  sourceRef: "ci:1847",
+  excerptOrSummary: "Rate-limit tests passed.",
+  observedAt: "2026-07-20T00:00:00.000Z",
+  collectedBy: "ci",
+}).linkTo("claim.api.rate-limit");
+
+builder.addEvent({
+  id: "event.api.rate-limit.verified",
+  claimId: "claim.api.rate-limit",
+  status: "verified",
+  actor: "ci",
+  method: "npm test",
+  evidenceIds: ["evidence.api.rate-limit.test"],
+  createdAt: "2026-07-20T00:00:00.000Z",
+  verifiedAt: "2026-07-20T00:00:00.000Z",
+});
+
+const report = buildTrustReport(builder.build());
 
 console.log(report.summary);
 ```
@@ -198,7 +206,12 @@ The merged view attributes every claim to the producer(s) that asserted it (an i
 
 ## Public package surface
 
-The npm package exposes one stable module entrypoint:
+`package.json` declares two `exports` subpaths: the root module and
+`./trust-panel/element` (the standalone trust-panel custom element). The root
+module (`src/index.ts`) re-exports the entire public API — types, the
+derivation kernel, validation, merge, adapters, the consumer SDK, the Console
+server, and more, across 30+ internal modules — as one stable import path, so
+consumers never need deep `dist/` imports. Commonly used symbols include:
 
 ```ts
 import {
@@ -208,7 +221,7 @@ import {
 } from "@kontourai/surface";
 ```
 
-The package also ships the `surface` CLI, JSON schemas under `schemas/`, examples, docs, and TypeScript declarations. Internal files under `dist/src/` are included so the exported module graph can run, but consumers should import from `@kontourai/surface` rather than deep `dist/` paths. The package contents guard in `scripts/check-package-contents.mjs` keeps generated test output, local docs-site output, scripts, and source files out of the published tarball.
+The package also ships the `surface` CLI, JSON schemas under `schemas/`, examples, docs, and TypeScript declarations. Internal files under `dist/src/` are included so the exported module graph can run, but consumers should import from `@kontourai/surface` (or `@kontourai/surface/trust-panel/element`) rather than deep `dist/` paths. The package contents guard in `scripts/check-package-contents.mjs` keeps generated test output, local docs-site output, scripts, and source files out of the published tarball.
 
 ## What sits on top
 
