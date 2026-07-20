@@ -61,7 +61,7 @@ The shipped example bundle is deliberately kept in its pre-rename `schemaVersion
 The output from the shipped example bundle looks like this:
 
 ```text
-[@kontourai/surface] deprecated: reading legacy claim field "surface" as "facet". This read-tolerance shim is temporary (one release) — re-emit affected bundles with "facet" instead of "surface".
+[@kontourai/surface] deprecated: reading legacy claim field "surface" as "facet". This read-tolerance shim will be removed in the next major release — re-emit affected bundles with "facet" instead of "surface".
 Kontour Surface report surface-1779196544815
 Source: kontour-surface-validation-examples
 Claims: 4 (unknown: 1, verified: 2, stale: 1)

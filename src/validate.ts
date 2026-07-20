@@ -29,7 +29,7 @@ function warnLegacySurfaceFieldOnce(): void {
   warnedLegacySurfaceFieldOnce = true;
   console.warn(
     "[@kontourai/surface] deprecated: reading legacy claim field \"surface\" as \"facet\". " +
-      "This read-tolerance shim is temporary (one release) — re-emit affected bundles with \"facet\" instead of \"surface\".",
+      "This read-tolerance shim will be removed in the next major release — re-emit affected bundles with \"facet\" instead of \"surface\".",
   );
 }
 

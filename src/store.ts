@@ -17,7 +17,7 @@ function warnLegacyClaimDefinitionSurfaceFieldOnce(): void {
   warnedLegacyClaimDefinitionSurfaceFieldOnce = true;
   console.warn(
     "[@kontourai/surface] deprecated: reading legacy claim definition field \"surface\" as \"facet\". " +
-      "This read-tolerance shim is temporary (one release) — re-emit affected claim stores with \"facet\" instead of \"surface\".",
+      "This read-tolerance shim will be removed in the next major release — re-emit affected claim stores with \"facet\" instead of \"surface\".",
   );
 }
 
