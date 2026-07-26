@@ -114,7 +114,7 @@ the `min_y baseline(y)` term is redundant — it is dominated by `min_y projecte
 
 **2. It always terminates.** Each claim's projected status is a monotone-decreasing composition of `min`s over a finite, totally ordered set of nine statuses. So each claim's value can change at most eight times before it stabilizes; the relaxation cannot oscillate and must converge. It is cycle-safe for the same reason — a cycle simply relaxes to its fixed point.
 
-Because derivation only bounds *downward*, a *strengthening* hypothetical produces no modelled change: the report does not expose headroom above a claim's own status, and derivation can never raise a conclusion above it. This is a faithful reflection of the model, not a limitation of the traversal — worsening an input is the case that matters for trust.
+Because derivation only bounds *downward*, a *strengthening* hypothetical produces no modeled change: the report does not expose headroom above a claim's own status, and derivation can never raise a conclusion above it. This is a faithful reflection of the model, not a limitation of the traversal — worsening an input is the case that matters for trust.
 
 ### Why it is useful
 
