@@ -83,7 +83,7 @@ interface VerificationStore {
 }
 ```
 
-Return `null` when the ref is not recognised.  The responder places unrecognised
+Return `null` when the ref is not recognized.  The responder places unrecognised
 refs in `metadata.unknownRefs` honestly — never silently omitting them.
 
 ### `createVerificationHttpHandler(responder)`
@@ -117,7 +117,7 @@ The response bundle is a scoped `TrustBundle` extended with a mandatory
 | `respondedAt` | ISO 8601 string | When the producer assembled this response. |
 | `statusFunctionVersion` | string | Status function version active at response time. |
 | `requestedRefs` | string[] | All refs from the request, in order. |
-| `unknownRefs` | string[] | Refs the producer does not recognise.  Always present, never empty by omission. |
+| `unknownRefs` | string[] | Refs the producer does not recognize.  Always present, never empty by omission. |
 
 ---
 
