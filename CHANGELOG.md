@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.13.1](https://github.com/kontourai/surface/compare/v2.13.0...v2.13.1) (2026-07-27)
+
+
+### Documentation
+
+* use US spellings ([#173](https://github.com/kontourai/surface/issues/173)) ([148d214](https://github.com/kontourai/surface/commit/148d214d29e0879f77d8c06be4d050b9b1c1730a))
+
 ## [2.13.0](https://github.com/kontourai/surface/compare/v2.12.0...v2.13.0) (2026-07-20)
 
 
