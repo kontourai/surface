@@ -8,10 +8,18 @@
     "outDir": "dist",
     "rootDir": ".",
     "resolveJsonModule": true,
-    "types": ["node"],
+    "types": [
+      "node"
+    ],
     "skipLibCheck": true
   },
-  "include": ["src/**/*.ts", "tests/**/*.ts", "examples/**/*.ts"],
-  "exclude": ["examples/external-adapter", "examples/postgres-claim-store"]
+  "include": [
+    "src/**/*.ts",
+    "tests/**/*.ts",
+    "examples/**/*.ts"
+  ],
+  "exclude": [
+    "examples/external-adapter",
+    "examples/postgres-claim-store"
+  ]
 }
-
