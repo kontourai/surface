@@ -120,6 +120,8 @@ test("package scripts are classified active repo workflows", async () => {
     "validate:repo-hooks",
     "verify",
     "verify:trust-bundle",
+    "workflow:sidecar",
+    "workflow:validate-artifacts",
   ]);
   assert.match(packageJson.scripts?.verify ?? "", /check-content-boundary/);
   assert.match(packageJson.scripts?.verify ?? "", /check:decisions/);
