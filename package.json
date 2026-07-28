@@ -98,6 +98,6 @@
   },
   "optionalDependencies": {
     "@sigstore/sign": "^4.1.1",
-    "@sigstore/verify": "^3.1.1"
+    "@sigstore/verify": "^4.1.0"
   }
 }
