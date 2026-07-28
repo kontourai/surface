@@ -97,6 +97,8 @@ Every `package.json` script is an active repo workflow, release guard, or contri
 | `setup:repo-hooks` | Contributor utility | Installs repo-owned local Git hooks. |
 | `validate:repo-hooks` | Guard | Verifies the repo hook wiring and docs stay aligned. |
 | `verify:trust-bundle` | Release utility | `structural-only` trust-bundle inspection for a signed trust-bundle.dsse.json + trust-bundle.sigstore.json pair; full Sigstore cryptographic verification remains unavailable in this script and must be performed manually with a separate verifier. |
+| `workflow:sidecar` | Delivery tooling | Runs the locally pinned flow-agents workflow sidecar for delivery-bundle authoring. |
+| `workflow:validate-artifacts` | Delivery tooling | Validates delivery-bundle artifacts against the locally pinned flow-agents kit schemas. |
 
 ## Top Recommendation
 
