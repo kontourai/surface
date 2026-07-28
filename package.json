@@ -88,10 +88,10 @@
     "@kontourai/survey": "^1.18.0",
     "@kontourai/ui": "^1.1.0",
     "@playwright/test": "^1.60.0",
-    "@types/node": "^25.9.2",
+    "@types/node": "^26.1.2",
     "ajv": "^8.20.0",
     "hachure": "^0.15.0",
-    "typescript": "^6.0.3"
+    "typescript": "^7.0.2"
   },
   "engines": {
     "node": ">=22"
