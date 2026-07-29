@@ -82,16 +82,19 @@
     "release:trust-bundle": "node scripts/release-trust-bundle.mjs",
     "check:console-token-drift": "node scripts/check-console-token-drift.mjs",
     "verify:trust-bundle": "node scripts/verify-trust-bundle.mjs",
-    "sync:schemas": "node scripts/sync-schemas.mjs"
+    "sync:schemas": "node scripts/sync-schemas.mjs",
+    "workflow:sidecar": "flow-agents-workflow-sidecar",
+    "workflow:validate-artifacts": "flow-agents-validate-artifacts"
   },
   "devDependencies": {
-    "@kontourai/survey": "^1.18.0",
+    "@kontourai/flow-agents": "5.5.0",
+    "@kontourai/survey": "^2.4.1",
     "@kontourai/ui": "^1.1.0",
     "@playwright/test": "^1.60.0",
-    "@types/node": "^25.9.2",
+    "@types/node": "^26.1.2",
     "ajv": "^8.20.0",
     "hachure": "^0.15.0",
-    "typescript": "^6.0.3"
+    "typescript": "^7.0.2"
   },
   "engines": {
     "node": ">=22"
