@@ -324,8 +324,15 @@ export function checkAuthorityActive(
  * The version of the status derivation algorithm implemented here.
  * Increment when the algorithm changes so that stored InquiryRecords can be
  * re-evaluated if needed.
+ *
+ * "3": a declared validity rule that cannot be evaluated now derives `stale`
+ * instead of `verified` (commit rule with no `currentIntegrityRef`; duration
+ * rule with no `durationDays` or an unparseable anchor; a rule `kind` this
+ * version does not understand). Records stamped "2" were computed under the
+ * previous fail-open behaviour and must not be recomputed as if they were
+ * equivalent — see ADR 0003 §7.
  */
-export const statusFunctionVersion = "2";
+export const statusFunctionVersion = "3";
 
 /**
  * The result shape returned by deriveClaimStatus.

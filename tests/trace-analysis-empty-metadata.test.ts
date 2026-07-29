@@ -115,3 +115,28 @@ test("a real value nested under actor still clears the identity gap", () => {
   const gaps = attestationGaps({ actor: { identityProof: "sigstore:bundle-ref" } });
   assert.ok(!gaps.includes("attestation_identity_unverified"), JSON.stringify(gaps));
 });
+
+test("cheap non-string placeholders do not clear the gaps either", () => {
+  // Same class as the empty string: an empty object or array carries no
+  // identifying information and is just as cheap to supply.
+  const baseline = attestationGaps(undefined);
+  assert.deepEqual(attestationGaps({ identityProof: {}, authoritySource: {} }), baseline, "empty object");
+  assert.deepEqual(attestationGaps({ identityProof: [], authoritySource: [] }), baseline, "empty array");
+});
+
+test("a populated object value still clears the identity gap", () => {
+  const gaps = attestationGaps({ identityProof: { bundle: "sigstore:ref" } });
+  assert.ok(!gaps.includes("attestation_identity_unverified"), JSON.stringify(gaps));
+});
+
+test("an inherited identityProof cannot forge presence — own properties only", () => {
+  // A bracket read resolves through the prototype chain; an Evidence built
+  // programmatically over a crafted prototype must not clear the gap.
+  const forged = Object.create({ identityProof: "sigstore:inherited" }) as Record<string, unknown>;
+  assert.deepEqual(attestationGaps(forged), attestationGaps(undefined));
+});
+
+test("an inherited actor.identityProof cannot forge presence either", () => {
+  const forgedActor = Object.create({ identityProof: "sigstore:inherited" }) as Record<string, unknown>;
+  assert.deepEqual(attestationGaps({ actor: forgedActor }), attestationGaps(undefined));
+});

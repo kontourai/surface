@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { deriveTrustStatus } from "../src/status.js";
+import { deriveTrustStatus, reapplyVerifiedFreshness, statusFunctionVersion } from "../src/status.js";
 import type { Claim, Evidence, VerificationEvent, VerificationPolicy } from "../src/types.js";
 
 /**
@@ -132,4 +132,36 @@ test("no policy at all remains not-stale — no rule is declared, so none is une
   // "a rule was declared and we cannot check it". Changing this would make
   // every policy-less claim stale, which is a separate decision.
   assert.equal(derive(baseClaim, undefined), "verified");
+});
+
+test("statusFunctionVersion is bumped past the fail-open algorithm", () => {
+  // ADR 0003 §7: `f` is versioned so a holder of the events and policy can
+  // recompute and verify. Records stamped "2" were computed under the previous
+  // fail-open behaviour, so this algorithm must not also call itself "2".
+  assert.notEqual(statusFunctionVersion, "2");
+});
+
+test("the checkpoint freshness path applies the same fail-closed rule", () => {
+  // reapplyVerifiedFreshness is a second, real call site of isVerifiedEventStale
+  // (used by deriveTrustSnapshot's checkpoint mode). Guard it explicitly so a
+  // future refactor that duplicates the logic cannot diverge silently.
+  const unbound = reapplyVerifiedFreshness({
+    priorStatus: "verified",
+    claim: { ...baseClaim, currentIntegrityRef: undefined },
+    evidence,
+    events: [verifiedEvent],
+    policy: commitPolicy(),
+    now,
+  });
+  assert.equal(unbound, "stale");
+
+  const bound = reapplyVerifiedFreshness({
+    priorStatus: "verified",
+    claim: { ...baseClaim, currentIntegrityRef: "sha256:aaaa" },
+    evidence,
+    events: [verifiedEvent],
+    policy: commitPolicy(),
+    now,
+  });
+  assert.equal(bound, "verified");
 });
