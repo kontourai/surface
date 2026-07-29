@@ -174,13 +174,26 @@ function authoritySatisfiesPolicy(trace: AuthorityTrace, policy: VerificationPol
   return trace.authorityRef === policy.reviewAuthority;
 }
 
+/**
+ * Presence of a *value*, not merely of a key. An attestation that carries
+ * `identityProof: ""` has supplied no identity proof, and treating the empty
+ * string as satisfying the check makes the cheapest possible input clear the
+ * gap it exists to report.
+ */
+function hasMetadataValue(value: unknown): boolean {
+  if (value === undefined || value === null) return false;
+  if (typeof value === "string") return value.trim().length > 0;
+  return true;
+}
+
 function hasMetadataKey(metadata: Record<string, unknown> | undefined, key: string): boolean {
-  return metadata?.[key] !== undefined && metadata[key] !== null;
+  return hasMetadataValue(metadata?.[key]);
 }
 
 function hasNestedActorKey(metadata: Record<string, unknown> | undefined, key: string): boolean {
   const actor = metadata?.actor;
-  return typeof actor === "object" && actor !== null && (actor as Record<string, unknown>)[key] !== undefined;
+  if (typeof actor !== "object" || actor === null) return false;
+  return hasMetadataValue((actor as Record<string, unknown>)[key]);
 }
 
 function policyForClaim(claim: Claim | undefined, policiesById: Map<string, VerificationPolicy>): VerificationPolicy | undefined {

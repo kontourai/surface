@@ -146,13 +146,20 @@ function isVerifiedEventStale(
     return now.getTime() > intrinsic;
   }
 
+  // No policy means no declared validity rule, so there is nothing to expire
+  // against and the event is not stale. This is deliberate and is NOT the same
+  // as the cases below: there, a rule IS declared and we cannot evaluate it.
+  // An unevaluable declared rule fails closed — otherwise omitting the input a
+  // rule depends on is the cheapest way to make a claim permanently fresh.
   if (!policy) {
     return false;
   }
 
   if (policy.validityRule.kind === "commit") {
+    // The policy binds validity to a specific commit and the claim carries no
+    // commit to bind to, so the rule cannot be satisfied.
     if (!claim.currentIntegrityRef) {
-      return false;
+      return true;
     }
     const eventEvidenceRefs = new Set(
       evidence
@@ -163,14 +170,26 @@ function isVerifiedEventStale(
     return !eventEvidenceRefs.has(claim.currentIntegrityRef);
   }
 
-  if (policy.validityRule.kind !== "duration") {
+  // "historical" and "manual" are declared, understood rules that intentionally
+  // do not expire on a timer — a manual rule defers to a human decision. They
+  // are evaluable and their answer is "not stale"; they are NOT omissions.
+  if (policy.validityRule.kind === "historical" || policy.validityRule.kind === "manual") {
     return false;
+  }
+
+  // Any other kind is one this version of Surface does not understand — most
+  // likely a newer schema. We cannot evaluate the declared rule, so fail closed
+  // rather than silently treating the claim as fresh.
+  if (policy.validityRule.kind !== "duration") {
+    return true;
   }
 
   const verifiedAt = event.verifiedAt ?? event.createdAt;
   const verifiedTime = Date.parse(verifiedAt);
+  // A duration rule with no duration, or an unparseable anchor timestamp, is
+  // an unevaluable declared rule.
   if (!Number.isFinite(verifiedTime) || typeof policy.validityRule.durationDays !== "number") {
-    return false;
+    return true;
   }
 
   const expiresAt = verifiedTime + policy.validityRule.durationDays * 24 * 60 * 60 * 1000;
