@@ -174,13 +174,39 @@ function authoritySatisfiesPolicy(trace: AuthorityTrace, policy: VerificationPol
   return trace.authorityRef === policy.reviewAuthority;
 }
 
+/**
+ * Presence of a *value*, not merely of a key. An attestation that carries
+ * `identityProof: ""` has supplied no identity proof, and treating the empty
+ * string as satisfying the check makes the cheapest possible input clear the
+ * gap it exists to report.
+ */
+function hasMetadataValue(value: unknown): boolean {
+  if (value === undefined || value === null) return false;
+  if (typeof value === "string") return value.trim().length > 0;
+  // An empty object or array carries no more identifying information than an
+  // empty string, and is just as cheap to supply.
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === "object") return Object.keys(value as object).length > 0;
+  return true;
+}
+
+/**
+ * Own-property reads only. A bracket access resolves through the prototype
+ * chain, which would let a programmatically-constructed Evidence forge an
+ * identity proof by inheritance rather than by supplying one — the same
+ * forgery class `waiver.ts` guards against for waiver fields.
+ */
+function ownValue(source: unknown, key: string): unknown {
+  if (typeof source !== "object" || source === null) return undefined;
+  return Object.hasOwn(source, key) ? (source as Record<string, unknown>)[key] : undefined;
+}
+
 function hasMetadataKey(metadata: Record<string, unknown> | undefined, key: string): boolean {
-  return metadata?.[key] !== undefined && metadata[key] !== null;
+  return hasMetadataValue(ownValue(metadata, key));
 }
 
 function hasNestedActorKey(metadata: Record<string, unknown> | undefined, key: string): boolean {
-  const actor = metadata?.actor;
-  return typeof actor === "object" && actor !== null && (actor as Record<string, unknown>)[key] !== undefined;
+  return hasMetadataValue(ownValue(ownValue(metadata, "actor"), key));
 }
 
 function policyForClaim(claim: Claim | undefined, policiesById: Map<string, VerificationPolicy>): VerificationPolicy | undefined {
