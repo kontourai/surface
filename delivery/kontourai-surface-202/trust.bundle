@@ -10,8 +10,8 @@
       "claimType": "builder.pull-work.selected",
       "fieldOrBehavior": "Work Item kontourai/surface#202 is durably assigned to the active workflow actor (assignment sha256:37b8b135885ad9e1a94cbb42e72b315bc526b328afc888a012f4897b4fa549ba).",
       "value": "pass",
-      "createdAt": "2026-07-30T19:14:24.123Z",
-      "updatedAt": "2026-07-30T19:14:24.123Z",
+      "createdAt": "2026-07-30T19:23:43.238Z",
+      "updatedAt": "2026-07-30T19:23:43.238Z",
       "impactLevel": "high",
       "verificationPolicyId": "policy:builder.pull-work.selected:attestation",
       "metadata": {
@@ -60,8 +60,8 @@
       "claimType": "builder.design-probe.pickup-readiness",
       "fieldOrBehavior": "Pickup probe records goal fit, scope, dependencies, risks, and planning readiness.",
       "value": "pass",
-      "createdAt": "2026-07-30T19:14:24.123Z",
-      "updatedAt": "2026-07-30T19:14:24.123Z",
+      "createdAt": "2026-07-30T19:23:43.238Z",
+      "updatedAt": "2026-07-30T19:23:43.238Z",
       "impactLevel": "high",
       "verificationPolicyId": "policy:builder.design-probe.pickup-readiness:attestation",
       "metadata": {
@@ -100,8 +100,8 @@
       "claimType": "builder.design-probe.decisions",
       "fieldOrBehavior": "Probe decisions and accepted gaps are explicit in the handoff.",
       "value": "pass",
-      "createdAt": "2026-07-30T19:14:24.123Z",
-      "updatedAt": "2026-07-30T19:14:24.123Z",
+      "createdAt": "2026-07-30T19:23:43.238Z",
+      "updatedAt": "2026-07-30T19:23:43.238Z",
       "impactLevel": "high",
       "verificationPolicyId": "policy:builder.design-probe.decisions:attestation",
       "metadata": {
@@ -140,8 +140,8 @@
       "claimType": "builder.plan.implementation",
       "fieldOrBehavior": "Implementation plan records scope, sequencing, acceptance criteria, and required evidence.",
       "value": "pass",
-      "createdAt": "2026-07-30T19:14:24.123Z",
-      "updatedAt": "2026-07-30T19:14:24.123Z",
+      "createdAt": "2026-07-30T19:23:43.238Z",
+      "updatedAt": "2026-07-30T19:23:43.238Z",
       "impactLevel": "high",
       "verificationPolicyId": "policy:builder.plan.implementation:attestation",
       "metadata": {
@@ -217,8 +217,8 @@
       "claimType": "builder.execute.scope",
       "fieldOrBehavior": "Implemented the bounded Surface MCP 2026-07-28 dual-era server scope in the files named by the approved plan; no unrelated product changes are included.",
       "value": "pass",
-      "createdAt": "2026-07-30T19:14:24.123Z",
-      "updatedAt": "2026-07-30T19:14:24.123Z",
+      "createdAt": "2026-07-30T19:23:43.238Z",
+      "updatedAt": "2026-07-30T19:23:43.238Z",
       "impactLevel": "high",
       "verificationPolicyId": "policy:builder.execute.scope:attestation",
       "metadata": {
@@ -257,8 +257,8 @@
       "claimType": "builder.verify.tests",
       "fieldOrBehavior": "Final Surface verification passed at HEAD 1854d5a: 565 core tests, external adapter and packed modern/legacy MCP consumer tests, package and docs checks, and 32 browser tests passed with 4 intentional matrix skips.",
       "value": "pass",
-      "createdAt": "2026-07-30T19:14:24.123Z",
-      "updatedAt": "2026-07-30T19:14:24.123Z",
+      "createdAt": "2026-07-30T19:23:43.238Z",
+      "updatedAt": "2026-07-30T19:23:43.238Z",
       "impactLevel": "high",
       "verificationPolicyId": "policy:builder.verify.tests:test_output",
       "metadata": {
@@ -328,8 +328,8 @@
       "claimType": "builder.merge-ready.readiness",
       "fieldOrBehavior": "PASS: final scope is clean, AC1-AC5 have command-backed evidence, independent review is clean after the bundled-license repair, and provider Node 22/24, secret, and readiness checks pass; Trust Verify awaits the later provisional bundle.",
       "value": "pass",
-      "createdAt": "2026-07-30T19:14:24.123Z",
-      "updatedAt": "2026-07-30T19:14:24.123Z",
+      "createdAt": "2026-07-30T19:23:43.238Z",
+      "updatedAt": "2026-07-30T19:23:43.238Z",
       "impactLevel": "high",
       "verificationPolicyId": "policy:builder.merge-ready.readiness:attestation",
       "metadata": {
@@ -361,6 +361,128 @@
           "identity_version": 2,
           "recorded_at": "2026-07-30T19:14:24.123Z",
           "flow_run_head": "59549b5c5b8160f9e31247a614fbeac1e040e55c5c629a1a4b73343e9d18557a"
+        }
+      },
+      "status": "verified"
+    },
+    {
+      "id": "kontourai-surface-202-gate-claim-ci-merge-readiness.flow-agents-workflow.merge-trust-verify-node-22-node-24-secret-scan-and-advisory-readiness-all-pass-on-pr-203-delivery-revision-fc4bc0d-source-review-and-ac1-ac5-are-clean-gate-visit-2026-07-30t19-23-13-184z",
+      "subjectType": "pull-request",
+      "subjectId": "kontourai-surface-202/gate-claim-ci-merge-readiness",
+      "facet": "flow-agents.workflow",
+      "claimType": "builder.merge-ready-ci.readiness",
+      "fieldOrBehavior": "MERGE: Trust Verify, Node 22, Node 24, Secret Scan, and Advisory readiness all pass on PR #203 delivery revision fc4bc0d; source review and AC1-AC5 are clean.",
+      "value": "pass",
+      "createdAt": "2026-07-30T19:23:43.238Z",
+      "updatedAt": "2026-07-30T19:23:43.238Z",
+      "impactLevel": "high",
+      "verificationPolicyId": "policy:builder.merge-ready-ci.readiness:attestation",
+      "metadata": {
+        "origin": "check",
+        "check_kind": "external",
+        "workflow_subject_ref": "kontourai/surface#202",
+        "expected_producer": "builder.release-readiness",
+        "recorded_by": "codexthread-6377ca0c787f951bb744ed6bKontour",
+        "self_produced_trust_slices": [
+          "ci-merge-readiness"
+        ],
+        "artifact_refs": [
+          {
+            "kind": "artifact",
+            "file": ".kontourai/flow-agents/kontourai-surface-202/release.json",
+            "summary": "Release-readiness decision, authorization, rollback, observability, exact revisions, and residual risk state."
+          }
+        ],
+        "gate_claim": {
+          "expectation_id": "ci-merge-readiness",
+          "claim_type": "builder.merge-ready-ci.readiness",
+          "subject_type": "pull-request",
+          "step_id": "merge-ready-ci",
+          "identity_version": 2,
+          "recorded_at": "2026-07-30T19:23:13.184Z",
+          "flow_run_head": "9c15717113b1b2a1bbd3b533fb37cabc3dca2b1c244df19d1769c6c450c342f2"
+        }
+      },
+      "status": "verified"
+    },
+    {
+      "id": "kontourai-surface-202-gate-claim-decision-evidence.flow-agents-workflow.delivery-decisions-completed-packaging-correction-and-the-merge-closeout-path-are-recorded-gate-visit-2026-07-30t19-23-42-706z",
+      "subjectType": "decision",
+      "subjectId": "kontourai-surface-202/gate-claim-decision-evidence",
+      "facet": "flow-agents.workflow",
+      "claimType": "builder.learn.decisions",
+      "fieldOrBehavior": "Delivery decisions, completed packaging correction, and the merge closeout path are recorded.",
+      "value": "pass",
+      "createdAt": "2026-07-30T19:23:43.238Z",
+      "updatedAt": "2026-07-30T19:23:43.238Z",
+      "impactLevel": "high",
+      "verificationPolicyId": "policy:builder.learn.decisions:attestation",
+      "metadata": {
+        "origin": "check",
+        "check_kind": "external",
+        "workflow_subject_ref": "kontourai/surface#202",
+        "expected_producer": "builder.learning-review",
+        "recorded_by": "codexthread-6377ca0c787f951bb744ed6bKontour",
+        "self_produced_trust_slices": [
+          "decision-evidence",
+          "learning-evidence"
+        ],
+        "artifact_refs": [
+          {
+            "kind": "artifact",
+            "file": ".kontourai/flow-agents/kontourai-surface-202/learning.json",
+            "summary": "Delivery decisions, observed facts, correction state, and workspace closeout routing."
+          }
+        ],
+        "gate_claim": {
+          "expectation_id": "decision-evidence",
+          "claim_type": "builder.learn.decisions",
+          "subject_type": "decision",
+          "step_id": "learn",
+          "identity_version": 2,
+          "recorded_at": "2026-07-30T19:23:42.706Z",
+          "flow_run_head": "1e816b88de3c63179d29d2bde281b58b511f57d9dec76e89bf5cd43d33806eca"
+        }
+      },
+      "status": "verified"
+    },
+    {
+      "id": "kontourai-surface-202-gate-claim-learning-evidence.flow-agents-workflow.observed-outcomes-and-the-completed-bundled-license-learning-are-durably-recorded-no-unresolved-follow-up-remains-gate-visit-2026-07-30t19-23-43-238z",
+      "subjectType": "release",
+      "subjectId": "kontourai-surface-202/gate-claim-learning-evidence",
+      "facet": "flow-agents.workflow",
+      "claimType": "builder.learn.evidence",
+      "fieldOrBehavior": "Observed outcomes and the completed bundled-license learning are durably recorded; no unresolved follow-up remains.",
+      "value": "pass",
+      "createdAt": "2026-07-30T19:23:43.238Z",
+      "updatedAt": "2026-07-30T19:23:43.238Z",
+      "impactLevel": "high",
+      "verificationPolicyId": "policy:builder.learn.evidence:attestation",
+      "metadata": {
+        "origin": "check",
+        "check_kind": "external",
+        "workflow_subject_ref": "kontourai/surface#202",
+        "expected_producer": "builder.learning-review",
+        "recorded_by": "codexthread-6377ca0c787f951bb744ed6bKontour",
+        "self_produced_trust_slices": [
+          "decision-evidence",
+          "learning-evidence"
+        ],
+        "artifact_refs": [
+          {
+            "kind": "artifact",
+            "file": ".kontourai/flow-agents/kontourai-surface-202/learning.json",
+            "summary": "Observed outcomes, interpretation, completed correction, and unresolved-gap state."
+          }
+        ],
+        "gate_claim": {
+          "expectation_id": "learning-evidence",
+          "claim_type": "builder.learn.evidence",
+          "subject_type": "release",
+          "step_id": "learn",
+          "identity_version": 2,
+          "recorded_at": "2026-07-30T19:23:43.238Z",
+          "flow_run_head": "1e816b88de3c63179d29d2bde281b58b511f57d9dec76e89bf5cd43d33806eca"
         }
       },
       "status": "verified"
@@ -870,7 +992,7 @@
       "method": "corroboration",
       "sourceRef": "kontourai-surface-202/evidence.json",
       "excerptOrSummary": "Work Item kontourai/surface#202 is durably assigned to the active workflow actor (assignment sha256:37b8b135885ad9e1a94cbb42e72b315bc526b328afc888a012f4897b4fa549ba).",
-      "observedAt": "2026-07-30T19:14:24.123Z",
+      "observedAt": "2026-07-30T19:23:43.238Z",
       "collectedBy": "flow-agents/workflow-sidecar",
       "passing": true
     },
@@ -881,7 +1003,7 @@
       "method": "corroboration",
       "sourceRef": "kontourai-surface-202/evidence.json",
       "excerptOrSummary": "Pickup probe records goal fit, scope, dependencies, risks, and planning readiness.",
-      "observedAt": "2026-07-30T19:14:24.123Z",
+      "observedAt": "2026-07-30T19:23:43.238Z",
       "collectedBy": "flow-agents/workflow-sidecar",
       "passing": true
     },
@@ -892,7 +1014,7 @@
       "method": "corroboration",
       "sourceRef": "kontourai-surface-202/evidence.json",
       "excerptOrSummary": "Probe decisions and accepted gaps are explicit in the handoff.",
-      "observedAt": "2026-07-30T19:14:24.123Z",
+      "observedAt": "2026-07-30T19:23:43.238Z",
       "collectedBy": "flow-agents/workflow-sidecar",
       "passing": true
     },
@@ -903,7 +1025,7 @@
       "method": "corroboration",
       "sourceRef": "kontourai-surface-202/evidence.json",
       "excerptOrSummary": "Implementation plan records scope, sequencing, acceptance criteria, and required evidence.",
-      "observedAt": "2026-07-30T19:14:24.123Z",
+      "observedAt": "2026-07-30T19:23:43.238Z",
       "collectedBy": "flow-agents/workflow-sidecar",
       "passing": true
     },
@@ -914,7 +1036,7 @@
       "method": "corroboration",
       "sourceRef": "kontourai-surface-202/evidence.json",
       "excerptOrSummary": "Implemented the bounded Surface MCP 2026-07-28 dual-era server scope in the files named by the approved plan; no unrelated product changes are included.",
-      "observedAt": "2026-07-30T19:14:24.123Z",
+      "observedAt": "2026-07-30T19:23:43.238Z",
       "collectedBy": "flow-agents/workflow-sidecar",
       "passing": true
     },
@@ -925,7 +1047,7 @@
       "method": "validation",
       "sourceRef": "kontourai-surface-202/command-log.jsonl",
       "excerptOrSummary": "Final Surface verification passed at HEAD 1854d5a: 565 core tests, external adapter and packed modern/legacy MCP consumer tests, package and docs checks, and 32 browser tests passed with 4 intentional matrix skips.",
-      "observedAt": "2026-07-30T19:14:24.123Z",
+      "observedAt": "2026-07-30T19:23:43.238Z",
       "collectedBy": "flow-agents/evidence-capture",
       "passing": true,
       "execution": {
@@ -942,7 +1064,40 @@
       "method": "corroboration",
       "sourceRef": "kontourai-surface-202/evidence.json",
       "excerptOrSummary": "PASS: final scope is clean, AC1-AC5 have command-backed evidence, independent review is clean after the bundled-license repair, and provider Node 22/24, secret, and readiness checks pass; Trust Verify awaits the later provisional bundle.",
-      "observedAt": "2026-07-30T19:14:24.123Z",
+      "observedAt": "2026-07-30T19:23:43.238Z",
+      "collectedBy": "flow-agents/workflow-sidecar",
+      "passing": true
+    },
+    {
+      "id": "ev:kontourai-surface-202-gate-claim-ci-merge-readiness.flow-agents-workflow.merge-trust-verify-node-22-node-24-secret-scan-and-advisory-readiness-all-pass-on-pr-203-delivery-revision-fc4bc0d-source-review-and-ac1-ac5-are-clean-gate-visit-2026-07-30t19-23-13-184z",
+      "claimId": "kontourai-surface-202-gate-claim-ci-merge-readiness.flow-agents-workflow.merge-trust-verify-node-22-node-24-secret-scan-and-advisory-readiness-all-pass-on-pr-203-delivery-revision-fc4bc0d-source-review-and-ac1-ac5-are-clean-gate-visit-2026-07-30t19-23-13-184z",
+      "evidenceType": "attestation",
+      "method": "corroboration",
+      "sourceRef": "kontourai-surface-202/evidence.json",
+      "excerptOrSummary": "MERGE: Trust Verify, Node 22, Node 24, Secret Scan, and Advisory readiness all pass on PR #203 delivery revision fc4bc0d; source review and AC1-AC5 are clean.",
+      "observedAt": "2026-07-30T19:23:43.238Z",
+      "collectedBy": "flow-agents/workflow-sidecar",
+      "passing": true
+    },
+    {
+      "id": "ev:kontourai-surface-202-gate-claim-decision-evidence.flow-agents-workflow.delivery-decisions-completed-packaging-correction-and-the-merge-closeout-path-are-recorded-gate-visit-2026-07-30t19-23-42-706z",
+      "claimId": "kontourai-surface-202-gate-claim-decision-evidence.flow-agents-workflow.delivery-decisions-completed-packaging-correction-and-the-merge-closeout-path-are-recorded-gate-visit-2026-07-30t19-23-42-706z",
+      "evidenceType": "attestation",
+      "method": "corroboration",
+      "sourceRef": "kontourai-surface-202/evidence.json",
+      "excerptOrSummary": "Delivery decisions, completed packaging correction, and the merge closeout path are recorded.",
+      "observedAt": "2026-07-30T19:23:43.238Z",
+      "collectedBy": "flow-agents/workflow-sidecar",
+      "passing": true
+    },
+    {
+      "id": "ev:kontourai-surface-202-gate-claim-learning-evidence.flow-agents-workflow.observed-outcomes-and-the-completed-bundled-license-learning-are-durably-recorded-no-unresolved-follow-up-remains-gate-visit-2026-07-30t19-23-43-238z",
+      "claimId": "kontourai-surface-202-gate-claim-learning-evidence.flow-agents-workflow.observed-outcomes-and-the-completed-bundled-license-learning-are-durably-recorded-no-unresolved-follow-up-remains-gate-visit-2026-07-30t19-23-43-238z",
+      "evidenceType": "attestation",
+      "method": "corroboration",
+      "sourceRef": "kontourai-surface-202/evidence.json",
+      "excerptOrSummary": "Observed outcomes and the completed bundled-license learning are durably recorded; no unresolved follow-up remains.",
+      "observedAt": "2026-07-30T19:23:43.238Z",
       "collectedBy": "flow-agents/workflow-sidecar",
       "passing": true
     },
@@ -1187,6 +1342,57 @@
       "impactLevel": "high"
     },
     {
+      "id": "policy:builder.merge-ready-ci.readiness:attestation",
+      "claimType": "builder.merge-ready-ci.readiness",
+      "requiredEvidence": [
+        "attestation"
+      ],
+      "acceptanceCriteria": [
+        "A verified verification event must support a builder.merge-ready-ci.readiness claim."
+      ],
+      "reviewAuthority": "system",
+      "validityRule": {
+        "kind": "manual"
+      },
+      "stalenessTriggers": [],
+      "conflictRules": [],
+      "impactLevel": "high"
+    },
+    {
+      "id": "policy:builder.learn.decisions:attestation",
+      "claimType": "builder.learn.decisions",
+      "requiredEvidence": [
+        "attestation"
+      ],
+      "acceptanceCriteria": [
+        "A verified verification event must support a builder.learn.decisions claim."
+      ],
+      "reviewAuthority": "system",
+      "validityRule": {
+        "kind": "manual"
+      },
+      "stalenessTriggers": [],
+      "conflictRules": [],
+      "impactLevel": "high"
+    },
+    {
+      "id": "policy:builder.learn.evidence:attestation",
+      "claimType": "builder.learn.evidence",
+      "requiredEvidence": [
+        "attestation"
+      ],
+      "acceptanceCriteria": [
+        "A verified verification event must support a builder.learn.evidence claim."
+      ],
+      "reviewAuthority": "system",
+      "validityRule": {
+        "kind": "manual"
+      },
+      "stalenessTriggers": [],
+      "conflictRules": [],
+      "impactLevel": "high"
+    },
+    {
       "id": "policy:workflow.acceptance.criterion:test_output",
       "claimType": "workflow.acceptance.criterion",
       "requiredEvidence": [
@@ -1229,8 +1435,8 @@
       "evidenceIds": [
         "ev:kontourai-surface-202-gate-claim-selected-work.flow-agents-workflow.work-item-kontourai-surface-202-is-durably-assigned-to-the-active-workflow-actor-assignment-sha256-37b8b135885ad9e1a94cbb42e72b315bc526b328afc888a012f4897b4fa549ba-gate-visit-2026-07-30t14-52-43z"
       ],
-      "createdAt": "2026-07-30T19:14:24.123Z",
-      "verifiedAt": "2026-07-30T19:14:24.123Z"
+      "createdAt": "2026-07-30T19:23:43.238Z",
+      "verifiedAt": "2026-07-30T19:23:43.238Z"
     },
     {
       "id": "evt:kontourai-surface-202-gate-claim-pickup-probe-readiness.flow-agents-workflow.pickup-probe-records-goal-fit-scope-dependencies-risks-and-planning-readiness-gate-visit-2026-07-30t14-53-16-371z",
@@ -1241,8 +1447,8 @@
       "evidenceIds": [
         "ev:kontourai-surface-202-gate-claim-pickup-probe-readiness.flow-agents-workflow.pickup-probe-records-goal-fit-scope-dependencies-risks-and-planning-readiness-gate-visit-2026-07-30t14-53-16-371z"
       ],
-      "createdAt": "2026-07-30T19:14:24.123Z",
-      "verifiedAt": "2026-07-30T19:14:24.123Z"
+      "createdAt": "2026-07-30T19:23:43.238Z",
+      "verifiedAt": "2026-07-30T19:23:43.238Z"
     },
     {
       "id": "evt:kontourai-surface-202-gate-claim-probe-decisions-or-accepted-gaps.flow-agents-workflow.probe-decisions-and-accepted-gaps-are-explicit-in-the-handoff-gate-visit-2026-07-30t14-53-16-665z",
@@ -1253,8 +1459,8 @@
       "evidenceIds": [
         "ev:kontourai-surface-202-gate-claim-probe-decisions-or-accepted-gaps.flow-agents-workflow.probe-decisions-and-accepted-gaps-are-explicit-in-the-handoff-gate-visit-2026-07-30t14-53-16-665z"
       ],
-      "createdAt": "2026-07-30T19:14:24.123Z",
-      "verifiedAt": "2026-07-30T19:14:24.123Z"
+      "createdAt": "2026-07-30T19:23:43.238Z",
+      "verifiedAt": "2026-07-30T19:23:43.238Z"
     },
     {
       "id": "evt:kontourai-surface-202-gate-claim-implementation-plan.flow-agents-workflow.implementation-plan-records-scope-sequencing-acceptance-criteria-and-required-evidence-gate-visit-2026-07-30t14-57-06-435z",
@@ -1265,8 +1471,8 @@
       "evidenceIds": [
         "ev:kontourai-surface-202-gate-claim-implementation-plan.flow-agents-workflow.implementation-plan-records-scope-sequencing-acceptance-criteria-and-required-evidence-gate-visit-2026-07-30t14-57-06-435z"
       ],
-      "createdAt": "2026-07-30T19:14:24.123Z",
-      "verifiedAt": "2026-07-30T19:14:24.123Z"
+      "createdAt": "2026-07-30T19:23:43.238Z",
+      "verifiedAt": "2026-07-30T19:23:43.238Z"
     },
     {
       "id": "evt:kontourai-surface-202-gate-claim-implementation-scope.flow-agents-workflow.implemented-the-bounded-surface-mcp-2026-07-28-dual-era-server-scope-in-the-files-named-by-the-approved-plan-no-unrelated-product-changes-are-included-gate-visit-2026-07-30t15-09-45-688z",
@@ -1277,8 +1483,8 @@
       "evidenceIds": [
         "ev:kontourai-surface-202-gate-claim-implementation-scope.flow-agents-workflow.implemented-the-bounded-surface-mcp-2026-07-28-dual-era-server-scope-in-the-files-named-by-the-approved-plan-no-unrelated-product-changes-are-included-gate-visit-2026-07-30t15-09-45-688z"
       ],
-      "createdAt": "2026-07-30T19:14:24.123Z",
-      "verifiedAt": "2026-07-30T19:14:24.123Z"
+      "createdAt": "2026-07-30T19:23:43.238Z",
+      "verifiedAt": "2026-07-30T19:23:43.238Z"
     },
     {
       "id": "evt:kontourai-surface-202-gate-claim-tests-evidence.flow-agents-workflow.final-surface-verification-passed-at-head-1854d5a-565-core-tests-external-adapter-and-packed-modern-legacy-mcp-consumer-tests-package-and-docs-checks-and-32-browser-tests-passed-with-4-intentional-matrix-skips-gate-visit-2026-07-30t19-12-49-504z",
@@ -1289,8 +1495,8 @@
       "evidenceIds": [
         "ev:kontourai-surface-202-gate-claim-tests-evidence.flow-agents-workflow.final-surface-verification-passed-at-head-1854d5a-565-core-tests-external-adapter-and-packed-modern-legacy-mcp-consumer-tests-package-and-docs-checks-and-32-browser-tests-passed-with-4-intentional-matrix-skips-gate-visit-2026-07-30t19-12-49-504z"
       ],
-      "createdAt": "2026-07-30T19:14:24.123Z",
-      "verifiedAt": "2026-07-30T19:14:24.123Z"
+      "createdAt": "2026-07-30T19:23:43.238Z",
+      "verifiedAt": "2026-07-30T19:23:43.238Z"
     },
     {
       "id": "evt:kontourai-surface-202-gate-claim-merge-readiness.flow-agents-workflow.pass-final-scope-is-clean-ac1-ac5-have-command-backed-evidence-independent-review-is-clean-after-the-bundled-license-repair-and-provider-node-22-24-secret-and-readiness-checks-pass-trust-verify-awaits-the-later-provisional-bundle-gate-visit-2026-07-30t19-14-24-123z",
@@ -1301,8 +1507,44 @@
       "evidenceIds": [
         "ev:kontourai-surface-202-gate-claim-merge-readiness.flow-agents-workflow.pass-final-scope-is-clean-ac1-ac5-have-command-backed-evidence-independent-review-is-clean-after-the-bundled-license-repair-and-provider-node-22-24-secret-and-readiness-checks-pass-trust-verify-awaits-the-later-provisional-bundle-gate-visit-2026-07-30t19-14-24-123z"
       ],
-      "createdAt": "2026-07-30T19:14:24.123Z",
-      "verifiedAt": "2026-07-30T19:14:24.123Z"
+      "createdAt": "2026-07-30T19:23:43.238Z",
+      "verifiedAt": "2026-07-30T19:23:43.238Z"
+    },
+    {
+      "id": "evt:kontourai-surface-202-gate-claim-ci-merge-readiness.flow-agents-workflow.merge-trust-verify-node-22-node-24-secret-scan-and-advisory-readiness-all-pass-on-pr-203-delivery-revision-fc4bc0d-source-review-and-ac1-ac5-are-clean-gate-visit-2026-07-30t19-23-13-184z",
+      "claimId": "kontourai-surface-202-gate-claim-ci-merge-readiness.flow-agents-workflow.merge-trust-verify-node-22-node-24-secret-scan-and-advisory-readiness-all-pass-on-pr-203-delivery-revision-fc4bc0d-source-review-and-ac1-ac5-are-clean-gate-visit-2026-07-30t19-23-13-184z",
+      "status": "verified",
+      "actor": "flow-agents/workflow-sidecar",
+      "method": "validation",
+      "evidenceIds": [
+        "ev:kontourai-surface-202-gate-claim-ci-merge-readiness.flow-agents-workflow.merge-trust-verify-node-22-node-24-secret-scan-and-advisory-readiness-all-pass-on-pr-203-delivery-revision-fc4bc0d-source-review-and-ac1-ac5-are-clean-gate-visit-2026-07-30t19-23-13-184z"
+      ],
+      "createdAt": "2026-07-30T19:23:43.238Z",
+      "verifiedAt": "2026-07-30T19:23:43.238Z"
+    },
+    {
+      "id": "evt:kontourai-surface-202-gate-claim-decision-evidence.flow-agents-workflow.delivery-decisions-completed-packaging-correction-and-the-merge-closeout-path-are-recorded-gate-visit-2026-07-30t19-23-42-706z",
+      "claimId": "kontourai-surface-202-gate-claim-decision-evidence.flow-agents-workflow.delivery-decisions-completed-packaging-correction-and-the-merge-closeout-path-are-recorded-gate-visit-2026-07-30t19-23-42-706z",
+      "status": "verified",
+      "actor": "flow-agents/workflow-sidecar",
+      "method": "validation",
+      "evidenceIds": [
+        "ev:kontourai-surface-202-gate-claim-decision-evidence.flow-agents-workflow.delivery-decisions-completed-packaging-correction-and-the-merge-closeout-path-are-recorded-gate-visit-2026-07-30t19-23-42-706z"
+      ],
+      "createdAt": "2026-07-30T19:23:43.238Z",
+      "verifiedAt": "2026-07-30T19:23:43.238Z"
+    },
+    {
+      "id": "evt:kontourai-surface-202-gate-claim-learning-evidence.flow-agents-workflow.observed-outcomes-and-the-completed-bundled-license-learning-are-durably-recorded-no-unresolved-follow-up-remains-gate-visit-2026-07-30t19-23-43-238z",
+      "claimId": "kontourai-surface-202-gate-claim-learning-evidence.flow-agents-workflow.observed-outcomes-and-the-completed-bundled-license-learning-are-durably-recorded-no-unresolved-follow-up-remains-gate-visit-2026-07-30t19-23-43-238z",
+      "status": "verified",
+      "actor": "flow-agents/workflow-sidecar",
+      "method": "validation",
+      "evidenceIds": [
+        "ev:kontourai-surface-202-gate-claim-learning-evidence.flow-agents-workflow.observed-outcomes-and-the-completed-bundled-license-learning-are-durably-recorded-no-unresolved-follow-up-remains-gate-visit-2026-07-30t19-23-43-238z"
+      ],
+      "createdAt": "2026-07-30T19:23:43.238Z",
+      "verifiedAt": "2026-07-30T19:23:43.238Z"
     },
     {
       "id": "evt:kontourai-surface-202-ac1.flow-agents-workflow.a-modern-fixture-discovers-surface-and-completes-representative-tool-and-resource-operations-with-required-2026-07-28-envelopes-and-result-metadata-verified-2026-07-30t19-12-49-504z",
@@ -1371,8 +1613,8 @@
       "actor": "flow-agents/workflow-sidecar",
       "method": "validation",
       "evidenceIds": [],
-      "createdAt": "2026-07-30T19:14:24.123Z",
-      "verifiedAt": "2026-07-30T19:14:24.123Z"
+      "createdAt": "2026-07-30T19:23:43.238Z",
+      "verifiedAt": "2026-07-30T19:23:43.238Z"
     }
   ]
 }
