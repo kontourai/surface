@@ -123,6 +123,23 @@ test("packed npm artifact installs, imports, and serves modern plus legacy MCP f
       "packed Surface must not add required runtime dependencies",
     );
 
+    const bundledNotices = await readFile(
+      path.join(
+        installedPackageRoot,
+        "dist",
+        "src",
+        "commands",
+        "mcp.js.LEGAL.txt",
+      ),
+      "utf8",
+    );
+    assert.match(bundledNotices, /@modelcontextprotocol\/server@2\.0\.0 \(MIT\)/);
+    assert.match(bundledNotices, /zod@4\.2\.0 \(MIT\)/);
+    assert.match(
+      bundledNotices,
+      /Permission is hereby granted, free of charge/,
+    );
+
     const cliPath = path.join(consumer, "node_modules", ".bin", "surface");
     const cli = await execFileAsync(cliPath, ["--help"], {
       cwd: consumer,
