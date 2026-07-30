@@ -2,7 +2,22 @@
 
 `surface mcp` serves portable trust state to AI agents over the [Model Context Protocol](https://modelcontextprotocol.io). It is the same trust state a human reads — derived by the kernel, never summarized by a model — exposed as tools an agent can call before acting on a claim.
 
-The server is dependency-free and speaks MCP over stdio, so any MCP-capable client (Claude Code, IDE agents, custom runtimes) can connect without adding network services or credentials.
+The shipped server has no required runtime dependencies and speaks MCP over
+stdio, so any MCP-capable client (Claude Code, IDE agents, custom runtimes) can
+connect without adding network services or credentials.
+
+## Protocol compatibility
+
+One server definition serves both MCP eras:
+
+- MCP 2026-07-28 clients open with `server/discover`.
+- Existing clients continue to use the legacy `initialize` flow.
+
+There is no Surface flag or configuration choice for this. The opening request
+selects the compatible era automatically, and the same tools, resources, and
+trust derivation run behind both. Modern cacheable responses are private with a
+zero TTL because each call re-reads the configured input; legacy responses keep
+their legacy wire shape.
 
 ## Start the server
 
@@ -78,7 +93,14 @@ The embedded document is fully self-contained: the trust panel module and the re
 The panel is offered under both UI conventions, so one server renders across hosts:
 
 - **Embedded (mcp-ui.dev):** the `ui://` resource is included directly in the `surface_summary` / `surface_get_claim` tool result, as above.
-- **Declared (MCP Apps / SEP-1865):** `surface_summary` advertises `_meta["ui/resourceUri"]` (and the nested `_meta.ui.resourceUri`) pointing at `ui://surface/trust-panel/summary`, the server advertises the `resources` capability and the `io.modelcontextprotocol/ui` extension, and the panel is served via `resources/read`. This is the path the official MCP Apps hosts (e.g. ChatGPT, Claude) use to render the panel from a declared resource. `--no-ui` suppresses this surface too (no `resources` capability, no tool `_meta`).
+- **Declared (MCP Apps):** `surface_summary` advertises the canonical nested
+  `_meta.ui.resourceUri` pointing at `ui://surface/trust-panel/summary`, the
+  server advertises the `resources` capability and
+  `io.modelcontextprotocol/ui` extension, and the panel is served through
+  `resources/read`. The flat `_meta["ui/resourceUri"]` key remains compatibility
+  output for older Apps hosts; new integrations should read the nested shape.
+  `--no-ui` suppresses this surface too (no `resources` capability and no tool
+  UI metadata).
 
 ## Behavior contract
 
@@ -86,6 +108,9 @@ The panel is offered under both UI conventions, so one server renders across hos
 - Domain failures (unknown claim id, unreadable input) return tool results with `isError: true` rather than protocol errors, so agents can read the message and recover.
 - Unknown tools and unknown methods return standard JSON-RPC errors.
 - The server advertises the `tools` capability and (unless `--no-ui`) the `resources` capability plus the `io.modelcontextprotocol/ui` extension for the declared trust panel. It exposes no write operations: an agent can inspect trust state through MCP, but changing claims or evidence goes through the producer or the [claim authoring](claim-authoring.md) commands.
+- Standard output is reserved for MCP JSON-RPC. SDK and transport diagnostics
+  are sanitized and written to standard error so they cannot corrupt the
+  protocol stream.
 
 ## The discipline the kernel hands the agent
 

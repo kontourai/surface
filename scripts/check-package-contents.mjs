@@ -33,6 +33,7 @@ const requiredFiles = [
   "dist/src/trust-panel/surface-trust-panel.js",
   "dist/src/trust-panel/trust-panel-module.generated.js",
   "dist/src/mcp-ui/trust-panel-resource.js",
+  "dist/src/commands/mcp.js",
   "schemas/trust-bundle.schema.json",
   "docs/reference/console.md",
   "examples/external-adapter/src/index.ts",

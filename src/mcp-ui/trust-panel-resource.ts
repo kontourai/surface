@@ -25,7 +25,15 @@ export function buildTrustPanelUiResource(
     uri: string;
     mimeType: string;
     text: string;
-    _meta: { "mcpui.dev/ui-preferred-frame-size": [string, string] };
+    _meta: {
+      ui: {
+        csp: {
+          connectDomains: string[];
+          resourceDomains: string[];
+        };
+      };
+      "mcpui.dev/ui-preferred-frame-size": [string, string];
+    };
   };
 } {
   const reportJson = safeJsonStringify(report);
@@ -36,7 +44,17 @@ export function buildTrustPanelUiResource(
       uri: opts.uri,
       mimeType: "text/html;profile=mcp-app",
       text: html,
-      _meta: { "mcpui.dev/ui-preferred-frame-size": ["480px", "640px"] },
+      _meta: {
+        ui: {
+          // The document is deliberately self-contained. An empty policy is
+          // both accurate and a fail-closed default for Apps hosts.
+          csp: {
+            connectDomains: [],
+            resourceDomains: [],
+          },
+        },
+        "mcpui.dev/ui-preferred-frame-size": ["480px", "640px"],
+      },
     },
   };
 }
