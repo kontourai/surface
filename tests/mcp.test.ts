@@ -15,6 +15,131 @@ interface JsonRpcResponse {
   error?: { code: number; message: string };
 }
 
+const MODERN_PROTOCOL_VERSION = "2026-07-28";
+
+function modernMeta() {
+  return {
+    "io.modelcontextprotocol/protocolVersion": MODERN_PROTOCOL_VERSION,
+    "io.modelcontextprotocol/clientCapabilities": {
+      extensions: {
+        "io.modelcontextprotocol/ui": {
+          mimeTypes: ["text/html;profile=mcp-app"],
+        },
+      },
+    },
+    "io.modelcontextprotocol/clientInfo": {
+      name: "surface-modern-tests",
+      version: "0.0.0",
+    },
+  };
+}
+
+test("surface mcp serves MCP 2026-07-28 discovery and modern result envelopes", async () => {
+  const server = spawn(
+    "node",
+    ["bin/surface.mjs", "mcp", "--input", "examples/surface-example-bundle.json"],
+    { stdio: ["pipe", "pipe", "inherit"] },
+  );
+  const responses = collectResponses(server.stdout);
+
+  try {
+    send(server, {
+      jsonrpc: "2.0",
+      id: 1,
+      method: "server/discover",
+      params: { _meta: modernMeta() },
+    });
+    const discover = await responses.next(1);
+    assert.deepEqual(discover.result.supportedVersions, [MODERN_PROTOCOL_VERSION]);
+    assert.ok(discover.result.capabilities.tools);
+    assert.ok(discover.result.capabilities.resources);
+    assert.ok(discover.result.capabilities.extensions?.["io.modelcontextprotocol/ui"]);
+    assert.equal(discover.result.resultType, "complete");
+    assert.equal(discover.result.ttlMs, 0);
+    assert.equal(discover.result.cacheScope, "private");
+    assert.equal(
+      discover.result._meta["io.modelcontextprotocol/serverInfo"].name,
+      "kontour-surface",
+    );
+
+    send(server, {
+      jsonrpc: "2.0",
+      id: 2,
+      method: "tools/list",
+      params: { _meta: modernMeta() },
+    });
+    const toolsList = await responses.next(2);
+    assert.equal(toolsList.result.resultType, "complete");
+    assert.equal(toolsList.result.ttlMs, 0);
+    assert.equal(toolsList.result.cacheScope, "private");
+    assert.equal(
+      toolsList.result._meta["io.modelcontextprotocol/serverInfo"].name,
+      "kontour-surface",
+    );
+    const summaryTool = toolsList.result.tools.find(
+      (tool: { name: string }) => tool.name === "surface_summary",
+    );
+    assert.equal(summaryTool._meta.ui.resourceUri, "ui://surface/trust-panel/summary");
+    assert.deepEqual(summaryTool._meta.ui.visibility, ["model", "app"]);
+    assert.equal(
+      summaryTool._meta["ui/resourceUri"],
+      "ui://surface/trust-panel/summary",
+      "flat resource metadata remains compatibility output",
+    );
+
+    send(server, {
+      jsonrpc: "2.0",
+      id: 3,
+      method: "tools/call",
+      params: {
+        _meta: modernMeta(),
+        name: "surface_summary",
+        arguments: {},
+      },
+    });
+    const summary = await responses.next(3);
+    assert.equal(summary.result.resultType, "complete");
+    assert.equal(summary.result.isError, false);
+    assert.match(summary.result.content[0].text, /Kontour Surface report/);
+    assert.equal(summary.result.content[1].resource.mimeType, "text/html;profile=mcp-app");
+
+    send(server, {
+      jsonrpc: "2.0",
+      id: 4,
+      method: "resources/list",
+      params: { _meta: modernMeta() },
+    });
+    const resources = await responses.next(4);
+    assert.equal(resources.result.resultType, "complete");
+    assert.equal(resources.result.ttlMs, 0);
+    assert.equal(resources.result.cacheScope, "private");
+    assert.equal(resources.result.resources[0].uri, "ui://surface/trust-panel/summary");
+
+    send(server, {
+      jsonrpc: "2.0",
+      id: 5,
+      method: "resources/read",
+      params: {
+        _meta: modernMeta(),
+        uri: "ui://surface/trust-panel/summary",
+      },
+    });
+    const resource = await responses.next(5);
+    assert.equal(resource.result.resultType, "complete");
+    assert.equal(resource.result.ttlMs, 0);
+    assert.equal(resource.result.cacheScope, "private");
+    assert.equal(resource.result.contents[0].mimeType, "text/html;profile=mcp-app");
+    assert.ok(resource.result.contents[0].text.includes("surface-trust-panel"));
+    assert.deepEqual(resource.result.contents[0]._meta.ui.csp, {
+      connectDomains: [],
+      resourceDomains: [],
+    });
+  } finally {
+    server.stdin.end();
+    await once(server, "exit");
+  }
+});
+
 test("surface mcp serves trust state over the Model Context Protocol", async () => {
   const server = spawn("node", ["bin/surface.mjs", "mcp", "--input", "examples/surface-example-bundle.json"], {
     stdio: ["pipe", "pipe", "inherit"],
@@ -36,8 +161,8 @@ test("surface mcp serves trust state over the Model Context Protocol", async () 
     assert.equal(initialize.result.serverInfo.name, "kontour-surface");
     assert.equal(initialize.result.protocolVersion, "2025-06-18");
     assert.ok(initialize.result.capabilities.tools);
-    // SEP-1865: resources back the ui:// trust panel, and the MCP Apps
-    // capability extension is advertised.
+    // Resources back the ui:// trust panel, and the MCP Apps capability
+    // extension is advertised.
     assert.ok(initialize.result.capabilities.resources);
     assert.ok(initialize.result.capabilities.extensions?.["io.modelcontextprotocol/ui"]);
 
@@ -62,9 +187,8 @@ test("surface mcp serves trust state over the Model Context Protocol", async () 
       assert.equal(typeof tool.description, "string");
       assert.equal(tool.inputSchema.type, "object");
     }
-    // surface_summary advertises its SEP-1865 UI resource in BOTH the flat
-    // canonical key and the nested convenience shape, so one server renders in
-    // the official Apps hosts (ChatGPT/Claude) and in Station alike.
+    // surface_summary advertises the canonical nested MCP Apps resource pointer
+    // plus the flat compatibility key for older hosts.
     const summaryTool = toolsList.result.tools.find(
       (tool: { name: string }) => tool.name === "surface_summary",
     );
@@ -136,9 +260,9 @@ test("surface mcp serves trust state over the Model Context Protocol", async () 
     send(server, { jsonrpc: "2.0", id: 8, method: "tools/call", params: { name: "not_a_tool", arguments: {} } });
     const unknownTool = await responses.next(8);
     assert.equal(unknownTool.error?.code, -32602);
-    assert.match(unknownTool.error?.message ?? "", /Unknown tool/);
+    assert.match(unknownTool.error?.message ?? "", /(?:Unknown tool|Tool .* not found)/);
 
-    // SEP-1865 declared-resource path: list + read the trust panel resource.
+    // MCP Apps declared-resource path: list + read the trust panel resource.
     send(server, { jsonrpc: "2.0", id: 9, method: "resources/list" });
     const resourcesList = await responses.next(9);
     const listed = resourcesList.result.resources;
@@ -204,10 +328,10 @@ test("surface mcp --no-ui omits the UI resource entry", async () => {
     assert.equal(noUiInitialize.result.capabilities.extensions, undefined);
     send(server, { jsonrpc: "2.0", method: "notifications/initialized" });
 
-    // No UI resources are advertised, and tools carry no SEP-1865 _meta.
+    // No UI resources are advertised, and tools carry no MCP Apps _meta.
     send(server, { jsonrpc: "2.0", id: 10, method: "resources/list" });
     const noUiResources = await responses.next(10);
-    assert.equal(noUiResources.result.resources.length, 0);
+    assert.equal(noUiResources.error?.code, -32601);
 
     send(server, { jsonrpc: "2.0", id: 11, method: "tools/list" });
     const noUiTools = await responses.next(11);

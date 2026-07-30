@@ -68,6 +68,7 @@ Every `package.json` script is an active repo workflow, release guard, or contri
 |--------|----------|---------|
 | `build` | Build | Regenerates Console assets and compiles TypeScript into `dist/`. |
 | `build:console-assets` | Build | Concatenates ordered Console JS/CSS source parts into checked generated assets. |
+| `build:mcp-command` | Build | Bundles the official MCP server runtime into the published CLI command while preserving Surface's zero-required-runtime-dependency package contract. |
 | `build:trust-panel-module` | Build | Reads the compiled trust panel JS from dist and generates the inlined string constant used by the MCP UI resource builder. Runs after tsc. |
 | `check:console-assets` | Guard | Fails when checked generated Console assets are stale. |
 | `typecheck` | Guard | Runs Console asset sync check and trust panel module sync check before TypeScript `--noEmit`. |

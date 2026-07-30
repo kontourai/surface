@@ -52,8 +52,9 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "npm run build:console-assets && rm -rf dist && tsc && npm run build:trust-panel-module",
+    "build": "npm run build:console-assets && rm -rf dist && tsc && npm run build:mcp-command && npm run build:trust-panel-module",
     "build:console-assets": "node scripts/build-console-assets.mjs",
+    "build:mcp-command": "node scripts/build-mcp-command.mjs",
     "build:trust-panel-module": "node scripts/build-trust-panel-module.mjs",
     "check:console-assets": "node scripts/build-console-assets.mjs --check",
     "check:trust-panel-module": "node scripts/build-trust-panel-module.mjs --check",
@@ -90,11 +91,14 @@
     "@kontourai/flow-agents": "5.5.0",
     "@kontourai/survey": "^2.4.1",
     "@kontourai/ui": "^1.1.0",
+    "@modelcontextprotocol/server": "2.0.0",
     "@playwright/test": "^1.60.0",
     "@types/node": "^26.1.2",
     "ajv": "^8.20.0",
+    "esbuild": "0.28.1",
     "hachure": "^0.15.0",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "zod": "4.2.0"
   },
   "engines": {
     "node": ">=22"
