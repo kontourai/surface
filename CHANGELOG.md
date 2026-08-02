@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.15.0](https://github.com/kontourai/surface/compare/v2.14.0...v2.15.0) (2026-08-02)
+
+
+### Features
+
+* **kit:** declare builder.build workflow routing ([#215](https://github.com/kontourai/surface/issues/215)) ([679a611](https://github.com/kontourai/surface/commit/679a61158c2dbb16c0bf50f68c0293c725961fbe))
+
 ## [2.14.0](https://github.com/kontourai/surface/compare/v2.13.1...v2.14.0) (2026-08-02)
 
 
