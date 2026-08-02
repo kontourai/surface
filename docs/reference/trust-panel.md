@@ -41,8 +41,16 @@ The input is the output of `surface report` or `buildTrustReport` — a derived 
 ## What it renders
 
 - A summary header with the report source and generation time. The heading defaults to "Surface Trust Panel"; set the `heading` attribute to use your own copy.
-- Status chips with plain-language labels (`verified` → "Verified", `stale` → "Needs refresh", `unknown` → "No evidence").
+- Status chips with plain-language labels (`verified` → "Verified", `stale` → "Needs refresh", `unknown` → "No evidence"). Every status the report can carry has its own label and its own colour band, so a claim that was never checked can never read like one that was verified.
 - One expandable row per claim: subject, asserted field and value, impact, policy, the evidence items behind it, and any transparency gaps, color-coded by severity.
+- Per evidence item, the state a reader needs in order to judge it — not just its type, method and summary:
+  - **Support strength** — "Entails the claim", "Cited only", or "Support strength not stated". Evidence that is merely cited is not evidence that establishes the claim.
+  - **Result** — "Passed", "Failed", "Failed — blocking", or "Not evaluated". Absent `passing` is reported as not evaluated; it is never rendered as a pass.
+  - **Visibility** — the producer's disclosure state from `metadata.visibility` (or `metadata.disclosure.visibility`), per [Disclosure Requirements](../specs/disclosure-requirements.md). Undeclared visibility says so rather than implying "public", because private, redacted, permissioned and unavailable evidence must not read as missing.
+  - **Integrity** — the `integrityAnchor`'s kind and `verificationStatus` when one is supplied, so an anchor that failed verification does not render like one that passed.
+  - **Observed time**, always, or "Observed time not supplied".
+
+  Each row also carries `data-support`, `data-result`, `data-blocking`, `data-visibility` and `data-integrity` attributes for host styling and for tests. This is the [Minimum Trust Panel](../specs/minimum-trust-panel.md) §Required Sections 3 baseline: "evidence summary, type, method, source, observed time, result when supplied, and visibility state".
 
 ## Theming
 

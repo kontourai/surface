@@ -41,7 +41,10 @@ async function captureViewer(browser, baseUrl) {
 async function captureProductEmbed(browser, baseUrl) {
   const report = JSON.parse(await readFile("docs-site/sample-report.json", "utf8"));
   // Keep the demo focused: just the field-attested record claims.
-  report.claims = report.claims.filter((claim) => String(claim.surface).startsWith("field-attested-records"));
+  // `facet` is the current field name; `surface` is the pre-rename fallback
+  // (Hachure 0.9.0). Reading only `surface` filtered every claim out of the
+  // sample report, which left this capture unable to run at all.
+  report.claims = report.claims.filter((claim) => String(claim.facet ?? claim.surface).startsWith("field-attested-records"));
   const html = `<!doctype html>
 <html class="theme-surface"><head><meta charset="utf-8">
 <link rel="stylesheet" href="${baseUrl}/vendor/kontourai-ui/tokens/index.css">
