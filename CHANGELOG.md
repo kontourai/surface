@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.14.0](https://github.com/kontourai/surface/compare/v2.13.1...v2.14.0) (2026-08-02)
+
+
+### Features
+
+* serve MCP 2026-07-28 and legacy clients ([#203](https://github.com/kontourai/surface/issues/203)) ([a11c83e](https://github.com/kontourai/surface/commit/a11c83ef5a2cc1882f14edd2abda876d2cc869f9))
+
+
+### Fixes
+
+* attestation gaps require a value, not merely a key ([#199](https://github.com/kontourai/surface/issues/199)) ([becad3a](https://github.com/kontourai/surface/commit/becad3a54fe19abc0e7a7a7aadf3794df78abc6d))
+* **trust-panel:** render the evidence state a reader needs, and give the status chip test power ([#214](https://github.com/kontourai/surface/issues/214)) ([a26878b](https://github.com/kontourai/surface/commit/a26878bbf52f9f05f6edc4b7ae5aa9f0790a1ff5)), closes [#213](https://github.com/kontourai/surface/issues/213)
+
 ## [2.13.1](https://github.com/kontourai/surface/compare/v2.13.0...v2.13.1) (2026-07-27)
 
 
