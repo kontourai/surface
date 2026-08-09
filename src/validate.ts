@@ -17,6 +17,8 @@ import {
   validateIntegrityAnchor,
   validatePolicy,
 } from "./validation/records.js";
+import { resolvePolicyForClaim } from "./policy-resolver.js";
+import { deriveTrustStatus } from "./status.js";
 
 // TOLERANCE SHIM support (owner-ratified, one release; see the facet-shim
 // comment in `validateClaim` in ./validation/records.js for the read-path rule
@@ -98,6 +100,7 @@ export function validateTrustBundle(input: unknown): TrustBundle {
   }
 
   validateReferences({ claims, evidence, policies, events, claimGroups, authorityTrace } as TrustBundle);
+  validateResolvedValidityInputs({ claims, evidence, policies, events, authorityTrace } as Pick<TrustBundle, "claims" | "evidence" | "policies" | "events" | "authorityTrace">);
 
   const result: TrustBundle = { schemaVersion, source, claims, evidence, policies, events } as TrustBundle;
   if (producerId !== undefined) (result as TrustBundle).producerId = producerId;
@@ -106,6 +109,45 @@ export function validateTrustBundle(input: unknown): TrustBundle {
   if (authorityTrace !== undefined) (result as TrustBundle).authorityTrace = authorityTrace as TrustBundle["authorityTrace"];
   if (proof !== undefined) (result as TrustBundle).proof = proof;
   return result;
+}
+
+function validateResolvedValidityInputs(input: Pick<TrustBundle, "claims" | "evidence" | "policies" | "events" | "authorityTrace">): void {
+  for (const claim of input.claims) {
+    const policy = resolvePolicyForClaim(claim, input.policies);
+    if (policy?.validityRule.kind !== "commit") continue;
+    const status = deriveTrustStatus({
+      claim,
+      evidence: input.evidence.filter((item) => item.claimId === claim.id),
+      policy,
+      events: input.events.filter((event) => event.claimId === claim.id),
+      now: ledgerReferenceTime(claim, input.events),
+      authorityTrace: input.authorityTrace,
+    });
+    // A terminal or otherwise non-verified claim cannot silently read as
+    // healthy. The committed v2 status semantics remain authoritative for
+    // that decision; this validation only rejects the fail-open verified case.
+    if (status !== "verified") continue;
+    if (typeof claim.currentIntegrityRef !== "string" || claim.currentIntegrityRef.length === 0) {
+      throw new Error(
+        `Claim ${claim.id} requires currentIntegrityRef because policy ${policy.id} uses commit validity.`,
+      );
+    }
+  }
+}
+
+/**
+ * Validation has no caller-supplied "now", so it must not make a bundle's
+ * acceptance depend on the machine clock. Replaying at the latest claim event
+ * makes this a structural check of whether the ledger could otherwise present
+ * a verified commit-scoped claim without its required integrity reference.
+ */
+function ledgerReferenceTime(claim: TrustBundle["claims"][number], events: TrustBundle["events"]): Date {
+  const claimEvents = events.filter((event) => event.claimId === claim.id);
+  const latestEventTime = claimEvents.reduce<number | undefined>((latest, event) => {
+    const eventTime = Date.parse(event.createdAt);
+    return latest === undefined || eventTime > latest ? eventTime : latest;
+  }, undefined);
+  return new Date(latestEventTime ?? Date.parse(claim.updatedAt));
 }
 
 function validateTrustBundleProof(value: unknown): TrustBundleProof {

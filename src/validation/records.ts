@@ -273,7 +273,14 @@ export function validatePolicy(policy: unknown): void {
   requireObject(policy.validityRule, "policy.validityRule");
   rejectUnknownKeys(policy.validityRule, new Set(["kind", "durationDays"]), `policy ${policy.id} validityRule`);
   requireEnum(policy.validityRule, "kind", VALIDITY_KINDS);
-  if (policy.validityRule.durationDays !== undefined && typeof policy.validityRule.durationDays !== "number") {
+  if (policy.validityRule.kind === "duration") {
+    if (
+      typeof policy.validityRule.durationDays !== "number" ||
+      !Number.isFinite(policy.validityRule.durationDays)
+    ) {
+      throw new Error(`policy ${policy.id} duration validityRule.durationDays must be a finite number`);
+    }
+  } else if (policy.validityRule.durationDays !== undefined && typeof policy.validityRule.durationDays !== "number") {
     throw new Error(`policy ${policy.id} validityRule.durationDays must be a number`);
   }
   requireStringArray(policy, "stalenessTriggers");

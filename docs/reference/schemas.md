@@ -84,6 +84,35 @@ Omitting `collectWhen` means the producer applies its own default evidence colle
 
 Schema: `schemas/verification-policy.schema.json`
 
+### Validity-rule evaluation
+
+`statusFunctionVersion` remains `"2"`: the versioned status function keeps its
+published result for every valid input. Trust Snapshot derivation separately
+emits a blocking `policy_violation` transparency gap when a declared validity
+rule cannot be evaluated, so a `verified` v2 status never silently presents an
+unevaluable rule as healthy.
+
+- A `commit` rule that would otherwise derive `verified` requires the resolved
+  claim to carry `currentIntegrityRef`.
+- A `duration` rule requires a finite `durationDays` value and a
+  parseable verified-event timestamp.
+- A rule kind not understood by this Surface version is reported as
+  unevaluable by direct snapshot callers; `validateTrustBundle` rejects it.
+
+`validateTrustBundle` rejects invalid duration configuration and a missing
+commit reference when v2 would otherwise derive `verified`. The transparency
+gap remains necessary for typed or in-memory inputs that reach
+`deriveTrustSnapshot` without prior validation.
+
+Commit-input validation replays the claim at its latest ledger event rather
+than consulting the host clock, so accepting the same bundle is
+time-independent. A negative duration remains a valid v2 policy input and
+therefore derives stale immediately.
+
+`verificationPolicyId` remains optional for authored claims. When no policy
+resolves, Surface does not invent a validity window or a validity-rule gap;
+producers that need freshness guarantees must attach a policy explicitly.
+
 ## Verification Event
 
 Events are append-only status transitions for a claim.
