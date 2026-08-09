@@ -103,7 +103,16 @@ export function foldClaim(input: ClaimFoldInput): ClaimFoldResult {
     entailingEvidence,
     evidenceRequirement: policy ? evidenceRequirementFromPolicy(policy) : undefined,
     transparencyGaps: policy && evaluation
-      ? deriveTransparencyGaps({ claim: input.claim, evidence: input.evidence, entailingEvidence, policy, evaluation, status: ownStatus, now: input.now })
+      ? deriveTransparencyGaps({
+        claim: input.claim,
+        evidence: input.evidence,
+        entailingEvidence,
+        events: input.events,
+        policy,
+        evaluation,
+        status: ownStatus,
+        now: input.now,
+      })
       : input.evidence.length === 0 ? [noPolicyEvidenceGap(input.claim, input.now)] : [],
     eventsFolded,
     eventsTotal: input.events.length,
@@ -148,6 +157,7 @@ function deriveTransparencyGaps(input: {
   claim: Claim;
   evidence: Evidence[];
   entailingEvidence: Evidence[];
+  events: VerificationEvent[];
   policy: VerificationPolicy;
   evaluation: ClaimEvidenceEvaluation;
   status: TrustStatus;
@@ -253,6 +263,9 @@ function deriveTransparencyGaps(input: {
     });
   }
 
+  const unevaluableValidityGap = deriveUnevaluableValidityGap(input);
+  if (unevaluableValidityGap) transparencyGaps.push(unevaluableValidityGap);
+
   for (const item of input.entailingEvidence.filter((evidence) => evidence.passing === false)) {
     transparencyGaps.push({
       id: `${input.claim.id}.gap.evidence-${item.id}`,
@@ -273,6 +286,60 @@ function deriveTransparencyGaps(input: {
   }
 
   return transparencyGaps;
+}
+
+/**
+ * Status function v2 deliberately leaves unevaluable validity rules outside
+ * its output contract. This unversioned snapshot projection makes those rules
+ * inspectable and blocking without changing a conforming status result.
+ */
+function deriveUnevaluableValidityGap(input: {
+  claim: Claim;
+  evidence: Evidence[];
+  events: VerificationEvent[];
+  policy: VerificationPolicy;
+  now: Date;
+}): TransparencyGap | undefined {
+  const rule = input.policy.validityRule as { kind?: unknown; durationDays?: unknown };
+  let message: string | undefined;
+
+  if (rule.kind === "commit") {
+    if (typeof input.claim.currentIntegrityRef !== "string" || input.claim.currentIntegrityRef.length === 0) {
+      message = "Commit validity cannot be evaluated because currentIntegrityRef is missing.";
+    }
+  } else if (rule.kind === "duration") {
+    if (
+      typeof rule.durationDays !== "number" ||
+      !Number.isFinite(rule.durationDays)
+    ) {
+      message = "Duration validity cannot be evaluated because durationDays is missing or invalid.";
+    } else {
+      const verifiedEvent = governingVerifiedEvent(input.claim.id, input.events);
+      const verifiedAt = verifiedEvent?.verifiedAt ?? verifiedEvent?.createdAt;
+      if (verifiedEvent !== undefined && (verifiedAt === undefined || !Number.isFinite(Date.parse(verifiedAt)))) {
+        message = "Duration validity cannot be evaluated because the verification timestamp is invalid.";
+      }
+    }
+  } else if (rule.kind !== "historical" && rule.kind !== "manual") {
+    message = "Validity rule cannot be evaluated because its kind is not understood by this Surface version.";
+  }
+
+  if (!message) return undefined;
+  return {
+    id: `${input.claim.id}.gap.unevaluable-validity-rule`,
+    claimId: input.claim.id,
+    type: "policy_violation",
+    severity: input.claim.impactLevel ?? input.policy.impactLevel,
+    ...materialityFromClaim(input.claim),
+    message,
+    evidenceIds: input.evidence.map((item) => item.id),
+    policyId: input.policy.id,
+    blocking: true,
+    createdAt: input.now.toISOString(),
+    metadata: {
+      validityRuleKind: rule.kind,
+    },
+  };
 }
 
 function transparencyGapHintsFromEvidence(evidence: Evidence, claim: Claim, policyId: string, createdAt: string): TransparencyGap[] {
