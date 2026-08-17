@@ -132,7 +132,7 @@ export const EVIDENCE_METHOD_DISPLAY_NAMES: Record<EvidenceMethod, DisplayName> 
     gloss: "Confirmed against at least one independent source.",
   },
   attestation: {
-    label: "Vouched for by an actor",
+    label: "Vouched for",
     gloss: "An actor put their name behind this rather than a machine proving it.",
   },
   auditability: {
@@ -140,7 +140,7 @@ export const EVIDENCE_METHOD_DISPLAY_NAMES: Record<EvidenceMethod, DisplayName> 
     gloss: "Backed by records that let a later audit re-check it.",
   },
   anchoring: {
-    label: "Integrity-anchored",
+    label: "Tamper-evident",
     gloss: "Tied to a hash, signature, or log entry that would reveal tampering.",
   },
   monitoring: {

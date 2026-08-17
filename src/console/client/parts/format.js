@@ -130,11 +130,6 @@ function methodLabel(method) {
   return vocab.methodLabels?.[method] ?? method;
 }
 
-// Requirement lists mix evidence types and methods; label whichever axis matches.
-function provenanceLabel(value) {
-  return vocab.evidenceTypeLabels?.[value] ?? vocab.methodLabels?.[value] ?? value;
-}
-
 function animateCount(el, target) {
   const n = parseInt(target, 10);
   if (!Number.isFinite(n) || n < 3) { el.textContent = target; return; }

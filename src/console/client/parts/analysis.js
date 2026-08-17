@@ -1,12 +1,20 @@
 // Gap classification (kind/title/hint) and policy gap analysis (required-vs-
 // collected evidence/methods) are derived server-side in the claim detail
 // projection; this browser layer renders the projected fields (issue #4).
-function renderRequirementValues(values, emptyLabel) {
+function renderRequirementValues(groups, emptyLabel) {
   // Reader-facing text is the canonical display name (#224); the wire enum
   // stays reachable on the title attribute for producer/adapter debugging.
-  return values.length
-    ? values.map(v => `<code title="${esc(v)}">${esc(provenanceLabel(v))}</code>`).join(" ")
-    : `<span class="empty-value">${esc(emptyLabel)}</span>`;
+  // Review round 1 (MEDIUM-1): `attestation` is a member of BOTH enums with
+  // different labels, so each group carries its axis — guessing by lookup
+  // order rendered a required METHOD as the evidence-type's label.
+  const parts = [];
+  for (const { values, axis } of groups) {
+    for (const v of values) {
+      const label = axis === "method" ? methodLabel(v) : evidenceTypeLabel(v);
+      parts.push(`<code title="${esc(v)}">${esc(label)}</code>`);
+    }
+  }
+  return parts.length ? parts.join(" ") : `<span class="empty-value">${esc(emptyLabel)}</span>`;
 }
 
 // ── status donut chart ─────────────────────────────────

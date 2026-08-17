@@ -187,3 +187,22 @@ test("previously minted console synonyms are absent from shipped renderer output
     assert.ok(!TRUST_PANEL_JS.toLowerCase().includes(synonym), `trust panel must not mint '${synonym}'`);
   }
 });
+
+
+test("requirement rows label each axis with its own table: method attestation is 'Vouched for', never 'Attested statement' (#224 review MEDIUM-1)", async () => {
+  const analysis = await readFile("src/console/client/parts/analysis.js", "utf8");
+  // The renderer must carry the axis per group rather than guessing by lookup order.
+  assert.match(analysis, /axis === "method" \? methodLabel\(v\) : evidenceTypeLabel\(v\)/);
+  const detail = await readFile("src/console/client/parts/detail.js", "utf8");
+  assert.match(detail, /axis: "method"/);
+  assert.match(detail, /axis: "evidenceType"/);
+  // The ambiguity that motivated this: the two tables genuinely disagree on the shared key.
+  assert.notStrictEqual(EVIDENCE_TYPE_DISPLAY_NAMES.attestation.label, EVIDENCE_METHOD_DISPLAY_NAMES.attestation.label);
+});
+
+test("the divergence banner renders status display names, not raw enums (#224 review MEDIUM-2)", async () => {
+  const detail = await readFile("src/console/client/parts/detail.js", "utf8");
+  assert.match(detail, /statusLabel\(claim\.producerStatus\)/);
+  assert.match(detail, /statusLabel\(claim\.status\)/);
+  assert.doesNotMatch(detail, /"Producer declared " \+ claim\.producerStatus/);
+});

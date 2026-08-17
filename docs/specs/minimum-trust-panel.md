@@ -70,9 +70,9 @@ not read "test_output via validation"):
 - `extraction` -> Extracted from a source — pulled out of a source document or dataset without an independent check
 - `validation` -> Checked against expectations — compared against expected results by a check that can fail
 - `corroboration` -> Corroborated independently — confirmed against at least one independent source
-- `attestation` -> Vouched for by an actor — an actor put their name behind this rather than a machine proving it
+- `attestation` -> Vouched for — an actor put their name behind this rather than a machine proving it
 - `auditability` -> Audit-trail backed — backed by records that let a later audit re-check it
-- `anchoring` -> Integrity-anchored — tied to a hash, signature, or log entry that would reveal tampering
+- `anchoring` -> Tamper-evident — tied to a hash, signature, or log entry that would reveal tampering
 - `monitoring` -> Continuously monitored — watched on an ongoing schedule rather than checked once
 
 These tables are the single source for provenance display names, exported as

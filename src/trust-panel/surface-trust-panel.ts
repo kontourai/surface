@@ -117,9 +117,9 @@ interface TrustPanelReport {
     extraction: "Extracted from a source",
     validation: "Checked against expectations",
     corroboration: "Corroborated independently",
-    attestation: "Vouched for by an actor",
+    attestation: "Vouched for",
     auditability: "Audit-trail backed",
-    anchoring: "Integrity-anchored",
+    anchoring: "Tamper-evident",
     monitoring: "Continuously monitored",
   };
 

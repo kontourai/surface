@@ -330,7 +330,7 @@ test("evidence provenance renders canonical display names, never raw wire enums"
 
   expect(machine!.text).toContain("Test output · Checked against expectations");
   expect(runtime!.text).toContain("Machine-observed at run time · Directly observed");
-  expect(human!.text).toContain("Human sign-off · Vouched for by an actor");
+  expect(human!.text).toContain("Human sign-off · Vouched for");
 
   // The raw enums stay machine-readable on the row's data attributes…
   expect(machine!.html).toContain('data-evidence-type="test_output"');
