@@ -47,7 +47,7 @@ function collectClaimDetailContext(claim, readModel) {
 }
 
 function renderDetailHeader(claim, evidence, policy) {
-  el("detailBadge").textContent = statusLabel(claim.status, evidence.length);
+  el("detailBadge").textContent = statusLabel(claim.status);
   el("detailBadge").className   = "status-badge badge-" + statusColor(claim.status) + " detail-badge-lg";
   el("detailSurface").textContent = surfaceLabel(claim.facet ?? claim.surface);
   el("detailTitle").textContent   = claim.fieldOrBehavior || claim.claimType || "—";
@@ -204,11 +204,11 @@ function renderDetailPolicyGap(gap) {
       `<div class="gap-explainer">${esc(gapSummary)}</div>`,
       gap.missingEvidence.length
         ? `<div class="gap-row gap-missing"><span class="gap-label">Missing evidence</span>
-            <span class="gap-value">${gap.missingEvidence.map(e => `<code>${esc(e)}</code>`).join(" ")}</span></div>`
+            <span class="gap-value">${gap.missingEvidence.map(e => `<code title="${esc(e)}">${esc(evidenceTypeLabel(e))}</code>`).join(" ")}</span></div>`
         : "",
       gap.missingMethods.length
         ? `<div class="gap-row gap-missing"><span class="gap-label">Missing method</span>
-            <span class="gap-value">${gap.missingMethods.map(m => `<code>${esc(m)}</code>`).join(" ")}</span></div>`
+            <span class="gap-value">${gap.missingMethods.map(m => `<code title="${esc(m)}">${esc(methodLabel(m))}</code>`).join(" ")}</span></div>`
         : "",
       `<div class="gap-row gap-has"><span class="gap-label">Rule requires</span>
           <span class="gap-value">${renderRequirementValues([...gap.requiredEvidence, ...gap.requiredMethods], "No requirements declared")}</span></div>`,

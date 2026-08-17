@@ -2,8 +2,10 @@
 // collected evidence/methods) are derived server-side in the claim detail
 // projection; this browser layer renders the projected fields (issue #4).
 function renderRequirementValues(values, emptyLabel) {
+  // Reader-facing text is the canonical display name (#224); the wire enum
+  // stays reachable on the title attribute for producer/adapter debugging.
   return values.length
-    ? values.map(v => `<code>${esc(v)}</code>`).join(" ")
+    ? values.map(v => `<code title="${esc(v)}">${esc(provenanceLabel(v))}</code>`).join(" ")
     : `<span class="empty-value">${esc(emptyLabel)}</span>`;
 }
 

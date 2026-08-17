@@ -247,13 +247,13 @@ function claimCard(claim, index, visibleIndex = 0) {
   // claim.id is removed from the card face but preserved for findability via
   // title attribute (tooltip on hover) and aria-label.
   return `<button type="button" class="claim-card${confidenceTier(claim)}${isAttention ? " card-attention" : ""}"
-      data-claim-index="${index}" aria-label="${esc(label + " — " + statusLabel(claim.status, claimEvidenceCount(claim)))}"
+      data-claim-index="${index}" aria-label="${esc(label + " — " + statusLabel(claim.status))}"
       title="${esc(claim.id)}" style="--card-i:${Math.min(visibleIndex, 14)}">
     <span class="card-dot dot-${color}" aria-hidden="true"></span>
     <span class="card-body">
       <strong class="card-title">${esc(label)}</strong>
       <span class="card-meta">
-        <span class="card-status-text status-${esc(claim.status)}">${esc(statusLabel(claim.status, claimEvidenceCount(claim)))}</span>
+        <span class="card-status-text status-${esc(claim.status)}">${esc(statusLabel(claim.status))}</span>
         <span class="card-surface card-surface--narrow-hide">${esc(surface)}</span>
         ${(claim.producers && claim.producers.length)
           ? `<span class="card-producers" title="Attributed to ${esc(claim.producers.join(", "))}">${claim.producers.map(p => `<span class="card-producer">${esc(p)}</span>`).join("")}</span>`
