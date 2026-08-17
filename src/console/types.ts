@@ -7,6 +7,18 @@ export interface SurfaceConsoleVocab {
   surfaceDescriptions?: Record<string, string>;
   claimTypeLabels?: Record<string, string>;
   statusLabels?: Partial<Record<TrustStatus, string>>;
+  /**
+   * Overrides for the canonical `evidenceType` display names
+   * (`EVIDENCE_TYPE_LABELS` in src/display-names.ts). The canonical table is
+   * injected as the default; entries here win over it.
+   */
+  evidenceTypeLabels?: Record<string, string>;
+  /**
+   * Overrides for the canonical evidence `method` display names
+   * (`EVIDENCE_METHOD_LABELS` in src/display-names.ts). The canonical table is
+   * injected as the default; entries here win over it.
+   */
+  methodLabels?: Record<string, string>;
   actionText?: {
     reviewItem?: string;
     refreshEvidence?: string;

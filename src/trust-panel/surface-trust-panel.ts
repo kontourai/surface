@@ -76,6 +76,18 @@ interface TrustPanelReport {
 (() => {
   if (typeof customElements === "undefined" || customElements.get("surface-trust-panel")) return;
 
+  // ---------------------------------------------------------------------
+  // Display names (#224)
+  //
+  // These maps are inline copies of the canonical reader-facing display-name
+  // tables in src/display-names.ts. This module must stay a dependency-free
+  // ES module (the compiled file is loaded directly via <script type="module">
+  // with no siblings), so it cannot import the canonical table at runtime.
+  // tests/display-names.test.ts extracts these literals from the source AND
+  // the generated module and fails the suite if they drift from the canonical
+  // module — do not edit one side without the other.
+  // ---------------------------------------------------------------------
+
   const STATUS_LABELS: Record<string, string> = {
     unknown: "No evidence",
     proposed: "Pending review",
@@ -86,6 +98,29 @@ interface TrustPanelReport {
     superseded: "Superseded",
     rejected: "Rejected",
     revoked: "Revoked",
+  };
+
+  const EVIDENCE_TYPE_LABELS: Record<string, string> = {
+    source_excerpt: "Source excerpt",
+    test_output: "Test output",
+    runtime_observation: "Machine-observed at run time",
+    human_attestation: "Human sign-off",
+    attestation: "Attested statement",
+    calculation_trace: "Calculation trace",
+    document_citation: "Document citation",
+    crawl_observation: "Crawled page capture",
+    policy_rule: "Policy rule",
+  };
+
+  const METHOD_LABELS: Record<string, string> = {
+    observation: "Directly observed",
+    extraction: "Extracted from a source",
+    validation: "Checked against expectations",
+    corroboration: "Corroborated independently",
+    attestation: "Vouched for",
+    auditability: "Audit-trail backed",
+    anchoring: "Tamper-evident",
+    monitoring: "Continuously monitored",
   };
 
   const STATUS_KIND: Record<string, string> = {
@@ -191,8 +226,17 @@ interface TrustPanelReport {
     const flags = [facetChip(support, "supportStrength"), facetChip(result, "result"), facetChip(visibility, "visibility")];
     if (integrity) flags.push(facetChip(integrity, "integrity"));
 
-    return `<li class="evidence" data-support="${escapeHtml(support.state)}" data-result="${escapeHtml(result.state)}" data-blocking="${item.blocking === true ? "true" : "false"}" data-visibility="${escapeHtml(visibility.state)}"${integrity ? ` data-integrity="${escapeHtml(integrity.state)}"` : ""}>
-        <span class="ev-head"><strong>${escapeHtml(asText(item.evidenceType, "evidence"))}</strong> via ${escapeHtml(asText(item.method, "unknown method"))}</span>
+    // Reader-facing text uses the canonical display names (#224); the raw wire
+    // enums stay machine-readable on data attributes. An unmapped value falls
+    // back to the raw enum rather than an invented name; an absent value is
+    // named as absent.
+    const rawEvidenceType = asText(item.evidenceType);
+    const rawMethod = asText(item.method);
+    const evidenceTypeText = rawEvidenceType === "" ? "Evidence type not stated" : EVIDENCE_TYPE_LABELS[rawEvidenceType] ?? rawEvidenceType;
+    const methodText = rawMethod === "" ? "method not stated" : METHOD_LABELS[rawMethod] ?? rawMethod;
+
+    return `<li class="evidence" data-evidence-type="${escapeHtml(rawEvidenceType)}" data-method="${escapeHtml(rawMethod)}" data-support="${escapeHtml(support.state)}" data-result="${escapeHtml(result.state)}" data-blocking="${item.blocking === true ? "true" : "false"}" data-visibility="${escapeHtml(visibility.state)}"${integrity ? ` data-integrity="${escapeHtml(integrity.state)}"` : ""}>
+        <span class="ev-head"><strong>${escapeHtml(evidenceTypeText)}</strong> · ${escapeHtml(methodText)}</span>
         <span class="ev-flags">${flags.join("")}</span>
         <span class="ev-summary">${escapeHtml(asText(item.excerptOrSummary ?? item.sourceRef))}</span>
         <span class="ev-meta">${escapeHtml(asText(item.sourceRef, "no source reference"))} · ${escapeHtml(observedLabel(item.observedAt))}</span>

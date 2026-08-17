@@ -1,6 +1,27 @@
-import type { SurfaceConsoleRuntimeConfig } from "./types.js";
+import type { SurfaceConsoleRuntimeConfig, SurfaceConsoleVocab } from "./types.js";
+import {
+  EVIDENCE_METHOD_LABELS,
+  EVIDENCE_TYPE_LABELS,
+  TRUST_STATUS_LABELS,
+} from "../display-names.js";
 
-export function buildConsoleHtml(config: SurfaceConsoleRuntimeConfig = {}): string {
+/**
+ * Merge the canonical display-name tables (src/display-names.ts, #224) under
+ * any product-supplied vocab, so the browser client always has the canonical
+ * reader-facing labels for statuses, evidence types, and methods without
+ * minting its own — product overrides still win per key.
+ */
+function withDisplayNameDefaults(vocab: SurfaceConsoleVocab | undefined): SurfaceConsoleVocab {
+  return {
+    ...vocab,
+    statusLabels: { ...TRUST_STATUS_LABELS, ...vocab?.statusLabels },
+    evidenceTypeLabels: { ...EVIDENCE_TYPE_LABELS, ...vocab?.evidenceTypeLabels },
+    methodLabels: { ...EVIDENCE_METHOD_LABELS, ...vocab?.methodLabels },
+  };
+}
+
+export function buildConsoleHtml(rawConfig: SurfaceConsoleRuntimeConfig = {}): string {
+  const config: SurfaceConsoleRuntimeConfig = { ...rawConfig, vocab: withDisplayNameDefaults(rawConfig.vocab) };
   return `<!doctype html>
 <html lang="en">
 <head>

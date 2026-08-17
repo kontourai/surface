@@ -24,6 +24,8 @@ Evidence explains why a claim deserves trust. It can be a source excerpt, test o
 
 Each evidence record also declares a verification method: observation, extraction, validation, corroboration, attestation, auditability, anchoring, or monitoring. The evidence type says what the artifact is; the method says how much verification depth it represents.
 
+When these wire enums reach a reader, use the canonical reader-facing display names (with one-line glosses) exported from `src/display-names.ts` and specified in [the minimum Trust Panel spec](../specs/minimum-trust-panel.md) — for example `runtime_observation` renders as "Machine-observed at run time". Renderers must not mint their own synonym set for this axis; product vocab may override a label per key, but unmapped values fall back to the raw enum, never to an invented name.
+
 Survey-produced source-of-authority observations should keep producer-declared source authority on the evidence record, under `metadata.sourceAuthority`. Do not promote that value into `authorityTrace` unless the producer also emits a producer-neutral actor or system authority record.
 
 ## Evidence Trace

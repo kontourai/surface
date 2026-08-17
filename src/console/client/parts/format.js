@@ -114,15 +114,20 @@ function statusColor(status) {
   return m[status] ?? "muted";
 }
 
-function statusLabel(status, evidenceCount) {
-  if (status === "unknown") return evidenceCount === 0 ? "Never run" : "No evidence";
-  const m = { verified:"Verified", stale:"Needs refresh", disputed:"Disputed",
-               rejected:"Rejected", assumed:"Assumed", proposed:"Pending" };
-  return m[status] ?? status;
+// Display labels come from the injected vocab, whose defaults are the
+// canonical tables in src/display-names.ts (merged in by buildConsoleHtml,
+// product overrides win). The client never mints its own synonyms (#224) —
+// an unmapped value falls back to the raw wire enum, not to an invented name.
+function statusLabel(status) {
+  return vocab.statusLabels?.[status] ?? status;
 }
 
-function claimEvidenceCount(claim) {
-  return claim.evidenceIds?.length ?? 0;
+function evidenceTypeLabel(evidenceType) {
+  return vocab.evidenceTypeLabels?.[evidenceType] ?? evidenceType;
+}
+
+function methodLabel(method) {
+  return vocab.methodLabels?.[method] ?? method;
 }
 
 function animateCount(el, target) {

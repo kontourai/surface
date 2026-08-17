@@ -47,7 +47,7 @@ function collectClaimDetailContext(claim, readModel) {
 }
 
 function renderDetailHeader(claim, evidence, policy) {
-  el("detailBadge").textContent = statusLabel(claim.status, evidence.length);
+  el("detailBadge").textContent = statusLabel(claim.status);
   el("detailBadge").className   = "status-badge badge-" + statusColor(claim.status) + " detail-badge-lg";
   el("detailSurface").textContent = surfaceLabel(claim.facet ?? claim.surface);
   el("detailTitle").textContent   = claim.fieldOrBehavior || claim.claimType || "—";
@@ -118,9 +118,10 @@ function renderDetailSheetActions(claim) {
 
 function renderDetailDivergence(claim) {
   if (claim.producerStatus) {
+    // Review round 1 (MEDIUM-2): raw status enums reached the reader here.
     el("detailDivergenceBanner").textContent =
-      "Producer declared " + claim.producerStatus + " but Surface derived " + claim.status +
-      " from the evidence.";
+      "Producer declared \u201C" + statusLabel(claim.producerStatus) + "\u201D but Surface derived \u201C" +
+      statusLabel(claim.status) + "\u201D from the evidence.";
     show("detailDivergenceBlock");
   } else {
     hide("detailDivergenceBlock");
@@ -204,16 +205,16 @@ function renderDetailPolicyGap(gap) {
       `<div class="gap-explainer">${esc(gapSummary)}</div>`,
       gap.missingEvidence.length
         ? `<div class="gap-row gap-missing"><span class="gap-label">Missing evidence</span>
-            <span class="gap-value">${gap.missingEvidence.map(e => `<code>${esc(e)}</code>`).join(" ")}</span></div>`
+            <span class="gap-value">${gap.missingEvidence.map(e => `<code title="${esc(e)}">${esc(evidenceTypeLabel(e))}</code>`).join(" ")}</span></div>`
         : "",
       gap.missingMethods.length
         ? `<div class="gap-row gap-missing"><span class="gap-label">Missing method</span>
-            <span class="gap-value">${gap.missingMethods.map(m => `<code>${esc(m)}</code>`).join(" ")}</span></div>`
+            <span class="gap-value">${gap.missingMethods.map(m => `<code title="${esc(m)}">${esc(methodLabel(m))}</code>`).join(" ")}</span></div>`
         : "",
       `<div class="gap-row gap-has"><span class="gap-label">Rule requires</span>
-          <span class="gap-value">${renderRequirementValues([...gap.requiredEvidence, ...gap.requiredMethods], "No requirements declared")}</span></div>`,
+          <span class="gap-value">${renderRequirementValues([{ values: gap.requiredEvidence, axis: "evidenceType" }, { values: gap.requiredMethods, axis: "method" }], "No requirements declared")}</span></div>`,
       `<div class="gap-row gap-has"><span class="gap-label">Evidence collected</span>
-          <span class="gap-value">${renderRequirementValues([...gap.hasEvidence, ...gap.hasMethods], "No matching evidence collected")}</span></div>`,
+          <span class="gap-value">${renderRequirementValues([{ values: gap.hasEvidence, axis: "evidenceType" }, { values: gap.hasMethods, axis: "method" }], "No matching evidence collected")}</span></div>`,
       gap.missingMethods.length
         ? `<div class="gap-resolution"><strong>How to fix:</strong> collect evidence with method <code>${esc(gap.missingMethods[0])}</code>. If evidence was collected but listed under a different method, update the producer/adapter mapping so it emits the policy's required method.</div>`
         : `<div class="gap-resolution"><strong>How to fix:</strong> enable the producer check that emits <code>${esc(gap.missingEvidence[0] ?? "evidence")}</code> for this claim, then rerun evidence collection.</div>`,

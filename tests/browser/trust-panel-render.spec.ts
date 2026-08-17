@@ -279,6 +279,72 @@ test("names the support strength, result, and observed time on every evidence ro
   expect(unevaluated!.text).toContain("Observed time not supplied");
 });
 
+// ---------------------------------------------------------------------------
+// Provenance display names (#224)
+// ---------------------------------------------------------------------------
+
+/**
+ * One claim with evidence spanning the declared-vs-observed axis the spec's
+ * runtime-observation vector enforces. The reader must see the canonical
+ * display names from src/display-names.ts, never the raw wire enums —
+ * the regression this guards is an owner literally reading
+ * "test_output via validation".
+ */
+function provenanceReport(): unknown {
+  const common = {
+    claimId: "claim.subject",
+    sourceRef: "https://example.org/source",
+    excerptOrSummary: "The registration is active.",
+    supportStrength: "entails",
+    passing: true,
+    observedAt: "2026-07-30T00:00:00.000Z",
+  };
+  return {
+    source: "test.trust-panel-provenance",
+    generatedAt: "2026-08-01T00:00:00.000Z",
+    claims: [
+      {
+        id: "claim.subject",
+        status: "verified",
+        subjectType: "service",
+        subjectId: "acme",
+        facet: "test.facet",
+        fieldOrBehavior: "registration",
+        value: "active",
+        impactLevel: "medium",
+      },
+    ],
+    evidence: [
+      { ...common, id: "ev.machine", evidenceType: "test_output", method: "validation" },
+      { ...common, id: "ev.runtime", evidenceType: "runtime_observation", method: "observation" },
+      { ...common, id: "ev.human", evidenceType: "human_attestation", method: "attestation" },
+    ],
+    transparencyGaps: [],
+  };
+}
+
+test("evidence provenance renders canonical display names, never raw wire enums", async ({ page }) => {
+  await loadPanel(page, provenanceReport());
+  const rows = await evidenceRows(page);
+  const [machine, runtime, human] = rows;
+
+  expect(machine!.text).toContain("Test output · Checked against expectations");
+  expect(runtime!.text).toContain("Machine-observed at run time · Directly observed");
+  expect(human!.text).toContain("Human sign-off · Vouched for");
+
+  // The raw enums stay machine-readable on the row's data attributes…
+  expect(machine!.html).toContain('data-evidence-type="test_output"');
+  expect(machine!.html).toContain('data-method="validation"');
+
+  // …but never reach the reader as visible text.
+  for (const row of rows) {
+    expect(row.text).not.toContain("test_output");
+    expect(row.text).not.toContain("runtime_observation");
+    expect(row.text).not.toContain("human_attestation");
+    expect(row.text).not.toMatch(/\bvalidation\b/);
+  }
+});
+
 test("discloses evidence visibility and integrity-anchor verification state", async ({ page }) => {
   await loadPanel(page, evidenceReport());
   const rows = await evidenceRows(page);
