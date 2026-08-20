@@ -33,10 +33,12 @@ function deriveClaimGroupRollup(
       status: deriveRequirementStatus(claims, missingClaimIds),
       verifiedClaims: claims.filter((claim) => claim.status === "verified").map((claim) => claim.id),
       staleClaims: claims.filter((claim) => claim.status === "stale" || claim.status === "superseded").map((claim) => claim.id),
-      // `revoked` belongs in the terminal-negative bucket alongside disputed/rejected. Making it
-      // dominate the aggregate without classifying it here would have fixed the headline and left
-      // the claim invisible in every list — the same defect this change exists to remove.
-      disputedClaims: claims.filter((claim) => claim.status === "disputed" || claim.status === "rejected" || claim.status === "revoked").map((claim) => claim.id),
+      disputedClaims: claims.filter((claim) => claim.status === "disputed" || claim.status === "rejected").map((claim) => claim.id),
+      // `revoked` gets its own list rather than riding in `disputedClaims`. It must be visible --
+      // leaving it out of every list was the original defect -- but it is not "disputed": a
+      // revoked claim is withdrawn, and the response is replacement or re-verification rather
+      // than dispute resolution. A reader shown "1 disputed requirement" would be misdirected.
+      revokedClaims: claims.filter((claim) => claim.status === "revoked").map((claim) => claim.id),
       unsupportedClaims: claims.filter((claim) => isRequirementUnsupportedStatus(claim.status)).map((claim) => claim.id),
       missingClaimIds,
     };
@@ -99,9 +101,10 @@ function deriveRequirementStatus(
   // faithful; what it preserved was the defect.
   //
   // Waiver validity is a SIBLING projection, not a status upgrade: `deriveWaiverValidity` is
-  // computed alongside these rollups and has the evidence and policy inputs required to decide
-  // whether a gap is acceptable. This function has neither. A consumer whose policy accepts an
-  // approved waiver composes the two projections; it does not ask this one to pre-absorb the gap.
+  // computed alongside these rollups and reports waiver FACTS -- whether a waiver is present,
+  // complete, and still applicable to the derived status. It takes no policy input and does not
+  // decide acceptability; that decision belongs to the consumer, which composes the two
+  // projections. This function sees neither, so it reports the gap rather than absorbing it.
   return aggregate;
 }
 
@@ -130,7 +133,8 @@ function summarizeRequirements(requirements: RequirementRollup[]): ClaimGroupRol
     requiredRequirements: required.length,
     verifiedRequirements,
     staleRequirements: requirements.filter((requirement) => requirement.status === "stale" || requirement.status === "superseded").length,
-    disputedRequirements: requirements.filter((requirement) => requirement.status === "disputed" || requirement.status === "rejected" || requirement.status === "revoked").length,
+    disputedRequirements: requirements.filter((requirement) => requirement.status === "disputed" || requirement.status === "rejected").length,
+    revokedRequirements: requirements.filter((requirement) => requirement.status === "revoked").length,
     unsupportedRequirements: requirements.filter((requirement) => isRequirementUnsupportedStatus(requirement.status)).length,
     missingClaims: requirements.reduce((total, requirement) => total + requirement.missingClaimIds.length, 0),
     verificationCoverage: requirements.length === 0 ? 0 : verifiedRequirements / requirements.length,

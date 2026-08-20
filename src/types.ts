@@ -432,6 +432,13 @@ export interface RequirementRollup {
   verifiedClaims: string[];
   staleClaims: string[];
   disputedClaims: string[];
+  /**
+   * Revoked claims, kept separate from `disputedClaims`. A revoked claim is withdrawn or
+   * invalidated, not contested — the operator response is replacement or re-verification, not
+   * dispute resolution. Folding it into `disputedClaims` would name it wrongly; omitting it
+   * entirely (the prior behaviour) made it invisible.
+   */
+  revokedClaims: string[];
   unsupportedClaims: string[];
   missingClaimIds: string[];
   validationStrategy?: ValidationStrategy;
@@ -451,6 +458,7 @@ export interface ClaimGroupRollup {
     verifiedRequirements: number;
     staleRequirements: number;
     disputedRequirements: number;
+    revokedRequirements: number;
     unsupportedRequirements: number;
     missingClaims: number;
     verificationCoverage: number;

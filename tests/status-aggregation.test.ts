@@ -145,14 +145,21 @@ test("a single disclosed gap is not absorbed by verified siblings", () => {
 test("a revoked claim is visible in the rollup, not just dominant in the fold", () => {
   // Making `revoked` dominate the aggregate while leaving it out of every list would fix the
   // headline and keep the claim invisible — the same defect this file exists to close, one
-  // level down. `revoked` is terminal-negative, so it belongs with disputed/rejected.
+  // level down. It gets its own list rather than joining disputed/rejected, because visible
+  // under the wrong name is its own kind of wrong.
   const { requirement } = rollupOf([claim("c1", "revoked")]);
   assert.equal(requirement.status, "revoked");
-  assert.deepEqual(requirement.disputedClaims, ["c1"]);
+  assert.deepEqual(requirement.revokedClaims, ["c1"]);
+  assert.deepEqual(
+    requirement.disputedClaims,
+    [],
+    "a revoked claim is withdrawn, not contested — naming it disputed would misdirect the reader toward dispute resolution",
+  );
   const listed = [
     ...requirement.verifiedClaims,
     ...requirement.staleClaims,
     ...requirement.disputedClaims,
+    ...requirement.revokedClaims,
     ...requirement.unsupportedClaims,
   ];
   assert.deepEqual(listed, ["c1"], "a revoked claim must appear in exactly one rollup list");
@@ -162,10 +169,11 @@ test("a revoked requirement is counted in the summary rather than vanishing from
   const { group } = rollupOf([claim("c1", "revoked")]);
   assert.equal(group.summary.totalRequirements, 1);
   assert.equal(
-    group.summary.disputedRequirements,
+    group.summary.revokedRequirements,
     1,
     "a revoked requirement must land in a summary bucket — totalRequirements=1 with every bucket at 0 is an unreadable rollup",
   );
+  assert.equal(group.summary.disputedRequirements, 0);
   assert.equal(group.summary.verifiedRequirements, 0);
 });
 
@@ -173,7 +181,7 @@ test("a revoked claim is not masked by verified siblings in the rollup", () => {
   const { requirement } = rollupOf([claim("c1", "verified"), claim("c2", "revoked")]);
   assert.equal(requirement.status, "revoked");
   assert.deepEqual(requirement.verifiedClaims, ["c1"]);
-  assert.deepEqual(requirement.disputedClaims, ["c2"]);
+  assert.deepEqual(requirement.revokedClaims, ["c2"]);
 });
 
 test("genuinely verified requirements still report verified", () => {
