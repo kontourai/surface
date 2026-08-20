@@ -34,6 +34,11 @@ function deriveClaimGroupRollup(
       verifiedClaims: claims.filter((claim) => claim.status === "verified").map((claim) => claim.id),
       staleClaims: claims.filter((claim) => claim.status === "stale" || claim.status === "superseded").map((claim) => claim.id),
       disputedClaims: claims.filter((claim) => claim.status === "disputed" || claim.status === "rejected").map((claim) => claim.id),
+      // `revoked` gets its own list rather than riding in `disputedClaims`. It must be visible --
+      // leaving it out of every list was the original defect -- but it is not "disputed": a
+      // revoked claim is withdrawn, and the response is replacement or re-verification rather
+      // than dispute resolution. A reader shown "1 disputed requirement" would be misdirected.
+      revokedClaims: claims.filter((claim) => claim.status === "revoked").map((claim) => claim.id),
       unsupportedClaims: claims.filter((claim) => isRequirementUnsupportedStatus(claim.status)).map((claim) => claim.id),
       missingClaimIds,
     };
@@ -81,7 +86,25 @@ function deriveRequirementStatus(
   const statuses = claims.map((claim) => claim.status);
   const aggregate = aggregateTrustStatuses(statuses);
   if (aggregate === "unknown") return "proposed";
-  if (aggregate === "assumed") return "verified";
+  // An `assumed` aggregate stays `assumed`. It used to return "verified", which made a
+  // requirement whose every claim was a disclosed gap or a skipped check indistinguishable
+  // from one that was genuinely evidenced — same requirement status, same group status.
+  //
+  // That upgrade contradicted this package's own waiver semantics: `deriveWaiverValidity` treats
+  // an assumed claim with no waiver as never defaulting to a passing verdict. This module never
+  // consulted a waiver at all; it upgraded unconditionally.
+  //
+  // It arrived as collateral of #101: before that refactor this function had its own inline
+  // precedence chain that omitted `assumed` entirely, so `assumed` fell through to "verified".
+  // #101 introduced the shared aggregateTrustStatuses — which returns "assumed" correctly —
+  // and added this line to keep the observable behaviour byte-identical. The refactor was
+  // faithful; what it preserved was the defect.
+  //
+  // Waiver validity is a SIBLING projection, not a status upgrade: `deriveWaiverValidity` is
+  // computed alongside these rollups and reports waiver FACTS -- whether a waiver is present,
+  // complete, and still applicable to the derived status. It takes no policy input and does not
+  // decide acceptability; that decision belongs to the consumer, which composes the two
+  // projections. This function sees neither, so it reports the gap rather than absorbing it.
   return aggregate;
 }
 
@@ -111,6 +134,7 @@ function summarizeRequirements(requirements: RequirementRollup[]): ClaimGroupRol
     verifiedRequirements,
     staleRequirements: requirements.filter((requirement) => requirement.status === "stale" || requirement.status === "superseded").length,
     disputedRequirements: requirements.filter((requirement) => requirement.status === "disputed" || requirement.status === "rejected").length,
+    revokedRequirements: requirements.filter((requirement) => requirement.status === "revoked").length,
     unsupportedRequirements: requirements.filter((requirement) => isRequirementUnsupportedStatus(requirement.status)).length,
     missingClaims: requirements.reduce((total, requirement) => total + requirement.missingClaimIds.length, 0),
     verificationCoverage: requirements.length === 0 ? 0 : verifiedRequirements / requirements.length,
