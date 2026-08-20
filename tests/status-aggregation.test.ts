@@ -20,11 +20,14 @@ import {
  * fails here instead of silently returning "verified".
  */
 
+// Deliberately neutral vocabulary. Surface is the generic trust substrate; a consumer's subject
+// or claim vocabulary must not leak into its tests, or the substrate's semantics end up
+// documented and pinned in one consumer's terms.
 const claim = (id: string, status: TrustStatus): Claim & { status: TrustStatus } => ({
   id,
-  subjectType: "flow-step",
+  subjectType: "subject-type",
   subjectId: "subject",
-  claimType: "builder.verify.tests",
+  claimType: "example.claim-type",
   fieldOrBehavior: `behaviour-${id}`,
   value: "pass",
   impactLevel: "high",
@@ -35,9 +38,9 @@ const claim = (id: string, status: TrustStatus): Claim & { status: TrustStatus }
 
 const groupOver = (claimIds: string[]): ClaimGroup => ({
   id: "group",
-  title: "Delivery requirements",
+  title: "Example requirement set",
   kind: "requirement-set",
-  requirements: [{ id: "req", title: "All checks", claimIds, required: true }],
+  requirements: [{ id: "req", title: "Example requirement", claimIds, required: true }],
 });
 
 const rollupOf = (claims: Array<Claim & { status: TrustStatus }>) => {
@@ -52,7 +55,7 @@ test("an empty set aggregates to unknown, never to verified", () => {
   assert.equal(aggregateTrustStatuses([]), "unknown");
 });
 
-test("every status alone aggregates to itself, except the documented superseded->stale collapse", () => {
+test("every status alone aggregates to itself, except the superseded->stale projection", () => {
   for (const status of TRUST_STATUS_ORDER) {
     const expected = status === "superseded" ? "stale" : status;
     assert.equal(
@@ -106,7 +109,7 @@ test("a requirement of only disclosed gaps is NOT reported as verified", () => {
   assert.equal(
     requirement.status,
     "assumed",
-    "an all-assumed requirement must report assumed — Surface's own waiver semantics (ADR 0020) forbid a bare assumed claim defaulting to a passing verdict",
+    "an all-assumed requirement must report assumed — this package's own waiver semantics (deriveWaiverValidity) forbid a bare assumed claim defaulting to a passing verdict",
   );
   assert.equal(group.status, "assumed");
 });
@@ -137,6 +140,40 @@ test("a single disclosed gap is not absorbed by verified siblings", () => {
   assert.equal(requirement.status, "assumed");
   assert.deepEqual(requirement.verifiedClaims, ["c1", "c2"]);
   assert.deepEqual(requirement.unsupportedClaims, ["c3"]);
+});
+
+test("a revoked claim is visible in the rollup, not just dominant in the fold", () => {
+  // Making `revoked` dominate the aggregate while leaving it out of every list would fix the
+  // headline and keep the claim invisible — the same defect this file exists to close, one
+  // level down. `revoked` is terminal-negative, so it belongs with disputed/rejected.
+  const { requirement } = rollupOf([claim("c1", "revoked")]);
+  assert.equal(requirement.status, "revoked");
+  assert.deepEqual(requirement.disputedClaims, ["c1"]);
+  const listed = [
+    ...requirement.verifiedClaims,
+    ...requirement.staleClaims,
+    ...requirement.disputedClaims,
+    ...requirement.unsupportedClaims,
+  ];
+  assert.deepEqual(listed, ["c1"], "a revoked claim must appear in exactly one rollup list");
+});
+
+test("a revoked requirement is counted in the summary rather than vanishing from every bucket", () => {
+  const { group } = rollupOf([claim("c1", "revoked")]);
+  assert.equal(group.summary.totalRequirements, 1);
+  assert.equal(
+    group.summary.disputedRequirements,
+    1,
+    "a revoked requirement must land in a summary bucket — totalRequirements=1 with every bucket at 0 is an unreadable rollup",
+  );
+  assert.equal(group.summary.verifiedRequirements, 0);
+});
+
+test("a revoked claim is not masked by verified siblings in the rollup", () => {
+  const { requirement } = rollupOf([claim("c1", "verified"), claim("c2", "revoked")]);
+  assert.equal(requirement.status, "revoked");
+  assert.deepEqual(requirement.verifiedClaims, ["c1"]);
+  assert.deepEqual(requirement.disputedClaims, ["c2"]);
 });
 
 test("genuinely verified requirements still report verified", () => {
