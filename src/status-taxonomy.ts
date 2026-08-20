@@ -36,8 +36,15 @@ export function isUnsupportedStatus(status: TrustStatus): boolean {
   return status === "unknown" || status === "proposed" || status === "assumed";
 }
 
+/**
+ * An `assumed` claim is unsupported for requirement purposes exactly as it is for
+ * `isUnsupportedStatus`. The two predicates disagreed until now, and the rollup used
+ * this one — so an assumed claim appeared in NO list on a RequirementRollup: not
+ * `verifiedClaims`, not `unsupportedClaims`, not `staleClaims`, not `disputedClaims`.
+ * A disclosed gap that is invisible in every list is a disclosed gap in name only.
+ */
 export function isRequirementUnsupportedStatus(status: TrustStatus): boolean {
-  return status === "unknown" || status === "proposed";
+  return status === "unknown" || status === "proposed" || status === "assumed";
 }
 
 export function needsAttentionStatus(status: TrustStatus): boolean {
@@ -50,6 +57,13 @@ export function needsAttentionStatus(status: TrustStatus): boolean {
 
 export function aggregateTrustStatuses(statuses: TrustStatus[]): TrustStatus {
   if (statuses.length === 0) return "unknown";
+  // `revoked` is STATUS_STRENGTH 0 — the weakest status in the taxonomy, weaker even than
+  // `rejected`. It was absent from this chain, so a revoked status fell through every branch
+  // and landed on the optimistic `return "verified"` default: aggregate(["revoked"]) was
+  // "verified", and a revoked claim was invisible beside a verified one. Not reachable via
+  // deriveClaimStatus (which folds a revoked event to "stale"), but this is a public API over
+  // the full TrustStatus union, and the default must never be the strongest value.
+  if (statuses.some((status) => status === "revoked")) return "revoked";
   if (statuses.some((status) => status === "rejected")) return "rejected";
   if (statuses.some((status) => status === "disputed")) return "disputed";
   if (statuses.some((status) => status === "stale" || status === "superseded")) return "stale";

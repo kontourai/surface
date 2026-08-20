@@ -81,7 +81,23 @@ function deriveRequirementStatus(
   const statuses = claims.map((claim) => claim.status);
   const aggregate = aggregateTrustStatuses(statuses);
   if (aggregate === "unknown") return "proposed";
-  if (aggregate === "assumed") return "verified";
+  // An `assumed` aggregate stays `assumed`. It used to return "verified", which made a
+  // requirement whose every claim was a disclosed gap or a skipped check indistinguishable
+  // from one that was genuinely evidenced — same requirement status, same group status.
+  //
+  // That upgrade contradicted Surface's own waiver semantics (ADR 0020, `checkWaiverValidity`
+  // step 4: "assumed with no waiver attached at all — never defaults to a passing/acceptable
+  // verdict"). This module never consulted a waiver at all; it upgraded unconditionally.
+  //
+  // It arrived as collateral of #101: before that refactor this function had its own inline
+  // precedence chain that omitted `assumed` entirely, so `assumed` fell through to "verified".
+  // #101 introduced the shared aggregateTrustStatuses — which returns "assumed" correctly —
+  // and added this line to keep the observable behaviour byte-identical. The refactor was
+  // faithful; what it preserved was the defect.
+  //
+  // Callers that want "an approved waiver counts as acceptable" must consult
+  // checkWaiverValidity, which has the evidence and policy inputs required to decide it.
+  // This function has neither, so it reports the gap rather than absorbing it.
   return aggregate;
 }
 
