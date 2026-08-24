@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.15.0](https://github.com/kontourai/surface/compare/v2.14.0...v2.15.0) (2026-08-24)
+
+
+### Features
+
+* add answer card projection ([#230](https://github.com/kontourai/surface/issues/230)) ([35368f1](https://github.com/kontourai/surface/commit/35368f15743100ef5eb8fc6b9e8dcb43db594f01))
+* **kit:** declare builder.build workflow routing ([#215](https://github.com/kontourai/surface/issues/215)) ([679a611](https://github.com/kontourai/surface/commit/679a61158c2dbb16c0bf50f68c0293c725961fbe))
+* **vocab:** canonical display names for provenance and status — one table, both renderers ([#224](https://github.com/kontourai/surface/issues/224)) ([#225](https://github.com/kontourai/surface/issues/225)) ([8c1c0df](https://github.com/kontourai/surface/commit/8c1c0df08329701ab301991c3dcd027132f58910))
+
+
+### Fixes
+
+* **rollup:** a requirement of disclosed gaps must not report verified ([#227](https://github.com/kontourai/surface/issues/227)) ([cc0decb](https://github.com/kontourai/surface/commit/cc0decb9f2aee0aceeee08c5dfa71c38311f721c))
+* surface unevaluable validity rules ([#220](https://github.com/kontourai/surface/issues/220)) ([aaf657b](https://github.com/kontourai/surface/commit/aaf657b4cbe12fc92a6e673e7bb0f43320a3e399))
+
 ## [2.14.0](https://github.com/kontourai/surface/compare/v2.13.1...v2.14.0) (2026-08-02)
 
 
