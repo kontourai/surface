@@ -25,7 +25,9 @@ original relative order. Legacy evidence that omits `supportStrength` belongs in
 the `entailing` bucket but exposes `supportStrength: null`, making that missing
 producer fact visible. `result` reads only `Evidence.passing`: `true` is
 `"passed"`, `false` is `"failed"`, and an omitted value is
-`"not-evaluated"`. A failed record blocks only when `blocking !== false`.
+`"not-evaluated"`. A failed entailing record blocks only when
+`blocking !== false`; cited evidence never blocks the claim regardless of its
+`blocking` field.
 
 Derivation is one level deep. Direct inputs use `derivationInputsForClaim`, so
 edge declarations precede legacy `derivedFrom` declarations and duplicate input
