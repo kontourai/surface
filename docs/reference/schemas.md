@@ -174,6 +174,11 @@ Generated transparency gaps preserve claim `materiality` when present. Analytics
 
 Type: `TrustReport`, exported from the package. The report is a surface read-model with no separate shipped JSON Schema — the `schemas/` directory mirrors the canonical Hachure trust-format schemas (synced from the `hachure` dependency via `npm run sync:schemas`).
 
+`buildAnswerCardProjection(report, claimId)` is likewise a report-only
+TypeScript projection, not a new portable record or schema. It copies the
+derived report facts supplied by its caller and does not validate, derive, or
+recompute time. See [Answer Card Projection](answer-card-projection.md).
+
 `waiverValidityByClaimId` (and its companion `waiverValidityFunctionVersion`) is an additive `TrustReport` field populated by `buildTrustReport` (and round-tripped through `surface report` CLI JSON) when the [waivers profile](https://github.com/hachure-org/spec/blob/main/waivers.md) is in use. It is declared in the vendored **`trust-report-waivers.schema.json`** extension schema (Hachure ≥ 0.12.0, synced via `npm run sync:schemas`): a strict consumer that expects waiver-validity validates a report against that extension, while the neutral core `trust-report.schema.json` stays field-minimal and does not carry these keys. Core report validation is unchanged — the core schema exposes its field set as an open `$defs/core` block that the extension references, so validating a report against the core alone remains exactly as strict as before. See [Waiver Validity](waiver-validity.md) for the field's shape.
 
 ## Eval Summary

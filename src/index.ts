@@ -18,6 +18,7 @@ export * from "./attestation.js";
 export * from "./derivation.js";
 export * from "./derivation-drilldown.js";
 export * from "./claim-explanation.js";
+export * from "./answer-card-projection.js";
 export * from "./counterfactual.js";
 export * from "./recompute.js";
 export * from "./claim-groups.js";
