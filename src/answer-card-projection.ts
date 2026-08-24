@@ -1,5 +1,8 @@
 import { derivationInputsForClaim, type DerivationInputSource } from "./derivation.js";
-import { partitionEvidenceBySupport } from "./evidence-support.js";
+import {
+  evidenceEntailsClaim,
+  partitionEvidenceBySupport,
+} from "./evidence-support.js";
 import type {
   DerivationEdge,
   Evidence,
@@ -152,7 +155,10 @@ function projectEvidence(evidence: Evidence): AnswerCardEvidenceItem {
         : evidence.passing === false
           ? "failed"
           : "not-evaluated",
-    blocksClaim: evidence.passing === false && evidence.blocking !== false,
+    blocksClaim:
+      evidenceEntailsClaim(evidence) &&
+      evidence.passing === false &&
+      evidence.blocking !== false,
   };
 }
 

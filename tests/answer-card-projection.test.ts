@@ -156,9 +156,23 @@ test("answer card projects exact report facts, support partitions, and one-level
           passing: false,
           blocking: false,
         }),
+        evidence("cited-default-failure", "target", {
+          supportStrength: "cited",
+          passing: false,
+        }),
+        evidence("cited-forced-blocking", "target", {
+          supportStrength: "cited",
+          passing: false,
+          blocking: true,
+        }),
         evidence("blocking-failure", "target", {
           supportStrength: "entails",
           passing: false,
+        }),
+        evidence("nonblocking-entailing", "target", {
+          supportStrength: "entails",
+          passing: false,
+          blocking: false,
         }),
         evidence("other-claim", "other"),
       ],
@@ -196,8 +210,13 @@ test("answer card projects exact report facts, support partitions, and one-level
   assert.deepEqual(projected.evidence.entailing.map((item) => item.id), [
     "legacy-entailing",
     "blocking-failure",
+    "nonblocking-entailing",
   ]);
-  assert.deepEqual(projected.evidence.cited.map((item) => item.id), ["cited"]);
+  assert.deepEqual(projected.evidence.cited.map((item) => item.id), [
+    "cited",
+    "cited-default-failure",
+    "cited-forced-blocking",
+  ]);
   assert.deepEqual(projected.evidence.entailing[0], {
     id: "legacy-entailing",
     type: "test_output",
@@ -212,8 +231,14 @@ test("answer card projects exact report facts, support partitions, and one-level
   });
   assert.equal(projected.evidence.cited[0]?.result, "failed");
   assert.equal(projected.evidence.cited[0]?.blocksClaim, false);
+  assert.equal(projected.evidence.cited[1]?.result, "failed");
+  assert.equal(projected.evidence.cited[1]?.blocksClaim, false);
+  assert.equal(projected.evidence.cited[2]?.result, "failed");
+  assert.equal(projected.evidence.cited[2]?.blocksClaim, false);
   assert.equal(projected.evidence.entailing[1]?.result, "failed");
   assert.equal(projected.evidence.entailing[1]?.blocksClaim, true);
+  assert.equal(projected.evidence.entailing[2]?.result, "failed");
+  assert.equal(projected.evidence.entailing[2]?.blocksClaim, false);
   assert.deepEqual(projected.derivation, {
     available: true,
     directInputs: [
