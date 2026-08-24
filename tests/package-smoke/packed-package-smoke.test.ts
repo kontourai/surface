@@ -63,8 +63,9 @@ test("packed npm artifact installs, imports, and serves modern plus legacy MCP f
         "--input-type=module",
         "--eval",
         [
-          "import { TrustBundleBuilder, buildTrustReport, validateTrustBundle, explainClaim } from '@kontourai/surface';",
+          "import { TrustBundleBuilder, buildAnswerCardProjection, buildTrustReport, validateTrustBundle, explainClaim } from '@kontourai/surface';",
           "if (typeof TrustBundleBuilder !== 'function') throw new Error('TrustBundleBuilder missing');",
+          "if (typeof buildAnswerCardProjection !== 'function') throw new Error('buildAnswerCardProjection missing');",
           "if (typeof buildTrustReport !== 'function') throw new Error('buildTrustReport missing');",
           "if (typeof validateTrustBundle !== 'function') throw new Error('validateTrustBundle missing');",
           "if (typeof explainClaim !== 'function') throw new Error('explainClaim missing');",
@@ -92,13 +93,28 @@ test("packed npm artifact installs, imports, and serves modern plus legacy MCP f
       "utf8",
     );
     assert.match(indexDeclaration, /export \* from "\.\/consumer-sdk\.js"/);
+    assert.match(indexDeclaration, /export \* from "\.\/answer-card-projection\.js"/);
     assert.match(indexDeclaration, /export \* from "\.\/report\.js"/);
     assert.match(indexDeclaration, /export \* from "\.\/validate\.js"/);
 
-    const [consumerSdkDeclaration, reportDeclaration, validateDeclaration] =
+    const [
+      consumerSdkDeclaration,
+      answerCardDeclaration,
+      reportDeclaration,
+      validateDeclaration,
+    ] =
       await Promise.all([
         readFile(
           path.join(installedPackageRoot, "dist", "src", "consumer-sdk.d.ts"),
+          "utf8",
+        ),
+        readFile(
+          path.join(
+            installedPackageRoot,
+            "dist",
+            "src",
+            "answer-card-projection.d.ts",
+          ),
           "utf8",
         ),
         readFile(
@@ -111,6 +127,7 @@ test("packed npm artifact installs, imports, and serves modern plus legacy MCP f
         ),
       ]);
     assert.match(consumerSdkDeclaration, /TrustBundleBuilder/);
+    assert.match(answerCardDeclaration, /buildAnswerCardProjection/);
     assert.match(reportDeclaration, /buildTrustReport/);
     assert.match(validateDeclaration, /validateTrustBundle/);
 

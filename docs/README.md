@@ -55,6 +55,7 @@ Maintainer-only material stays repo-only: this index, brand language, ADRs, audi
 - [Examples](reference/examples.md) — examples used by tests and docs
 - [Schema Versioning](reference/schema-versioning.md) — versioning rules for contract changes
 - [Trust Analytics Projection](reference/analytics.md) — evidence intelligence derived from `TrustReport`
+- [Answer Card Projection](reference/answer-card-projection.md) — compact report-only answer-card read model
 - [Surface Console](reference/console.md) — local Console server over producer read models
 - [Agents and MCP](reference/mcp.md) — `surface mcp` trust-state tools over the Model Context Protocol
 - [Trust Panel Embed](reference/trust-panel.md) — the dependency-free `surface-trust-panel` web component
