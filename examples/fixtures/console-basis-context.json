@@ -1,0 +1,10 @@
+{
+  "version": "surface.basis-projection/v1",
+  "answer": { "authority": "@kontourai/thread", "schemaVersion": "1.2.0", "kind": "assistant-message", "threadId": "thread-42", "messageId": "message-9" },
+  "assessment": { "owner": { "authority": "@kontourai/thread", "schemaVersion": "1.2.0", "kind": "result", "component": "thread" }, "state": "observed-empty", "value": [] },
+  "contributions": [
+    { "owner": { "authority": "@kontourai/flow-agents", "schemaVersion": "1", "kind": "narrative", "component": "flow-agents" }, "state": "available", "value": [
+      { "id": "narrative-1", "owner": { "authority": "@kontourai/flow-agents", "schemaVersion": "1", "kind": "narrative", "component": "flow-agents" }, "answer": { "authority": "@kontourai/thread", "schemaVersion": "1.2.0", "kind": "assistant-message", "threadId": "thread-42", "messageId": "message-9" }, "role": "process", "display": { "title": "Agent narrative", "summary": "Owner-attributed context only" } }
+    ] }
+  ]
+}
