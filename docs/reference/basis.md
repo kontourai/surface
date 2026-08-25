@@ -2,6 +2,22 @@
 
 `@kontourai/surface/basis` is the headless, tree-shaken read model for the evidence and bounded owner context behind one observed Thread answer. It is intentionally not exported by the package root and has no UI, network, storage, authentication, or product-runtime dependency.
 
+## One Basis concept, three delivery paths
+
+Surface owns one Viewer meaning for Basis: standing, evidence partitions, mandatory gaps, context ordering, and the rule that context is not support. Products choose one of three delivery paths without changing that meaning:
+
+1. **Headless native rendering.** Import `buildBasisPanelViewModel` from `@kontourai/surface/basis/view` and render the parsed model with product-native primitives.
+2. **Zero-framework embedding.** Set `.basisProjection` on the existing `<surface-trust-panel>`, or use `mode="basis"` with `src`; no input-shape sniffing selects Basis mode.
+3. **MCP Apps.** A server can use `buildBasisPanelUiResource` to serve a self-contained `ui://` resource with `text/html;profile=mcp-app`. The host mediates resources and tool results; Surface never fetches protected owner data in the browser.
+
+A native renderer may control spacing, typography, responsive layout, and focus behavior. It may not relabel standing, repartition evidence, hide gaps, or promote context into support.
+
+```ts
+import { buildBasisPanelViewModel } from "@kontourai/surface/basis/view";
+
+const view = buildBasisPanelViewModel(projection); // hostile input becomes generic unavailable state
+```
+
 ```ts
 import { buildAnswerAssessmentProjection, composeBasisProjection } from "@kontourai/surface/basis";
 

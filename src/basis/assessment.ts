@@ -1,5 +1,5 @@
 import { derivationInputsForClaim } from "../derivation.js";
-import { partitionEvidenceBySupport } from "../evidence-support.js";
+import { isStandingCounterevidence, partitionEvidenceBySupport } from "../evidence-support.js";
 import type { Evidence, TrustReport } from "../types.js";
 import { SURFACE_ANSWER_ASSESSMENT_VERSION, SURFACE_BASIS_VERSION, type AnswerAssessmentProjection, type BasisAssessmentEvidence, type SurfacePolicyOutcome } from "./types.js";
 import { isBasisInertDisplayScalar, isBasisOpaqueRefScalar, isBasisRestrictedContractScalar, parseSurfacePolicyOutcome } from "./validation.js";
@@ -44,7 +44,7 @@ export function buildAnswerAssessmentProjection(report: TrustReport, claimId: st
     evidence: {
       cited: partitioned.citedEvidence.map(projectEvidence),
       entails: partitioned.entailingEvidence.map(projectEvidence),
-      counterevidence: evidence.filter((candidate) => candidate.passing === false).map(projectEvidence),
+      counterevidence: evidence.filter(isStandingCounterevidence).map(projectEvidence),
     },
     derivation: projectDerivation(report, claim),
     gaps: report.transparencyGaps.filter((gap) => gap.claimId === claimId).map((gap) => ({ code: gap.type, message: gap.message })),

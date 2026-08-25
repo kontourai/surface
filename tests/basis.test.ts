@@ -4,6 +4,7 @@ import test from "node:test";
 import { build } from "esbuild";
 import { buildAnswerAssessmentProjection, composeBasisProjection, createSurfacePolicyOutcome, parseBasisComposition, parseBasisProjection, parseThreadAnswerRef, SURFACE_ANSWER_ASSESSMENT_VERSION, SURFACE_BASIS_VERSION, type AnswerAssessmentProjection, type BasisCompositionInput, type BasisContribution, type BasisContributionRef, type ThreadAnswerRef } from "../src/basis/index.js";
 import { buildTrustReport, type TrustBundle } from "../src/index.js";
+import { buildBasisPanelViewModel, SURFACE_BASIS_PANEL_VIEW_VERSION } from "../src/basis/view-index.js";
 import * as rootSurface from "../src/index.js";
 import type { Evidence, TrustReport } from "../src/types.js";
 
@@ -22,6 +23,32 @@ test("Surface builder projects coverage but never invents a policy verdict", () 
   assert.equal(built.policy, null);
   assert.equal(parseBasisComposition(JSON.parse(JSON.stringify(input({ owner: { authority: "@kontourai/surface" }, state: "available", observedAt: answer.observedAt, value: built })))).ok, true);
   assert.equal(composeBasisProjection(input({ owner: { authority: "@kontourai/surface" }, state: "available", observedAt: answer.observedAt, value: built })).standing, "assessed-with-gaps");
+});
+test("Basis counterevidence uses the canonical entailing, failed, blocking predicate", () => {
+  const source = report();
+  source.evidence = [
+    { id: "cited-failure", claimId: "claim-a", supportStrength: "cited", evidenceType: "source_excerpt", method: "observation", sourceRef: "source", excerptOrSummary: "citation failure", observedAt: answer.observedAt, collectedBy: "fixture", passing: false },
+    { id: "nonblocking-failure", claimId: "claim-a", supportStrength: "entails", evidenceType: "source_excerpt", method: "observation", sourceRef: "source", excerptOrSummary: "nonblocking", observedAt: answer.observedAt, collectedBy: "fixture", passing: false, blocking: false },
+    { id: "blocking-failure", claimId: "claim-a", supportStrength: "entails", evidenceType: "source_excerpt", method: "observation", sourceRef: "source", excerptOrSummary: "blocking", observedAt: answer.observedAt, collectedBy: "fixture", passing: false },
+  ];
+  const built = buildAnswerAssessmentProjection(source, "claim-a");
+  assert.deepEqual(built.evidence.cited.map((item) => item.id), ["cited-failure"]);
+  assert.deepEqual(built.evidence.counterevidence.map((item) => item.id), ["blocking-failure"]);
+});
+test("Basis panel view owns standing, evidence partitions, context order, and hostile fallback", () => {
+  const assessed = composeBasisProjection(input({ owner: { authority: "@kontourai/surface" }, state: "available", observedAt: answer.observedAt, value: explicitAssessment({ evidence: { cited: [{ id: "citation", label: "citation", sourceRef: "source", observedAt: answer.observedAt }], entails: [{ id: "support", label: "support", sourceRef: "source", observedAt: answer.observedAt }], counterevidence: [] } }) }, [{ owner: { authority: "@kontourai/station" }, state: "available", observedAt: answer.observedAt, value: [contribution] }]));
+  const model = buildBasisPanelViewModel(assessed);
+  assert.equal(model.version, SURFACE_BASIS_PANEL_VIEW_VERSION);
+  assert.equal(model.state, "ready");
+  if (model.state !== "ready") return;
+  assert.equal(model.standing.label, "Policy met");
+  assert.deepEqual(model.assessment?.evidence.map((partition) => [partition.label, partition.items.length]), [["Entailing evidence", 1], ["Citations", 1], ["Counterevidence", 0]]);
+  assert.deepEqual(model.contextGroups.map((group) => group.label), ["Inputs", "Execution", "Process", "Outcomes", "Sources", "Live"]);
+  assert.match(model.contextNotice, /do not establish support/u);
+  const hostile = new Proxy({}, { ownKeys() { throw new Error("no"); } });
+  const unavailable = buildBasisPanelViewModel(hostile);
+  assert.deepEqual(unavailable, buildBasisPanelViewModel({}));
+  assert.equal(unavailable.state, "unavailable");
 });
 test("real system-card report round-trips through Basis without degrading Surface evidence", async () => {
   const bundle = JSON.parse(await readFile("examples/system-card/bundle.json", "utf8")) as TrustBundle;

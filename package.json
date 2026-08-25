@@ -32,6 +32,10 @@
     "./basis": {
       "types": "./dist/src/basis/index.d.ts",
       "import": "./dist/src/basis/index.js"
+    },
+    "./basis/view": {
+      "types": "./dist/src/basis/view-index.d.ts",
+      "import": "./dist/src/basis/view-index.js"
     }
   },
   "files": [

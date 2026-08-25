@@ -1,8 +1,14 @@
 import { TRUST_PANEL_JS } from "../trust-panel/trust-panel-module.generated.js";
 import type { TrustReport } from "../types.js";
+import { parseBasisProjection } from "../basis/parser.js";
 
 export interface TrustPanelUiResourceOptions {
   /** URI for the resource, e.g. "ui://surface/trust-panel/summary" */
+  uri: string;
+}
+
+export interface BasisPanelUiResourceOptions {
+  /** URI for the resource, e.g. "ui://surface/basis/answer" */
   uri: string;
 }
 
@@ -60,6 +66,31 @@ export function buildTrustPanelUiResource(
 }
 
 /**
+ * Builds a portable MCP Apps resource for an already supplied Basis snapshot.
+ * It deliberately does not fetch owner data: the host mediates tool results and
+ * may push a replacement snapshot over the Apps postMessage bridge.
+ */
+export function buildBasisPanelUiResource(
+  projection: unknown,
+  opts: BasisPanelUiResourceOptions,
+): ReturnType<typeof buildTrustPanelUiResource> {
+  const parsed = parseBasisProjection(projection);
+  const projectionJson = safeJsonStringify(parsed.ok ? parsed.value : null);
+  return {
+    type: "resource",
+    resource: {
+      uri: opts.uri,
+      mimeType: "text/html;profile=mcp-app",
+      text: buildBasisHtml(projectionJson),
+      _meta: {
+        ui: { csp: { connectDomains: [], resourceDomains: [] } },
+        "mcpui.dev/ui-preferred-frame-size": ["480px", "640px"],
+      },
+    },
+  };
+}
+
+/**
  * JSON.stringify with <, >, and & escaped as Unicode escapes so the JSON
  * string is safe to embed directly inside a <script> element without closing
  * it prematurely or triggering HTML parsers.
@@ -109,6 +140,7 @@ function buildHtml(reportJson: string): string {
   --k-caution: #a86612;
   --k-negative: #c24141;
 }
+
 @media (prefers-color-scheme: dark) {
   :root {
     --k-text: #e2ede6;
@@ -148,4 +180,20 @@ if (dataEl && panel) {
 </script>
 </body>
 </html>`;
+}
+
+function buildBasisHtml(projectionJson: string): string {
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<title>Basis</title><style>body{margin:0;padding:1rem;background:#fffcf1;color:#17201b;font-family:system-ui,sans-serif}*{box-sizing:border-box}</style>
+</head><body><surface-trust-panel mode="basis"></surface-trust-panel>
+<script type="application/json" id="surface-basis-data">${projectionJson}</script><script type="module">
+${safeInlineScript(TRUST_PANEL_JS)}
+const panel=document.querySelector("surface-trust-panel");
+const data=document.getElementById("surface-basis-data");
+const setBasis=(value)=>{ if(panel) panel.basisProjection=value; };
+try { setBasis(JSON.parse(data?.textContent||"null")); } catch { setBasis(null); }
+window.addEventListener("message",(event)=>{ const message=event.data; const value=message?.params?.structuredContent??message?.structuredContent??message?.projection; if(value!==undefined) setBasis(value); });
+</script></body></html>`;
 }

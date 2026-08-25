@@ -73,6 +73,8 @@ test("packed npm artifact installs, imports, and serves modern plus legacy MCP f
           "if ('composeBasisProjection' in root) throw new Error('basis leaked through root barrel');",
           "const basis = await import('@kontourai/surface/basis');",
           "if (typeof basis.composeBasisProjection !== 'function') throw new Error('basis subpath missing');",
+          "const basisView = await import('@kontourai/surface/basis/view');",
+          "if (typeof basisView.buildBasisPanelViewModel !== 'function') throw new Error('basis view subpath missing');",
           "try {",
           "  await import('@kontourai/surface/dist/src/console/projection.js');",
           "  throw new Error('deep import unexpectedly resolved');",

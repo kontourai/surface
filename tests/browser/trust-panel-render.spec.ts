@@ -364,3 +364,36 @@ test("discloses evidence visibility and integrity-anchor verification state", as
   expect(anchorVerified!.text).toContain("Integrity hash: verified");
   expect(anchorFailed!.html).not.toBe(anchorVerified!.html);
 });
+
+test("Basis mode keeps mandatory standing and gaps visible while disclosures remain native", async ({ page }) => {
+  await page.goto("/viewer.html");
+  await page.waitForFunction(() => customElements.get("surface-trust-panel") !== undefined);
+  await page.evaluate(() => {
+    const panel = document.getElementById("viewer-panel") as HTMLElement & { basisProjection: unknown };
+    panel.setAttribute("mode", "basis");
+    panel.basisProjection = {
+      version: "surface.basis-projection/v1",
+      answer: { owner: { authority: "@kontourai/thread" }, state: "available", observedAt: "2026-08-25T00:00:00.000Z", value: { ref: { authority: "@kontourai/thread", schemaVersion: "1.2.0", kind: "assistant-message", standing: "observed", threadId: "thread", messageId: "message" }, fact: "answer-observed", observedAt: "2026-08-25T00:00:00.000Z" } },
+      standing: "execution-only", unresolvedReason: null,
+      assessment: { owner: { authority: "@kontourai/surface" }, state: "not-captured", observedAt: "2026-08-25T00:00:00.000Z" },
+      regions: { inputs: [], execution: [], process: [], outcomes: [], support: [], sources: [], live: [] }, relationships: [], gaps: [],
+    };
+  });
+  const basis = page.locator("surface-trust-panel");
+  await expect(basis).toHaveAttribute("mode", "basis");
+  const snapshot = await page.evaluate(() => {
+    const root = (document.getElementById("viewer-panel") as HTMLElement).shadowRoot!;
+    return {
+      title: root.querySelector('[part="title"]')?.textContent,
+      standing: root.querySelector('[part="standing"]')?.textContent,
+      gaps: root.querySelector('[part="gaps"]')?.textContent,
+      contextOpen: (root.querySelector('[part="context"]') as HTMLDetailsElement | null)?.open,
+      parts: [...root.querySelectorAll("[part]")].map((item) => item.getAttribute("part")),
+    };
+  });
+  expect(snapshot.title).toBe("Basis");
+  expect(snapshot.standing).toContain("Unassessed");
+  expect(snapshot.gaps).toContain("Gaps (0)");
+  expect(snapshot.contextOpen).toBe(false);
+  expect(snapshot.parts).toEqual(expect.arrayContaining(["panel", "header", "title", "standing", "gaps", "assessment", "context", "relationships", "technical", "footer"]));
+});
