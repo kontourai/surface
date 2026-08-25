@@ -11,6 +11,11 @@ export interface BasisPanelUiResourceOptions {
   /** URI for the resource, e.g. "ui://surface/basis/answer" */
   uri: string;
 }
+export const MCP_APPS_PROTOCOL_VERSION = "2026-01-26" as const;
+export function buildBasisPanelAppToolMeta(uri: string): { ui: { resourceUri: string; visibility: ["model", "app"] } } {
+  assertMcpAppUri(uri);
+  return { ui: { resourceUri: uri, visibility: ["model", "app"] } };
+}
 export interface BasisPanelUiResource {
   type: "resource";
   resource: { uri: string; mimeType: "text/html;profile=mcp-app"; text: string; _meta: { ui: { csp: { connectDomains: string[]; resourceDomains: string[] } } } };
@@ -78,6 +83,7 @@ export function buildBasisPanelUiResource(
   projection: unknown,
   opts: BasisPanelUiResourceOptions,
 ): BasisPanelUiResource {
+  assertMcpAppUri(opts.uri);
   const parsed = parseBasisProjection(projection);
   const projectionJson = safeJsonStringify(parsed.ok ? parsed.value : null);
   return {
@@ -91,6 +97,10 @@ export function buildBasisPanelUiResource(
       },
     },
   };
+}
+
+function assertMcpAppUri(uri: unknown): asserts uri is string {
+  if (typeof uri !== "string" || !uri.startsWith("ui://") || uri.length > 4_096) throw new TypeError("Basis MCP Apps resources require a bounded ui:// URI.");
 }
 
 /**
@@ -199,7 +209,8 @@ const setBasis=(value)=>{ if(panel) panel.basisProjection=value; };
 try { setBasis(JSON.parse(data?.textContent||"null")); } catch { setBasis(null); }
 let nextId=1; const pending=new Set();
 const send=(method,params,id)=>window.parent.postMessage({jsonrpc:"2.0",method,...(id===undefined?{}:{id}),...(params===undefined?{}:{params})},"*");
-const initializeId=nextId++; pending.add(initializeId); send("ui/initialize",{protocolVersion:"2025-06-18",capabilities:{}},initializeId);
-window.addEventListener("message",(event)=>{ if(event.source!==window.parent) return; const message=event.data; if(!message||message.jsonrpc!=="2.0") return; if(message.id===initializeId&&pending.delete(initializeId)){ send("ui/notifications/initialized",{}); return; } if(message.method==="ui/notifications/tool-result"&&message.params){ if(Object.hasOwn(message.params,"result")) setBasis(message.params.result); else if(Object.hasOwn(message.params,"structuredContent")) setBasis(message.params.structuredContent); } });
+let initialized=false;
+const initializeId=nextId++; pending.add(initializeId); send("ui/initialize",{protocolVersion:"${MCP_APPS_PROTOCOL_VERSION}",appInfo:{name:"Surface Basis",version:"1.0.0"},appCapabilities:{}},initializeId);
+window.addEventListener("message",(event)=>{ if(event.source!==window.parent) return; const message=event.data; if(!message||message.jsonrpc!=="2.0") return; if(message.id===initializeId&&pending.delete(initializeId)){ const result=message.result; if(!result||typeof result.protocolVersion!=="string"||!result.hostInfo||!result.hostCapabilities||!result.hostContext) return; initialized=true; send("ui/notifications/initialized"); return; } if(initialized&&message.method==="ui/notifications/tool-result"&&message.params&&Object.hasOwn(message.params,"structuredContent")){ setBasis(message.params.structuredContent); } });
 </script></body></html>`;
 }

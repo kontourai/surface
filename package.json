@@ -101,6 +101,7 @@
     "workflow:validate-artifacts": "flow-agents-validate-artifacts"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.10.2",
     "@kontourai/flow-agents": "5.5.0",
     "@kontourai/survey": "^2.4.1",
     "@kontourai/ui": "^1.1.0",

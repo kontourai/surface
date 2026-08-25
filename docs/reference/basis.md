@@ -8,7 +8,7 @@ Surface owns one Viewer meaning for Basis: standing, evidence partitions, mandat
 
 1. **Headless native rendering.** Import `buildBasisPanelViewModel` from `@kontourai/surface/basis/view` and render the parsed model with product-native primitives.
 2. **Zero-framework embedding.** Set `.basisProjection` on the existing `<surface-trust-panel>`, or use `mode="basis"` with `src`; no input-shape sniffing selects Basis mode.
-3. **MCP Apps.** A server can use `buildBasisPanelUiResource` to serve a self-contained `ui://` resource with `text/html;profile=mcp-app`. The host mediates resources and tool results; Surface never fetches protected owner data in the browser.
+3. **MCP Apps.** A server can import `buildBasisPanelAppToolMeta` and `buildBasisPanelUiResource` from `@kontourai/surface/basis/mcp` to advertise canonical nested `_meta.ui.resourceUri` metadata and serve a self-contained `ui://` resource with `text/html;profile=mcp-app`. The embedded app uses the stable MCP Apps `2026-01-26` handshake implemented by `@modelcontextprotocol/ext-apps@1.7.5` and reads the standard `CallToolResult.structuredContent`; this version is distinct from the host/server MCP core protocol version. The host mediates resources and tool results; Surface never fetches protected owner data in the browser.
 
 A native renderer may control spacing, typography, responsive layout, and focus behavior. It may not relabel standing, repartition evidence, hide gaps, or promote context into support.
 
@@ -20,7 +20,7 @@ const view = buildBasisPanelViewModel(projection); // hostile input becomes gene
 
 ### Delivery-size ratchet
 
-The repository checks gzip level 9 sizes for the browser delivery seams. Baseline at #207 closure: `basis/view` 2,373 bytes, `basis/mcp` 154 bytes, and the bundled Trust Panel element 12,920 bytes. The element grew from the legacy report-only panel because it now embeds the parsed Basis viewer, mandatory disclosures, and refresh-state preservation; that cost is intentional and kept out of the root package. Any increase requires updating the checked budget and explaining the product cost in this section. The ratchet lives in `tests/basis-bundle-budget.test.ts` and measures the built files with Node `gzipSync(..., { level: 9 })`.
+The repository checks gzip level 9 sizes for the browser delivery seams. Baseline at #207 closure: `basis/view` 2,406 bytes, `basis/mcp` 182 bytes, and the bundled Trust Panel element 12,983 bytes. The final increase over the initial #207 ratchet is the explicit Viewer-owned footer, canonical nested MCP Apps tool metadata/protocol constant, claim freshness/status disclosure, relationship-local gaps, and 44px disclosure targets. The larger element remains isolated from the root package. Any increase requires updating the checked budget and explaining the product cost in this section. The ratchet lives in `tests/basis-bundle-budget.test.ts` and measures the built files with Node `gzipSync(..., { level: 9 })`.
 
 ```ts
 import { buildAnswerAssessmentProjection, composeBasisProjection } from "@kontourai/surface/basis";

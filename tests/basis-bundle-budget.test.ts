@@ -4,9 +4,9 @@ import test from "node:test";
 import { gzipSync } from "node:zlib";
 
 const BUDGETS = {
-  "dist/src/basis/view.js": 2_373,
-  "dist/src/basis/mcp.js": 154,
-  "dist/src/trust-panel/surface-trust-panel.js": 12_920,
+  "dist/src/basis/view.js": 2_406,
+  "dist/src/basis/mcp.js": 182,
+  "dist/src/trust-panel/surface-trust-panel.js": 12_983,
 } as const;
 
 test("Basis viewer delivery bundles stay within the checked gzip ratchet", async () => {
