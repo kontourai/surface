@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.16.0](https://github.com/kontourai/surface/compare/v2.15.0...v2.16.0) (2026-08-25)
+
+
+### Features
+
+* add headless Basis projection core ([f7f7877](https://github.com/kontourai/surface/commit/f7f78771b401cf792d1c1c90a4ae37e4e0b25732))
+* add Surface Basis headless projection ([#232](https://github.com/kontourai/surface/issues/232)) ([c9ea551](https://github.com/kontourai/surface/commit/c9ea5517f3a74adb689a4244fb8e57f9e164a19b))
+
+
+### Fixes
+
+* **basis:** close authority and projection seams ([e5cb4dc](https://github.com/kontourai/surface/commit/e5cb4dcd65ed4f15cc3e4d4b92892833ef547872))
+* **basis:** defer owner context relationships ([160c222](https://github.com/kontourai/surface/commit/160c2225781b148e126524b4fc7d5474b4919502))
+* **basis:** harden assessment authority and parsing ([530fe9e](https://github.com/kontourai/surface/commit/530fe9ed952be550195295ecffcd2747ca1e7e5e))
+* **basis:** preserve Surface evidence contracts ([bfa27ad](https://github.com/kontourai/surface/commit/bfa27ada57f2c923859fe141d2e09b337bd77a74))
+
 ## [2.15.0](https://github.com/kontourai/surface/compare/v2.14.0...v2.15.0) (2026-08-24)
 
 
