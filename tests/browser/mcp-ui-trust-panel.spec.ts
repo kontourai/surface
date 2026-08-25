@@ -138,6 +138,39 @@ function extractUiUri(response: JsonRpcResponse): string {
   return content?.[1]?.resource?.uri ?? "";
 }
 
+test("Basis MCP App performs the initialize/result protocol only with its parent host", async ({ page }) => {
+  const html = (await import("../../src/mcp-ui/trust-panel-resource.js"))
+    .buildBasisPanelUiResource(null, { uri: "ui://surface/basis/protocol" }).resource.text;
+  await page.setContent("<iframe id=app></iframe>");
+  const observed = await page.evaluate(async ({ html }) => {
+    const frame = document.querySelector("#app") as HTMLIFrameElement;
+    const messages: unknown[] = [];
+    return await new Promise<unknown[]>((resolve) => {
+      window.addEventListener("message", (event) => {
+        messages.push(event.data);
+        const message = event.data as { method?: string; id?: number };
+        if (message.method === "ui/initialize") {
+          const host = event.source as Window;
+          host.postMessage({ jsonrpc: "2.0", id: message.id, result: {} }, { targetOrigin: "*" });
+          // Wrong method/source are ignored before the actual host result.
+          frame.contentWindow?.postMessage({ jsonrpc: "2.0", method: "wrong", params: { result: { hostile: true } } }, { targetOrigin: "*" });
+          window.postMessage({ jsonrpc: "2.0", method: "ui/notifications/tool-result", params: { result: { hostile: true }, structuredContent: { hostile: true } } }, { targetOrigin: "*" });
+          host.postMessage({ jsonrpc: "2.0", method: "ui/notifications/tool-result", params: { result: { hostile: true }, structuredContent: { hostile: true } } }, { targetOrigin: "*" });
+          setTimeout(() => resolve(messages), 50);
+        }
+      });
+      frame.srcdoc = html;
+    });
+  }, { html });
+  expect(observed).toEqual(expect.arrayContaining([
+    { jsonrpc: "2.0", id: 1, method: "ui/initialize", params: { protocolVersion: "2025-06-18", capabilities: {} } },
+    { jsonrpc: "2.0", method: "ui/notifications/initialized", params: {} },
+  ]));
+  const frame = page.frameLocator("#app");
+  await expect(frame.locator("surface-trust-panel")).toBeVisible();
+  await expect(frame.locator("surface-trust-panel")).toContainText("Basis");
+});
+
 // ---------------------------------------------------------------------------
 // Page helpers
 // ---------------------------------------------------------------------------

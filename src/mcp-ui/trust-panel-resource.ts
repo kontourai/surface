@@ -199,7 +199,7 @@ const setBasis=(value)=>{ if(panel) panel.basisProjection=value; };
 try { setBasis(JSON.parse(data?.textContent||"null")); } catch { setBasis(null); }
 let nextId=1; const pending=new Set();
 const send=(method,params,id)=>window.parent.postMessage({jsonrpc:"2.0",method,...(id===undefined?{}:{id}),...(params===undefined?{}:{params})},"*");
-const initializeId=nextId++; pending.add(initializeId); send("ui/initialize",{},initializeId);
-window.addEventListener("message",(event)=>{ if(event.source!==window.parent) return; const message=event.data; if(!message||message.jsonrpc!=="2.0") return; if(message.id===initializeId&&pending.delete(initializeId)){ send("ui/notifications/initialized",{}); return; } if(message.method==="ui/notifications/tool-result"&&message.params&&Object.hasOwn(message.params,"result")){ setBasis(message.params.result); } });
+const initializeId=nextId++; pending.add(initializeId); send("ui/initialize",{protocolVersion:"2025-06-18",capabilities:{}},initializeId);
+window.addEventListener("message",(event)=>{ if(event.source!==window.parent) return; const message=event.data; if(!message||message.jsonrpc!=="2.0") return; if(message.id===initializeId&&pending.delete(initializeId)){ send("ui/notifications/initialized",{}); return; } if(message.method==="ui/notifications/tool-result"&&message.params){ if(Object.hasOwn(message.params,"result")) setBasis(message.params.result); else if(Object.hasOwn(message.params,"structuredContent")) setBasis(message.params.structuredContent); } });
 </script></body></html>`;
 }
