@@ -5,7 +5,7 @@ import { build } from "esbuild";
 
 const BUDGETS = {
   "src/basis/view-index.ts": 6_307,
-  "src/basis/mcp.ts": 18_708,
+  "src/basis/mcp.ts": 107_413,
   "src/trust-panel/surface-trust-panel.ts": 10_905,
 } as const;
 

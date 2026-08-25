@@ -165,6 +165,7 @@ test("Basis MCP App performs the initialize/result protocol only with its parent
           const host = event.source as Window;
           attacker.srcdoc = `<script>parent.frames.app.postMessage({jsonrpc:"2.0",method:"ui/notifications/tool-result",params:{structuredContent:{hostile:true}}},"*")<\/script>`;
           host.postMessage({ jsonrpc: "2.0", method: "wrong", params: { structuredContent: { hostile: true } } }, { targetOrigin: "*" });
+          host.postMessage({ jsonrpc: "2.0", method: "ui/notifications/tool-result", params: { content: [42], structuredContent: { hostile: true } } }, { targetOrigin: "*" });
           host.postMessage({ jsonrpc: "2.0", method: "ui/notifications/tool-result", params: { content: [], structuredContent: projection } }, { targetOrigin: "*" });
           setTimeout(() => resolve(messages), 100);
         }
@@ -173,7 +174,7 @@ test("Basis MCP App performs the initialize/result protocol only with its parent
     });
   }, { html, projection });
   expect(observed).toEqual(expect.arrayContaining([
-    { jsonrpc: "2.0", id: 1, method: "ui/initialize", params: { protocolVersion: "2026-01-26", appInfo: { name: "Surface Basis", version: "1.0.0" }, appCapabilities: {} } },
+    { jsonrpc: "2.0", id: 0, method: "ui/initialize", params: { protocolVersion: "2026-01-26", appInfo: { name: "Surface Basis", version: "1.0.0" }, appCapabilities: {} } },
     { jsonrpc: "2.0", method: "ui/notifications/initialized" },
   ]));
   const frame = page.frameLocator("#app");
@@ -210,7 +211,7 @@ test("Basis MCP App rejects malformed host initialization and pre-init results",
         if (message.method === "ui/initialize") {
           const host = event.source as Window;
           host.postMessage({ jsonrpc: "2.0", method: "ui/notifications/tool-result", params: { content: [], structuredContent: { hostile: true } } }, { targetOrigin: "*" });
-          host.postMessage({ jsonrpc: "2.0", id: message.id, result: { protocolVersion: "2026-01-26", hostInfo: "invalid", hostCapabilities: [], hostContext: null } }, { targetOrigin: "*" });
+          host.postMessage({ jsonrpc: "2.0", id: message.id, result: { protocolVersion: "2026-01-26", hostInfo: { name: "bad-host", version: "1.0.0" }, hostCapabilities: { sampling: "wrong" }, hostContext: { theme: "sepia" } } }, { targetOrigin: "*" });
           setTimeout(() => resolve(messages), 100);
         }
       });

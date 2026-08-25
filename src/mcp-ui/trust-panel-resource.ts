@@ -1,4 +1,5 @@
 import { TRUST_PANEL_JS } from "../trust-panel/trust-panel-module.generated.js";
+import { BASIS_MCP_APP_JS } from "./basis-app-module.generated.js";
 import type { TrustReport } from "../types.js";
 import { parseBasisProjection } from "../basis/parser.js";
 
@@ -212,14 +213,6 @@ function buildBasisHtml(projectionJson: string): string {
 </head><body><surface-trust-panel mode="basis"></surface-trust-panel>
 <script type="application/json" id="surface-basis-data">${projectionJson}</script><script type="module">
 ${safeInlineScript(TRUST_PANEL_JS)}
-const panel=document.querySelector("surface-trust-panel");
-const data=document.getElementById("surface-basis-data");
-const setBasis=(value)=>{ if(panel) panel.basisProjection=value; };
-try { setBasis(JSON.parse(data?.textContent||"null")); } catch { setBasis(null); }
-let nextId=1; const pending=new Set();
-const send=(method,params,id)=>window.parent.postMessage({jsonrpc:"2.0",method,...(id===undefined?{}:{id}),...(params===undefined?{}:{params})},"*");
-let initialized=false;
-const initializeId=nextId++; pending.add(initializeId); send("ui/initialize",{protocolVersion:"${MCP_APPS_PROTOCOL_VERSION}",appInfo:{name:"Surface Basis",version:"1.0.0"},appCapabilities:{}},initializeId);
-window.addEventListener("message",(event)=>{ if(event.source!==window.parent) return; const message=event.data; if(!message||message.jsonrpc!=="2.0") return; if(message.id===initializeId&&pending.delete(initializeId)){ const result=message.result; const implementation=result?.hostInfo; if(!result||typeof result.protocolVersion!=="string"||!implementation||typeof implementation.name!=="string"||implementation.name.length===0||typeof implementation.version!=="string"||implementation.version.length===0||!result.hostCapabilities||typeof result.hostCapabilities!=="object"||Array.isArray(result.hostCapabilities)||!result.hostContext||typeof result.hostContext!=="object"||Array.isArray(result.hostContext)) return; initialized=true; send("ui/notifications/initialized"); return; } const toolResult=message.params; if(initialized&&message.method==="ui/notifications/tool-result"&&toolResult&&typeof toolResult==="object"&&!Array.isArray(toolResult)&&Array.isArray(toolResult.content)&&Object.hasOwn(toolResult,"structuredContent")&&toolResult.structuredContent&&typeof toolResult.structuredContent==="object"&&!Array.isArray(toolResult.structuredContent)){ setBasis(toolResult.structuredContent); } });
+${safeInlineScript(BASIS_MCP_APP_JS)}
 </script></body></html>`;
 }
