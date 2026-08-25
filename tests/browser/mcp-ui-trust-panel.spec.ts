@@ -196,6 +196,33 @@ test("Basis MCP App renders invalid input as unavailable without echoing it", as
   await expect(frame.locator("surface-trust-panel")).not.toContainText("DO_NOT_ECHO");
 });
 
+test("Basis MCP App rejects malformed host initialization and pre-init results", async ({ page }) => {
+  const html = (await import("../../src/mcp-ui/trust-panel-resource.js"))
+    .buildBasisPanelUiResource(null, { uri: "ui://surface/basis/bad-host" }).resource.text;
+  await page.setContent("<iframe id=app></iframe>");
+  const observed = await page.evaluate(async (value) => {
+    const frame = document.querySelector("#app") as HTMLIFrameElement;
+    const messages: unknown[] = [];
+    return await new Promise<unknown[]>((resolve) => {
+      window.addEventListener("message", (event) => {
+        messages.push(event.data);
+        const message = event.data as { method?: string; id?: number };
+        if (message.method === "ui/initialize") {
+          const host = event.source as Window;
+          host.postMessage({ jsonrpc: "2.0", method: "ui/notifications/tool-result", params: { content: [], structuredContent: { hostile: true } } }, { targetOrigin: "*" });
+          host.postMessage({ jsonrpc: "2.0", id: message.id, result: { protocolVersion: "2026-01-26", hostInfo: "invalid", hostCapabilities: [], hostContext: null } }, { targetOrigin: "*" });
+          setTimeout(() => resolve(messages), 100);
+        }
+      });
+      frame.srcdoc = value;
+    });
+  }, html);
+  expect(observed).not.toContainEqual({ jsonrpc: "2.0", method: "ui/notifications/initialized" });
+  const frame = page.frameLocator("#app");
+  await expect(frame.locator("surface-trust-panel")).toContainText("Cannot be read");
+  await expect(frame.locator("surface-trust-panel")).not.toContainText("hostile");
+});
+
 // ---------------------------------------------------------------------------
 // Page helpers
 // ---------------------------------------------------------------------------

@@ -12,9 +12,9 @@ export interface BasisPanelUiResourceOptions {
   uri: string;
 }
 export const MCP_APPS_PROTOCOL_VERSION = "2026-01-26" as const;
-export function buildBasisPanelAppToolMeta(uri: string): { ui: { resourceUri: string; visibility: ["model", "app"] } } {
+export function buildBasisPanelAppToolMeta(uri: string): { ui: { resourceUri: string } } {
   assertMcpAppUri(uri);
-  return { ui: { resourceUri: uri, visibility: ["model", "app"] } };
+  return { ui: { resourceUri: uri } };
 }
 export interface BasisPanelUiResource {
   type: "resource";
@@ -100,7 +100,16 @@ export function buildBasisPanelUiResource(
 }
 
 function assertMcpAppUri(uri: unknown): asserts uri is string {
-  if (typeof uri !== "string" || !uri.startsWith("ui://") || uri.length > 4_096) throw new TypeError("Basis MCP Apps resources require a bounded ui:// URI.");
+  if (typeof uri !== "string" || uri.length < 6 || uri.length > 4_096 || /[\p{Cc}\p{Z}\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/u.test(uri)) throw new TypeError("Basis MCP Apps resources require a bounded ui:// URI.");
+  for (let index = 0; index < uri.length; index += 1) {
+    const unit = uri.charCodeAt(index);
+    if (unit >= 0xd800 && unit <= 0xdbff) { const low = uri.charCodeAt(index + 1); if (!(low >= 0xdc00 && low <= 0xdfff)) throw new TypeError("Basis MCP Apps resources require well-formed Unicode."); index += 1; }
+    else if (unit >= 0xdc00 && unit <= 0xdfff) throw new TypeError("Basis MCP Apps resources require well-formed Unicode.");
+  }
+  if (new TextEncoder().encode(uri).byteLength > 4_096) throw new TypeError("Basis MCP Apps resources require a bounded ui:// URI.");
+  let parsed: URL;
+  try { parsed = new URL(uri); } catch { throw new TypeError("Basis MCP Apps resources require a valid ui:// URI."); }
+  if (parsed.protocol !== "ui:" || parsed.hostname.length === 0 || parsed.username || parsed.password || parsed.port || parsed.href !== uri) throw new TypeError("Basis MCP Apps resources require a canonical ui:// URI.");
 }
 
 /**
@@ -211,6 +220,6 @@ let nextId=1; const pending=new Set();
 const send=(method,params,id)=>window.parent.postMessage({jsonrpc:"2.0",method,...(id===undefined?{}:{id}),...(params===undefined?{}:{params})},"*");
 let initialized=false;
 const initializeId=nextId++; pending.add(initializeId); send("ui/initialize",{protocolVersion:"${MCP_APPS_PROTOCOL_VERSION}",appInfo:{name:"Surface Basis",version:"1.0.0"},appCapabilities:{}},initializeId);
-window.addEventListener("message",(event)=>{ if(event.source!==window.parent) return; const message=event.data; if(!message||message.jsonrpc!=="2.0") return; if(message.id===initializeId&&pending.delete(initializeId)){ const result=message.result; if(!result||typeof result.protocolVersion!=="string"||!result.hostInfo||!result.hostCapabilities||!result.hostContext) return; initialized=true; send("ui/notifications/initialized"); return; } if(initialized&&message.method==="ui/notifications/tool-result"&&message.params&&Object.hasOwn(message.params,"structuredContent")){ setBasis(message.params.structuredContent); } });
+window.addEventListener("message",(event)=>{ if(event.source!==window.parent) return; const message=event.data; if(!message||message.jsonrpc!=="2.0") return; if(message.id===initializeId&&pending.delete(initializeId)){ const result=message.result; const implementation=result?.hostInfo; if(!result||typeof result.protocolVersion!=="string"||!implementation||typeof implementation.name!=="string"||implementation.name.length===0||typeof implementation.version!=="string"||implementation.version.length===0||!result.hostCapabilities||typeof result.hostCapabilities!=="object"||Array.isArray(result.hostCapabilities)||!result.hostContext||typeof result.hostContext!=="object"||Array.isArray(result.hostContext)) return; initialized=true; send("ui/notifications/initialized"); return; } const toolResult=message.params; if(initialized&&message.method==="ui/notifications/tool-result"&&toolResult&&typeof toolResult==="object"&&!Array.isArray(toolResult)&&Array.isArray(toolResult.content)&&Object.hasOwn(toolResult,"structuredContent")&&toolResult.structuredContent&&typeof toolResult.structuredContent==="object"&&!Array.isArray(toolResult.structuredContent)){ setBasis(toolResult.structuredContent); } });
 </script></body></html>`;
 }

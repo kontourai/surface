@@ -397,6 +397,24 @@ test("Basis mode keeps mandatory standing and gaps visible while disclosures rem
   expect(snapshot.gaps).toContain("Gaps (0)");
   expect(snapshot.contextOpen).toBe(false);
   expect(snapshot.parts).toEqual(expect.arrayContaining(["panel", "header", "title", "standing", "gaps", "assessment", "context", "relationships", "technical", "footer"]));
+  const standing = basis.locator('[part="standing"]');
+  await expect(standing).toHaveAttribute("role", "status");
+  await expect(standing).toHaveAttribute("aria-live", "polite");
+  await page.evaluate(() => {
+    (document.getElementById("viewer-panel") as HTMLElement & { basisProjection: unknown }).basisProjection = {};
+  });
+  await expect(standing).toContainText("Cannot be read");
+  await page.evaluate(() => {
+    const panel = document.getElementById("viewer-panel") as HTMLElement & { basisProjection: unknown };
+    panel.basisProjection = {
+      version: "surface.basis-projection/v1",
+      answer: { owner: { authority: "@kontourai/thread" }, state: "available", observedAt: "2026-08-25T00:00:00.000Z", value: { ref: { authority: "@kontourai/thread", schemaVersion: "1.2.0", kind: "assistant-message", standing: "observed", threadId: "thread", messageId: "message" }, fact: "answer-observed", observedAt: "2026-08-25T00:00:00.000Z" } },
+      standing: "execution-only", unresolvedReason: null,
+      assessment: { owner: { authority: "@kontourai/surface" }, state: "not-captured", observedAt: "2026-08-25T00:00:00.000Z" },
+      regions: { inputs: [], execution: [], process: [], outcomes: [], support: [], sources: [], live: [] }, relationships: [], gaps: [],
+    };
+  });
+  await expect(standing).toContainText("Unassessed");
 });
 
 test("Basis mode preserves complete disclosure, focus, accessibility, and narrow geometry", async ({ page }) => {

@@ -1,17 +1,18 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { gzipSync } from "node:zlib";
+import { build } from "esbuild";
 
 const BUDGETS = {
-  "dist/src/basis/view.js": 2_406,
-  "dist/src/basis/mcp.js": 182,
-  "dist/src/trust-panel/surface-trust-panel.js": 12_983,
+  "src/basis/view-index.ts": 6_307,
+  "src/basis/mcp.ts": 18_708,
+  "src/trust-panel/surface-trust-panel.ts": 10_905,
 } as const;
 
-test("Basis viewer delivery bundles stay within the checked gzip ratchet", async () => {
-  for (const [path, budget] of Object.entries(BUDGETS)) {
-    const bytes = gzipSync(await readFile(path), { level: 9 }).byteLength;
-    assert.ok(bytes <= budget, `${path}: ${bytes} gzip bytes exceeds ${budget}`);
+test("Basis browser delivery bundles stay within the checked gzip ratchet", async () => {
+  for (const [entry, budget] of Object.entries(BUDGETS)) {
+    const result = await build({ entryPoints: [entry], bundle: true, minify: true, platform: "browser", format: "esm", target: "es2022", legalComments: "none", write: false });
+    const bytes = gzipSync(result.outputFiles[0]!.contents, { level: 9 }).byteLength;
+    assert.ok(bytes <= budget, `${entry}: ${bytes} bundled gzip bytes exceeds ${budget}`);
   }
 });

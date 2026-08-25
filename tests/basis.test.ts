@@ -45,6 +45,10 @@ test("Basis panel view owns standing, evidence partitions, context order, and ho
   assert.deepEqual(model.assessment?.evidence.map((partition) => [partition.label, partition.items.length]), [["Entailing evidence", 1], ["Citations", 1], ["Counterevidence", 0]]);
   assert.deepEqual(model.contextGroups.map((group) => group.label), ["Inputs", "Execution", "Process", "Outcomes", "Sources", "Live"]);
   assert.match(model.contextNotice, /do not establish support/u);
+  (model.disclosures as { context: string }).context = "expanded";
+  const later = buildBasisPanelViewModel(assessed);
+  assert.equal(later.disclosures.context, "collapsed");
+  assert.notEqual(later.disclosures, model.disclosures);
   const hostile = new Proxy({}, { ownKeys() { throw new Error("no"); } });
   const unavailable = buildBasisPanelViewModel(hostile);
   assert.deepEqual(unavailable, buildBasisPanelViewModel({}));
