@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.17.0](https://github.com/kontourai/surface/compare/v2.16.0...v2.17.0) (2026-08-25)
+
+
+### Features
+
+* **basis:** add shared viewer contract ([e4143cc](https://github.com/kontourai/surface/commit/e4143cccd88aeaf933b89647c3ea2b103c3dba79))
+* **basis:** unify Basis and the Surface Trust Panel ([#234](https://github.com/kontourai/surface/issues/234)) ([ef51731](https://github.com/kontourai/surface/commit/ef517317a39ec5af0b5752bd8999fdddd91ed051))
+
+
+### Fixes
+
+* **basis:** align viewer delivery with MCP Apps 1.7 ([6b6f825](https://github.com/kontourai/surface/commit/6b6f82538e8378740fcd4d1d87a026063ebe44d6))
+* **basis:** close viewer contract hardening gaps ([14b7b80](https://github.com/kontourai/surface/commit/14b7b80b2947cb7c8c303a7653eeab0266866cff))
+* **basis:** harden viewer and MCP contracts ([bde74db](https://github.com/kontourai/surface/commit/bde74dbd0a0448d98d964d1df529be719896caec))
+* **basis:** inline the official MCP Apps client ([d061029](https://github.com/kontourai/surface/commit/d061029f1f830045daef1dee135e608a5442984a))
+
 ## [2.16.0](https://github.com/kontourai/surface/compare/v2.15.0...v2.16.0) (2026-08-25)
 
 
