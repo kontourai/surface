@@ -18,15 +18,15 @@ export function composeBasisProjection(input: BasisCompositionInput): BasisProje
     const deduped = dedupeAndSort(matching);
     for (const contribution of deduped.items) regions[regionFor(contribution.role)].push({ ref: contribution.ref, role: contribution.role, context: contribution.context, gaps: contribution.gaps ?? [] });
     const ownerGaps = normalized.contributions.filter((read) => read.state !== "available" && read.state !== "observed-empty").map((read) => ({ code: `owner-${read.state}`, message: `Context from ${read.owner.authority} is ${read.state}.` }));
-    return projection(normalized, regions, deduped.items, [...ownerGaps, ...deduped.gaps]);
+    return projection(normalized, regions, [...ownerGaps, ...deduped.gaps]);
   }
-  return projection(normalized, regions, [], []);
+  return projection(normalized, regions, []);
 }
-function projection(input: BasisCompositionInput, regions: BasisProjection["regions"], items: readonly BasisContribution[], extraGaps: readonly BasisGap[]): BasisProjection {
+function projection(input: BasisCompositionInput, regions: BasisProjection["regions"], extraGaps: readonly BasisGap[]): BasisProjection {
   const derived = deriveBasisStanding(input.answer, input.assessment);
   const answerGaps = input.answer.state === "available" ? [] : [{ code: `answer-${input.answer.state}`, message: `Answer observation is ${input.answer.state}.` }];
   const assessmentGaps = input.assessment.state === "available" ? input.assessment.value.gaps : [];
-  return { version: SURFACE_BASIS_VERSION, answer: input.answer, standing: derived.standing, unresolvedReason: derived.reason, assessment: input.assessment, regions, relationships: [...assessmentRelationships(input), ...contextRelationships(items)], gaps: [...answerGaps, ...assessmentGaps, ...extraGaps] };
+  return { version: SURFACE_BASIS_VERSION, answer: input.answer, standing: derived.standing, unresolvedReason: derived.reason, assessment: input.assessment, regions, relationships: assessmentRelationships(input), gaps: [...answerGaps, ...assessmentGaps, ...extraGaps] };
 }
 function invalidComposition(gap: BasisGap): BasisProjection {
   return { version: SURFACE_BASIS_VERSION, answer: { owner: { authority: "@kontourai/thread" }, state: "unavailable", observedAt: "1970-01-01T00:00:00.000Z" }, standing: "unresolved", unresolvedReason: "answer-unavailable", assessment: { owner: { authority: "@kontourai/surface" }, state: "unavailable", observedAt: "1970-01-01T00:00:00.000Z" }, regions: { inputs: [], execution: [], process: [], outcomes: [], support: [], sources: [], live: [] }, relationships: [], gaps: [gap] };
@@ -37,4 +37,3 @@ function refKey(ref: BasisContribution["ref"]): string { return Object.keys(ref)
 function regionFor(role: BasisContribution["role"]): keyof BasisProjection["regions"] { return ({ input: "inputs", execution: "execution", process: "process", outcome: "outcomes", source: "sources", live: "live" } as const)[role]; }
 function sameAnswer(left: ThreadAnswerRef, right: ThreadAnswerRef): boolean { return left.authority === right.authority && left.schemaVersion === right.schemaVersion && left.kind === right.kind && left.standing === right.standing && left.threadId === right.threadId && left.messageId === right.messageId; }
 function assessmentRelationships(input: BasisCompositionInput): BasisRelationship[] { if (input.assessment.state !== "available" || !input.assessment.value.found || !input.assessment.value.claim) return []; const assessment = input.assessment.value; const claim = assessment.claim!.id; return [...assessment.evidence.cited.map((item) => ({ kind: "cites" as const, from: claim, to: `evidence:${item.id}`, source: "surface-assessment" as const, gaps: [] })), ...assessment.evidence.entails.map((item) => ({ kind: "supports" as const, from: `evidence:${item.id}`, to: claim, source: "surface-assessment" as const, gaps: [] })), ...assessment.evidence.counterevidence.map((item) => ({ kind: "counterevidence" as const, from: `evidence:${item.id}`, to: claim, source: "surface-assessment" as const, gaps: [] })), ...assessment.derivation.directInputs.map((item) => ({ kind: "derived-from" as const, from: claim, to: `claim:${item.claimId}`, source: "surface-assessment" as const, gaps: [] }))]; }
-function contextRelationships(items: readonly BasisContribution[]): BasisRelationship[] { return items.flatMap((item) => item.relationships?.map((relationship) => ({ kind: relationship.kind, from: refKey(relationship.from), to: refKey(relationship.to), source: "owner-context" as const, contract: relationship.contract, gaps: relationship.gaps ?? [] })) ?? []); }

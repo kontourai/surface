@@ -7,7 +7,7 @@
   "assessment": { "owner": { "authority": "@kontourai/surface" }, "state": "not-captured", "observedAt": "2026-08-25T00:00:00.000Z" },
   "contributions": [
     { "owner": { "authority": "@kontourai/station" }, "state": "available", "observedAt": "2026-08-25T00:00:00.000Z", "value": [
-      { "ref": { "authority": "@kontourai/station", "schemaVersion": "1", "kind": "task-output", "taskId": "task-42", "outputId": "station-output-1" }, "answer": { "authority": "@kontourai/thread", "schemaVersion": "1.2.0", "kind": "assistant-message", "standing": "observed", "threadId": "thread-42", "messageId": "message-9" }, "role": "outcome", "context": { "kind": "station-output", "title": "Task output", "mediaType": "text/plain", "byteLength": 42, "digest": "sha256-example" }, "relationships": [{ "contract": { "authority": "@kontourai/station", "schemaVersion": "station.basis-context-relationship/v1", "kind": "basis-context-relationship" }, "kind": "produced", "from": { "authority": "@kontourai/station", "schemaVersion": "1", "kind": "task-output", "taskId": "task-42", "outputId": "station-output-1" }, "to": { "authority": "@kontourai/station", "schemaVersion": "1", "kind": "task-output", "taskId": "task-42", "outputId": "station-output-1" } }] }
+      { "ref": { "authority": "@kontourai/station", "schemaVersion": "1", "kind": "task-output", "taskId": "task-42", "outputId": "station-output-1" }, "answer": { "authority": "@kontourai/thread", "schemaVersion": "1.2.0", "kind": "assistant-message", "standing": "observed", "threadId": "thread-42", "messageId": "message-9" }, "role": "outcome", "context": { "kind": "station-output", "title": "Task output", "mediaType": "text/plain", "byteLength": 42, "digest": "sha256-example" } }
     ] }
   ]
 }

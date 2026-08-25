@@ -36,16 +36,9 @@ export type BasisContextProjection =
   | { kind: "station-output"; title: string; mediaType: string; byteLength: number; digest: string }
   | { kind: "station-live"; state: string; observedAt: string }
   | { kind: "grounded-narrative"; statementCount: number; sourceCompleteness: "complete" | "partial" | "unknown" };
-export interface BasisContribution<TRef extends BasisContributionRef = BasisContributionRef> { ref: TRef; answer: ThreadAnswerRef; role: BasisContributionRole; context: BasisContextProjection; gaps?: readonly BasisGap[]; relationships?: readonly BasisContextRelationship[]; }
-export type BasisContextRelationshipKind = "observed-during" | "produced" | "checked-by" | "kept-in-task";
-/** Hosts may supply these only with a published exact relationship contract. */
-export type BasisContextRelationshipContract =
-  | { authority: "@kontourai/station"; schemaVersion: "station.basis-context-relationship/v1"; kind: "basis-context-relationship" }
-  | { authority: "@kontourai/flow-agents"; schemaVersion: "grounded-execution-narrative/v1"; kind: "basis-context-relationship" };
-export interface BasisContextRelationship { contract: BasisContextRelationshipContract; kind: BasisContextRelationshipKind; from: BasisContributionRef; to: BasisContributionRef; gaps?: readonly BasisGap[]; }
-export type BasisRelationship =
-  | { kind: "cites" | "supports" | "derived-from" | "counterevidence"; from: string; to: string; source: "surface-assessment"; /** Edge-local only. */ gaps: readonly BasisGap[]; }
-  | { kind: BasisContextRelationshipKind; from: string; to: string; source: "owner-context"; contract: BasisContextRelationshipContract; /** Edge-local only. */ gaps: readonly BasisGap[]; };
+export interface BasisContribution<TRef extends BasisContributionRef = BasisContributionRef> { ref: TRef; answer: ThreadAnswerRef; role: BasisContributionRole; context: BasisContextProjection; gaps?: readonly BasisGap[]; }
+/** Basis v1 relationships are Surface assessment edges, never owner workflow assertions. */
+export interface BasisRelationship { kind: "cites" | "supports" | "derived-from" | "counterevidence"; from: string; to: string; source: "surface-assessment"; /** Edge-local only. */ gaps: readonly BasisGap[]; }
 export interface BasisGap { code: string; message: string; }
 export interface BasisAssessmentEvidence { id: string; label: string; sourceRef: string; observedAt: string; }
 export interface SurfacePolicyOutcome { id: string; outcome: "satisfied" | "not-satisfied"; /** Redundant on purpose: must agree with outcome for easy consumers. */ satisfied: boolean; }

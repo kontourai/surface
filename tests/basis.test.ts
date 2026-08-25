@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { build } from "esbuild";
-import { buildAnswerAssessmentProjection, composeBasisProjection, createSurfacePolicyOutcome, parseBasisComposition, parseBasisProjection, parseThreadAnswerRef, SURFACE_ANSWER_ASSESSMENT_VERSION, SURFACE_BASIS_VERSION, type AnswerAssessmentProjection, type BasisCompositionInput, type BasisContextRelationship, type BasisContribution, type BasisContributionRef, type ThreadAnswerRef } from "../src/basis/index.js";
+import { buildAnswerAssessmentProjection, composeBasisProjection, createSurfacePolicyOutcome, parseBasisComposition, parseBasisProjection, parseThreadAnswerRef, SURFACE_ANSWER_ASSESSMENT_VERSION, SURFACE_BASIS_VERSION, type AnswerAssessmentProjection, type BasisCompositionInput, type BasisContribution, type BasisContributionRef, type ThreadAnswerRef } from "../src/basis/index.js";
 import { buildTrustReport, type TrustBundle } from "../src/index.js";
 import * as rootSurface from "../src/index.js";
 import type { Evidence, TrustReport } from "../src/types.js";
@@ -104,10 +104,10 @@ test("standing, owner authority, opaque Thread identities, and edge-local gaps a
   policyInvariant.assessment.value.policy.satisfied = false;
   assert.equal(parseBasisComposition(policyInvariant).ok, false);
 
-  const edgeRelationship = { contract: { authority: "@kontourai/station", schemaVersion: "station.basis-context-relationship/v1", kind: "basis-context-relationship" }, kind: "produced", from: contribution.ref, to: contribution.ref, gaps: [{ code: "edge", message: "owner edge gap" }] } as const satisfies BasisContextRelationship;
-  const edgeContribution: typeof contribution = { ...contribution, relationships: [edgeRelationship] };
+  const edgeContribution: typeof contribution = { ...contribution, gaps: [{ code: "relationship-not-captured", message: "Owner relationship context is not captured." }] };
   const edgeProjection = composeBasisProjection(input(noAssessment, [{ owner: { authority: "@kontourai/station" }, state: "available", observedAt: answer.observedAt, value: [edgeContribution] } ]));
-  assert.deepEqual(edgeProjection.relationships[0]?.gaps, [{ code: "edge", message: "owner edge gap" }]);
+  assert.deepEqual(edgeProjection.relationships, []);
+  assert.deepEqual(edgeProjection.regions.outcomes[0]?.gaps, [{ code: "relationship-not-captured", message: "Owner relationship context is not captured." }]);
   assert.equal(parseBasisProjection(JSON.parse(JSON.stringify(edgeProjection))).ok, true);
   const assessmentProjection = composeBasisProjection(input({ owner: { authority: "@kontourai/surface" }, state: "available", observedAt: answer.observedAt, value: explicitAssessment({ evidence: { cited: [{ id: "evidence-a", label: "citation", sourceRef: "source", observedAt: answer.observedAt }], entails: [], counterevidence: [] }, gaps: [{ code: "claim-gap", message: "global only" }] }) }));
   assert.deepEqual(assessmentProjection.relationships[0]?.gaps, []);
@@ -131,22 +131,22 @@ test("Surface policy factory and parser share the same opaque scalar and outcome
   const assessment = explicitAssessment({ policy });
   assert.equal(parseBasisComposition(JSON.parse(JSON.stringify(input({ owner: { authority: "@kontourai/surface" }, state: "available", observedAt: answer.observedAt, value: assessment })))).ok, true);
 });
-test("only published owner-specific relationship contracts are accepted", () => {
-  const stationRelationship = { contract: { authority: "@kontourai/station", schemaVersion: "station.basis-context-relationship/v1", kind: "basis-context-relationship" }, kind: "produced", from: contribution.ref, to: contribution.ref } as const satisfies BasisContextRelationship;
+test("owner relationships are deferred and only Surface assessment edges round-trip", () => {
   const flowRef: Extract<BasisContributionRef, { authority: "@kontourai/flow-agents" }> = { authority: "@kontourai/flow-agents", schemaVersion: "grounded-execution-narrative/v1", kind: "narrative", narrativeId: "narrative-1" };
-  const flowRelationship = { contract: { authority: "@kontourai/flow-agents", schemaVersion: "grounded-execution-narrative/v1", kind: "basis-context-relationship" }, kind: "checked-by", from: flowRef, to: flowRef } as const satisfies BasisContextRelationship;
-  const flowContribution: BasisContribution<typeof flowRef> = { ref: flowRef, answer: answerRef, role: "execution", context: { kind: "grounded-narrative", statementCount: 1, sourceCompleteness: "complete" }, relationships: [flowRelationship] };
+  const flowContribution: BasisContribution<typeof flowRef> = { ref: flowRef, answer: answerRef, role: "execution", context: { kind: "grounded-narrative", statementCount: 1, sourceCompleteness: "complete" }, gaps: [{ code: "relationship-not-captured", message: "Flow relationship is not captured." }] };
   const valid = JSON.parse(JSON.stringify(input(noAssessment))) as { contributions: unknown[] };
-  valid.contributions = [{ owner: { authority: "@kontourai/station" }, state: "available", observedAt: answer.observedAt, value: [{ ...contribution, relationships: [stationRelationship] }] }, { owner: { authority: "@kontourai/flow-agents" }, state: "available", observedAt: answer.observedAt, value: [flowContribution] }];
+  valid.contributions = [{ owner: { authority: "@kontourai/station" }, state: "available", observedAt: answer.observedAt, value: [contribution] }, { owner: { authority: "@kontourai/flow-agents" }, state: "available", observedAt: answer.observedAt, value: [flowContribution] }];
   assert.equal(parseBasisComposition(valid).ok, true);
-  const thread = structuredClone(valid) as { contributions: Array<{ value: Array<{ relationships: Array<{ contract: { authority: string; schemaVersion: string } }> }> }> };
-  thread.contributions[0]!.value[0]!.relationships[0]!.contract.authority = "@kontourai/thread";
-  thread.contributions[0]!.value[0]!.relationships[0]!.contract.schemaVersion = "thread.basis-context-relationship/v1";
-  assert.equal(parseBasisComposition(thread).ok, false);
-  const mismatched = structuredClone(valid) as { contributions: Array<{ value: Array<{ relationships: Array<{ contract: { authority: string; schemaVersion: string } }> }> }> };
-  mismatched.contributions[0]!.value[0]!.relationships[0]!.contract.authority = "@kontourai/flow-agents";
-  mismatched.contributions[0]!.value[0]!.relationships[0]!.contract.schemaVersion = "grounded-execution-narrative/v1";
-  assert.equal(parseBasisComposition(mismatched).ok, false);
+  for (const owner of ["@kontourai/station", "@kontourai/flow-agents"]) {
+    const invented = structuredClone(valid) as { contributions: Array<{ owner: { authority: string }; value: Array<Record<string, unknown>> }> };
+    const contributionRead = invented.contributions.find((item) => item.owner.authority === owner)!;
+    contributionRead.value[0]!.relationships = [{ contract: { authority: owner, schemaVersion: "unpublished/v1", kind: "basis-context-relationship" }, kind: "produced", from: contribution.ref, to: contribution.ref }];
+    assert.equal(parseBasisComposition(invented).ok, false);
+  }
+  const assessment = explicitAssessment({ evidence: { cited: [{ id: "evidence-a", label: "citation", sourceRef: "source", observedAt: answer.observedAt }], entails: [], counterevidence: [] } });
+  const projection = composeBasisProjection(input({ owner: { authority: "@kontourai/surface" }, state: "available", observedAt: answer.observedAt, value: assessment }));
+  assert.deepEqual(projection.relationships.map((edge) => edge.source), ["surface-assessment"]);
+  assert.equal(parseBasisProjection(JSON.parse(JSON.stringify(projection))).ok, true);
 });
 test("snapshot rejects traps and cycles but permits shared acyclic records under bounded budgets", async () => {
   const fixture = JSON.parse(await readFile("examples/fixtures/station-basis-context.json", "utf8"));
