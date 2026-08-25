@@ -1,131 +1,81 @@
-import { SURFACE_BASIS_VERSION, type BasisCompositionInput, type BasisContribution, type BasisOwnerRef, type BasisParseResult, type OwnerRead, type SafeDisplayProjection, type ThreadAnswerRef } from "./types.js";
+import { SURFACE_ANSWER_ASSESSMENT_VERSION, SURFACE_BASIS_VERSION, type AnswerAssessmentProjection, type BasisCompositionInput, type BasisContribution, type BasisContributionRef, type BasisContextProjection, type BasisGap, type BasisOwnerDescriptor, type BasisParseResult, type BasisProjection, type BasisProjectionParseResult, type OwnerRead, type SurfaceAnswerAssessmentRef, type ThreadAnswerObservation, type ThreadAnswerRef } from "./types.js";
 
 export const BASIS_MAX_TOTAL_BYTES = 65_536;
 export const BASIS_MAX_STRING_BYTES = 4_096;
 export const BASIS_MAX_CONTRIBUTIONS = 64;
 export const BASIS_MAX_FIELDS = 12;
+export const BASIS_MAX_DEPTH = 24;
+export const BASIS_MAX_NODES = 1_024;
+const encoder = new TextEncoder();
 const DISALLOWED_TEXT = /[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069<>]|(?:https?:|javascript:|data:)/iu;
-const VERIFYING_TONE = /\b(?:verified|approved|certified|trusted|passed)\b/iu;
-type Parse<T> = { ok: true; value: T } | { ok: false; gap: { code: string; message: string } };
+type R = Record<string, unknown>; type Parse<T> = { ok: true; value: T } | { ok: false; gap: BasisGap };
 
-/** Parse the portable owner/context envelope.  Unknown shapes and versions fail closed. */
+/** Browser-safe, fail-closed parser. Snapshotting avoids getters, Proxy throws, cycles, and inherited data. */
 export function parseBasisComposition(input: unknown): BasisParseResult {
-  if (!withinByteBudget(input)) return fail("oversize", "Basis input exceeds its total byte budget.");
-  if (!objectWithExactKeys(input, ["version", "answer", "assessment", "contributions"])) return fail("invalid-shape", "Basis input has unknown or missing keys.");
-  if (input.version !== SURFACE_BASIS_VERSION) return fail("unsupported-version", "Basis input version is unsupported.");
-  const answer = parseThreadAnswerRef(input.answer);
-  if (!answer.ok) return answer;
-  const assessment = parseAssessmentRead(input.assessment);
-  if (!assessment.ok) return assessment;
-  if (!Array.isArray(input.contributions) || input.contributions.length > BASIS_MAX_CONTRIBUTIONS) return fail("invalid-contributions", "Basis contributions are invalid or exceed the cardinality budget.");
+  const snapshot = safeSnapshot(input); if (!snapshot.ok) return snapshot;
+  const v = snapshot.value;
+  if (!exact(v, ["version", "answer", "assessment", "contributions"]) || v.version !== SURFACE_BASIS_VERSION) return fail("invalid-shape", "Basis composition has an invalid shape or version.");
+  const answer = parseAnswerRead(v.answer); if (!answer.ok) return answer;
+  const assessment = parseAssessmentRead(v.assessment); if (!assessment.ok) return assessment;
+  if (!Array.isArray(v.contributions) || v.contributions.length > BASIS_MAX_CONTRIBUTIONS) return fail("invalid-contributions", "Contribution cardinality is invalid.");
   const contributions: OwnerRead<readonly BasisContribution[]>[] = [];
-  for (const candidate of input.contributions) {
-    const parsed = parseContributionRead(candidate);
-    if (!parsed.ok) return parsed;
-    contributions.push(parsed.value);
-  }
+  for (const item of v.contributions) { const parsed = parseContributionRead(item); if (!parsed.ok) return parsed; contributions.push(parsed.value); }
   return { ok: true, value: { version: SURFACE_BASIS_VERSION, answer: answer.value, assessment: assessment.value, contributions } };
 }
 
+/** Parse a serialized projection for Console/Station without trusting its runtime. */
+export function parseBasisProjection(input: unknown): BasisProjectionParseResult {
+  const snapshot = safeSnapshot(input); if (!snapshot.ok) return snapshot;
+  const v = snapshot.value;
+  if (!exact(v, ["version", "answer", "standing", "unresolvedReason", "assessment", "regions", "relationships", "gaps"]) || v.version !== SURFACE_BASIS_VERSION || !["policy-met", "assessed-with-gaps", "execution-only", "unresolved"].includes(String(v.standing)) || !(v.unresolvedReason === null || safeText(v.unresolvedReason))) return fail("invalid-projection", "Basis projection has an invalid shape.");
+  const answer = parseAnswerRead(v.answer); const assessment = parseAssessmentRead(v.assessment); if (!answer.ok) return answer; if (!assessment.ok) return assessment;
+  const regions = parseRegions(v.regions); const relationships = parseRelationships(v.relationships); const gaps = parseGaps(v.gaps); if (!regions.ok) return regions; if (!relationships.ok) return relationships; if (!gaps.ok) return gaps;
+  return { ok: true, value: { version: SURFACE_BASIS_VERSION, answer: answer.value, standing: v.standing as BasisProjection["standing"], unresolvedReason: v.unresolvedReason as BasisProjection["unresolvedReason"], assessment: assessment.value, regions: regions.value, relationships: relationships.value, gaps: gaps.value } };
+}
+
 export function parseThreadAnswerRef(input: unknown): Parse<ThreadAnswerRef> {
-  if (!objectWithExactKeys(input, ["authority", "schemaVersion", "kind", "threadId", "messageId"])) return fail("invalid-thread-answer", "Thread answer reference has an invalid shape.");
-  if (input.authority !== "@kontourai/thread" || input.schemaVersion !== "1.2.0" || input.kind !== "assistant-message" || !safeIdentifier(input.threadId) || !safeIdentifier(input.messageId)) return fail("invalid-thread-answer", "Thread answer reference is not a supported canonical assistant message.");
-  return { ok: true, value: { authority: input.authority, schemaVersion: input.schemaVersion, kind: input.kind, threadId: input.threadId, messageId: input.messageId } };
+  if (!exact(input, ["authority", "schemaVersion", "kind", "threadId", "messageId"]) || input.authority !== "@kontourai/thread" || input.schemaVersion !== "1.2.0" || input.kind !== "assistant-message" || !safeIdentifier(input.threadId) || !safeIdentifier(input.messageId)) return fail("invalid-thread-answer", "Thread answer reference is not the published Thread 1.2.0 shape.");
+  return { ok: true, value: input as unknown as ThreadAnswerRef };
 }
-
-function parseAssessmentRead(input: unknown): Parse<OwnerRead<import("./types.js").AnswerAssessmentProjection>> {
-  // Assessment stays typed-only. JSON fixtures may declare its availability state,
-  // but a TrustReport projection is built in-process via buildAnswerAssessmentProjection.
-  if (isObject(input) && input.state === "available") return fail("invalid-assessment", "Available assessments must be built from a typed TrustReport projection.");
-  return parseRead(input, () => fail("invalid-assessment", "Available assessments must be built from a typed TrustReport projection."));
+function parseAnswerRead(input: unknown): Parse<OwnerRead<ThreadAnswerObservation>> { const parsed = parseRead(input, (value) => { if (!exact(value, ["ref", "fact", "observedAt"]) || value.fact !== "answer-observed" || !safeTimestamp(value.observedAt)) return fail("invalid-answer-observation", "Answer observation is invalid."); const ref = parseThreadAnswerRef(value.ref); return ref.ok ? { ok: true, value: { ref: ref.value, fact: "answer-observed" as const, observedAt: value.observedAt } } : ref; }); if (!parsed.ok) return parsed; return parsed.value.owner.authority === "@kontourai/thread" ? parsed : fail("answer-owner-spoof", "Only Thread may provide an answer observation."); }
+function parseAssessmentRead(input: unknown): Parse<OwnerRead<AnswerAssessmentProjection, SurfaceAnswerAssessmentRef>> { const parsed = parseRead(input, (value) => isRecord(value) ? parseAssessment(value) : fail("invalid-assessment", "Assessment is invalid.")); if (!parsed.ok) return parsed; if (parsed.value.owner.authority !== "@kontourai/surface") return fail("assessment-owner-spoof", "Only Surface may provide an answer assessment."); return parsed as Parse<OwnerRead<AnswerAssessmentProjection, SurfaceAnswerAssessmentRef>>; }
+function parseContributionRead(input: unknown): Parse<OwnerRead<readonly BasisContribution[]>> { const parsed = parseRead(input, (value) => { if (!Array.isArray(value) || value.length > BASIS_MAX_CONTRIBUTIONS) return fail("invalid-contributions", "Contribution read is invalid."); const output: BasisContribution[] = []; for (const candidate of value) { const contribution = parseContribution(candidate); if (!contribution.ok) return contribution; output.push(contribution.value); } return { ok: true, value: output }; }); if (!parsed.ok) return parsed; if (parsed.value.state === "available" && parsed.value.value.some((item) => item.ref.authority !== parsed.value.owner.authority)) return fail("owner-mismatch", "Contribution owner must match its owner read."); return parsed; }
+function parseRead<T>(input: unknown, parseValue: (value: unknown) => Parse<T>): Parse<OwnerRead<T>> {
+  if (!isRecord(input) || !Object.hasOwn(input, "state") || !Object.hasOwn(input, "owner") || !Object.hasOwn(input, "observedAt")) return fail("invalid-owner-read", "Owner read is invalid.");
+  const owner = parseOwnerDescriptor(input.owner); if (!owner.ok || !safeTimestamp(input.observedAt)) return owner.ok ? fail("invalid-owner-read", "Owner read timestamp is invalid.") : owner;
+  const base = { owner: owner.value, observedAt: input.observedAt }; const state = input.state;
+  if (state === "available") { if (!exact(input, ["owner", "state", "observedAt", "value"])) return fail("invalid-owner-read", "Available owner read is invalid."); const value = parseValue(input.value); return value.ok ? { ok: true, value: { ...base, state, value: value.value } } : value; }
+  if (state === "observed-empty") { if (!exact(input, ["owner", "state", "observedAt", "value"]) || !Array.isArray(input.value) || input.value.length !== 0) return fail("invalid-owner-read", "Observed-empty owner read is invalid."); return { ok: true, value: { ...base, state, value: [] } as OwnerRead<T> }; }
+  if (!["not-captured", "restricted", "stale", "corrupt", "unsupported-version", "unavailable"].includes(String(state)) || !exact(input, ["owner", "state", "observedAt"])) return fail("invalid-owner-read", "Owner read state is invalid.");
+  return { ok: true, value: { ...base, state } as OwnerRead<T> };
 }
-
-function parseContributionRead(input: unknown): Parse<OwnerRead<readonly BasisContribution[]>> {
-  return parseRead(input, (value, owner) => {
-    if (!Array.isArray(value) || value.length > BASIS_MAX_CONTRIBUTIONS) return fail("invalid-contributions", "Contribution read value is invalid.");
-    const contributions: BasisContribution[] = [];
-    for (const candidate of value) {
-      const parsed = parseContribution(candidate);
-      if (!parsed.ok) return parsed;
-      if (!sameOwner(parsed.value.owner, owner)) return fail("owner-mismatch", "Contribution owner must equal its owner-read authority.");
-      contributions.push(parsed.value);
-    }
-    return { ok: true, value: contributions };
-  });
+function parseOwnerDescriptor(input: unknown): Parse<BasisOwnerDescriptor> { return exact(input, ["authority"]) && safeAuthority(input.authority) ? { ok: true, value: { authority: input.authority } } : fail("invalid-owner", "Owner descriptor is invalid."); }
+function parseAssessment(value: R): Parse<AnswerAssessmentProjection> {
+  if (!exact(value, ["version", "ref", "found", "bundle", "claim", "policy", "evidence", "derivation", "gaps"]) || value.version !== SURFACE_BASIS_VERSION || typeof value.found !== "boolean") return fail("invalid-assessment", "Assessment is invalid.");
+  const ref = parseAssessmentRef(value.ref); const bundle = parseBundle(value.bundle); const claim = parseClaim(value.claim); const policy = parsePolicy(value.policy); const evidence = parseEvidence(value.evidence); const derivation = parseDerivation(value.derivation); const gaps = parseGaps(value.gaps);
+  if (!ref.ok) return ref; if (!bundle.ok) return bundle; if (!claim.ok) return claim; if (!policy.ok) return policy; if (!evidence.ok) return evidence; if (!derivation.ok) return derivation; if (!gaps.ok) return gaps;
+  if (ref.value.bundleId !== bundle.value.id || (claim.value && ref.value.claimId !== claim.value.id)) return fail("assessment-ref-mismatch", "Surface assessment identity does not match its content.");
+  return { ok: true, value: { version: SURFACE_BASIS_VERSION, ref: ref.value, found: value.found, bundle: bundle.value, claim: claim.value, policy: policy.value, evidence: evidence.value, derivation: derivation.value, gaps: gaps.value } };
 }
-
-function parseRead<T>(input: unknown, parseValue: (value: unknown, owner: BasisOwnerRef) => Parse<T>): Parse<OwnerRead<T>> {
-  if (!isObject(input) || !Object.hasOwn(input, "owner") || !Object.hasOwn(input, "state")) return fail("invalid-owner-read", "Owner read has an invalid shape.");
-  const owner = parseOwner(input.owner);
-  if (!owner.ok) return owner;
-  const state = input.state;
-  if (state === "available") {
-    if (!objectWithExactKeys(input, ["owner", "state", "value"])) return fail("invalid-owner-read", "Available owner reads require only value.");
-    const value = parseValue(input.value, owner.value);
-    return value.ok ? { ok: true, value: { owner: owner.value, state, value: value.value } } : value;
-  }
-  if (state === "observed-empty") {
-    if (!objectWithExactKeys(input, ["owner", "state", "value"]) || !Array.isArray(input.value) || input.value.length !== 0) return fail("invalid-owner-read", "Observed-empty reads carry only an empty value.");
-    return { ok: true, value: { owner: owner.value, state, value: [] } as unknown as OwnerRead<T> };
-  }
-  if (!["not-captured", "restricted", "stale", "corrupt", "unsupported-version", "unavailable"].includes(String(state)) || !objectWithExactKeys(input, ["owner", "state"])) return fail("invalid-owner-read", "Owner read state is invalid or leaks detail.");
-  return { ok: true, value: { owner: owner.value, state } as OwnerRead<T> };
-}
-
-function parseContribution(input: unknown): Parse<BasisContribution> {
-  if (!objectWithExactKeys(input, ["id", "owner", "answer", "role", "display"]) || !safeIdentifier(input.id)) return fail("invalid-contribution", "Contribution has an invalid shape.");
-  const owner = parseOwner(input.owner); const answer = parseThreadAnswerRef(input.answer); const display = parseDisplay(input.display);
-  if (!owner.ok) return owner; if (!answer.ok) return answer; if (!display.ok) return display;
-  if (!(["input", "execution", "process", "outcome", "source", "live"] as const).includes(input.role as never)) return fail("invalid-contribution", "Contribution role is unsupported.");
-  return { ok: true, value: { id: input.id, owner: owner.value, answer: answer.value, role: input.role as BasisContribution["role"], display: display.value } };
-}
-
-function parseDisplay(input: unknown): Parse<SafeDisplayProjection> {
-  if (!isObject(input) || !Object.keys(input).every((key) => ["title", "summary", "fields", "status"].includes(key)) || !safeText(input.title)) return fail("unsafe-display", "Display data is invalid or unsafe.");
-  if (input.summary !== undefined && !safeText(input.summary)) return fail("unsafe-display", "Display summary is unsafe.");
-  if (input.status !== undefined && !(["available", "observed", "pending", "unavailable"] as const).includes(input.status as never)) return fail("unsafe-display", "Display status is unsupported.");
-  if (input.fields !== undefined && (!Array.isArray(input.fields) || input.fields.length > BASIS_MAX_FIELDS || input.fields.some((field: unknown) => !objectWithExactKeys(field, ["label", "value"]) || !safeText(field.label) || !safeText(field.value)))) return fail("unsafe-display", "Display fields are invalid or unsafe.");
-  return { ok: true, value: { title: input.title, ...(input.summary === undefined ? {} : { summary: input.summary }), ...(input.fields === undefined ? {} : { fields: input.fields.map((field: Record<string, any>) => ({ label: field.label, value: field.value })) }), ...(input.status === undefined ? {} : { status: input.status }) } };
-}
-
-function parseOwner(input: unknown): Parse<BasisOwnerRef> {
-  if (!objectWithExactKeys(input, ["authority", "schemaVersion", "kind", "component"])) return fail("invalid-owner", "Owner reference has an invalid shape.");
-  const value = input as Record<string, unknown>;
-  const valid = (value.authority === "@kontourai/thread" && value.schemaVersion === "1.2.0" && value.kind === "result" && value.component === "thread")
-    || (value.authority === "@kontourai/flow-agents" && value.schemaVersion === "1" && value.kind === "narrative" && value.component === "flow-agents")
-    || (value.authority === "@kontourai/flow" && value.schemaVersion === "1" && value.kind === "gate-evaluation" && value.component === "flow")
-    || (value.authority === "@kontourai/survey" && value.schemaVersion === "1" && value.kind === "review" && value.component === "survey")
-    || (value.authority === "@kontourai/station" && value.schemaVersion === "1" && ["input", "task-output", "live"].includes(String(value.kind)) && value.component === "station");
-  return valid ? { ok: true, value: value as BasisOwnerRef } : fail("unsupported-owner-version", "Owner authority, kind, component, or version is unsupported.");
-}
-
-function isObject(value: unknown): value is Record<string, any> { return typeof value === "object" && value !== null && !Array.isArray(value) && (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null); }
-function objectWithExactKeys(value: unknown, keys: readonly string[]): value is Record<string, any> { return isObject(value) && Object.keys(value).length === keys.length && keys.every((key) => Object.hasOwn(value, key)); }
-function safeText(value: unknown): value is string { return typeof value === "string" && value === value.normalize("NFC") && Buffer.byteLength(value, "utf8") > 0 && Buffer.byteLength(value, "utf8") <= BASIS_MAX_STRING_BYTES && !DISALLOWED_TEXT.test(value) && !VERIFYING_TONE.test(value); }
-function safeIdentifier(value: unknown): value is string { return typeof value === "string" && value === value.normalize("NFC") && Buffer.byteLength(value, "utf8") > 0 && Buffer.byteLength(value, "utf8") <= BASIS_MAX_STRING_BYTES && !DISALLOWED_TEXT.test(value); }
-function withinByteBudget(value: unknown): boolean {
-  const visit = (candidate: unknown): number | null => {
-    if (candidate === null || typeof candidate === "boolean") return 5;
-    if (typeof candidate === "string") return Buffer.byteLength(candidate, "utf8") + 2;
-    if (typeof candidate === "number") return Number.isFinite(candidate) ? 24 : null;
-    if (Array.isArray(candidate)) {
-      let size = 2;
-      for (const item of candidate) { const itemSize = visit(item); if (itemSize === null) return null; size += itemSize + 1; if (size > BASIS_MAX_TOTAL_BYTES) return null; }
-      return size;
-    }
-    if (!isObject(candidate)) return null;
-    let size = 2;
-    for (const [key, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(candidate))) {
-      if (!("value" in descriptor)) return null;
-      const itemSize = visit(descriptor.value);
-      if (itemSize === null) return null;
-      size += Buffer.byteLength(key, "utf8") + itemSize + 3;
-      if (size > BASIS_MAX_TOTAL_BYTES) return null;
-    }
-    return size;
-  };
-  const bytes = visit(value);
-  return bytes !== null && bytes <= BASIS_MAX_TOTAL_BYTES;
-}
-function sameOwner(left: BasisOwnerRef, right: BasisOwnerRef): boolean { return left.authority === right.authority && left.schemaVersion === right.schemaVersion && left.kind === right.kind && left.component === right.component; }
-function fail(code: string, message: string): { ok: false; gap: { code: string; message: string } } { return { ok: false, gap: { code, message } }; }
+function parseAssessmentRef(v: unknown): Parse<SurfaceAnswerAssessmentRef> { return exact(v, ["authority", "schemaVersion", "kind", "bundleId", "claimId"]) && v.authority === "@kontourai/surface" && v.schemaVersion === SURFACE_ANSWER_ASSESSMENT_VERSION && v.kind === "answer-assessment" && safeIdentifier(v.bundleId) && safeIdentifier(v.claimId) ? { ok: true, value: v as unknown as SurfaceAnswerAssessmentRef } : fail("invalid-assessment-ref", "Assessment must use the exact Surface assessment contract."); }
+function parseBundle(v: unknown): Parse<AnswerAssessmentProjection["bundle"]> { return exact(v, ["id", "schemaVersion", "source", "generatedAt"]) && safeIdentifier(v.id) && Number.isSafeInteger(v.schemaVersion) && safeText(v.source) && safeTimestamp(v.generatedAt) ? { ok: true, value: v as AnswerAssessmentProjection["bundle"] } : fail("invalid-assessment", "Assessment bundle is invalid."); }
+function parseClaim(v: unknown): Parse<AnswerAssessmentProjection["claim"]> { if (v === null) return { ok: true, value: null }; if (!exact(v, ["id", "subject", "status", "freshness"]) || !safeIdentifier(v.id) || !safeText(v.status) || !exact(v.subject, ["subjectType", "subjectId"]) || !safeText(v.subject.subjectType) || !safeIdentifier(v.subject.subjectId)) return fail("invalid-assessment", "Assessment claim is invalid."); if (v.freshness !== null && (!exact(v.freshness, ["asOf", "expiresAt", "stale"]) || !safeTimestamp(v.freshness.asOf) || !(v.freshness.expiresAt === null || safeTimestamp(v.freshness.expiresAt)) || typeof v.freshness.stale !== "boolean")) return fail("invalid-assessment", "Assessment freshness is invalid."); return { ok: true, value: v as AnswerAssessmentProjection["claim"] }; }
+function parsePolicy(v: unknown): Parse<AnswerAssessmentProjection["policy"]> { return v === null ? { ok: true, value: null } : exact(v, ["id", "outcome"]) && safeIdentifier(v.id) && (v.outcome === "satisfied" || v.outcome === "not-satisfied") ? { ok: true, value: v as AnswerAssessmentProjection["policy"] } : fail("invalid-assessment", "Assessment policy outcome is invalid."); }
+function parseEvidence(v: unknown): Parse<AnswerAssessmentProjection["evidence"]> { if (!exact(v, ["cited", "entails", "counterevidence"])) return fail("invalid-assessment", "Assessment evidence is invalid."); const fields = [v.cited, v.entails, v.counterevidence]; if (fields.some((x) => !Array.isArray(x) || x.length > BASIS_MAX_CONTRIBUTIONS)) return fail("invalid-assessment", "Assessment evidence cardinality is invalid."); for (const field of fields as unknown[][]) for (const item of field) if (!exact(item, ["id", "label", "sourceRef", "observedAt"]) || !safeIdentifier(item.id) || !safeText(item.label) || !safeText(item.sourceRef) || !safeTimestamp(item.observedAt)) return fail("invalid-assessment", "Assessment evidence item is invalid."); return { ok: true, value: v as AnswerAssessmentProjection["evidence"] }; }
+function parseDerivation(v: unknown): Parse<AnswerAssessmentProjection["derivation"]> { if (!exact(v, ["available", "directInputs"]) || typeof v.available !== "boolean" || !Array.isArray(v.directInputs) || v.directInputs.length > BASIS_MAX_CONTRIBUTIONS) return fail("invalid-assessment", "Assessment derivation is invalid."); for (const item of v.directInputs) if (!exact(item, ["claimId", "status"]) || !safeIdentifier(item.claimId) || !(item.status === null || safeText(item.status))) return fail("invalid-assessment", "Assessment derivation input is invalid."); return { ok: true, value: v as AnswerAssessmentProjection["derivation"] }; }
+function parseContribution(v: unknown): Parse<BasisContribution> { if (!exact(v, ["ref", "answer", "role", "context"], ["relationships"])) return fail("invalid-contribution", "Contribution is invalid."); const ref = parseContributionRef(v.ref); const answer = parseThreadAnswerRef(v.answer); const context = parseContext(v.context); if (!ref.ok) return ref; if (!answer.ok) return answer; if (!context.ok) return context; if (!(["input", "execution", "process", "outcome", "source", "live"] as const).includes(v.role as never)) return fail("invalid-contribution", "Contribution role is invalid."); const relationships = v.relationships === undefined ? { ok: true as const, value: undefined } : parseContextRelationships(v.relationships); if (!relationships.ok) return relationships; return { ok: true, value: { ref: ref.value, answer: answer.value, role: v.role as BasisContribution["role"], context: context.value, ...(relationships.value === undefined ? {} : { relationships: relationships.value }) } }; }
+function parseContextRelationships(v: unknown): Parse<BasisContribution["relationships"]> { if (!Array.isArray(v) || v.length > BASIS_MAX_FIELDS) return fail("invalid-contribution", "Contribution relationships are invalid."); const output: NonNullable<BasisContribution["relationships"]>[number][] = []; for (const item of v) { if (!exact(item, ["contract", "kind", "from", "to"]) || !exact(item.contract, ["authority", "schemaVersion", "kind"]) || !safeAuthority(item.contract.authority) || !safeText(item.contract.schemaVersion) || item.contract.kind !== "basis-context-relationship" || !["observed-during", "produced", "checked-by", "kept-in-task"].includes(String(item.kind))) return fail("invalid-contribution", "Context relationship is invalid."); const from = parseContributionRef(item.from); const to = parseContributionRef(item.to); if (!from.ok) return from; if (!to.ok) return to; output.push({ contract: item.contract as NonNullable<BasisContribution["relationships"]>[number]["contract"], kind: item.kind as NonNullable<BasisContribution["relationships"]>[number]["kind"], from: from.value, to: to.value }); } return { ok: true, value: output }; }
+function parseContributionRef(v: unknown): Parse<BasisContributionRef> { if (!isRecord(v) || !safeAuthority(v.authority) || !safeText(v.schemaVersion) || !safeText(v.kind)) return fail("invalid-contribution-ref", "Contribution ref is invalid."); const required = v.authority === "@kontourai/thread" && v.schemaVersion === "1.2.0" && v.kind === "result" ? ["authority", "schemaVersion", "kind", "threadId", "resultId"] : v.authority === "@kontourai/station" && v.schemaVersion === "1" && v.kind === "input" ? ["authority", "schemaVersion", "kind", "sessionId", "eventId"] : v.authority === "@kontourai/station" && v.schemaVersion === "1" && v.kind === "task-output" ? ["authority", "schemaVersion", "kind", "taskId", "outputId"] : v.authority === "@kontourai/station" && v.schemaVersion === "1" && v.kind === "live" ? ["authority", "schemaVersion", "kind", "sessionId", "observationId"] : v.authority === "@kontourai/flow-agents" && v.schemaVersion === "grounded-execution-narrative/v1" && v.kind === "narrative" ? ["authority", "schemaVersion", "kind", "narrativeId"] : null; if (!required || !exact(v, required) || required.some((key) => key !== "authority" && key !== "schemaVersion" && key !== "kind" && !safeIdentifier(v[key]))) return fail("unsupported-owner-version", "Contribution requires a published exact owner contract."); return { ok: true, value: v as BasisContributionRef }; }
+function parseContext(v: unknown): Parse<BasisContextProjection> { if (!isRecord(v) || !safeText(v.kind)) return fail("unsafe-context", "Context projection is invalid."); const valid = (v.kind === "station-input" && exact(v, ["kind", "inputKind", "attachmentCount"], ["promptExcerpt"]) && safeText(v.inputKind) && (v.promptExcerpt === undefined || safeText(v.promptExcerpt)) && cardinal(v.attachmentCount)) || (v.kind === "thread-result" && exact(v, ["kind", "name", "terminalStatus", "truncatedParts", "omittedParts"], ["textParts"]) && safeText(v.name) && safeText(v.terminalStatus) && (v.textParts === undefined || cardinal(v.textParts)) && cardinal(v.truncatedParts) && cardinal(v.omittedParts)) || (v.kind === "station-output" && exact(v, ["kind", "title", "mediaType", "byteLength", "digest"]) && safeText(v.title) && safeText(v.mediaType) && cardinal(v.byteLength) && safeIdentifier(v.digest)) || (v.kind === "station-live" && exact(v, ["kind", "state", "observedAt"]) && safeText(v.state) && safeTimestamp(v.observedAt)) || (v.kind === "grounded-narrative" && exact(v, ["kind", "statementCount", "sourceCompleteness"]) && cardinal(v.statementCount) && ["complete", "partial", "unknown"].includes(String(v.sourceCompleteness))); return valid ? { ok: true, value: v as BasisContextProjection } : fail("unsafe-context", "Context projection is invalid."); }
+function parseRegions(v: unknown): Parse<BasisProjection["regions"]> { const names = ["inputs", "execution", "process", "outcomes", "support", "sources", "live"]; if (!exact(v, names)) return fail("invalid-projection", "Regions are invalid."); for (const name of names) { const list = v[name]; if (!Array.isArray(list) || list.length > BASIS_MAX_CONTRIBUTIONS) return fail("invalid-projection", "Region cardinality is invalid."); for (const item of list) { if (!exact(item, ["ref", "role", "context", "gaps"])) return fail("invalid-projection", "Region item is invalid."); const ref = parseContributionRef(item.ref); const context = parseContext(item.context); const gaps = parseGaps(item.gaps); if (!ref.ok || !context.ok || !gaps.ok || !safeText(item.role)) return fail("invalid-projection", "Region item is invalid."); } } return { ok: true, value: v as BasisProjection["regions"] }; }
+function parseRelationships(v: unknown): Parse<BasisProjection["relationships"]> { if (!Array.isArray(v) || v.length > BASIS_MAX_CONTRIBUTIONS) return fail("invalid-projection", "Relationships are invalid."); for (const item of v) { if (!exact(item, ["kind", "from", "to", "source", "gaps"]) || !safeText(item.kind) || !safeText(item.from) || !safeText(item.to) || !(item.source === "surface-assessment" || item.source === "owner-context")) return fail("invalid-projection", "Relationship is invalid."); const gaps = parseGaps(item.gaps); if (!gaps.ok) return gaps; } return { ok: true, value: v as BasisProjection["relationships"] }; }
+function parseGaps(v: unknown): Parse<BasisGap[]> { if (!Array.isArray(v) || v.length > BASIS_MAX_CONTRIBUTIONS) return fail("invalid-gaps", "Gaps are invalid."); const gaps: BasisGap[] = []; for (const item of v) { if (!exact(item, ["code", "message"]) || !safeText(item.code) || !safeText(item.message)) return fail("invalid-gaps", "Gap is invalid."); gaps.push({ code: item.code, message: item.message }); } return { ok: true, value: gaps }; }
+function exact(value: unknown, required: readonly string[], optional: readonly string[] = []): value is R { return isRecord(value) && required.every((key) => Object.hasOwn(value, key)) && Object.keys(value).every((key) => required.includes(key) || optional.includes(key)); }
+function isRecord(v: unknown): v is R { return typeof v === "object" && v !== null && !Array.isArray(v); }
+function safeText(v: unknown): v is string { return typeof v === "string" && v === v.normalize("NFC") && encoder.encode(v).byteLength > 0 && encoder.encode(v).byteLength <= BASIS_MAX_STRING_BYTES && !DISALLOWED_TEXT.test(v); }
+function safeIdentifier(v: unknown): v is string { return safeText(v); }
+function safeAuthority(v: unknown): v is string { return safeText(v) && /^@kontourai\/[a-z0-9-]+$/u.test(v); }
+function safeTimestamp(v: unknown): v is string { return safeText(v) && Number.isFinite(Date.parse(v)); }
+function cardinal(v: unknown): v is number { return typeof v === "number" && Number.isSafeInteger(v) && v >= 0 && v <= 1_000_000_000; }
+function safeSnapshot(input: unknown): Parse<R> { const seen = new WeakSet<object>(); let nodes = 0; let bytes = 0; const visit = (v: unknown, depth: number): unknown => { if (++nodes > BASIS_MAX_NODES || depth > BASIS_MAX_DEPTH) throw new Error("limits"); if (v === null || typeof v === "boolean" || typeof v === "number") return v; if (typeof v === "string") { bytes += encoder.encode(v).byteLength + 2; if (bytes > BASIS_MAX_TOTAL_BYTES) throw new Error("oversize"); return v; } if (typeof v !== "object" || seen.has(v)) throw new Error("hostile"); seen.add(v); const descriptors = Object.getOwnPropertyDescriptors(v); const keys = Object.keys(descriptors).filter((key) => descriptors[key]!.enumerable); const output: R | unknown[] = Array.isArray(v) ? [] : {}; for (const key of keys) { const d = descriptors[key]!; if (!("value" in d)) throw new Error("accessor"); bytes += encoder.encode(key).byteLength + 3; if (bytes > BASIS_MAX_TOTAL_BYTES) throw new Error("oversize"); if (Array.isArray(output)) output.push(visit(d.value, depth + 1)); else output[key] = visit(d.value, depth + 1); } return output; }; try { const result = visit(input, 0); return isRecord(result) ? { ok: true, value: result } : fail("invalid-shape", "Basis input must be an object."); } catch { return fail("hostile-input", "Basis input is hostile, cyclic, or exceeds a parser budget."); } }
+function fail(code: string, message: string): { ok: false; gap: BasisGap } { return { ok: false, gap: { code, message } }; }

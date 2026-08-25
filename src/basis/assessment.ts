@@ -1,8 +1,7 @@
 import { derivationInputsForClaim } from "../derivation.js";
-import { evaluateClaimEvidence } from "../claim-evaluation.js";
 import { partitionEvidenceBySupport } from "../evidence-support.js";
 import type { Evidence, TrustReport } from "../types.js";
-import { SURFACE_BASIS_VERSION, type AnswerAssessmentProjection, type BasisAssessmentEvidence, type BasisGap } from "./types.js";
+import { SURFACE_ANSWER_ASSESSMENT_VERSION, SURFACE_BASIS_VERSION, type AnswerAssessmentProjection, type BasisAssessmentEvidence } from "./types.js";
 
 /**
  * Projects report facts for one claim.  This never derives a claim status and
@@ -11,26 +10,19 @@ import { SURFACE_BASIS_VERSION, type AnswerAssessmentProjection, type BasisAsses
 export function buildAnswerAssessmentProjection(report: TrustReport, claimId: string): AnswerAssessmentProjection {
   const bundle = { id: report.id, schemaVersion: report.schemaVersion, source: report.source, generatedAt: report.generatedAt };
   const claim = report.claims.find((candidate) => candidate.id === claimId);
-  if (!claim) return emptyAssessment(bundle);
+  if (!claim) return emptyAssessment(bundle, claimId);
 
   const evidence = report.evidence.filter((candidate) => candidate.claimId === claimId);
   const partitioned = partitionEvidenceBySupport(evidence);
-  const policyRecord = claim.verificationPolicyId
-    ? report.policies.find((candidate) => candidate.id === claim.verificationPolicyId)
-    : undefined;
-  // The outcome comes exclusively from the existing Surface policy evaluator.
-  // Claim status, events, and owner contributions are deliberately not inputs.
-  const policy = policyRecord
-    ? {
-        id: policyRecord.id,
-        outcome: evaluateClaimEvidence({ entailingEvidence: partitioned.entailingEvidence, policy: policyRecord }).requirementUnmet
-          ? "not-satisfied" as const
-          : "satisfied" as const,
-      }
-    : null;
+  // Evidence coverage is not a policy verdict.  Surface currently has no
+  // owner policy-evaluation outcome in TrustReport, so this builder must never
+  // promote coverage to satisfied/not-satisfied.  The projection shape reserves
+  // that explicit result for a future Surface evaluator.
+  const policy = null;
 
   return {
     version: SURFACE_BASIS_VERSION,
+    ref: { authority: "@kontourai/surface", schemaVersion: SURFACE_ANSWER_ASSESSMENT_VERSION, kind: "answer-assessment", bundleId: report.id, claimId },
     found: true,
     bundle,
     claim: {
@@ -66,9 +58,9 @@ function projectDerivation(report: TrustReport, claim: TrustReport["claims"][num
   }
 }
 
-function emptyAssessment(bundle: AnswerAssessmentProjection["bundle"]): AnswerAssessmentProjection {
+function emptyAssessment(bundle: AnswerAssessmentProjection["bundle"], claimId: string): AnswerAssessmentProjection {
   return {
-    version: SURFACE_BASIS_VERSION, found: false, bundle, claim: null, policy: null,
+    version: SURFACE_BASIS_VERSION, ref: { authority: "@kontourai/surface", schemaVersion: SURFACE_ANSWER_ASSESSMENT_VERSION, kind: "answer-assessment", bundleId: bundle.id, claimId }, found: false, bundle, claim: null, policy: null,
     evidence: { cited: [], entails: [], counterevidence: [] }, derivation: { available: false, directInputs: [] }, gaps: [],
   };
 }

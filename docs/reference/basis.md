@@ -1,25 +1,20 @@
 # Basis headless projection
 
-`@kontourai/surface/basis` is the headless, tree-shaken read model for the evidence and bounded owner context behind one Thread assistant answer. It is intentionally **not** exported by the package root, and it has no UI, network, storage, authentication, or product-runtime dependency.
+`@kontourai/surface/basis` is the headless, tree-shaken read model for the evidence and bounded owner context behind one observed Thread answer. It is intentionally not exported by the package root and has no UI, network, storage, authentication, or product-runtime dependency.
 
 ```ts
-import { buildAnswerAssessmentProjection, composeBasisProjection, SURFACE_BASIS_VERSION } from "@kontourai/surface/basis";
+import { buildAnswerAssessmentProjection, composeBasisProjection } from "@kontourai/surface/basis";
 
 const assessment = buildAnswerAssessmentProjection(report, claimId);
-const basis = composeBasisProjection({
-  version: SURFACE_BASIS_VERSION,
-  answer,
-  assessment: { owner: threadResultOwner, state: "available", value: assessment },
-  contributions: [],
-});
+const basis = composeBasisProjection({ version: "surface.basis-projection/v1", answer, assessment, contributions: [] });
 ```
 
-Surface owns the parser, canonical projection, assessment projection, semantic labels and ordering, and the relationship contract. Thread, Flow Agents, Flow, Survey, and Station own retrieval, authentication, live state, and their own workflow meanings. `SurfaceExtension` is presentation vocabulary only; it is not a Basis compositor and cannot alter standing.
+Surface is the only standing authority. An available assessment carries the exact `SurfaceAnswerAssessmentRef`: `@kontourai/surface`, `surface.answer-assessment/v1`, `answer-assessment`, `bundleId`, and `claimId`. Thread and Station can observe or contribute context, but cannot make an answer assessed or policy-met. `buildAnswerAssessmentProjection` reports evidence coverage and intentionally leaves `policy` null: coverage is not a policy verdict. The reserved explicit `{ id, outcome }` policy result is accepted only from a validated Surface assessment; failed evidence, stale/failed claim state, counterevidence, conflicts, and gaps never become `policy-met`.
 
-`ThreadAnswerRef` is exact and structural: authority `@kontourai/thread`, schema version `1.2.0`, kind `assistant-message`, plus `threadId` and `messageId`. No Thread runtime dependency is taken. Owner references are also closed tuples; unknown owner versions parse as typed gaps rather than being coerced into a known record.
+Input begins with `OwnerRead<ThreadAnswerObservation>`, not a bare answer reference. The observation has an exact Thread 1.2.0 ref and an observed fact, never answer content. `execution-only` is possible only when that answer observation is available and Surface assessment was not captured or observed empty. Restricted reads expose only a non-sensitive owner descriptor and timestamp; every read arm carries `observedAt`.
 
-`OwnerRead` preserves availability explicitly. `restricted` deliberately has no value, identifier, count, or detail. The parser applies exact keys, UTF-8 and cardinality budgets, and rejects executable URLs, HTML-like text, control characters, and bidi controls. It is suitable for untrusted JSON only for the context envelope; a report assessment remains a typed in-process projection.
+Context has exact qualified refs, not generic ids: Thread results use `{ threadId, resultId }` at 1.2.0; Station input uses `{ sessionId, eventId }`, task output `{ taskId, outputId }`, and live `{ sessionId, observationId }` at v1; Flow Agents grounded narrative uses `{ narrativeId }` at `grounded-execution-narrative/v1`. Unpublished Flow/Survey versions are read as `unsupported-version` descriptors, never forged refs. Contributions are deduplicated by full ref tuple plus role; conflicting copies produce a deterministic corrupt gap.
 
-Standing is deliberately narrow: `policy-met` only when Surface's existing policy evaluator returns `satisfied` for entailing evidence; `assessed-with-gaps` when a Surface assessment is available but has no satisfied policy; `execution-only` only when assessment was not captured or observed empty and matching, owner-attributed context exists; and `unresolved` otherwise with a typed reason.
+The five context projections are bounded owner-attributed facts only: Station input kind/excerpt/count, Thread result name/status/part counts, Station output title/media/length/digest, Station live state/time, and grounded narrative statement count/source completeness. There is no generic display metadata or word blacklist. Strings are inert (no URLs, markup, controls, or bidi controls), while legitimate factual statuses remain representable.
 
-Context contributions are inert display material. They cannot make a claim stand, satisfy a policy, turn citations into entailment, or hide Surface gaps. Only the Surface assessment creates `cites`, `supports`, and `derived-from` relationships; owner context never becomes semantic evidence.
+`parseBasisComposition` and `parseBasisProjection` validate all nested records, exact keys, UTF-8 budgets, cardinality, depth, nodes, cycles, accessors, and hostile proxies without Node `Buffer`; both are safe for browser bundles. Surface assessment creates `cites`, `supports`, `derived-from`, and explicit `counterevidence` edges. Claim-level gaps remain on the projection instead of being copied to every edge. Hosts may attach only exact-contract context relationships (`produced`, `observed-during`, `checked-by`, `kept-in-task`); they never affect standing.
