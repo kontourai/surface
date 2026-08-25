@@ -2,11 +2,13 @@ import { derivationInputsForClaim } from "../derivation.js";
 import { partitionEvidenceBySupport } from "../evidence-support.js";
 import type { Evidence, TrustReport } from "../types.js";
 import { SURFACE_ANSWER_ASSESSMENT_VERSION, SURFACE_BASIS_VERSION, type AnswerAssessmentProjection, type BasisAssessmentEvidence, type SurfacePolicyOutcome } from "./types.js";
+import { isBasisInertDisplayScalar, isBasisOpaqueRefScalar, isBasisRestrictedContractScalar, parseSurfacePolicyOutcome } from "./validation.js";
 
 /** Surface-owned seam for the only policy object that can affect Basis standing. */
-export function createSurfacePolicyOutcome(id: string, outcome: SurfacePolicyOutcome["outcome"]): SurfacePolicyOutcome {
-  if (!id || id.length > 4_096) throw new TypeError("Surface policy outcome id must be bounded and nonempty.");
-  return { id, outcome, satisfied: outcome === "satisfied" };
+export function createSurfacePolicyOutcome(id: unknown, outcome: unknown): SurfacePolicyOutcome {
+  const policy = parseSurfacePolicyOutcome({ id, outcome, satisfied: outcome === "satisfied" });
+  if (!policy) throw new TypeError("Surface policy outcome requires a bounded, well-formed opaque id and a known outcome.");
+  return policy;
 }
 
 /**
@@ -16,6 +18,7 @@ export function createSurfacePolicyOutcome(id: string, outcome: SurfacePolicyOut
 export function buildAnswerAssessmentProjection(report: TrustReport, claimId: string): AnswerAssessmentProjection {
   const bundle = { id: report.id, schemaVersion: report.schemaVersion, source: report.source, generatedAt: report.generatedAt };
   const claim = report.claims.find((candidate) => candidate.id === claimId);
+  assertBuildScalars(bundle, claimId);
   if (!claim) return emptyAssessment(bundle, claimId);
 
   const evidence = report.evidence.filter((candidate) => candidate.claimId === claimId);
@@ -26,7 +29,7 @@ export function buildAnswerAssessmentProjection(report: TrustReport, claimId: st
   // that explicit result for a future Surface evaluator.
   const policy = null;
 
-  return {
+  const projection: AnswerAssessmentProjection = {
     version: SURFACE_BASIS_VERSION,
     ref: { authority: "@kontourai/surface", schemaVersion: SURFACE_ANSWER_ASSESSMENT_VERSION, kind: "answer-assessment", bundleId: report.id, claimId },
     found: true,
@@ -46,6 +49,8 @@ export function buildAnswerAssessmentProjection(report: TrustReport, claimId: st
     derivation: projectDerivation(report, claim),
     gaps: report.transparencyGaps.filter((gap) => gap.claimId === claimId).map((gap) => ({ code: gap.type, message: gap.message })),
   };
+  assertProjectionScalars(projection);
+  return projection;
 }
 
 function projectEvidence(evidence: Evidence): BasisAssessmentEvidence {
@@ -69,4 +74,16 @@ function emptyAssessment(bundle: AnswerAssessmentProjection["bundle"], claimId: 
     version: SURFACE_BASIS_VERSION, ref: { authority: "@kontourai/surface", schemaVersion: SURFACE_ANSWER_ASSESSMENT_VERSION, kind: "answer-assessment", bundleId: bundle.id, claimId }, found: false, bundle, claim: null, policy: null,
     evidence: { cited: [], entails: [], counterevidence: [] }, derivation: { available: false, directInputs: [] }, gaps: [],
   };
+}
+
+function assertBuildScalars(bundle: AnswerAssessmentProjection["bundle"], claimId: string): void {
+  if (!isBasisRestrictedContractScalar(bundle.id) || !isBasisInertDisplayScalar(bundle.source) || !isBasisRestrictedContractScalar(claimId)) throw new TypeError("Surface report values cannot be represented safely in the bounded Basis projection.");
+}
+
+function assertProjectionScalars(projection: AnswerAssessmentProjection): void {
+  const evidence = [...projection.evidence.cited, ...projection.evidence.entails, ...projection.evidence.counterevidence];
+  const display = [projection.bundle.source, projection.claim?.status, projection.claim?.subject.subjectType, ...evidence.map((item) => item.label), ...projection.derivation.directInputs.flatMap((item) => item.status === null ? [] : [item.status]), ...projection.gaps.map((gap) => gap.message)];
+  const opaque = evidence.map((item) => item.sourceRef);
+  const restricted = [projection.ref.bundleId, projection.ref.claimId, projection.claim?.id, projection.claim?.subject.subjectId, ...evidence.map((item) => item.id), ...projection.derivation.directInputs.map((item) => item.claimId), ...projection.gaps.map((gap) => gap.code)];
+  if (!display.filter((value): value is string => value !== undefined).every(isBasisInertDisplayScalar) || !opaque.every(isBasisOpaqueRefScalar) || !restricted.filter((value): value is string => value !== undefined).every(isBasisRestrictedContractScalar)) throw new TypeError("Surface report values cannot be represented safely in the bounded Basis projection.");
 }

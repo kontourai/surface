@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { build } from "esbuild";
-import { buildAnswerAssessmentProjection, composeBasisProjection, createSurfacePolicyOutcome, parseBasisComposition, parseBasisProjection, SURFACE_ANSWER_ASSESSMENT_VERSION, SURFACE_BASIS_VERSION, type AnswerAssessmentProjection, type BasisCompositionInput, type BasisContribution, type BasisContributionRef, type ThreadAnswerRef } from "../src/basis/index.js";
+import { buildAnswerAssessmentProjection, composeBasisProjection, createSurfacePolicyOutcome, parseBasisComposition, parseBasisProjection, parseThreadAnswerRef, SURFACE_ANSWER_ASSESSMENT_VERSION, SURFACE_BASIS_VERSION, type AnswerAssessmentProjection, type BasisCompositionInput, type BasisContextRelationship, type BasisContribution, type BasisContributionRef, type ThreadAnswerRef } from "../src/basis/index.js";
+import { buildTrustReport, type TrustBundle } from "../src/index.js";
 import * as rootSurface from "../src/index.js";
 import type { Evidence, TrustReport } from "../src/types.js";
 
@@ -21,6 +22,34 @@ test("Surface builder projects coverage but never invents a policy verdict", () 
   assert.equal(built.policy, null);
   assert.equal(parseBasisComposition(JSON.parse(JSON.stringify(input({ owner: { authority: "@kontourai/surface" }, state: "available", observedAt: answer.observedAt, value: built })))).ok, true);
   assert.equal(composeBasisProjection(input({ owner: { authority: "@kontourai/surface" }, state: "available", observedAt: answer.observedAt, value: built })).standing, "assessed-with-gaps");
+});
+test("real system-card report round-trips through Basis without degrading Surface evidence", async () => {
+  const bundle = JSON.parse(await readFile("examples/system-card/bundle.json", "utf8")) as TrustBundle;
+  const report = buildTrustReport(bundle, { id: "system-card-report", now: new Date("2025-11-05T12:00:00.000Z") });
+  const claimId = "claim.acme-support-agent.pii-filtering";
+  report.source = "https://example.test/<system-card>";
+  const counterevidence = report.evidence.find((item) => item.claimId === claimId && item.passing === false)!;
+  counterevidence.sourceRef = "https://example.test/e\u0301%2Fsource";
+  counterevidence.excerptOrSummary = "<cite>Counterevidence at https://example.test/evidence</cite>";
+  report.transparencyGaps.find((gap) => gap.claimId === claimId)!.message = "Inspect <gap> at https://example.test/gaps";
+  const built = buildAnswerAssessmentProjection(report, claimId);
+  assert.equal(built.bundle.source, report.source);
+  assert.equal(built.evidence.counterevidence[0]!.sourceRef, counterevidence.sourceRef);
+  assert.equal(built.evidence.counterevidence[0]!.label, counterevidence.excerptOrSummary);
+  assert.equal(built.gaps[0]!.message, report.transparencyGaps.find((gap) => gap.claimId === claimId)!.message);
+  const systemCardContext = {
+    ...contribution,
+    context: { ...contribution.context, title: "<System card> https://example.test/result" },
+    gaps: [{ code: "owner-gap", message: "Inspect <details> at https://example.test/gaps" }],
+  };
+  const composition = input({ owner: { authority: "@kontourai/surface" }, state: "available", observedAt: answer.observedAt, value: built }, [{ owner: { authority: "@kontourai/station" }, state: "available", observedAt: answer.observedAt, value: [systemCardContext] }]);
+  const parsed = parseBasisComposition(JSON.parse(JSON.stringify(composition)));
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok) return;
+  const composed = composeBasisProjection(parsed.value);
+  assert.equal(composed.assessment.state, "available");
+  assert.equal(composed.assessment.state === "available" && composed.assessment.value.evidence.counterevidence[0]?.sourceRef, built.evidence.counterevidence[0]?.sourceRef);
+  assert.equal(parseBasisProjection(JSON.parse(JSON.stringify(composed))).ok, true);
 });
 test("only explicit healthy Surface assessment can be policy-met", () => {
   const available = (value: AnswerAssessmentProjection): BasisCompositionInput["assessment"] => ({ owner: { authority: "@kontourai/surface" }, state: "available", observedAt: answer.observedAt, value });
@@ -75,7 +104,8 @@ test("standing, owner authority, opaque Thread identities, and edge-local gaps a
   policyInvariant.assessment.value.policy.satisfied = false;
   assert.equal(parseBasisComposition(policyInvariant).ok, false);
 
-  const edgeContribution = { ...contribution, relationships: [{ contract: { authority: "@kontourai/station", schemaVersion: "1", kind: "basis-context-relationship" as const }, kind: "produced" as const, from: contribution.ref, to: contribution.ref, gaps: [{ code: "edge", message: "owner edge gap" }] }] };
+  const edgeRelationship = { contract: { authority: "@kontourai/station", schemaVersion: "station.basis-context-relationship/v1", kind: "basis-context-relationship" }, kind: "produced", from: contribution.ref, to: contribution.ref, gaps: [{ code: "edge", message: "owner edge gap" }] } as const satisfies BasisContextRelationship;
+  const edgeContribution: typeof contribution = { ...contribution, relationships: [edgeRelationship] };
   const edgeProjection = composeBasisProjection(input(noAssessment, [{ owner: { authority: "@kontourai/station" }, state: "available", observedAt: answer.observedAt, value: [edgeContribution] } ]));
   assert.deepEqual(edgeProjection.relationships[0]?.gaps, [{ code: "edge", message: "owner edge gap" }]);
   assert.equal(parseBasisProjection(JSON.parse(JSON.stringify(edgeProjection))).ok, true);
@@ -83,6 +113,40 @@ test("standing, owner authority, opaque Thread identities, and edge-local gaps a
   assert.deepEqual(assessmentProjection.relationships[0]?.gaps, []);
   assert.deepEqual(assessmentProjection.gaps, [{ code: "claim-gap", message: "global only" }]);
   assert.equal(parseBasisProjection(JSON.parse(JSON.stringify(assessmentProjection))).ok, true);
+});
+test("Thread refs are total, opaque, and exact without executing hostile descriptors", () => {
+  const opaque = { ...answerRef, threadId: "thread/e\u0301%2Fhttps://example.test", messageId: "message/%2F😀" };
+  const parsed = parseThreadAnswerRef(opaque);
+  assert.equal(parsed.ok, true);
+  if (parsed.ok) assert.deepEqual(parsed.value, opaque);
+  assert.equal(parseThreadAnswerRef({ ...answerRef, threadId: "\ud800" }).ok, false);
+  assert.equal(parseThreadAnswerRef(new Proxy({}, { get() { throw new Error("must not execute"); }, ownKeys() { throw new Error("must not enumerate"); } })).ok, false);
+  assert.equal(parseThreadAnswerRef(Object.create(null, { authority: { enumerable: true, get() { throw new Error("must not read"); } } })).ok, false);
+});
+test("Surface policy factory and parser share the same opaque scalar and outcome invariant", () => {
+  const policy = createSurfacePolicyOutcome("https://surface.example/policy/😀", "satisfied");
+  assert.deepEqual(policy, { id: "https://surface.example/policy/😀", outcome: "satisfied", satisfied: true });
+  assert.throws(() => createSurfacePolicyOutcome("\ud800", "satisfied"), TypeError);
+  assert.throws(() => createSurfacePolicyOutcome("policy", "unknown"), TypeError);
+  const assessment = explicitAssessment({ policy });
+  assert.equal(parseBasisComposition(JSON.parse(JSON.stringify(input({ owner: { authority: "@kontourai/surface" }, state: "available", observedAt: answer.observedAt, value: assessment })))).ok, true);
+});
+test("only published owner-specific relationship contracts are accepted", () => {
+  const stationRelationship = { contract: { authority: "@kontourai/station", schemaVersion: "station.basis-context-relationship/v1", kind: "basis-context-relationship" }, kind: "produced", from: contribution.ref, to: contribution.ref } as const satisfies BasisContextRelationship;
+  const flowRef: Extract<BasisContributionRef, { authority: "@kontourai/flow-agents" }> = { authority: "@kontourai/flow-agents", schemaVersion: "grounded-execution-narrative/v1", kind: "narrative", narrativeId: "narrative-1" };
+  const flowRelationship = { contract: { authority: "@kontourai/flow-agents", schemaVersion: "grounded-execution-narrative/v1", kind: "basis-context-relationship" }, kind: "checked-by", from: flowRef, to: flowRef } as const satisfies BasisContextRelationship;
+  const flowContribution: BasisContribution<typeof flowRef> = { ref: flowRef, answer: answerRef, role: "execution", context: { kind: "grounded-narrative", statementCount: 1, sourceCompleteness: "complete" }, relationships: [flowRelationship] };
+  const valid = JSON.parse(JSON.stringify(input(noAssessment))) as { contributions: unknown[] };
+  valid.contributions = [{ owner: { authority: "@kontourai/station" }, state: "available", observedAt: answer.observedAt, value: [{ ...contribution, relationships: [stationRelationship] }] }, { owner: { authority: "@kontourai/flow-agents" }, state: "available", observedAt: answer.observedAt, value: [flowContribution] }];
+  assert.equal(parseBasisComposition(valid).ok, true);
+  const thread = structuredClone(valid) as { contributions: Array<{ value: Array<{ relationships: Array<{ contract: { authority: string; schemaVersion: string } }> }> }> };
+  thread.contributions[0]!.value[0]!.relationships[0]!.contract.authority = "@kontourai/thread";
+  thread.contributions[0]!.value[0]!.relationships[0]!.contract.schemaVersion = "thread.basis-context-relationship/v1";
+  assert.equal(parseBasisComposition(thread).ok, false);
+  const mismatched = structuredClone(valid) as { contributions: Array<{ value: Array<{ relationships: Array<{ contract: { authority: string; schemaVersion: string } }> }> }> };
+  mismatched.contributions[0]!.value[0]!.relationships[0]!.contract.authority = "@kontourai/flow-agents";
+  mismatched.contributions[0]!.value[0]!.relationships[0]!.contract.schemaVersion = "grounded-execution-narrative/v1";
+  assert.equal(parseBasisComposition(mismatched).ok, false);
 });
 test("snapshot rejects traps and cycles but permits shared acyclic records under bounded budgets", async () => {
   const fixture = JSON.parse(await readFile("examples/fixtures/station-basis-context.json", "utf8"));

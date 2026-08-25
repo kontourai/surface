@@ -39,9 +39,13 @@ export type BasisContextProjection =
 export interface BasisContribution<TRef extends BasisContributionRef = BasisContributionRef> { ref: TRef; answer: ThreadAnswerRef; role: BasisContributionRole; context: BasisContextProjection; gaps?: readonly BasisGap[]; relationships?: readonly BasisContextRelationship[]; }
 export type BasisContextRelationshipKind = "observed-during" | "produced" | "checked-by" | "kept-in-task";
 /** Hosts may supply these only with a published exact relationship contract. */
-export interface BasisContextRelationship { contract: { authority: string; schemaVersion: string; kind: "basis-context-relationship" }; kind: BasisContextRelationshipKind; from: BasisContributionRef; to: BasisContributionRef; gaps?: readonly BasisGap[]; }
-export type BasisRelationshipKind = "cites" | "supports" | "derived-from" | "counterevidence" | BasisContextRelationshipKind;
-export interface BasisRelationship { kind: BasisRelationshipKind; from: string; to: string; source: "surface-assessment" | "owner-context"; /** Edge-local only. */ gaps: readonly BasisGap[]; }
+export type BasisContextRelationshipContract =
+  | { authority: "@kontourai/station"; schemaVersion: "station.basis-context-relationship/v1"; kind: "basis-context-relationship" }
+  | { authority: "@kontourai/flow-agents"; schemaVersion: "grounded-execution-narrative/v1"; kind: "basis-context-relationship" };
+export interface BasisContextRelationship { contract: BasisContextRelationshipContract; kind: BasisContextRelationshipKind; from: BasisContributionRef; to: BasisContributionRef; gaps?: readonly BasisGap[]; }
+export type BasisRelationship =
+  | { kind: "cites" | "supports" | "derived-from" | "counterevidence"; from: string; to: string; source: "surface-assessment"; /** Edge-local only. */ gaps: readonly BasisGap[]; }
+  | { kind: BasisContextRelationshipKind; from: string; to: string; source: "owner-context"; contract: BasisContextRelationshipContract; /** Edge-local only. */ gaps: readonly BasisGap[]; };
 export interface BasisGap { code: string; message: string; }
 export interface BasisAssessmentEvidence { id: string; label: string; sourceRef: string; observedAt: string; }
 export interface SurfacePolicyOutcome { id: string; outcome: "satisfied" | "not-satisfied"; /** Redundant on purpose: must agree with outcome for easy consumers. */ satisfied: boolean; }
