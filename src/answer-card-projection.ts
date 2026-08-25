@@ -1,8 +1,5 @@
 import { derivationInputsForClaim, type DerivationInputSource } from "./derivation.js";
-import {
-  evidenceEntailsClaim,
-  partitionEvidenceBySupport,
-} from "./evidence-support.js";
+import { isStandingCounterevidence, partitionEvidenceBySupport } from "./evidence-support.js";
 import type {
   DerivationEdge,
   Evidence,
@@ -155,10 +152,7 @@ function projectEvidence(evidence: Evidence): AnswerCardEvidenceItem {
         : evidence.passing === false
           ? "failed"
           : "not-evaluated",
-    blocksClaim:
-      evidenceEntailsClaim(evidence) &&
-      evidence.passing === false &&
-      evidence.blocking !== false,
+    blocksClaim: isStandingCounterevidence(evidence),
   };
 }
 

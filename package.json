@@ -36,6 +36,10 @@
     "./basis/view": {
       "types": "./dist/src/basis/view-index.d.ts",
       "import": "./dist/src/basis/view-index.js"
+    },
+    "./basis/mcp": {
+      "types": "./dist/src/basis/mcp.d.ts",
+      "import": "./dist/src/basis/mcp.js"
     }
   },
   "files": [

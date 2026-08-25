@@ -11,6 +11,10 @@ export interface BasisPanelUiResourceOptions {
   /** URI for the resource, e.g. "ui://surface/basis/answer" */
   uri: string;
 }
+export interface BasisPanelUiResource {
+  type: "resource";
+  resource: { uri: string; mimeType: "text/html;profile=mcp-app"; text: string; _meta: { ui: { csp: { connectDomains: string[]; resourceDomains: string[] } } } };
+}
 
 /**
  * Builds the MCP UI resource entry that embeds the trust panel as a fully
@@ -73,7 +77,7 @@ export function buildTrustPanelUiResource(
 export function buildBasisPanelUiResource(
   projection: unknown,
   opts: BasisPanelUiResourceOptions,
-): ReturnType<typeof buildTrustPanelUiResource> {
+): BasisPanelUiResource {
   const parsed = parseBasisProjection(projection);
   const projectionJson = safeJsonStringify(parsed.ok ? parsed.value : null);
   return {
@@ -84,7 +88,6 @@ export function buildBasisPanelUiResource(
       text: buildBasisHtml(projectionJson),
       _meta: {
         ui: { csp: { connectDomains: [], resourceDomains: [] } },
-        "mcpui.dev/ui-preferred-frame-size": ["480px", "640px"],
       },
     },
   };
@@ -194,6 +197,9 @@ const panel=document.querySelector("surface-trust-panel");
 const data=document.getElementById("surface-basis-data");
 const setBasis=(value)=>{ if(panel) panel.basisProjection=value; };
 try { setBasis(JSON.parse(data?.textContent||"null")); } catch { setBasis(null); }
-window.addEventListener("message",(event)=>{ const message=event.data; const value=message?.params?.structuredContent??message?.structuredContent??message?.projection; if(value!==undefined) setBasis(value); });
+let nextId=1; const pending=new Set();
+const send=(method,params,id)=>window.parent.postMessage({jsonrpc:"2.0",method,...(id===undefined?{}:{id}),...(params===undefined?{}:{params})},"*");
+const initializeId=nextId++; pending.add(initializeId); send("ui/initialize",{},initializeId);
+window.addEventListener("message",(event)=>{ if(event.source!==window.parent) return; const message=event.data; if(!message||message.jsonrpc!=="2.0") return; if(message.id===initializeId&&pending.delete(initializeId)){ send("ui/notifications/initialized",{}); return; } if(message.method==="ui/notifications/tool-result"&&message.params&&Object.hasOwn(message.params,"result")){ setBasis(message.params.result); } });
 </script></body></html>`;
 }
