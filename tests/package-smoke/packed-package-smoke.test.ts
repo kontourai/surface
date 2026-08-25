@@ -69,6 +69,10 @@ test("packed npm artifact installs, imports, and serves modern plus legacy MCP f
           "if (typeof buildTrustReport !== 'function') throw new Error('buildTrustReport missing');",
           "if (typeof validateTrustBundle !== 'function') throw new Error('validateTrustBundle missing');",
           "if (typeof explainClaim !== 'function') throw new Error('explainClaim missing');",
+          "const root = await import('@kontourai/surface');",
+          "if ('composeBasisProjection' in root) throw new Error('basis leaked through root barrel');",
+          "const basis = await import('@kontourai/surface/basis');",
+          "if (typeof basis.composeBasisProjection !== 'function') throw new Error('basis subpath missing');",
           "try {",
           "  await import('@kontourai/surface/dist/src/console/projection.js');",
           "  throw new Error('deep import unexpectedly resolved');",
@@ -96,6 +100,7 @@ test("packed npm artifact installs, imports, and serves modern plus legacy MCP f
     assert.match(indexDeclaration, /export \* from "\.\/answer-card-projection\.js"/);
     assert.match(indexDeclaration, /export \* from "\.\/report\.js"/);
     assert.match(indexDeclaration, /export \* from "\.\/validate\.js"/);
+    assert.doesNotMatch(indexDeclaration, /basis/);
 
     const [
       consumerSdkDeclaration,

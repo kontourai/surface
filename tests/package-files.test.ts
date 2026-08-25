@@ -36,7 +36,7 @@ test("package files whitelist excludes generated example output", async () => {
 test("package entrypoint exposes explicit ESM and TypeScript contracts", async () => {
   const packageJson = await readPackageJson();
 
-  assert.deepEqual(Object.keys(packageJson.exports ?? {}).sort(), [".", "./trust-panel/element"]);
+  assert.deepEqual(Object.keys(packageJson.exports ?? {}).sort(), [".", "./basis", "./trust-panel/element"]);
   assert.equal(packageJson.types, "./dist/src/index.d.ts");
   assert.deepEqual(packageJson.exports?.["."], {
     types: "./dist/src/index.d.ts",
@@ -48,6 +48,10 @@ test("package entrypoint exposes explicit ESM and TypeScript contracts", async (
   assert.deepEqual(packageJson.exports?.["./trust-panel/element"], {
     types: "./dist/src/trust-panel/surface-trust-panel.d.ts",
     import: "./dist/src/trust-panel/surface-trust-panel.js",
+  });
+  assert.deepEqual(packageJson.exports?.["./basis"], {
+    types: "./dist/src/basis/index.d.ts",
+    import: "./dist/src/basis/index.js",
   });
 });
 

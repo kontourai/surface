@@ -1,0 +1,10 @@
+{
+  "version": "surface.basis-projection/v1",
+  "answer": { "authority": "@kontourai/thread", "schemaVersion": "1.2.0", "kind": "assistant-message", "threadId": "thread-42", "messageId": "message-9" },
+  "assessment": { "owner": { "authority": "@kontourai/thread", "schemaVersion": "1.2.0", "kind": "result", "component": "thread" }, "state": "not-captured" },
+  "contributions": [
+    { "owner": { "authority": "@kontourai/station", "schemaVersion": "1", "kind": "task-output", "component": "station" }, "state": "available", "value": [
+      { "id": "station-output-1", "owner": { "authority": "@kontourai/station", "schemaVersion": "1", "kind": "task-output", "component": "station" }, "answer": { "authority": "@kontourai/thread", "schemaVersion": "1.2.0", "kind": "assistant-message", "threadId": "thread-42", "messageId": "message-9" }, "role": "execution", "display": { "title": "Task output", "summary": "Owner-attributed Station context", "status": "observed" } }
+    ] }
+  ]
+}
