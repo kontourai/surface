@@ -1,7 +1,13 @@
 import { derivationInputsForClaim } from "../derivation.js";
 import { partitionEvidenceBySupport } from "../evidence-support.js";
 import type { Evidence, TrustReport } from "../types.js";
-import { SURFACE_ANSWER_ASSESSMENT_VERSION, SURFACE_BASIS_VERSION, type AnswerAssessmentProjection, type BasisAssessmentEvidence } from "./types.js";
+import { SURFACE_ANSWER_ASSESSMENT_VERSION, SURFACE_BASIS_VERSION, type AnswerAssessmentProjection, type BasisAssessmentEvidence, type SurfacePolicyOutcome } from "./types.js";
+
+/** Surface-owned seam for the only policy object that can affect Basis standing. */
+export function createSurfacePolicyOutcome(id: string, outcome: SurfacePolicyOutcome["outcome"]): SurfacePolicyOutcome {
+  if (!id || id.length > 4_096) throw new TypeError("Surface policy outcome id must be bounded and nonempty.");
+  return { id, outcome, satisfied: outcome === "satisfied" };
+}
 
 /**
  * Projects report facts for one claim.  This never derives a claim status and
