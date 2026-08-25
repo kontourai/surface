@@ -36,6 +36,19 @@ cp node_modules/@kontourai/surface/dist/src/trust-panel/surface-trust-panel.js p
 
 The compiled file is a self-contained ES module with no imports, so `type="module"` is the only loading requirement.
 
+### Basis mode
+
+The same compatibility element also renders the Surface Basis Viewer. Set a projection directly, or select Basis explicitly for `src` content. The element does not infer mode from an input shape.
+
+```html
+<surface-trust-panel id="basis" mode="basis"></surface-trust-panel>
+<script>
+  document.querySelector("#basis").basisProjection = projection;
+</script>
+```
+
+Basis mode always shows standing and gaps. Assessment is expanded; context, relationships, and technical identities use native collapsed disclosures. Its stable parts include `panel`, `header`, `title`, `standing`, `gaps`, `assessment`, `evidence`, `context`, `relationships`, `technical`, `empty`, `error`, and `footer`.
+
 The input is the output of `surface report` or `buildTrustReport` — a derived `TrustReport`, not a raw `TrustBundle`. If the JSON has claims but no derived statuses, the panel says so instead of guessing.
 
 ## What it renders

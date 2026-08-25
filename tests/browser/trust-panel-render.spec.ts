@@ -23,6 +23,7 @@
  * assertions through the real build.
  */
 import { expect, test, type Page } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 
 /** Every status the panel maps, with the label and colour band it must use. */
 const STATUS_RENDERING = [
@@ -363,4 +364,157 @@ test("discloses evidence visibility and integrity-anchor verification state", as
   expect(anchorVerified!.integrity).toBe("verified");
   expect(anchorVerified!.text).toContain("Integrity hash: verified");
   expect(anchorFailed!.html).not.toBe(anchorVerified!.html);
+});
+
+test("Basis mode keeps mandatory standing and gaps visible while disclosures remain native", async ({ page }) => {
+  await page.goto("/viewer.html");
+  await page.waitForFunction(() => customElements.get("surface-trust-panel") !== undefined);
+  await page.evaluate(() => {
+    const panel = document.getElementById("viewer-panel") as HTMLElement & { basisProjection: unknown };
+    panel.setAttribute("mode", "basis");
+    panel.basisProjection = {
+      version: "surface.basis-projection/v1",
+      answer: { owner: { authority: "@kontourai/thread" }, state: "available", observedAt: "2026-08-25T00:00:00.000Z", value: { ref: { authority: "@kontourai/thread", schemaVersion: "1.2.0", kind: "assistant-message", standing: "observed", threadId: "thread", messageId: "message" }, fact: "answer-observed", observedAt: "2026-08-25T00:00:00.000Z" } },
+      standing: "execution-only", unresolvedReason: null,
+      assessment: { owner: { authority: "@kontourai/surface" }, state: "not-captured", observedAt: "2026-08-25T00:00:00.000Z" },
+      regions: { inputs: [], execution: [], process: [], outcomes: [], support: [], sources: [], live: [] }, relationships: [], gaps: [],
+    };
+  });
+  const basis = page.locator("surface-trust-panel");
+  await expect(basis).toHaveAttribute("mode", "basis");
+  const snapshot = await page.evaluate(() => {
+    const root = (document.getElementById("viewer-panel") as HTMLElement).shadowRoot!;
+    return {
+      title: root.querySelector('[part="title"]')?.textContent,
+      standing: root.querySelector('[part="standing"]')?.textContent,
+      gaps: root.querySelector('[part="gaps"]')?.textContent,
+      contextOpen: (root.querySelector('[part="context"]') as HTMLDetailsElement | null)?.open,
+      parts: [...root.querySelectorAll("[part]")].map((item) => item.getAttribute("part")),
+    };
+  });
+  expect(snapshot.title).toBe("Basis");
+  expect(snapshot.standing).toContain("Unassessed");
+  expect(snapshot.gaps).toContain("Gaps (0)");
+  expect(snapshot.contextOpen).toBe(false);
+  expect(snapshot.parts).toEqual(expect.arrayContaining(["panel", "header", "title", "standing", "gaps", "assessment", "context", "relationships", "technical", "footer"]));
+  const standing = basis.locator('[part="standing"]');
+  await expect(standing).toHaveAttribute("role", "status");
+  await expect(standing).toHaveAttribute("aria-live", "polite");
+  await page.evaluate(() => {
+    (document.getElementById("viewer-panel") as HTMLElement & { basisProjection: unknown }).basisProjection = {};
+  });
+  await expect(standing).toContainText("Cannot be read");
+  await page.evaluate(() => {
+    const panel = document.getElementById("viewer-panel") as HTMLElement & { basisProjection: unknown };
+    panel.basisProjection = {
+      version: "surface.basis-projection/v1",
+      answer: { owner: { authority: "@kontourai/thread" }, state: "available", observedAt: "2026-08-25T00:00:00.000Z", value: { ref: { authority: "@kontourai/thread", schemaVersion: "1.2.0", kind: "assistant-message", standing: "observed", threadId: "thread", messageId: "message" }, fact: "answer-observed", observedAt: "2026-08-25T00:00:00.000Z" } },
+      standing: "execution-only", unresolvedReason: null,
+      assessment: { owner: { authority: "@kontourai/surface" }, state: "not-captured", observedAt: "2026-08-25T00:00:00.000Z" },
+      regions: { inputs: [], execution: [], process: [], outcomes: [], support: [], sources: [], live: [] }, relationships: [], gaps: [],
+    };
+  });
+  await expect(standing).toContainText("Unassessed");
+});
+
+test("Basis mode preserves complete disclosure, focus, accessibility, and narrow geometry", async ({ page }) => {
+  const observedAt = "2026-08-25T00:00:00.000Z";
+  const answer = { authority: "@kontourai/thread", schemaVersion: "1.2.0", kind: "assistant-message", standing: "observed", threadId: "thread-a", messageId: "message-a" };
+  const longInert = `<not-markup> https://example.test/${"x".repeat(3_400)}`;
+  const projection = {
+    version: "surface.basis-projection/v1",
+    answer: { owner: { authority: "@kontourai/thread" }, state: "available", observedAt, value: { ref: answer, fact: "answer-observed", observedAt } },
+    standing: "assessed-with-gaps", unresolvedReason: null,
+    assessment: { owner: { authority: "@kontourai/surface" }, state: "available", observedAt, value: {
+      version: "surface.basis-projection/v1", ref: { authority: "@kontourai/surface", schemaVersion: "surface.answer-assessment/v1", kind: "answer-assessment", bundleId: "bundle-a", claimId: "claim-a" }, found: true,
+      bundle: { id: "bundle-a", schemaVersion: 7, source: "https://example.test/bundle", generatedAt: observedAt },
+      claim: { id: "claim-a", subject: { subjectType: "answer", subjectId: "message-a" }, status: "verified", freshness: { asOf: observedAt, expiresAt: null, stale: false } }, policy: null,
+      evidence: {
+        cited: [{ id: "cite-a", label: "Citation label", sourceRef: "https://example.test/citation", observedAt }],
+        entails: [{ id: "entail-a", label: "Entailing label", sourceRef: "https://example.test/entailing", observedAt }],
+        counterevidence: [{ id: "counter-a", label: "Counter label", sourceRef: "https://example.test/counter", observedAt }],
+      },
+      derivation: { available: true, directInputs: [{ claimId: "input-claim", status: "verified" }] },
+      gaps: [{ code: "assessment-gap", message: "Assessment gap remains visible." }],
+    } },
+    regions: {
+      inputs: [{ ref: { authority: "@kontourai/station", schemaVersion: "1", kind: "input", sessionId: "thread-a", eventId: "input-a" }, role: "input", context: { kind: "station-input", inputKind: "prompt", promptExcerpt: longInert, attachmentCount: 2 }, gaps: [{ code: "input-gap", message: "Input relationship is not captured." }] }],
+      execution: [
+        { ref: { authority: "@kontourai/thread", schemaVersion: "1.2.0", kind: "result", threadId: "thread-a", resultId: "result-a" }, role: "execution", context: { kind: "thread-result", name: "search", terminalStatus: "completed", textParts: 2, truncatedParts: 1, omittedParts: 3 }, gaps: [] },
+        { ref: { authority: "@kontourai/flow-agents", schemaVersion: "grounded-execution-narrative/v1", kind: "narrative", narrativeId: "narrative-a" }, role: "execution", context: { kind: "grounded-narrative", statementCount: 4, sourceCompleteness: "partial" }, gaps: [] },
+      ],
+      process: [],
+      outcomes: [{ ref: { authority: "@kontourai/station", schemaVersion: "1", kind: "task-output", taskId: "task-a", outputId: "output-a" }, role: "outcome", context: { kind: "station-output", title: "Generated report", mediaType: "text/plain", byteLength: 42, digest: "sha256-abcd" }, gaps: [] }],
+      support: [], sources: [],
+      live: [{ ref: { authority: "@kontourai/station", schemaVersion: "1", kind: "live", sessionId: "thread-a", observationId: "live-a" }, role: "live", context: { kind: "station-live", state: "connected", observedAt }, gaps: [] }],
+    },
+    relationships: [
+      { kind: "cites", from: "claim-a", to: "evidence:cite-a", source: "surface-assessment", gaps: [{ code: "edge-gap", message: "Citation visibility is limited." }] },
+      { kind: "supports", from: "evidence:entail-a", to: "claim-a", source: "surface-assessment", gaps: [] },
+      { kind: "counterevidence", from: "evidence:counter-a", to: "claim-a", source: "surface-assessment", gaps: [] },
+      { kind: "derived-from", from: "claim-a", to: "claim:input-claim", source: "surface-assessment", gaps: [] },
+    ],
+    gaps: [{ code: "assessment-gap", message: "Assessment gap remains visible." }],
+  };
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: "reduce", colorScheme: "dark" });
+  await page.goto("/viewer.html");
+  await page.waitForFunction(() => customElements.get("surface-trust-panel") !== undefined);
+  await page.evaluate((value) => {
+    const panel = document.getElementById("viewer-panel") as HTMLElement & { basisProjection: unknown };
+    panel.setAttribute("mode", "basis");
+    panel.basisProjection = value;
+  }, projection);
+
+  const panel = page.locator("surface-trust-panel");
+  await expect(panel).toContainText("Assessed with gaps");
+  await expect(panel).toContainText("Assessment gap remains visible.");
+  const assessment = panel.locator('[part="assessment"]');
+  await expect(assessment).toHaveAttribute("open", "");
+  await expect(assessment).toContainText("verified");
+  await expect(assessment).toContainText("Current as of");
+  await expect(assessment).toContainText("Entailing label");
+  await expect(assessment).toContainText("Citation label");
+  await expect(assessment).toContainText("Counter label");
+
+  const context = panel.locator('[part="context"]');
+  await expect(context).not.toHaveAttribute("open", "");
+  const contextSummary = context.locator("summary");
+  await contextSummary.focus();
+  await contextSummary.press("Enter");
+  await expect(context).toHaveAttribute("open", "");
+  await expect(context).toContainText("Prompt excerpt");
+  await expect(context).toContainText("Attachments: 2");
+  await expect(context).toContainText("Status: completed");
+  await expect(context).toContainText("Source completeness: partial");
+  await expect(context).toContainText("Generated report");
+  await expect(context).toContainText("State: connected");
+  await expect(context).toContainText("Input relationship is not captured.");
+
+  const relationships = panel.locator('[part="relationships"]');
+  const relationshipsSummary = relationships.locator("summary");
+  await relationshipsSummary.click();
+  await expect(relationships).toContainText("Citation visibility is limited.");
+  await expect(relationships).toContainText("The assessed claim cites this evidence.");
+  await expect(relationships).toContainText("This evidence supports the assessed claim.");
+  await expect(relationships).toContainText("This evidence counters the assessed claim.");
+  await expect(relationships).toContainText("derived from this input claim");
+
+  await page.evaluate((value) => {
+    (document.getElementById("viewer-panel") as HTMLElement & { basisProjection: unknown }).basisProjection = structuredClone(value);
+  }, projection);
+  await expect(context).toHaveAttribute("open", "");
+  expect(await panel.evaluate((element) => element.shadowRoot?.activeElement === element.shadowRoot?.querySelector('[part="relationships"] summary'))).toBe(true);
+  expect((await contextSummary.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  await page.setViewportSize({ width: 320, height: 700 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+
+  for (const colorScheme of ["dark", "light"] as const) {
+    await page.emulateMedia({ reducedMotion: "reduce", colorScheme });
+    const results = await new AxeBuilder({ page }).include("surface-trust-panel").analyze();
+    expect(results.violations.filter((violation) => violation.impact === "serious" || violation.impact === "critical"), `${colorScheme} accessibility`).toEqual([]);
+  }
+  expect(await contextSummary.evaluate((element) => getComputedStyle(element).transitionDuration)).toMatch(/^(0s|0ms)$/u);
 });

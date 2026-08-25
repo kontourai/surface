@@ -1,3 +1,5 @@
+import { buildBasisPanelViewModel, type BasisPanelViewModel } from "../basis/view.js";
+
 // <surface-trust-panel> — a dependency-free, read-only Trust Panel custom element.
 //
 // Renders a derived Kontour Surface TrustReport (the output of `surface report`
@@ -235,7 +237,7 @@ interface TrustPanelReport {
     const evidenceTypeText = rawEvidenceType === "" ? "Evidence type not stated" : EVIDENCE_TYPE_LABELS[rawEvidenceType] ?? rawEvidenceType;
     const methodText = rawMethod === "" ? "method not stated" : METHOD_LABELS[rawMethod] ?? rawMethod;
 
-    return `<li class="evidence" data-evidence-type="${escapeHtml(rawEvidenceType)}" data-method="${escapeHtml(rawMethod)}" data-support="${escapeHtml(support.state)}" data-result="${escapeHtml(result.state)}" data-blocking="${item.blocking === true ? "true" : "false"}" data-visibility="${escapeHtml(visibility.state)}"${integrity ? ` data-integrity="${escapeHtml(integrity.state)}"` : ""}>
+    return `<li class="evidence" part="evidence-item" data-evidence-type="${escapeHtml(rawEvidenceType)}" data-method="${escapeHtml(rawMethod)}" data-support="${escapeHtml(support.state)}" data-result="${escapeHtml(result.state)}" data-blocking="${item.blocking === true ? "true" : "false"}" data-visibility="${escapeHtml(visibility.state)}"${integrity ? ` data-integrity="${escapeHtml(integrity.state)}"` : ""}>
         <span class="ev-head"><strong>${escapeHtml(evidenceTypeText)}</strong> · ${escapeHtml(methodText)}</span>
         <span class="ev-flags">${flags.join("")}</span>
         <span class="ev-summary">${escapeHtml(asText(item.excerptOrSummary ?? item.sourceRef))}</span>
@@ -316,14 +318,21 @@ interface TrustPanelReport {
     .empty, .error { padding: 0.5rem 0; color: var(--k-text-muted, #657267); font-size: 0.9rem; }
     .error { color: var(--k-negative, #c24141); }
     .footnote { margin: 0.8rem 0 0; color: var(--k-text-muted, #657267); font-size: 0.75rem; }
+    .basis-standing { margin: 0.65rem 0; font-weight: 700; overflow-wrap: anywhere; }
+    .basis-section { margin-top: 0.75rem; overflow-wrap: anywhere; }
+    .basis-section summary { cursor: pointer; display: flex; align-items: center; font-weight: 700; min-height: 44px; }
+    .basis-notice { margin: 0.3rem 0; color: var(--k-text-muted, #657267); }
+    .basis-list { margin: 0.3rem 0; padding-left: 1.1rem; }
+    .basis-technical { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.78rem; }
   `;
 
   class SurfaceTrustPanel extends HTMLElement {
     static get observedAttributes(): string[] {
-      return ["src", "heading"];
+      return ["src", "heading", "mode"];
     }
 
     #report: TrustPanelReport | null = null;
+    #basisProjection: unknown = null;
     #shadow: ShadowRoot;
 
     constructor() {
@@ -341,14 +350,20 @@ interface TrustPanelReport {
         this.report = pending;
         return;
       }
+      if (Object.prototype.hasOwnProperty.call(this, "basisProjection")) {
+        const pending = (this as { basisProjection?: unknown }).basisProjection;
+        delete (this as { basisProjection?: unknown }).basisProjection;
+        this.basisProjection = pending;
+        return;
+      }
       const src = this.getAttribute("src");
-      if (!this.#report && src) void this.#load(src);
+      if (!this.#report && this.#basisProjection === null && src) void this.#load(src);
       else this.#render();
     }
 
     attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void {
       if (name === "src" && newValue && newValue !== oldValue) void this.#load(newValue);
-      if (name === "heading" && newValue !== oldValue) this.#render();
+      if ((name === "heading" || name === "mode") && newValue !== oldValue) this.#render();
     }
 
     get report(): TrustPanelReport | null {
@@ -357,6 +372,15 @@ interface TrustPanelReport {
 
     set report(value: unknown) {
       this.#report = (value as TrustPanelReport | null) ?? null;
+      this.#basisProjection = null;
+      this.#render();
+    }
+
+    get basisProjection(): unknown { return this.#basisProjection; }
+
+    set basisProjection(value: unknown) {
+      this.#basisProjection = value;
+      this.#report = null;
       this.#render();
     }
 
@@ -364,16 +388,22 @@ interface TrustPanelReport {
       try {
         const response = await fetch(src);
         if (!response.ok) throw new Error(`Failed to load report: HTTP ${response.status}`);
-        this.report = await response.json();
+        const value = await response.json();
+        if (this.getAttribute("mode") === "basis") this.basisProjection = value;
+        else this.report = value;
       } catch (error) {
         this.#renderError(error instanceof Error ? error.message : String(error));
       }
     }
 
     #render(): void {
+      if (this.getAttribute("mode") === "basis" || this.#basisProjection !== null) {
+        this.#renderBasis(buildBasisPanelViewModel(this.#basisProjection));
+        return;
+      }
       const report = this.#report;
       if (!report) {
-        this.#renderShell('<p class="empty">No trust report loaded yet.</p>');
+        this.#renderShell('<p class="empty" part="empty">No trust report loaded yet.</p>');
         return;
       }
       if (!Array.isArray(report.claims)) {
@@ -396,20 +426,20 @@ interface TrustPanelReport {
       const chips = [...counts.entries()]
         .map(
           ([status, count]) =>
-            `<span class="chip" data-kind="${STATUS_KIND[status] ?? "neutral"}">${escapeHtml(STATUS_LABELS[status] ?? status)}: ${count}</span>`,
+            `<span class="chip" part="standing" data-kind="${STATUS_KIND[status] ?? "neutral"}">${escapeHtml(STATUS_LABELS[status] ?? status)}: ${count}</span>`,
         )
         .join("");
 
       const claimRows = claims.map((claim) => this.#renderClaim(claim, report)).join("");
 
       this.#renderShell(`
-        <div class="panel-header">
-          <p class="panel-title">${escapeHtml(this.getAttribute("heading") ?? "Surface Trust Panel")}</p>
+        <div class="panel-header" part="header">
+          <p class="panel-title" part="title">${escapeHtml(this.getAttribute("heading") ?? "Surface Trust Panel")}</p>
           <p class="panel-meta">${escapeHtml(asText(report.source))}${report.generatedAt ? ` · ${escapeHtml(asText(report.generatedAt))}` : ""}</p>
         </div>
         <div class="chips">${chips}</div>
-        ${claimRows || '<p class="empty">The report contains no claims.</p>'}
-        <p class="footnote">Derived by Kontour Surface. Status is derived deterministically — inspect the evidence and gaps before relying on a claim.</p>
+        ${claimRows || '<p class="empty" part="empty">The report contains no claims.</p>'}
+        <p class="footnote" part="footer">Derived by Kontour Surface. Status is derived deterministically — inspect the evidence and gaps before relying on a claim.</p>
       `);
     }
 
@@ -421,13 +451,13 @@ interface TrustPanelReport {
       const gapList = gaps
         .map(
           (item) =>
-            `<li class="gap" data-severity="${escapeHtml(asText(item.severity))}">${escapeHtml(asText(item.type, "gap"))} — ${escapeHtml(asText(item.message))}</li>`,
+            `<li class="gap" part="gap-row" data-severity="${escapeHtml(asText(item.severity))}">${escapeHtml(asText(item.type, "gap"))} — ${escapeHtml(asText(item.message))}</li>`,
         )
         .join("");
 
-      return `<details class="claim">
+      return `<details class="claim" part="assessment">
         <summary>
-          <span class="chip" data-kind="${STATUS_KIND[status] ?? "neutral"}">${escapeHtml(STATUS_LABELS[status] ?? status)}</span>
+          <span class="chip" part="standing" data-kind="${STATUS_KIND[status] ?? "neutral"}">${escapeHtml(STATUS_LABELS[status] ?? status)}</span>
           <span class="claim-field">${escapeHtml(asText(claim.fieldOrBehavior ?? claim.id))}</span>
           <span class="claim-subject">${escapeHtml(asText(claim.subjectType))}: ${escapeHtml(asText(claim.subjectId))}</span>
         </summary>
@@ -440,18 +470,36 @@ interface TrustPanelReport {
             ${claim.verificationPolicyId ? `<dt>Policy</dt><dd>${escapeHtml(asText(claim.verificationPolicyId))}</dd>` : ""}
           </dl>
           <h3>Evidence</h3>
-          ${evidenceList ? `<ul>${evidenceList}</ul>` : '<p class="empty">No evidence recorded for this claim.</p>'}
-          ${gapList ? `<h3>Transparency gaps</h3><ul>${gapList}</ul>` : ""}
+          ${evidenceList ? `<ul part="evidence">${evidenceList}</ul>` : '<p class="empty" part="empty">No evidence recorded for this claim.</p>'}
+          ${gapList ? `<h3>Transparency gaps</h3><ul part="gaps">${gapList}</ul>` : ""}
         </div>
       </details>`;
     }
 
     #renderShell(body: string): void {
-      this.#shadow.innerHTML = `<style>${PANEL_CSS}</style><div class="panel">${body}</div>`;
+      this.#shadow.innerHTML = `<style>${PANEL_CSS}</style><div class="panel" part="panel" role="region" aria-label="${this.getAttribute("mode") === "basis" ? "Basis" : "Surface Trust Panel"}">${body}</div>`;
     }
 
     #renderError(message: string): void {
-      this.#renderShell(`<p class="error">${escapeHtml(message)}</p>`);
+      this.#renderShell(`<p class="error" part="error" role="status" aria-live="polite">${escapeHtml(message)}</p>`);
+    }
+
+    #renderBasis(model: BasisPanelViewModel): void {
+      const priorOpen = new Map([...this.#shadow.querySelectorAll<HTMLDetailsElement>("details[part]")].map((detail) => [detail.getAttribute("part") ?? "", detail.open]));
+      const activePart = this.#shadow.activeElement?.closest?.("[part]")?.getAttribute("part") ?? null;
+      const disclosureOpen = (value: string): string => value === "expanded" ? "open" : "";
+      const gaps = model.gaps.map((gap) => `<li part="gap-row">${escapeHtml(gap.code)} — ${escapeHtml(gap.message)}</li>`).join("");
+      if (model.state === "unavailable") {
+        this.#renderShell(`<header class="panel-header" part="header"><h2 class="panel-title" part="title">Basis</h2></header><p class="basis-standing" part="standing" data-kind="negative" role="status" aria-live="polite" aria-atomic="true">${escapeHtml(model.standing.label)}</p><section class="basis-section" part="gaps"><h3>Gaps</h3><ul class="basis-list">${gaps}</ul></section>`);
+        return;
+      }
+      const assessment = model.assessment ? `<details class="basis-section" part="assessment" ${disclosureOpen(model.disclosures.assessment)}><summary>Assessment</summary><dl><dt>Claim status</dt><dd>${escapeHtml(model.assessment.claimStatus ?? "not available")}</dd><dt>Freshness</dt><dd>${escapeHtml(model.assessment.freshness ?? "not stated")}</dd></dl>${model.assessment.policy ? `<p>${escapeHtml(model.assessment.policy)}</p>` : ""}${model.assessment.evidence.map((partition) => `<div><h3>${escapeHtml(partition.label)}</h3><ul class="basis-list" part="evidence">${partition.items.map((item) => `<li part="evidence-item">${escapeHtml(item.label)} — ${escapeHtml(item.source)} · ${escapeHtml(item.observedAt)}</li>`).join("") || "<li>None recorded.</li>"}</ul></div>`).join("")}</details>` : `<section class="basis-section" part="assessment"><h3>Assessment</h3><p>No Surface assessment is available.</p></section>`;
+      const context = `<details class="basis-section" part="context" ${disclosureOpen(model.disclosures.context)}><summary>Context — ${escapeHtml(model.contextNotice)}</summary>${model.contextGroups.map((group) => `<section><h3>${escapeHtml(group.label)}</h3><ul class="basis-list">${group.items.map((item) => `<li><strong>${escapeHtml(item.label)}</strong> — ${escapeHtml(item.details)}${item.gaps.length ? ` — ${item.gaps.map((gap) => escapeHtml(gap.message)).join("; ")}` : ""}</li>`).join("") || "<li>None recorded.</li>"}</ul></section>`).join("")}</details>`;
+      const relationships = `<details class="basis-section" part="relationships" ${disclosureOpen(model.disclosures.relationships)}><summary>Relationships</summary><ul class="basis-list">${model.relationships.map((item) => `<li><strong>${escapeHtml(item.label)}</strong> — ${escapeHtml(item.prose)} From ${escapeHtml(item.from.value)}; to ${escapeHtml(item.to.value)}.${item.gaps.length ? ` Gaps: ${item.gaps.map((gap) => escapeHtml(gap.message)).join("; ")}` : ""}</li>`).join("") || "<li>No Surface assessment relationships recorded.</li>"}</ul></details>`;
+      const technical = `<details class="basis-section" part="technical" ${disclosureOpen(model.disclosures.technical)}><summary>Technical details</summary><dl class="basis-technical"><dt>Answer owner</dt><dd>${escapeHtml(model.technical.answerOwner)} (${escapeHtml(model.technical.answerState)})</dd><dt>Assessment owner</dt><dd>${escapeHtml(model.technical.assessmentOwner)} (${escapeHtml(model.technical.assessmentState)})</dd><dt>Bundle</dt><dd>${escapeHtml(model.technical.bundleId ?? "not available")}</dd><dt>Claim</dt><dd>${escapeHtml(model.technical.claimId ?? "not available")}</dd></dl></details>`;
+      this.#renderShell(`<header class="panel-header" part="header"><h2 class="panel-title" part="title">Basis</h2></header><p class="basis-standing" part="standing" data-kind="${escapeHtml(model.standing.tone)}" role="status" aria-live="polite" aria-atomic="true">${escapeHtml(model.standing.label)} — ${escapeHtml(model.standing.description)}</p><section class="basis-section" part="gaps"><h3>Gaps (${model.gaps.length})</h3><ul class="basis-list">${gaps || "<li>None recorded.</li>"}</ul></section>${assessment}${context}${relationships}${technical}<p class="footnote" part="footer">${escapeHtml(model.footer)}</p>`);
+      for (const [part, open] of priorOpen) { const detail = this.#shadow.querySelector<HTMLDetailsElement>(`details[part="${part}"]`); if (detail) detail.open = open; }
+      if (activePart) (this.#shadow.querySelector(`[part="${activePart}"] summary`) as HTMLElement | null)?.focus();
     }
   }
 
