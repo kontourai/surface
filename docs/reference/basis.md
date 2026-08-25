@@ -18,6 +18,10 @@ import { buildBasisPanelViewModel } from "@kontourai/surface/basis/view";
 const view = buildBasisPanelViewModel(projection); // hostile input becomes generic unavailable state
 ```
 
+### Delivery-size ratchet
+
+The repository checks gzip level 9 sizes for the browser delivery seams. Baseline at #207 closure: `basis/view` 2,373 bytes, `basis/mcp` 154 bytes, and the bundled Trust Panel element 12,920 bytes. The element grew from the legacy report-only panel because it now embeds the parsed Basis viewer, mandatory disclosures, and refresh-state preservation; that cost is intentional and kept out of the root package. Any increase requires updating the checked budget and explaining the product cost in this section. The ratchet lives in `tests/basis-bundle-budget.test.ts` and measures the built files with Node `gzipSync(..., { level: 9 })`.
+
 ```ts
 import { buildAnswerAssessmentProjection, composeBasisProjection } from "@kontourai/surface/basis";
 
