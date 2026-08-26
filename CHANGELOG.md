@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.1.0](https://github.com/kontourai/surface/compare/v3.0.0...v3.1.0) (2026-08-26)
+
+
+### Features
+
+* preserve reviewed source capture observations ([#245](https://github.com/kontourai/surface/issues/245)) ([85b1c2b](https://github.com/kontourai/surface/commit/85b1c2bb74e7ec72bbf5abf52041daece1d3dab6))
+
 ## [3.0.0](https://github.com/kontourai/surface/compare/v2.18.0...v3.0.0) (2026-08-26)
 
 
