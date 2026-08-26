@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.0.0](https://github.com/kontourai/surface/compare/v2.18.0...v3.0.0) (2026-08-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* **basis:** assessment v1 and caller-asserted createSurfacePolicyOutcome are replaced by the strict owner-evaluated assessment v2 contract. Required evidence facts and structured panel policy require explicit consumer migration. Release as Surface3.0; Hachure statusFunctionVersion2 is unchanged.
+
+### Features
+
+* **basis:** evaluate answer support through owner profiles ([#242](https://github.com/kontourai/surface/issues/242)) ([89ec301](https://github.com/kontourai/surface/commit/89ec301bae69f81998dc914e9ab48910ef6a004d))
+
 ## [2.18.0](https://github.com/kontourai/surface/compare/v2.17.0...v2.18.0) (2026-08-26)
 
 
