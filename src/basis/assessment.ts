@@ -1,15 +1,9 @@
 import { derivationInputsForClaim } from "../derivation.js";
-import { isStandingCounterevidence, partitionEvidenceBySupport } from "../evidence-support.js";
+import { evaluateAnswerAssessmentPolicy } from "../answer-assessment-policy.js";
+import { isStandingCounterevidence } from "../evidence-support.js";
 import type { Evidence, TrustReport } from "../types.js";
-import { SURFACE_ANSWER_ASSESSMENT_VERSION, SURFACE_BASIS_VERSION, type AnswerAssessmentProjection, type BasisAssessmentEvidence, type SurfacePolicyOutcome } from "./types.js";
-import { isBasisInertDisplayScalar, isBasisOpaqueRefScalar, isBasisRestrictedContractScalar, parseSurfacePolicyOutcome } from "./validation.js";
-
-/** Surface-owned seam for the only policy object that can affect Basis standing. */
-export function createSurfacePolicyOutcome(id: unknown, outcome: unknown): SurfacePolicyOutcome {
-  const policy = parseSurfacePolicyOutcome({ id, outcome, satisfied: outcome === "satisfied" });
-  if (!policy) throw new TypeError("Surface policy outcome requires a bounded, well-formed opaque id and a known outcome.");
-  return policy;
-}
+import { SURFACE_ANSWER_ASSESSMENT_VERSION, type AnswerAssessmentProjection, type BasisAssessmentEvidence } from "./types.js";
+import { isBasisInertDisplayScalar, isBasisOpaqueRefScalar, isBasisRestrictedContractScalar } from "./validation.js";
 
 /**
  * Projects report facts for one claim.  This never derives a claim status and
@@ -22,15 +16,10 @@ export function buildAnswerAssessmentProjection(report: TrustReport, claimId: st
   if (!claim) return emptyAssessment(bundle, claimId);
 
   const evidence = report.evidence.filter((candidate) => candidate.claimId === claimId);
-  const partitioned = partitionEvidenceBySupport(evidence);
-  // Evidence coverage is not a policy verdict.  Surface currently has no
-  // owner policy-evaluation outcome in TrustReport, so this builder must never
-  // promote coverage to satisfied/not-satisfied.  The projection shape reserves
-  // that explicit result for a future Surface evaluator.
-  const policy = null;
+  const policy = evaluateAnswerAssessmentPolicy(report, claimId);
 
   const projection: AnswerAssessmentProjection = {
-    version: SURFACE_BASIS_VERSION,
+    version: SURFACE_ANSWER_ASSESSMENT_VERSION,
     ref: { authority: "@kontourai/surface", schemaVersion: SURFACE_ANSWER_ASSESSMENT_VERSION, kind: "answer-assessment", bundleId: report.id, claimId },
     found: true,
     bundle,
@@ -42,19 +31,34 @@ export function buildAnswerAssessmentProjection(report: TrustReport, claimId: st
     },
     policy,
     evidence: {
-      cited: partitioned.citedEvidence.map(projectEvidence),
-      entails: partitioned.entailingEvidence.map(projectEvidence),
+      cited: evidence.filter((item) => item.supportStrength === "cited").map(projectEvidence),
+      entails: evidence.filter((item) => item.supportStrength === "entails").map(projectEvidence),
+      undeclared: evidence.filter((item) => item.supportStrength === undefined).map(projectEvidence),
       counterevidence: evidence.filter(isStandingCounterevidence).map(projectEvidence),
     },
     derivation: projectDerivation(report, claim),
-    gaps: report.transparencyGaps.filter((gap) => gap.claimId === claimId).map((gap) => ({ code: gap.type, message: gap.message })),
+    gaps: report.transparencyGaps.filter((gap) => gap.claimId === claimId).map(projectGap),
   };
   assertProjectionScalars(projection);
   return projection;
 }
 
 function projectEvidence(evidence: Evidence): BasisAssessmentEvidence {
-  return { id: evidence.id, label: evidence.excerptOrSummary, sourceRef: evidence.sourceRef, observedAt: evidence.observedAt };
+  return {
+    id: evidence.id,
+    label: evidence.excerptOrSummary,
+    sourceRef: evidence.sourceRef,
+    locator: evidence.sourceLocator ?? null,
+    observedAt: evidence.observedAt,
+    supportStrength: evidence.supportStrength ?? null,
+    result: evidence.passing === true ? "passed" : evidence.passing === false ? "failed" : "not-evaluated",
+    blocksClaim: isStandingCounterevidence(evidence),
+  };
+}
+
+function projectGap(gap: TrustReport["transparencyGaps"][number]): AnswerAssessmentProjection["gaps"][number] {
+  const weakEdges = gap.metadata?.source === "derivation.weak" && Array.isArray(gap.metadata.weakEdges) ? gap.metadata.weakEdges.filter((edge): edge is { claimId: string; inputClaimId: string } => typeof edge === "object" && edge !== null && typeof edge.claimId === "string" && typeof edge.inputClaimId === "string") : [];
+  return weakEdges.length > 0 ? { code: gap.type, message: gap.message, metadata: { source: "derivation.weak", weakEdges } } : { code: gap.type, message: gap.message };
 }
 
 function projectDerivation(report: TrustReport, claim: TrustReport["claims"][number]): AnswerAssessmentProjection["derivation"] {
@@ -62,7 +66,16 @@ function projectDerivation(report: TrustReport, claim: TrustReport["claims"][num
     const claims = new Map(report.claims.map((candidate) => [candidate.id, candidate]));
     return {
       available: true,
-      directInputs: derivationInputsForClaim(claim).map((input) => ({ claimId: input.inputClaimId, status: claims.get(input.inputClaimId)?.status ?? null })),
+      directInputs: derivationInputsForClaim(claim).map((input) => ({
+        claimId: input.inputClaimId,
+        status: claims.get(input.inputClaimId)?.status ?? null,
+        source: input.source,
+        edge: input.edge ? {
+          method: input.edge.method ?? null,
+          supportStrength: input.edge.supportStrength ?? null,
+          rationale: input.edge.rationale ?? null,
+        } : null,
+      })),
     };
   } catch {
     return { available: false, directInputs: [] };
@@ -71,8 +84,8 @@ function projectDerivation(report: TrustReport, claim: TrustReport["claims"][num
 
 function emptyAssessment(bundle: AnswerAssessmentProjection["bundle"], claimId: string): AnswerAssessmentProjection {
   return {
-    version: SURFACE_BASIS_VERSION, ref: { authority: "@kontourai/surface", schemaVersion: SURFACE_ANSWER_ASSESSMENT_VERSION, kind: "answer-assessment", bundleId: bundle.id, claimId }, found: false, bundle, claim: null, policy: null,
-    evidence: { cited: [], entails: [], counterevidence: [] }, derivation: { available: false, directInputs: [] }, gaps: [],
+    version: SURFACE_ANSWER_ASSESSMENT_VERSION, ref: { authority: "@kontourai/surface", schemaVersion: SURFACE_ANSWER_ASSESSMENT_VERSION, kind: "answer-assessment", bundleId: bundle.id, claimId }, found: false, bundle, claim: null, policy: null,
+    evidence: { cited: [], entails: [], undeclared: [], counterevidence: [] }, derivation: { available: false, directInputs: [] }, gaps: [],
   };
 }
 
@@ -81,9 +94,9 @@ function assertBuildScalars(bundle: AnswerAssessmentProjection["bundle"], claimI
 }
 
 function assertProjectionScalars(projection: AnswerAssessmentProjection): void {
-  const evidence = [...projection.evidence.cited, ...projection.evidence.entails, ...projection.evidence.counterevidence];
-  const display = [projection.bundle.source, projection.claim?.status, projection.claim?.subject.subjectType, ...evidence.map((item) => item.label), ...projection.derivation.directInputs.flatMap((item) => item.status === null ? [] : [item.status]), ...projection.gaps.map((gap) => gap.message)];
-  const opaque = evidence.map((item) => item.sourceRef);
+  const evidence = [...projection.evidence.cited, ...projection.evidence.entails, ...projection.evidence.undeclared, ...projection.evidence.counterevidence];
+  const display = [projection.bundle.source, projection.claim?.status, projection.claim?.subject.subjectType, projection.policy?.evaluatedAt, ...(projection.policy?.reasons ?? []), ...evidence.flatMap((item) => [item.label, ...(item.locator === null ? [] : [item.locator])]), ...projection.derivation.directInputs.flatMap((item) => [item.status, item.edge?.rationale].filter((value): value is string => value !== null)), ...projection.gaps.map((gap) => gap.message)];
+  const opaque = [...(projection.policy ? [projection.policy.id] : []), ...evidence.flatMap((item) => [item.sourceRef, ...(item.locator === null ? [] : [item.locator])])];
   const restricted = [projection.ref.bundleId, projection.ref.claimId, projection.claim?.id, projection.claim?.subject.subjectId, ...evidence.map((item) => item.id), ...projection.derivation.directInputs.map((item) => item.claimId), ...projection.gaps.map((gap) => gap.code)];
   if (!display.filter((value): value is string => value !== undefined).every(isBasisInertDisplayScalar) || !opaque.every(isBasisOpaqueRefScalar) || !restricted.filter((value): value is string => value !== undefined).every(isBasisRestrictedContractScalar)) throw new TypeError("Surface report values cannot be represented safely in the bounded Basis projection.");
 }

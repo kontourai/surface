@@ -25,16 +25,36 @@ const view = buildBasisPanelViewModel(projection); // hostile input becomes gene
 
 ### Delivery-size ratchet
 
-The repository checks minified, transitive browser bundles with esbuild plus gzip level 9; it does not measure tiny re-export stubs. Current budgets are `basis/view` 6,315 bytes, `basis/mcp` 107,422 bytes, and the Trust Panel element 10,912 bytes. The small view/MCP/element increases preserve validated exact contribution references for product routing; they do not add semantic derivation. The two Basis subpaths are new (base cost zero). The legacy report-only element was 3,783 bytes under the same method, so unified report/Basis rendering adds 7,122 bytes for total hostile parsing, render-ready disclosure semantics, focus/open-state preservation, and accessibility. The zero-network MCP bundle includes both the self-contained element and the official ext-apps 1.7.5 client with its complete initialization and tool-result schemas; replacing the prior small handwritten bridge adds 88,705 bytes but removes a protocol-validation fork. This cost applies only to the explicit MCP subpath, never the root or native viewer. Any future reduction must retain equivalent official-schema conformance evidence. Any increase requires updating the checked budget and explaining the product cost here. The ratchet lives in `tests/basis-bundle-budget.test.ts` and builds each public browser entry with `bundle + minify` before gzip.
+The repository checks minified, transitive browser bundles with esbuild plus gzip level 9, not tiny re-export stubs. Assessment v2 budgets are `basis/view` 7,036 bytes, `basis/mcp` 109,082 bytes, and the Trust Panel element 11,851 bytes. Against the same-worktree 2.18 baseline, the increases are 721, 1,660, and 939 bytes respectively: declared-versus-undeclared relationships, policy evaluation facts, evidence results, weak-edge provenance, strict parsing, and rendering. The zero-network MCP bundle includes the official ext-apps 1.7.5 initialization and tool-result schemas. Its cost applies only to the explicit MCP subpath, never the root or native viewer. Any increase requires a measured explanation; reductions must retain equivalent protocol and hostile-input coverage. The ratchet is `tests/basis-bundle-budget.test.ts`.
 
 ```ts
 import { buildAnswerAssessmentProjection, composeBasisProjection } from "@kontourai/surface/basis";
 
-const assessment = buildAnswerAssessmentProjection(report, claimId);
+const assessment = {
+  owner: { authority: "@kontourai/surface" as const },
+  state: "available" as const,
+  observedAt: report.generatedAt,
+  value: buildAnswerAssessmentProjection(report, claimId),
+};
 const basis = composeBasisProjection({ version: "surface.basis-projection/v1", answer, assessment, contributions: [] });
 ```
 
-Surface is the only standing authority. An available assessment carries the exact `SurfaceAnswerAssessmentRef`: `@kontourai/surface`, `surface.answer-assessment/v1`, `answer-assessment`, `bundleId`, and `claimId`. Thread and Station can observe or contribute context, but cannot make an answer assessed or policy-met. `buildAnswerAssessmentProjection` reports evidence coverage and intentionally leaves `policy` null: coverage is not a policy verdict. The reserved Surface-owned `SurfacePolicyOutcome` is exactly `{ id, outcome, satisfied }`, where `satisfied` must equal `outcome === "satisfied"`; use `createSurfacePolicyOutcome` for an explicit evaluator result. A policy-met answer also needs a found, verified, nonstale claim with no counterevidence or gaps.
+Surface is the only standing authority. An available assessment carries the exact `SurfaceAnswerAssessmentRef`: `@kontourai/surface`, `surface.answer-assessment/v2`, `answer-assessment`, `bundleId`, and `claimId`. Thread and products contribute context but do not evaluate semantic support. `buildAnswerAssessmentProjection` invokes Surface's policy evaluator; a missing policy remains `null`. A policy-met answer also requires a found, verified, nonstale claim with no counterevidence or gaps.
+
+Policy results identify `surface.answer-assessment-policy/v1`, the resolved policy, evaluation time, outcome, redundant consistent `satisfied`, and categorical reasons. Positive requirements use explicitly declared entailing evidence and exclude failed evidence, including nonblocking failures. Failed records remain visible; undeclared support never becomes entailment by default. Policy corroboration counts records, not independent actors. Distinct-actor derivation requirements remain their separate owner contract.
+
+## Assessment v2 migration (Surface 3.0)
+
+This package major deliberately rejects the previous nested assessment wire. The outer `surface.basis-projection/v1` and Hachure status-function version `2` remain unchanged; it does not retire unrelated TrustBundle compatibility behavior.
+
+- Rebuild assessments through `buildAnswerAssessmentProjection`, not by changing a version string on old JSON. Both assessment `version` and reference `schemaVersion` are `surface.answer-assessment/v2`.
+- Render all four evidence partitions, including `undeclared`. Preserve each record's locator, declared support strength, result, and blocking fact. Undeclared blocking evidence can also appear in counterevidence without acquiring an entails declaration.
+- Preserve direct derivation input source, method, strength, and rationale. Weak direct or transitive edges produce `unsupported_inference` gaps with exact weak-edge metadata; claim status math is unchanged.
+- `createSurfacePolicyOutcome` is removed. Use the owner-built assessment or `evaluateAnswerAssessmentPolicy` from the package root. Native panel models expose a policy object (`id`, `outcome`, `evaluatedAt`, `reasons`), not the former display string.
+- Build reports with the host's explicit authorized immutable bundle handle: `buildTrustReport(bundle, { id: bundleHandle, now })`. Neither a producer name nor the default clock-generated report ID is an immutable source identity.
+- Review remains not captured until a validated review-owner join exists. Do not infer review state from arbitrary metadata.
+
+The package root exports `ordinaryVerificationPolicy` and `createAnswerAssessmentReferenceExtension` as a small authoring-profile example. Products own their concrete vocabulary and policy templates. These are ordinary Surface extensions and verification policies, not another profile package or a claim of universal AI grounding.
 
 Input begins with `AnswerObservationRead`, not a bare answer reference. Its owner is exactly Thread; `SurfaceAssessmentRead` is exactly Surface; and a `ContributionRead` must match every contributed ref's owner authority. The observation has an exact Thread 1.2.0 ref with `standing: "observed"`, never answer content. Thread IDs and message IDs are opaque bounded Unicode identity tokens—Surface neither NFC-normalizes nor URL/path-filters them. Display strings remain separately inert and strict. `execution-only` follows whenever the answer is available and Surface assessment was not captured or observed empty, including with zero contributions. Restricted reads expose only a non-sensitive owner descriptor and timestamp; every read arm carries `observedAt`.
 

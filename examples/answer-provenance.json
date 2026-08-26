@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 7,
+  "source": "example:answer-provenance/v1",
+  "producerId": "example-answer-product",
+  "claims": [
+    {
+      "id": "answer.supported",
+      "subjectType": "assistant-answer",
+      "subjectId": "conversation-17/message-42",
+      "facet": "answer-provenance",
+      "claimType": "product.answer.llm-answer",
+      "fieldOrBehavior": "support availability is Monday through Friday",
+      "value": "Support is available Monday through Friday.",
+      "verificationPolicyId": "product.answer.llm-answer-policy/v1",
+      "createdAt": "2026-08-25T00:00:00.000Z",
+      "updatedAt": "2026-08-25T00:00:00.000Z",
+      "metadata": {
+        "conversationId": "conversation-17",
+        "messageId": "message-42",
+        "model": "example-model",
+        "contentAssertion": "Support is available Monday through Friday."
+      }
+    },
+    {
+      "id": "routing.receipt",
+      "subjectType": "answer-request",
+      "subjectId": "request-17",
+      "facet": "answer-provenance",
+      "claimType": "product.answer.routing-receipt",
+      "fieldOrBehavior": "selected route receipt was recorded",
+      "value": true,
+      "createdAt": "2026-08-25T00:00:00.000Z",
+      "updatedAt": "2026-08-25T00:00:00.000Z",
+      "metadata": {
+        "requestId": "request-17",
+        "routeId": "support-triage"
+      }
+    },
+    {
+      "id": "tool.use",
+      "subjectType": "tool-invocation",
+      "subjectId": "request-17/search-1",
+      "facet": "answer-provenance",
+      "claimType": "product.answer.tool-use",
+      "fieldOrBehavior": "tool invocation receipt was recorded",
+      "value": true,
+      "createdAt": "2026-08-25T00:00:00.000Z",
+      "updatedAt": "2026-08-25T00:00:00.000Z",
+      "metadata": {
+        "requestId": "request-17",
+        "toolName": "knowledge-search",
+        "invocationId": "search-1"
+      }
+    }
+  ],
+  "evidence": [
+    {
+      "id": "answer.frozen-source-excerpt",
+      "claimId": "answer.supported",
+      "supportStrength": "entails",
+      "evidenceType": "source_excerpt",
+      "method": "observation",
+      "sourceRef": "frozen-source:customer-faq-v2026-08-25",
+      "sourceLocator": "faq.support-hours#availability",
+      "excerptOrSummary": "Support is available Monday through Friday.",
+      "observedAt": "2026-08-25T00:00:01.000Z",
+      "collectedBy": "example-answer-product",
+      "passing": true
+    },
+    {
+      "id": "answer.content-review",
+      "claimId": "answer.supported",
+      "supportStrength": "entails",
+      "evidenceType": "human_attestation",
+      "method": "attestation",
+      "sourceRef": "review:answer-content-17",
+      "sourceLocator": "review.decision",
+      "excerptOrSummary": "The owner reviewed the frozen source excerpt and confirmed this exact answer content.",
+      "observedAt": "2026-08-25T00:00:01.500Z",
+      "collectedBy": "answer-product-owner",
+      "passing": true
+    },
+    {
+      "id": "routing.context-receipt",
+      "claimId": "routing.receipt",
+      "supportStrength": "entails",
+      "evidenceType": "runtime_observation",
+      "method": "observation",
+      "sourceRef": "receipt:request-17/routing",
+      "excerptOrSummary": "The routing receipt records the selected route for this request.",
+      "observedAt": "2026-08-25T00:00:00.500Z",
+      "collectedBy": "example-answer-product",
+      "passing": true
+    },
+    {
+      "id": "tool.context-receipt",
+      "claimId": "tool.use",
+      "supportStrength": "entails",
+      "evidenceType": "runtime_observation",
+      "method": "observation",
+      "sourceRef": "receipt:request-17/search-1",
+      "excerptOrSummary": "The tool receipt records one completed knowledge-search invocation.",
+      "observedAt": "2026-08-25T00:00:00.750Z",
+      "collectedBy": "example-answer-product",
+      "passing": true
+    }
+  ],
+  "policies": [
+    {
+      "id": "product.answer.llm-answer-policy/v1",
+      "claimType": "product.answer.llm-answer",
+      "requiredEvidence": ["source_excerpt", "human_attestation"],
+      "requiredMethods": ["observation", "attestation"],
+      "acceptanceCriteria": ["A declared frozen-source excerpt states this exact answer content.", "The owner review confirms the content against that frozen source."],
+      "reviewAuthority": "answer-product-owner",
+      "validityRule": { "kind": "duration", "durationDays": 7 },
+      "stalenessTriggers": ["frozen source is replaced", "content review is superseded"],
+      "conflictRules": ["A blocking failed content review disputes the answer claim."],
+      "impactLevel": "medium"
+    }
+  ],
+  "events": [
+    { "id": "answer.verified", "claimId": "answer.supported", "status": "verified", "actor": "answer-product-owner", "method": "review", "evidenceIds": ["answer.frozen-source-excerpt", "answer.content-review"], "createdAt": "2026-08-25T00:00:02.000Z" },
+    { "id": "route.verified", "claimId": "routing.receipt", "status": "verified", "actor": "answer-product-owner", "method": "review", "evidenceIds": ["routing.context-receipt"], "createdAt": "2026-08-25T00:00:02.000Z" },
+    { "id": "tool.verified", "claimId": "tool.use", "status": "verified", "actor": "answer-product-owner", "method": "review", "evidenceIds": ["tool.context-receipt"], "createdAt": "2026-08-25T00:00:02.000Z" }
+  ]
+}

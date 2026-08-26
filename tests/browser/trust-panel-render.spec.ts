@@ -426,15 +426,16 @@ test("Basis mode preserves complete disclosure, focus, accessibility, and narrow
     answer: { owner: { authority: "@kontourai/thread" }, state: "available", observedAt, value: { ref: answer, fact: "answer-observed", observedAt } },
     standing: "assessed-with-gaps", unresolvedReason: null,
     assessment: { owner: { authority: "@kontourai/surface" }, state: "available", observedAt, value: {
-      version: "surface.basis-projection/v1", ref: { authority: "@kontourai/surface", schemaVersion: "surface.answer-assessment/v1", kind: "answer-assessment", bundleId: "bundle-a", claimId: "claim-a" }, found: true,
+      version: "surface.answer-assessment/v2", ref: { authority: "@kontourai/surface", schemaVersion: "surface.answer-assessment/v2", kind: "answer-assessment", bundleId: "bundle-a", claimId: "claim-a" }, found: true,
       bundle: { id: "bundle-a", schemaVersion: 7, source: "https://example.test/bundle", generatedAt: observedAt },
       claim: { id: "claim-a", subject: { subjectType: "answer", subjectId: "message-a" }, status: "verified", freshness: { asOf: observedAt, expiresAt: null, stale: false } }, policy: null,
       evidence: {
-        cited: [{ id: "cite-a", label: "Citation label", sourceRef: "https://example.test/citation", observedAt }],
-        entails: [{ id: "entail-a", label: "Entailing label", sourceRef: "https://example.test/entailing", observedAt }],
-        counterevidence: [{ id: "counter-a", label: "Counter label", sourceRef: "https://example.test/counter", observedAt }],
+        cited: [{ id: "cite-a", label: "Citation label", sourceRef: "https://example.test/citation", locator: null, observedAt, supportStrength: "cited", result: "passed", blocksClaim: false }],
+        entails: [{ id: "entail-a", label: "Entailing label", sourceRef: "https://example.test/entailing", locator: null, observedAt, supportStrength: "entails", result: "passed", blocksClaim: false }],
+        undeclared: [{ id: "undeclared-a", label: "Undeclared label", sourceRef: "https://example.test/undeclared", locator: null, observedAt, supportStrength: null, result: "not-evaluated", blocksClaim: false }],
+        counterevidence: [{ id: "counter-a", label: "Counter label", sourceRef: "https://example.test/counter", locator: null, observedAt, supportStrength: "entails", result: "failed", blocksClaim: true }],
       },
-      derivation: { available: true, directInputs: [{ claimId: "input-claim", status: "verified" }] },
+      derivation: { available: true, directInputs: [{ claimId: "input-claim", status: "verified", source: "derivationEdges", edge: { method: "rule-application", supportStrength: "weak", rationale: "A stated direct transformation." } }] },
       gaps: [{ code: "assessment-gap", message: "Assessment gap remains visible." }],
     } },
     regions: {
@@ -477,6 +478,11 @@ test("Basis mode preserves complete disclosure, focus, accessibility, and narrow
   await expect(assessment).toContainText("Entailing label");
   await expect(assessment).toContainText("Citation label");
   await expect(assessment).toContainText("Counter label");
+  await expect(assessment).toContainText("Undeclared label");
+  await expect(assessment).toContainText("Support relationship not declared");
+  await expect(assessment).toContainText("blocks claim");
+  await expect(assessment).toContainText("rule-application");
+  await expect(assessment).toContainText("A stated direct transformation.");
 
   const context = panel.locator('[part="context"]');
   await expect(context).not.toHaveAttribute("open", "");

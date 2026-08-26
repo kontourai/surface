@@ -42,8 +42,9 @@ export function isBasisAuthority(value: unknown): value is string {
 }
 
 export function parseSurfacePolicyOutcome(value: unknown): SurfacePolicyOutcome | undefined {
-  if (!isPlainRecord(value) || !hasExactKeys(value, ["id", "outcome", "satisfied"]) || !isBasisOpaqueRefScalar(value.id) || (value.outcome !== "satisfied" && value.outcome !== "not-satisfied") || typeof value.satisfied !== "boolean" || value.satisfied !== (value.outcome === "satisfied")) return undefined;
-  return { id: value.id, outcome: value.outcome, satisfied: value.satisfied };
+  const reasons = ["claim-not-verified", "claim-stale", "required-evidence-unmet", "explicit-entailing-evidence-missing", "blocking-evidence", "blocking-gap"];
+  if (!isPlainRecord(value) || !hasExactKeys(value, ["version", "id", "evaluatedAt", "outcome", "satisfied", "reasons"]) || value.version !== "surface.answer-assessment-policy/v1" || !isBasisOpaqueRefScalar(value.id) || !isBasisOpaqueRefScalar(value.evaluatedAt) || (value.outcome !== "satisfied" && value.outcome !== "not-satisfied") || typeof value.satisfied !== "boolean" || value.satisfied !== (value.outcome === "satisfied") || !Array.isArray(value.reasons) || value.reasons.some((reason) => !reasons.includes(String(reason))) || (value.satisfied ? value.reasons.length !== 0 : value.reasons.length === 0)) return undefined;
+  return { version: "surface.answer-assessment-policy/v1", id: value.id, evaluatedAt: value.evaluatedAt, outcome: value.outcome, satisfied: value.satisfied, reasons: value.reasons as SurfacePolicyOutcome["reasons"] };
 }
 
 export function isPlainRecord(value: unknown): value is Record<string, unknown> {

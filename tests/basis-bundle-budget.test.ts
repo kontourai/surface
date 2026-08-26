@@ -4,9 +4,12 @@ import { gzipSync } from "node:zlib";
 import { build } from "esbuild";
 
 const BUDGETS = {
-  "src/basis/view-index.ts": 6_315,
-  "src/basis/mcp.ts": 107_422,
-  "src/trust-panel/surface-trust-panel.ts": 10_912,
+  // Measured at v2: 6,315 -> 7,036 gzip bytes for explicit evidence, policy facts, and edge identity.
+  "src/basis/view-index.ts": 7_036,
+  // Measured at v2: 107,422 -> 109,082; MCP embeds the same closed parser/view.
+  "src/basis/mcp.ts": 109_082,
+  // Measured at v2: 10,912 -> 11,851 for reader-facing policy and edge disclosure.
+  "src/trust-panel/surface-trust-panel.ts": 11_851,
 } as const;
 
 test("Basis browser delivery bundles stay within the checked gzip ratchet", async () => {
