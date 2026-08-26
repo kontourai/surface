@@ -9,7 +9,7 @@ the same stable vocabulary and policy templates.
 `examples/answer-provenance.json` is the reference bundle. Its
 `answer-provenance` facet has three product-owned claim types:
 
-- `product.answer.llm-answer` — the answer claim that may carry semantic support.
+- `product.answer.llm-answer` — a concrete answer-content assertion that may carry semantic support.
 - `product.answer.routing-receipt` — request-routing context.
 - `product.answer.tool-use` — tool invocation context.
 
@@ -41,8 +41,8 @@ registerExtension({
   claimTypes: [
     {
       id: "product.answer.llm-answer",
-      displayName: "LLM answer receipt",
-      description: "An observed response with product-owned provenance facts.",
+      displayName: "LLM answer content",
+      description: "A concrete content assertion with frozen-source and owner-review backing.",
       defaultImpact: "medium",
       defaultFacet: "answer-provenance",
       policyTemplateId: "product.answer.llm-answer-policy/v1",
@@ -60,6 +60,26 @@ registerExtension({
       defaultFacet: "answer-provenance",
     },
   ],
+  policyTemplates: [
+    ...(reference.policyTemplates ?? []),
+    {
+      id: "product.answer.llm-answer-policy/v1",
+      template: {
+        claimType: "product.answer.llm-answer",
+        requiredEvidence: ["source_excerpt", "human_attestation"],
+        requiredMethods: ["observation", "attestation"],
+        acceptanceCriteria: [
+          "A frozen source excerpt states the exact answer content.",
+          "The owner review confirms the content against that frozen source.",
+        ],
+        reviewAuthority: "answer-product-owner",
+        validityRule: { kind: "duration", durationDays: 7 },
+        stalenessTriggers: ["frozen source is replaced", "content review is superseded"],
+        conflictRules: ["A blocking failed content review disputes the answer claim."],
+        impactLevel: "medium",
+      },
+    },
+  ],
 });
 ```
 
@@ -69,12 +89,19 @@ a claim verified, infer review, or create a semantic relationship.
 ## Positive answer assessment
 
 The owner-built Basis assessment needs a resolved product policy, a verified
-nonstale answer, and explicitly declared, non-failed
+nonstale concrete content assertion, and explicitly declared, non-failed
 `supportStrength: "entails"` evidence for that exact answer. Required evidence
 types/methods must be met; blocking evidence or gaps prevent success. Cited-only
 receipts and failed nonblocking records remain visible but are not positive
 support. Rebuild via `buildAnswerAssessmentProjection(report, claimId)`; do not
 construct a policy verdict or supply a caller boolean.
+
+The reference profile deliberately uses a frozen `source_excerpt` plus a
+`human_attestation` for its positive content assertion. Its retained
+`runtime_observation` routing and tool receipts are context claims, not proof of
+answer semantics. This is a profile choice, not a global ban on runtime
+observations: a runtime fact can support content when the product's own claim
+and policy make that direct relation explicit.
 
 ```ts
 const report = buildTrustReport(bundle, {

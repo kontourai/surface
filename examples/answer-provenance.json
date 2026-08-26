@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 5,
+  "schemaVersion": 7,
   "source": "example:answer-provenance/v1",
   "producerId": "example-answer-product",
   "claims": [
@@ -9,15 +9,16 @@
       "subjectId": "conversation-17/message-42",
       "facet": "answer-provenance",
       "claimType": "product.answer.llm-answer",
-      "fieldOrBehavior": "response has an observed provenance receipt",
-      "value": true,
+      "fieldOrBehavior": "support availability is Monday through Friday",
+      "value": "Support is available Monday through Friday.",
       "verificationPolicyId": "product.answer.llm-answer-policy/v1",
       "createdAt": "2026-08-25T00:00:00.000Z",
       "updatedAt": "2026-08-25T00:00:00.000Z",
       "metadata": {
         "conversationId": "conversation-17",
         "messageId": "message-42",
-        "model": "example-model"
+        "model": "example-model",
+        "contentAssertion": "Support is available Monday through Friday."
       }
     },
     {
@@ -54,16 +55,29 @@
   ],
   "evidence": [
     {
-      "id": "answer.runtime-receipt",
+      "id": "answer.frozen-source-excerpt",
       "claimId": "answer.supported",
       "supportStrength": "entails",
-      "evidenceType": "runtime_observation",
+      "evidenceType": "source_excerpt",
       "method": "observation",
-      "sourceRef": "receipt:conversation-17/message-42",
-      "sourceLocator": "response.receipt",
-      "excerptOrSummary": "The answer receipt binds the observed message to the recorded model response.",
+      "sourceRef": "frozen-source:customer-faq-v2026-08-25",
+      "sourceLocator": "faq.support-hours#availability",
+      "excerptOrSummary": "Support is available Monday through Friday.",
       "observedAt": "2026-08-25T00:00:01.000Z",
       "collectedBy": "example-answer-product",
+      "passing": true
+    },
+    {
+      "id": "answer.content-review",
+      "claimId": "answer.supported",
+      "supportStrength": "entails",
+      "evidenceType": "human_attestation",
+      "method": "attestation",
+      "sourceRef": "review:answer-content-17",
+      "sourceLocator": "review.decision",
+      "excerptOrSummary": "The owner reviewed the frozen source excerpt and confirmed this exact answer content.",
+      "observedAt": "2026-08-25T00:00:01.500Z",
+      "collectedBy": "answer-product-owner",
       "passing": true
     },
     {
@@ -95,18 +109,18 @@
     {
       "id": "product.answer.llm-answer-policy/v1",
       "claimType": "product.answer.llm-answer",
-      "requiredEvidence": ["runtime_observation"],
-      "requiredMethods": ["observation"],
-      "acceptanceCriteria": ["A declared entailing runtime receipt binds this exact observed answer."],
+      "requiredEvidence": ["source_excerpt", "human_attestation"],
+      "requiredMethods": ["observation", "attestation"],
+      "acceptanceCriteria": ["A declared frozen-source excerpt states this exact answer content.", "The owner review confirms the content against that frozen source."],
       "reviewAuthority": "answer-product-owner",
       "validityRule": { "kind": "duration", "durationDays": 7 },
-      "stalenessTriggers": ["model deployment changes", "answer receipt is replaced"],
-      "conflictRules": ["A blocking failed answer receipt disputes the answer claim."],
+      "stalenessTriggers": ["frozen source is replaced", "content review is superseded"],
+      "conflictRules": ["A blocking failed content review disputes the answer claim."],
       "impactLevel": "medium"
     }
   ],
   "events": [
-    { "id": "answer.verified", "claimId": "answer.supported", "status": "verified", "actor": "answer-product-owner", "method": "review", "evidenceIds": ["answer.runtime-receipt"], "createdAt": "2026-08-25T00:00:02.000Z" },
+    { "id": "answer.verified", "claimId": "answer.supported", "status": "verified", "actor": "answer-product-owner", "method": "review", "evidenceIds": ["answer.frozen-source-excerpt", "answer.content-review"], "createdAt": "2026-08-25T00:00:02.000Z" },
     { "id": "route.verified", "claimId": "routing.receipt", "status": "verified", "actor": "answer-product-owner", "method": "review", "evidenceIds": ["routing.context-receipt"], "createdAt": "2026-08-25T00:00:02.000Z" },
     { "id": "tool.verified", "claimId": "tool.use", "status": "verified", "actor": "answer-product-owner", "method": "review", "evidenceIds": ["tool.context-receipt"], "createdAt": "2026-08-25T00:00:02.000Z" }
   ]
