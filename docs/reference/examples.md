@@ -33,6 +33,15 @@ claim backed by a production observation derives as `verified`. The optional
 `execution.environment` field makes the collection environment explicit, while
 the evidence type is what makes the live observation load-bearing.
 
+## Answer Provenance Product Profile Example
+
+`examples/answer-provenance.json` is a rendered end-to-end reference bundle for
+an answer product. It distinguishes an LLM answer receipt from routing and
+tool-use context claims. Only declared entailing evidence for the exact answer
+claim can satisfy its policy; context never becomes semantic answer support by
+shared metadata or proximity. See [Authoring a Product Profile](../guides/authoring-product-profile.md)
+for the extension, packaging, and interoperability boundary.
+
 ## Package-Safety (npm audit) Example
 
 `examples/npm-audit-export.json` is raw `npm audit --json` output. It shows

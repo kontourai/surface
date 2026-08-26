@@ -77,6 +77,12 @@ export const navGroups = [
         "Emit valid TrustBundle from TypeScript with the fluent TrustBundleBuilder: claims, evidence, policies, events, and claim groups.",
       ],
       [
+        "authoring-product-profile",
+        "docs/guides/authoring-product-profile.md",
+        "Authoring a Product Profile",
+        "Register product-owned claim vocabulary and answer provenance policies without changing Surface derivation or prematurely creating a profile package.",
+      ],
+      [
         "cli",
         "docs/reference/cli.md",
         "CLI",

@@ -41,6 +41,7 @@ Maintainer-only material stays repo-only: this index, brand language, ADRs, audi
 - [Getting Started](guides/getting-started.md) — install Surface, run an example report, and build a first producer
 - [Consumer SDK](guides/consumer-sdk.md) — fluent helpers for emitting valid `TrustBundle`
 - [Walkthrough](guides/walkthrough.md) — real session walkthrough with native Surface input
+- [Authoring a Product Profile](guides/authoring-product-profile.md) — register product claim vocabulary without changing Surface trust semantics
 - [External Adapter Example](../examples/external-adapter/README.md) — minimal package-shaped producer
 
 ## Reference
