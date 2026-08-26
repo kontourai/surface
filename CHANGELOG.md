@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.18.0](https://github.com/kontourai/surface/compare/v2.17.0...v2.18.0) (2026-08-26)
+
+
+### Features
+
+* **basis:** expose exact context contribution refs ([#240](https://github.com/kontourai/surface/issues/240)) ([1c678e2](https://github.com/kontourai/surface/commit/1c678e2e4ae6ba0a4563990081c9f9f47e73665f))
+
 ## [2.17.0](https://github.com/kontourai/surface/compare/v2.16.0...v2.17.0) (2026-08-25)
 
 
