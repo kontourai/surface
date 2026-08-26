@@ -87,3 +87,32 @@ locator, artifact state, and source state separately. A source observation with
 source even when `extractedValueChanged` is false. Missing artifacts, digest
 mismatches, unresolved source state, and the profile's typed provenance gaps
 remain explicit refusal reasons.
+
+## Source observation facts
+
+`buildReviewedExtractionSourceState(evidence, observation, observedAt)` is the
+optional pure adapter for a source recheck. It restores frozen reviewed evidence
+first, then accepts only the closed `surface.reviewed-source-observation/v1`
+fact shape. The fact has an owner (`authority`, `observationRef`) and both
+`expected` and `observed` captures. Each capture preserves its snapshot
+reference, source and resource identities, capture time, and separate SHA-256
+envelope and content digests.
+
+The builder requires the expected snapshot reference to equal the snapshot
+bound into reviewed evidence. When source and resource identities match, equal
+content digests produce `current` even where the captures and envelope digests
+are distinct; both identities remain available under `sourceState.observation`.
+Different content digests produce `drifted`. A changed source/resource,
+contradictory digests for one capture reference, unsupported version, malformed
+digest, or mismatched expected snapshot is rejected. `observedAt` remains the
+time a producer checked the source; it is not either capture's `capturedAt`.
+A 304 check can preserve an older capture and report a newer check time without
+claiming the capture, its metadata, or the review was renewed.
+
+Surface performs no source retrieval or owner authentication. A producer such
+as Fieldwork must resolve exact captures, validate their full-envelope
+integrity, and establish the registered source/final-resource relationship
+before it supplies this fact. The builder deliberately does not accept a
+caller-provided `status`, boolean, URL, title, or timestamp as proof of content
+equivalence. Supplying no observation retains the existing source-state
+behavior.

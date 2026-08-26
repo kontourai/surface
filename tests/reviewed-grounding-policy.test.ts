@@ -3,8 +3,11 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   evaluateReviewedGroundingPolicy,
+  buildReviewedExtractionSourceState,
   projectReviewedExtractionEvidence,
+  ReviewedExtractionSourceObservationError,
   type ReviewedExtractionEvidenceInput,
+  type ReviewedExtractionSourceObservation,
   type ReviewedExtractionSourceState,
   type ReviewedGroundingPolicy,
 } from "../src/index.js";
@@ -25,6 +28,17 @@ const policy: ReviewedGroundingPolicy = {
 
 function current(evidenceId: string): ReviewedExtractionSourceState {
   return { evidenceId, status: "current", expectedSnapshotRef: "snapshot:fixture-v1", observedSnapshotRef: "snapshot:fixture-v1", observedAt: "2026-07-20T00:06:00.000Z", extractedValueChanged: false };
+}
+
+const digest = (value: string) => ({ algorithm: "sha256" as const, value: value.repeat(64).slice(0, 64) });
+function observation(overrides: Partial<ReviewedExtractionSourceObservation> = {}): ReviewedExtractionSourceObservation {
+  return {
+    version: "surface.reviewed-source-observation/v1",
+    owner: { authority: "@kontourai/fieldwork", observationRef: "fieldwork:observation-1" },
+    expected: { snapshotRef: "snapshot:fixture-v1", sourceId: "forage:source-1", resourceRef: "https://example.test/directory", capturedAt: "2026-07-20T00:00:00.000Z", envelopeDigest: digest("a"), contentDigest: digest("b") },
+    observed: { snapshotRef: "forage:capture-304", sourceId: "forage:source-1", resourceRef: "https://example.test/directory", capturedAt: "2026-07-21T00:00:00.000Z", envelopeDigest: digest("c"), contentDigest: digest("b") },
+    ...overrides,
+  };
 }
 
 test("allows an additive downstream policy and cites exact evidence and review resources", async () => {
@@ -107,4 +121,56 @@ test("does not translate extraction confidence into reviewer or structural trust
   assert.equal(decision.dimensions[0]!.candidateConfidence, 0.01);
   assert.equal(decision.dimensions[0]!.reviewDisposition, "verified");
   assert.equal(decision.dimensions[0]!.structuralTrust, "validated");
+});
+
+test("builds a content-current state from distinct, owner-resolved captures while preserving both identities", async () => {
+  const projected = projectReviewedExtractionEvidence(await fixture());
+  const fact = observation();
+  const state = buildReviewedExtractionSourceState(projected.evidence, fact, "2026-07-21T00:01:00.000Z");
+  assert.equal(state.status, "current");
+  assert.equal(state.expectedSnapshotRef, fact.expected.snapshotRef);
+  assert.equal(state.observedSnapshotRef, fact.observed.snapshotRef);
+  assert.equal(state.extractedValueChanged, false);
+  assert.equal(state.observation?.expected.envelopeDigest.value, digest("a").value);
+  assert.equal(state.observation?.observed.envelopeDigest.value, digest("c").value);
+  const decision = evaluateReviewedGroundingPolicy({ policy, evidence: [projected.evidence], sourceStates: [state] });
+  assert.equal(decision.outcome, "allowed");
+});
+
+test("keeps a 304 capture time distinct from its later check time", async () => {
+  const projected = projectReviewedExtractionEvidence(await fixture());
+  const state = buildReviewedExtractionSourceState(projected.evidence, observation(), "2026-07-22T10:00:00.000Z");
+  assert.equal(state.observation?.observed.capturedAt, "2026-07-21T00:00:00.000Z");
+  assert.equal(state.observedAt, "2026-07-22T10:00:00.000Z");
+});
+
+test("derives drift only from changed content, not envelope metadata", async () => {
+  const projected = projectReviewedExtractionEvidence(await fixture());
+  const fact = observation(); fact.observed.contentDigest = digest("d");
+  const state = buildReviewedExtractionSourceState(projected.evidence, fact, "2026-07-21T00:01:00.000Z");
+  assert.equal(state.status, "drifted");
+  assert.equal(state.extractedValueChanged, true);
+});
+
+test("fails closed for mismatched expected source, moved source, digest conflicts, and unknown versions", async () => {
+  const projected = projectReviewedExtractionEvidence(await fixture());
+  const cases: Array<[string, ReviewedExtractionSourceObservation, string]> = [
+    ["wrong expected", { ...observation(), expected: { ...observation().expected, snapshotRef: "snapshot:wrong" } }, "expected-snapshot-mismatch"],
+    ["moved resource", { ...observation(), observed: { ...observation().observed, resourceRef: "https://example.test/moved" } }, "incompatible-source-identity"],
+    ["contradictory ref", { ...observation(), observed: { ...observation().observed, snapshotRef: "snapshot:fixture-v1", envelopeDigest: digest("d") } }, "contradictory-capture"],
+    ["unknown version", { ...observation(), version: "surface.reviewed-source-observation/v2" as never }, "unknown-version"],
+  ];
+  for (const [, fact, code] of cases) {
+    assert.throws(() => buildReviewedExtractionSourceState(projected.evidence, fact, "2026-07-21T00:01:00.000Z"), (error: unknown) => error instanceof ReviewedExtractionSourceObservationError && error.code === code);
+  }
+});
+
+test("rejects bad digests and conflicting duplicate states instead of accepting the last supplied state", async () => {
+  const projected = projectReviewedExtractionEvidence(await fixture());
+  const bad = observation(); bad.observed.contentDigest.value = "ABC";
+  assert.throws(() => buildReviewedExtractionSourceState(projected.evidence, bad, "2026-07-21T00:01:00.000Z"), (error: unknown) => error instanceof ReviewedExtractionSourceObservationError && error.code === "invalid-digest");
+  const first = buildReviewedExtractionSourceState(projected.evidence, observation(), "2026-07-21T00:01:00.000Z");
+  const second = { ...first, observedAt: "2026-07-22T00:01:00.000Z" };
+  const decision = evaluateReviewedGroundingPolicy({ policy, evidence: [projected.evidence], sourceStates: [first, second] });
+  assert.ok(decision.gaps.some((gap) => gap.kind === "source-state-incoherent"));
 });
