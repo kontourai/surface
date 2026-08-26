@@ -1,6 +1,7 @@
 /** A small, portable and deliberately headless answer-basis contract. */
 export const SURFACE_BASIS_VERSION = "surface.basis-projection/v1" as const;
-export const SURFACE_ANSWER_ASSESSMENT_VERSION = "surface.answer-assessment/v1" as const;
+/** Closed Surface-owned assessment wire. Basis v1 carries this known nested wire. */
+export const SURFACE_ANSWER_ASSESSMENT_VERSION = "surface.answer-assessment/v2" as const;
 
 /** Thread #46: these IDs are opaque identity tokens, never display text. */
 export interface ThreadAnswerRef { authority: "@kontourai/thread"; schemaVersion: "1.2.0"; kind: "assistant-message"; standing: "observed"; threadId: string; messageId: string; }
@@ -39,16 +40,48 @@ export type BasisContextProjection =
 export interface BasisContribution<TRef extends BasisContributionRef = BasisContributionRef> { ref: TRef; answer: ThreadAnswerRef; role: BasisContributionRole; context: BasisContextProjection; gaps?: readonly BasisGap[]; }
 /** Basis v1 relationships are Surface assessment edges, never owner workflow assertions. */
 export interface BasisRelationship { kind: "cites" | "supports" | "derived-from" | "counterevidence"; from: string; to: string; source: "surface-assessment"; /** Edge-local only. */ gaps: readonly BasisGap[]; }
-export interface BasisGap { code: string; message: string; }
-export interface BasisAssessmentEvidence { id: string; label: string; sourceRef: string; observedAt: string; }
-export interface SurfacePolicyOutcome { id: string; outcome: "satisfied" | "not-satisfied"; /** Redundant on purpose: must agree with outcome for easy consumers. */ satisfied: boolean; }
+/** Optional bounded owner provenance for a weak derivation gap. */
+export interface BasisGap { code: string; message: string; metadata?: { source: "derivation.weak"; weakEdges: readonly { claimId: string; inputClaimId: string }[] }; }
+/** Evidence facts as Surface derived them; absent support declaration is not entailment. */
+export interface BasisAssessmentEvidence {
+  id: string;
+  label: string;
+  sourceRef: string;
+  locator: string | null;
+  observedAt: string;
+  supportStrength: "cited" | "entails" | null;
+  result: "passed" | "failed" | "not-evaluated";
+  blocksClaim: boolean;
+}
+export interface BasisAssessmentDerivationEdge {
+  method: "sum" | "max" | "min" | "model" | "rule-application" | "copy" | "normalization" | "manual" | null;
+  supportStrength: "weak" | "moderate" | "strong" | null;
+  rationale: string | null;
+}
+export interface BasisAssessmentDirectInput {
+  claimId: string;
+  status: string | null;
+  source: "derivedFrom" | "derivationEdges";
+  edge: BasisAssessmentDerivationEdge | null;
+}
+export type SurfacePolicyReason = "claim-not-verified" | "claim-stale" | "required-evidence-unmet" | "explicit-entailing-evidence-missing" | "blocking-evidence" | "blocking-gap";
+/** Closed owner evaluation facts. This is a result, not caller-supplied standing. */
+export interface SurfacePolicyOutcome {
+  version: "surface.answer-assessment-policy/v1";
+  id: string;
+  evaluatedAt: string;
+  outcome: "satisfied" | "not-satisfied";
+  /** Redundant on purpose: must agree with outcome for easy consumers. */
+  satisfied: boolean;
+  reasons: readonly SurfacePolicyReason[];
+}
 export interface AnswerAssessmentProjection {
-  version: typeof SURFACE_BASIS_VERSION; ref: SurfaceAnswerAssessmentRef; found: boolean;
+  version: typeof SURFACE_ANSWER_ASSESSMENT_VERSION; ref: SurfaceAnswerAssessmentRef; found: boolean;
   bundle: { id: string; schemaVersion: number; source: string; generatedAt: string };
   claim: { id: string; subject: { subjectType: string; subjectId: string }; status: string; freshness: { asOf: string; expiresAt: string | null; stale: boolean } | null } | null;
   /** Only an explicit Surface policy-evaluation outcome may populate this. */ policy: SurfacePolicyOutcome | null;
-  evidence: { cited: readonly BasisAssessmentEvidence[]; entails: readonly BasisAssessmentEvidence[]; counterevidence: readonly BasisAssessmentEvidence[] };
-  derivation: { available: boolean; directInputs: readonly { claimId: string; status: string | null }[] }; gaps: readonly BasisGap[];
+  evidence: { cited: readonly BasisAssessmentEvidence[]; entails: readonly BasisAssessmentEvidence[]; undeclared: readonly BasisAssessmentEvidence[]; counterevidence: readonly BasisAssessmentEvidence[] };
+  derivation: { available: boolean; directInputs: readonly BasisAssessmentDirectInput[] }; gaps: readonly BasisGap[];
 }
 export type SurfaceAssessmentRead = OwnerRead<AnswerAssessmentProjection, "@kontourai/surface">;
 /** Each read arm statically binds its exact owner authority to its value refs. */

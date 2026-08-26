@@ -62,9 +62,11 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
   let ceiling: TrustStatus = "verified";
   let cycleDetected = false;
   let missingInputs: string[] = [];
-  let weakDerivationObserved = (claim.derivationEdges ?? []).some(
-    (edge) => edge.supportStrength === "weak",
-  );
+  const weakDerivationEdges: Array<{ claimId: string; inputClaimId: string }> = [];
+  const collectWeakEdges = (candidate: Claim): void => {
+    for (const edge of candidate.derivationEdges ?? []) if (edge.supportStrength === "weak") weakDerivationEdges.push({ claimId: candidate.id, inputClaimId: edge.inputClaimId });
+  };
+  collectWeakEdges(claim);
   const statusesByInputId = new Map<string, TrustStatus>();
 
   const walk = (currentId: string): void => {
@@ -78,12 +80,7 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
     statusesByInputId.set(currentId, inputStatus);
     ceiling = weakerStatus(ceiling, inputStatus);
     const nextInputs = derivationInputIds(inputClaim);
-    if (
-      (inputClaim.derivationEdges ?? []).some(
-        (edge) => edge.supportStrength === "weak",
-      )
-    )
-      weakDerivationObserved = true;
+    collectWeakEdges(inputClaim);
     if (nextInputs.length === 0) return;
     for (const next of nextInputs) {
       if (visited.has(next)) {
@@ -153,7 +150,7 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
   // Weak derivation is explanatory only. It remains visible on every affected
   // conclusion (including through a transitive input) without changing the
   // status function or fabricating independent support from a mixed chain.
-  if (weakDerivationObserved) {
+  if (weakDerivationEdges.length > 0) {
     transparencyGaps.push({
       id: `${claim.id}.gap.weak-derivation`,
       claimId: claim.id,
@@ -162,7 +159,7 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
       ...materialityFromClaim(claim),
       message: `Claim ${claim.id} depends on weak derivation support.`,
       createdAt,
-      metadata: { source: "derivation.weak" },
+      metadata: { source: "derivation.weak", weakEdges: [...new Map(weakDerivationEdges.map((edge) => [`${edge.claimId}\u0000${edge.inputClaimId}`, edge])).values()].sort((left, right) => `${left.claimId}\u0000${left.inputClaimId}`.localeCompare(`${right.claimId}\u0000${right.inputClaimId}`, "en")) },
     });
   }
 
