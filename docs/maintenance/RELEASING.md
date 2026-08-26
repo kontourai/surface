@@ -14,12 +14,14 @@ This document is the operator checklist for cutting a release of `@kontourai/sur
 
 ## Release Flow
 
-1. Update `package.json` version.
-2. Run `npm run verify` locally before opening the release PR.
-3. Merge the release commit to `main` after CI passes on Node 20 and Node 22.
-4. Create and push a tag matching the package version, for example `v0.5.1`.
-5. Confirm the `Publish NPM` workflow reruns verification, performs `npm pack --dry-run`, and either publishes with provenance or skips because the version already exists.
-6. Confirm the published tarball contents and README rendering on npm.
+1. Land conventional commits on `main`; do not manually bump the manifest on a feature branch.
+2. The `Release Please` workflow opens and maintains the release PR, including
+   the authoritative `package.json` and `.release-please-manifest.json` version
+   update. Review and merge that generated release PR after CI passes.
+3. On merge, Release Please creates and pushes the matching tag, for example
+   `v3.1.0`, then dispatches `Publish NPM` at that tag.
+4. Confirm the publish workflow reruns verification, performs `npm pack --dry-run`, and either publishes with provenance or skips because the version already exists.
+5. Confirm the published tarball contents and README rendering on npm.
 
 ## Trusted Publishing
 
