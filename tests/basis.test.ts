@@ -44,6 +44,7 @@ test("Basis panel view owns standing, evidence partitions, context order, and ho
   assert.equal(model.standing.label, "Policy met");
   assert.deepEqual(model.assessment?.evidence.map((partition) => [partition.label, partition.items.length]), [["Entailing evidence", 1], ["Citations", 1], ["Counterevidence", 0]]);
   assert.deepEqual(model.contextGroups.map((group) => group.label), ["Inputs", "Execution", "Process", "Outcomes", "Sources", "Live"]);
+  assert.deepEqual(model.contextGroups.find((group) => group.id === "outcomes")?.items[0]?.ref, contribution.ref);
   assert.match(model.contextNotice, /do not establish support/u);
   (model.disclosures as { context: string }).context = "expanded";
   const later = buildBasisPanelViewModel(assessed);
@@ -53,6 +54,16 @@ test("Basis panel view owns standing, evidence partitions, context order, and ho
   const unavailable = buildBasisPanelViewModel(hostile);
   assert.deepEqual(unavailable, buildBasisPanelViewModel({}));
   assert.equal(unavailable.state, "unavailable");
+});
+test("Basis panel view preserves exact validated contribution refs for caller routing", () => {
+  const inputContribution: BasisContribution<Extract<BasisContributionRef, { authority: "@kontourai/station"; kind: "input" }>> = { ref: { authority: "@kontourai/station", schemaVersion: "1", kind: "input", sessionId: "session-a", eventId: "input-a" }, answer: answerRef, role: "input", context: { kind: "station-input", inputKind: "prompt", attachmentCount: 0 } };
+  const executionContribution: BasisContribution<Extract<BasisContributionRef, { authority: "@kontourai/thread" }>> = { ref: { authority: "@kontourai/thread", schemaVersion: "1.2.0", kind: "result", threadId: "thread-a", resultId: "result-a" }, answer: answerRef, role: "execution", context: { kind: "thread-result", name: "tool", terminalStatus: "success", truncatedParts: 0, omittedParts: 0 } };
+  const model = buildBasisPanelViewModel(composeBasisProjection(input(noAssessment, [{ owner: { authority: "@kontourai/station" }, state: "available", observedAt: answer.observedAt, value: [inputContribution] }, { owner: { authority: "@kontourai/thread" }, state: "available", observedAt: answer.observedAt, value: [executionContribution] }, { owner: { authority: "@kontourai/station" }, state: "available", observedAt: answer.observedAt, value: [contribution] }])));
+  assert.equal(model.state, "ready");
+  if (model.state !== "ready") return;
+  assert.deepEqual(model.contextGroups.find((group) => group.id === "inputs")?.items[0]?.ref, inputContribution.ref);
+  assert.deepEqual(model.contextGroups.find((group) => group.id === "execution")?.items[0]?.ref, executionContribution.ref);
+  assert.deepEqual(model.contextGroups.find((group) => group.id === "outcomes")?.items[0]?.ref, contribution.ref);
 });
 test("real system-card report round-trips through Basis without degrading Surface evidence", async () => {
   const bundle = JSON.parse(await readFile("examples/system-card/bundle.json", "utf8")) as TrustBundle;
