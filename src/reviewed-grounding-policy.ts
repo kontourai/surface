@@ -224,6 +224,12 @@ function buildReviewedExtractionSourceStateFromRestored(evidenceId: string, expe
   if (expected.snapshotRef === observed.snapshotRef && (!sameDigest(expected.envelopeDigest, observed.envelopeDigest) || !sameDigest(expected.contentDigest, observed.contentDigest))) {
     throw new ReviewedExtractionSourceObservationError("contradictory-capture", "One capture reference has contradictory digests.");
   }
+  if (expected.snapshotRef === observed.snapshotRef && timestampInstant(expected.capturedAt) !== timestampInstant(observed.capturedAt)) {
+    throw new ReviewedExtractionSourceObservationError("contradictory-capture", "One capture reference has contradictory capture times.");
+  }
+  // A raw capture digest says nothing on its own about the extracted field.
+  // Producers may attach an explicit value-comparison fact through the legacy
+  // source-state input, but this pure capture adapter must leave it unknown.
   const changed = !sameDigest(expected.contentDigest, observed.contentDigest);
   return {
     evidenceId,
@@ -231,7 +237,6 @@ function buildReviewedExtractionSourceStateFromRestored(evidenceId: string, expe
     expectedSnapshotRef,
     observedSnapshotRef: observed.snapshotRef,
     observedAt,
-    extractedValueChanged: changed,
     observation,
   };
 }
@@ -245,6 +250,12 @@ function validateObservation(observation: ReviewedExtractionSourceObservation, o
   for (const value of [observation.owner.authority, observation.owner.observationRef]) if (typeof value !== "string" || value.length === 0) throw observationError("invalid-observation", "Observation owner fields must be non-empty strings.");
   if (!validDate(observedAt)) throw observationError("invalid-observation", "Observation check time is invalid.");
   validateCapture(observation.expected, "observation.expected"); validateCapture(observation.observed, "observation.observed");
+  const checkTime = timestampInstant(observedAt)!;
+  for (const capture of [observation.expected, observation.observed]) {
+    if (timestampInstant(capture.capturedAt)! > checkTime) {
+      throw observationError("invalid-observation", "Observation capture time cannot be after its check time.");
+    }
+  }
 }
 
 function validateCapture(capture: ReviewedExtractionSourceCapture, label: string): void {
@@ -261,9 +272,31 @@ function validateDigest(digest: ReviewedExtractionSourceDigest, label: string): 
 function observationError(code: ReviewedExtractionSourceObservationErrorCode, message: string): ReviewedExtractionSourceObservationError { return new ReviewedExtractionSourceObservationError(code, message); }
 function exactObservationKeys(value: object, keys: string[], label: string): void { if (Object.keys(value).length !== keys.length || keys.some((key) => !(key in value))) throw observationError("invalid-observation", `${label} has unsupported or missing fields.`); }
 function isObject(value: unknown): value is Record<string, unknown> { return value !== null && typeof value === "object" && !Array.isArray(value); }
-function validDate(value: unknown): boolean { return typeof value === "string" && Number.isFinite(Date.parse(value)); }
+function validDate(value: unknown): boolean { return timestampInstant(value) !== undefined; }
+function timestampInstant(value: unknown): number | undefined {
+  if (typeof value !== "string") return undefined;
+  const instant = Date.parse(value);
+  return Number.isFinite(instant) ? instant : undefined;
+}
 function sameDigest(left: ReviewedExtractionSourceDigest, right: ReviewedExtractionSourceDigest): boolean { return left.algorithm === right.algorithm && left.value === right.value; }
-function sameSourceState(left: ReviewedExtractionSourceState, right: ReviewedExtractionSourceState): boolean { return JSON.stringify(left) === JSON.stringify(right); }
+function sameSourceState(left: ReviewedExtractionSourceState, right: ReviewedExtractionSourceState): boolean { return deepStructuralEqual(left, right); }
+
+/** Browser-safe, order-independent equality for closed policy facts. */
+function deepStructuralEqual(left: unknown, right: unknown): boolean {
+  if (Object.is(left, right)) return true;
+  if (typeof left !== typeof right || left === null || right === null) return false;
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return Array.isArray(left) && Array.isArray(right)
+      && left.length === right.length && left.every((value, index) => deepStructuralEqual(value, right[index]));
+  }
+  if (typeof left !== "object") return false;
+  const leftRecord = left as Record<string, unknown>;
+  const rightRecord = right as Record<string, unknown>;
+  const leftKeys = Object.keys(leftRecord).sort();
+  const rightKeys = Object.keys(rightRecord).sort();
+  return leftKeys.length === rightKeys.length
+    && leftKeys.every((key, index) => key === rightKeys[index] && deepStructuralEqual(leftRecord[key], rightRecord[key]));
+}
 
 function isReviewedExtractionEvidence(evidence: Evidence): boolean {
   const metadata = evidence.metadata?.reviewedExtraction;

@@ -1,6 +1,6 @@
 {
   "name": "@kontourai/surface",
-  "version": "3.1.0",
+  "version": "3.0.0",
   "description": "Shared transparency foundation under Kontour's products. Claims, evidence, freshness, and gaps in one inspectable shape.",
   "license": "Apache-2.0",
   "type": "module",
@@ -103,6 +103,8 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.10.2",
     "@kontourai/flow-agents": "5.5.0",
+    "@kontourai/forage": "0.6.0",
+    "@kontourai/lookout": "0.3.6",
     "@kontourai/survey": "^2.4.1",
     "@kontourai/ui": "^1.1.0",
     "@modelcontextprotocol/ext-apps": "1.7.5",

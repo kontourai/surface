@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { buildSnapshotSourceRef } from "@kontourai/forage/fetch";
+import { canonicalValueKey } from "@kontourai/lookout";
+import type { Snapshot as ForageSnapshot } from "@kontourai/forage";
+import type { CheckResult as LookoutCheckResult } from "@kontourai/lookout";
 import {
   evaluateReviewedGroundingPolicy,
   buildReviewedExtractionSourceState,
@@ -31,6 +36,19 @@ function current(evidenceId: string): ReviewedExtractionSourceState {
 }
 
 const digest = (value: string) => ({ algorithm: "sha256" as const, value: value.repeat(64).slice(0, 64) });
+
+// These are the public shapes published by Forage 0.6.0 and Lookout 0.3.6.
+// Surface deliberately keeps their retrieval semantics outside its pure policy.
+const publishedForageCapture: ForageSnapshot = {
+  sourceId: "directory-source", url: "https://example.test/directory", status: 200,
+  fetchedAt: "2026-07-20T00:00:00.000Z", body: "Directory title", bodyHash: createHash("sha256").update("Directory title").digest("hex"),
+  headers: { etag: "directory-v1" },
+};
+const publishedLookout304: LookoutCheckResult = {
+  kind: "unchanged-304", sourceId: publishedForageCapture.sourceId,
+  sourceUrl: publishedForageCapture.url, checkedAt: "2026-07-21T00:01:00.000Z",
+  warnings: [], snapshotRef: buildSnapshotSourceRef(publishedForageCapture),
+};
 function observation(overrides: Partial<ReviewedExtractionSourceObservation> = {}): ReviewedExtractionSourceObservation {
   return {
     version: "surface.reviewed-source-observation/v1",
@@ -130,11 +148,44 @@ test("builds a content-current state from distinct, owner-resolved captures whil
   assert.equal(state.status, "current");
   assert.equal(state.expectedSnapshotRef, fact.expected.snapshotRef);
   assert.equal(state.observedSnapshotRef, fact.observed.snapshotRef);
-  assert.equal(state.extractedValueChanged, false);
+  assert.equal(state.extractedValueChanged, undefined);
   assert.equal(state.observation?.expected.envelopeDigest.value, digest("a").value);
   assert.equal(state.observation?.observed.envelopeDigest.value, digest("c").value);
   const decision = evaluateReviewedGroundingPolicy({ policy, evidence: [projected.evidence], sourceStates: [state] });
   assert.equal(decision.outcome, "allowed");
+});
+
+test("accepts published Forage 0.6 and Lookout 0.3.6 304 capture facts without renewing the capture", async () => {
+  const [forageManifest, lookoutManifest] = await Promise.all([
+    readFile("node_modules/@kontourai/forage/package.json", "utf8"),
+    readFile("node_modules/@kontourai/lookout/package.json", "utf8"),
+  ]);
+  assert.equal(JSON.parse(forageManifest).version, "0.6.0");
+  assert.equal(JSON.parse(lookoutManifest).version, "0.3.6");
+  assert.equal(canonicalValueKey(publishedLookout304).ok, true);
+  const projected = projectReviewedExtractionEvidence(await fixture());
+  const captureRef = publishedLookout304.snapshotRef;
+  const fact = observation({
+    expected: {
+      snapshotRef: "snapshot:fixture-v1", sourceId: publishedForageCapture.sourceId,
+      resourceRef: publishedForageCapture.url, capturedAt: publishedForageCapture.fetchedAt,
+      envelopeDigest: digest("1"), contentDigest: { algorithm: "sha256", value: publishedForageCapture.bodyHash },
+    },
+    observed: {
+      snapshotRef: "snapshot:fixture-v1", sourceId: publishedForageCapture.sourceId,
+      resourceRef: publishedForageCapture.url, capturedAt: "2026-07-20T00:00:00+00:00",
+      envelopeDigest: digest("1"), contentDigest: { algorithm: "sha256", value: publishedForageCapture.bodyHash },
+    },
+  });
+  const state = buildReviewedExtractionSourceState(projected.evidence, fact, publishedLookout304.checkedAt);
+  assert.equal(state.status, "current");
+  assert.equal(state.observation?.expected.snapshotRef, "snapshot:fixture-v1");
+  assert.equal(state.observation?.observed.snapshotRef, "snapshot:fixture-v1");
+  assert.equal(state.observation?.expected.contentDigest.value, publishedForageCapture.bodyHash);
+  assert.equal(state.observation?.observed.contentDigest.value, publishedForageCapture.bodyHash);
+  assert.equal(state.observedAt, publishedLookout304.checkedAt);
+  assert.equal("extractedValueChanged" in state, false);
+  assert.equal(captureRef.startsWith("forage-snapshot:"), true);
 });
 
 test("keeps a 304 capture time distinct from its later check time", async () => {
@@ -144,12 +195,16 @@ test("keeps a 304 capture time distinct from its later check time", async () => 
   assert.equal(state.observedAt, "2026-07-22T10:00:00.000Z");
 });
 
-test("derives drift only from changed content, not envelope metadata", async () => {
+test("marks raw content drift without claiming an extracted field changed", async () => {
   const projected = projectReviewedExtractionEvidence(await fixture());
   const fact = observation(); fact.observed.contentDigest = digest("d");
   const state = buildReviewedExtractionSourceState(projected.evidence, fact, "2026-07-21T00:01:00.000Z");
   assert.equal(state.status, "drifted");
-  assert.equal(state.extractedValueChanged, true);
+  assert.equal(state.extractedValueChanged, undefined);
+  assert.equal("extractedValueChanged" in state, false);
+  const decision = evaluateReviewedGroundingPolicy({ policy, evidence: [projected.evidence], sourceStates: [state] });
+  assert.equal(decision.outcome, "refused");
+  assert.equal(decision.dimensions[0]!.sourceState.extractedValueChanged, undefined);
 });
 
 test("fails closed for mismatched expected source, moved source, digest conflicts, and unknown versions", async () => {
@@ -165,6 +220,20 @@ test("fails closed for mismatched expected source, moved source, digest conflict
   }
 });
 
+test("rejects captures after their check and contradictory facts for one capture while allowing older 304 reuse", async () => {
+  const projected = projectReviewedExtractionEvidence(await fixture());
+  const future = observation({ expected: { ...observation().expected, capturedAt: "2099-01-01T00:00:00.000Z" } });
+  assert.throws(() => buildReviewedExtractionSourceState(projected.evidence, future, "2026-07-21T00:01:00.000Z"), (error: unknown) => error instanceof ReviewedExtractionSourceObservationError && error.code === "invalid-observation");
+  const contradictsSameCapture = observation({
+    observed: { ...observation().expected, capturedAt: "2026-07-20T00:01:00.000Z" },
+  });
+  assert.throws(() => buildReviewedExtractionSourceState(projected.evidence, contradictsSameCapture, "2026-07-21T00:01:00.000Z"), (error: unknown) => error instanceof ReviewedExtractionSourceObservationError && error.code === "contradictory-capture");
+  const reused = observation({ observed: { ...observation().expected } });
+  const state = buildReviewedExtractionSourceState(projected.evidence, reused, "2026-07-21T00:01:00.000Z");
+  assert.equal(state.status, "current");
+  assert.equal(state.observation?.observed.capturedAt, "2026-07-20T00:00:00.000Z");
+});
+
 test("rejects bad digests and conflicting duplicate states instead of accepting the last supplied state", async () => {
   const projected = projectReviewedExtractionEvidence(await fixture());
   const bad = observation(); bad.observed.contentDigest.value = "ABC";
@@ -174,3 +243,18 @@ test("rejects bad digests and conflicting duplicate states instead of accepting 
   const decision = evaluateReviewedGroundingPolicy({ policy, evidence: [projected.evidence], sourceStates: [first, second] });
   assert.ok(decision.gaps.some((gap) => gap.kind === "source-state-incoherent"));
 });
+
+test("treats property-order and deep-key reordered duplicate source states as equivalent", async () => {
+  const projected = projectReviewedExtractionEvidence(await fixture());
+  const state = buildReviewedExtractionSourceState(projected.evidence, observation(), "2026-07-21T00:01:00.000Z");
+  const reordered = reorderKeys(state) as ReviewedExtractionSourceState;
+  const decision = evaluateReviewedGroundingPolicy({ policy, evidence: [projected.evidence], sourceStates: [state, reordered] });
+  assert.equal(decision.outcome, "allowed");
+  assert.deepEqual(decision.gaps, []);
+});
+
+function reorderKeys(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(reorderKeys);
+  if (value === null || typeof value !== "object") return value;
+  return Object.fromEntries(Object.entries(value).reverse().map(([key, child]) => [key, reorderKeys(child)]));
+}

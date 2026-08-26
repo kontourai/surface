@@ -102,8 +102,12 @@ The builder requires the expected snapshot reference to equal the snapshot
 bound into reviewed evidence. When source and resource identities match, equal
 content digests produce `current` even where the captures and envelope digests
 are distinct; both identities remain available under `sourceState.observation`.
-Different content digests produce `drifted`. A changed source/resource,
-contradictory digests for one capture reference, unsupported version, malformed
+Different content digests produce `drifted`; that alone does **not** establish
+that the extracted field changed, so the builder leaves
+`extractedValueChanged` absent unless a producer independently supplies a
+value-comparison fact through the legacy source-state input. A changed
+source/resource, contradictory facts (including capture time) for one capture
+reference, a capture after its check time, unsupported version, malformed
 digest, or mismatched expected snapshot is rejected. `observedAt` remains the
 time a producer checked the source; it is not either capture's `capturedAt`.
 A 304 check can preserve an older capture and report a newer check time without
