@@ -1,4 +1,5 @@
 import { derivationInputsForClaim } from "../derivation.js";
+import { evaluateAnswerAssessmentPolicy } from "../answer-assessment-policy.js";
 import { isStandingCounterevidence, partitionEvidenceBySupport } from "../evidence-support.js";
 import type { Evidence, TrustReport } from "../types.js";
 import { SURFACE_ANSWER_ASSESSMENT_VERSION, SURFACE_BASIS_VERSION, type AnswerAssessmentProjection, type BasisAssessmentEvidence, type SurfacePolicyOutcome } from "./types.js";
@@ -23,11 +24,7 @@ export function buildAnswerAssessmentProjection(report: TrustReport, claimId: st
 
   const evidence = report.evidence.filter((candidate) => candidate.claimId === claimId);
   const partitioned = partitionEvidenceBySupport(evidence);
-  // Evidence coverage is not a policy verdict.  Surface currently has no
-  // owner policy-evaluation outcome in TrustReport, so this builder must never
-  // promote coverage to satisfied/not-satisfied.  The projection shape reserves
-  // that explicit result for a future Surface evaluator.
-  const policy = null;
+  const policy = evaluateAnswerAssessmentPolicy(report, claimId);
 
   const projection: AnswerAssessmentProjection = {
     version: SURFACE_BASIS_VERSION,

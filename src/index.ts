@@ -13,6 +13,7 @@ export * from "./claim-subject-matching.js";
 export * from "./merge.js";
 export * from "./policy-resolver.js";
 export * from "./policy-helpers.js";
+export * from "./answer-assessment-policy.js";
 export * from "./consumer-sdk.js";
 export * from "./attestation.js";
 export * from "./derivation.js";

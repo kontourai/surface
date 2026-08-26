@@ -57,7 +57,10 @@ export function buildTrustReport(input: TrustBundle, options: BuildTrustReportOp
     // schemaVersion 5 or 6. Keep reports at 5 until that upstream contract is
     // widened; bundle emissions use content-sensitive stamping separately.
     schemaVersion: CURRENT_SCHEMA_VERSION,
-    id: options.id ?? `surface-${now.getTime()}`,
+    // A report identity must be anchored in authorized bundle identity, never
+    // minted from the evaluation clock (which would make equal snapshots look
+    // like different reports). Producers can still supply an explicit run id.
+    id: options.id ?? input.producerId ?? input.source,
     generatedAt: now.toISOString(),
     source: input.source,
     claims: snapshot.claims,

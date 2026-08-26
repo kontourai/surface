@@ -62,6 +62,9 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
   let ceiling: TrustStatus = "verified";
   let cycleDetected = false;
   let missingInputs: string[] = [];
+  let weakDerivationObserved = (claim.derivationEdges ?? []).some(
+    (edge) => edge.supportStrength === "weak",
+  );
   const statusesByInputId = new Map<string, TrustStatus>();
 
   const walk = (currentId: string): void => {
@@ -75,6 +78,12 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
     statusesByInputId.set(currentId, inputStatus);
     ceiling = weakerStatus(ceiling, inputStatus);
     const nextInputs = derivationInputIds(inputClaim);
+    if (
+      (inputClaim.derivationEdges ?? []).some(
+        (edge) => edge.supportStrength === "weak",
+      )
+    )
+      weakDerivationObserved = true;
     if (nextInputs.length === 0) return;
     for (const next of nextInputs) {
       if (visited.has(next)) {
@@ -138,6 +147,22 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
       createdAt,
       message: `Claim ${claim.id} cannot be recomputed because derivation inputs are missing: ${missingInputs.join(", ")}.`,
       metadata: { source: "derivation.missing" },
+    });
+  }
+
+  // Weak derivation is explanatory only. It remains visible on every affected
+  // conclusion (including through a transitive input) without changing the
+  // status function or fabricating independent support from a mixed chain.
+  if (weakDerivationObserved) {
+    transparencyGaps.push({
+      id: `${claim.id}.gap.weak-derivation`,
+      claimId: claim.id,
+      type: "unsupported_inference",
+      severity: claim.impactLevel ?? "medium",
+      ...materialityFromClaim(claim),
+      message: `Claim ${claim.id} depends on weak derivation support.`,
+      createdAt,
+      metadata: { source: "derivation.weak" },
     });
   }
 
