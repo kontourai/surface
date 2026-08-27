@@ -4,6 +4,7 @@ import {
   type ReviewedExtractionEvidenceInput,
   type ReviewedExtractionProvenanceGap,
 } from "./reviewed-extraction-evidence.js";
+import { restoreReviewedExtractionEvidenceBrowser } from "./reviewed-extraction-evidence-browser.js";
 
 export interface ReviewedGroundingPolicy {
   id: string;
@@ -219,7 +220,7 @@ export function buildReviewedExtractionSourceState(evidence: Evidence, observati
  * from being mistaken for a valid comparison. */
 export async function buildUnknownReviewedExtractionSourceState(evidence: Evidence, observedAt: string): Promise<ReviewedExtractionSourceState> {
   let reviewed: ReviewedExtractionEvidenceInput;
-  try { reviewed = restoreReviewedExtractionEvidence(evidence); }
+  try { const authenticated = await restoreReviewedExtractionEvidenceBrowser(evidence); reviewed = restoreReviewedExtractionEvidence(authenticated); }
   catch { throw new ReviewedExtractionSourceObservationError("invalid-observation", "Evidence is not valid reviewed extraction evidence."); }
   if (!validDate(observedAt)) throw new ReviewedExtractionSourceObservationError("invalid-observation", "Observation check time is invalid.");
   return {

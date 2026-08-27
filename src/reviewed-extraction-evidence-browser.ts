@@ -6,11 +6,15 @@
  * delivery graph.
  */
 import type { Evidence } from "./types.js";
+import { restoreReviewedExtractionEvidence } from "./reviewed-extraction-evidence.js";
 
 const profile = "surface.reviewed-extraction-evidence/v1";
 const encoder = new TextEncoder();
 
 export async function restoreReviewedExtractionEvidenceBrowser(evidence: Evidence): Promise<Evidence> {
+  // The synchronous restorer is now runtime-neutral and remains the canonical
+  // input/profile/projector equality implementation for both environments.
+  restoreReviewedExtractionEvidence(evidence);
   if (!evidence || typeof evidence !== "object" || Array.isArray(evidence)) throw new Error("Reviewed extraction evidence is invalid.");
   const metadata = evidence.metadata?.reviewedExtraction as Record<string, unknown> | undefined;
   if (!metadata || metadata.profile !== profile || typeof metadata.profileDigest !== "string" || !isRecord(metadata.input) || !Array.isArray(metadata.gaps)) throw new Error("Evidence does not carry a complete reviewed extraction evidence profile.");

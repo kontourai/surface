@@ -1,6 +1,6 @@
 import type { Evidence } from "../types.js";
 import { restoreReviewedExtractionEvidenceBrowser } from "../reviewed-extraction-evidence-browser.js";
-import type { ReviewedExtractionSourceState } from "../reviewed-grounding-policy.js";
+import { buildReviewedExtractionSourceState, type ReviewedExtractionSourceState } from "../reviewed-grounding-policy.js";
 import type { AnswerAssessmentProjection, BasisContributionV2, BasisGap, FieldworkReviewedSourceRef, ReviewedSourceBasisAssociationV1, ReviewedSourceBasisContext, ThreadAnswerRef } from "./types.js";
 import { ReviewedSourceBasisBuildError } from "./types.js";
 
@@ -61,7 +61,8 @@ function sourceFacts(evidence: Evidence, state: ReviewedExtractionSourceState): 
   if (!state.observation) return state.status === "unknown" && state.observedSnapshotRef === undefined ? { currentness: "unknown", checkedAt: state.observedAt, expectedCapture: null, observedCapture: null, comparisonUnavailable: true } : null;
   const observation = state.observation;
   const expected = observation.expected; const observed = observation.observed;
-  if (!exactKeys(observation, ["version", "owner", "expected", "observed"]) || observation.version !== "surface.reviewed-source-observation/v1" || !exactKeys(observation.owner, ["authority", "observationRef"]) || !nonEmpty(observation.owner.authority) || !nonEmpty(observation.owner.observationRef) || observation.expected.snapshotRef !== expectedRef || !validCapture(expected) || !validCapture(observed) || expected.sourceId !== observed.sourceId || expected.resourceRef !== observed.resourceRef || Date.parse(expected.capturedAt) > Date.parse(state.observedAt) || Date.parse(observed.capturedAt) > Date.parse(state.observedAt)) return null;
+  if (!exactKeys(observation, ["version", "owner", "expected", "observed"]) || observation.version !== "surface.reviewed-source-observation/v1" || !exactKeys(observation.owner, ["authority", "observationRef"]) || observation.owner.authority !== "@kontourai/fieldwork" || !nonEmpty(observation.owner.observationRef) || observation.expected.snapshotRef !== expectedRef || !validCapture(expected) || !validCapture(observed) || expected.sourceId !== observed.sourceId || expected.resourceRef !== observed.resourceRef || Date.parse(expected.capturedAt) > Date.parse(state.observedAt) || Date.parse(observed.capturedAt) > Date.parse(state.observedAt)) return null;
+  try { const rebuilt = buildReviewedExtractionSourceState(evidence, observation, state.observedAt); if (JSON.stringify(rebuilt) !== JSON.stringify(state)) return null; } catch { return null; }
   const currentness = expected.contentDigest.value === observed.contentDigest.value ? "current" : "drifted";
   if (state.status !== currentness || state.observedSnapshotRef !== observed.snapshotRef) return null;
   return { currentness, checkedAt: state.observedAt, expectedCapture: { capturedAt: expected.capturedAt, contentDigest: expected.contentDigest.value }, observedCapture: { capturedAt: observed.capturedAt, contentDigest: observed.contentDigest.value }, comparisonUnavailable: false };
