@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.2.0](https://github.com/kontourai/surface/compare/v3.1.0...v3.2.0) (2026-08-27)
+
+
+### Features
+
+* **basis:** add reviewed source projection v2 ([#248](https://github.com/kontourai/surface/issues/248)) ([17d512f](https://github.com/kontourai/surface/commit/17d512f45169d3c40305d36270cd11de40266e0e))
+
 ## [3.1.0](https://github.com/kontourai/surface/compare/v3.0.0...v3.1.0) (2026-08-26)
 
 
