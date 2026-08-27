@@ -1,0 +1,13 @@
+{
+  "version": "surface.basis-projection/v2",
+  "answer": {
+    "owner": { "authority": "@kontourai/thread" }, "state": "available", "observedAt": "2026-08-25T00:00:00.000Z",
+    "value": { "ref": { "authority": "@kontourai/thread", "schemaVersion": "1.2.0", "kind": "assistant-message", "standing": "observed", "threadId": "thread-42", "messageId": "message-9" }, "fact": "answer-observed", "observedAt": "2026-08-25T00:00:00.000Z" }
+  },
+  "assessment": { "owner": { "authority": "@kontourai/surface" }, "state": "not-captured", "observedAt": "2026-08-25T00:00:00.000Z" },
+  "contributions": [
+    { "owner": { "authority": "@kontourai/fieldwork" }, "state": "available", "observedAt": "2026-08-25T00:00:00.000Z", "value": [
+      { "ref": { "authority": "@kontourai/fieldwork", "schemaVersion": "fieldwork.kontourai.io/v1", "kind": "reviewed-web-source", "exactRef": "fieldwork-reviewed-source:v1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "evidenceId": "evidence-1" }, "answer": { "authority": "@kontourai/thread", "schemaVersion": "1.2.0", "kind": "assistant-message", "standing": "observed", "threadId": "thread-42", "messageId": "message-9" }, "role": "source", "context": { "kind": "reviewed-source", "sourceClaimId": "source-claim-1", "sourceEvidenceId": "evidence-1", "answerClaimId": "answer-claim-1", "answerCitationEvidenceId": "citation-1", "assessmentRevision": 1, "review": "accepted", "reviewedAt": "2026-08-20T00:00:00.000Z", "currentness": "current", "checkedAt": "2026-08-25T00:00:00.000Z", "expectedCapture": { "capturedAt": "2026-08-20T00:00:00.000Z", "contentDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }, "observedCapture": { "capturedAt": "2026-08-25T00:00:00.000Z", "contentDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" } } }
+    ] }
+  ]
+}

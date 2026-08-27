@@ -63,3 +63,26 @@ Context has exact qualified refs, not generic ids: Thread results use `{ threadI
 The five context projections are bounded owner-attributed facts only: Station input kind/excerpt/count (`input`), Thread result name/status/part counts (`execution`), Station output title/media/length/digest (`outcome`), Station live state/time (`live`), and grounded narrative statement count/source completeness (`execution`). There is no generic display metadata or word blacklist. Display strings are inert data and may contain URL-shaped or HTML-looking text; renderers must escape them. They reject controls and bidi controls. Opaque evidence `sourceRef` values preserve bounded, well-formed Unicode exactly and are never normalized or dereferenced.
 
 `parseBasisComposition` and `parseBasisProjection` validate all nested records, exact keys, UTF-8 budgets, cardinality, depth, nodes, cycles, accessors, and hostile proxies without Node `Buffer`; both are safe for browser bundles. `parseThreadAnswerRef` takes the same safe snapshot path when called directly. Snapshotting uses an ancestor stack, so shared acyclic objects remain valid. The projection parser recomputes standing and validates each relationship against the Surface assessment rather than trusting wire labels. Basis v1 creates only Surface `cites`, `supports`, `derived-from`, and explicit `counterevidence` edges. Claim-level gaps remain on the projection instead of being copied to every edge; contribution gaps remain on their region items. A host that cannot capture a relationship may add a contribution gap such as `relationship-not-captured`, but cannot emit a relationship. `produced`, `observed-during`, `checked-by`, and `kept-in-task` are deferred until their owning products publish exact contracts and kind sets. Relationships never affect standing.
+
+## Basis v2 reviewed sources (Surface 3.2)
+
+`surface.basis-projection/v2` adds one closed owner-routed source context:
+`@kontourai/fieldwork` `reviewed-web-source`. Use the explicit v2 parser and
+composer (`parseBasisCompositionV2`, `parseBasisProjectionV2`, and
+`composeBasisProjectionV2`); v1 remains frozen and rejects this arm. The v1
+migration helpers reparse and rebuild known v1 records rather than relabeling a
+version string.
+
+The source adapter accepts authenticated Surface `Evidence`, a validated source
+comparison, and a closed S/E/A/C association. The Basis wire contains only
+accepted/not-accepted review, current/drifted/unknown currentness, timestamps,
+and SHA-256 content digests. It never contains a URL, resource or snapshot ref,
+locator, source text, path, owner diagnostic, plugin/run identity, or arbitrary
+metadata. Historical and observed captures stay separate.
+
+Reviewed source context is explanatory only. A verified source claim plus a
+cited answer citation is still derivation, not answer-level entailing evidence;
+it cannot create a policy-met standing. Existing Surface assessment and policy
+facts remain the sole standing authority. When Fieldwork cannot be read, its
+`restricted`, `unsupported-version`, `corrupt`, and `unavailable` read arms are
+descriptor-only and disclose no ref or source state.

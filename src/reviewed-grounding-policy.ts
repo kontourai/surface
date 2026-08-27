@@ -4,6 +4,7 @@ import {
   type ReviewedExtractionEvidenceInput,
   type ReviewedExtractionProvenanceGap,
 } from "./reviewed-extraction-evidence.js";
+import { restoreReviewedExtractionEvidenceBrowser } from "./reviewed-extraction-evidence-browser.js";
 
 export interface ReviewedGroundingPolicy {
   id: string;
@@ -212,6 +213,22 @@ export function buildReviewedExtractionSourceState(evidence: Evidence, observati
   catch { throw new ReviewedExtractionSourceObservationError("invalid-observation", "Evidence is not valid reviewed extraction evidence."); }
   const expectedSnapshotRef = reviewed.importRecord.spec.envelope.source.snapshotRef ?? reviewed.importRecord.spec.envelope.source.ref;
   return buildReviewedExtractionSourceStateFromRestored(evidence.id, expectedSnapshotRef, observation, observedAt);
+}
+
+/** Builds the only coherent no-comparison state. Callers cannot attach capture
+ * facts to an unknown status, which prevents a moved or unavailable owner read
+ * from being mistaken for a valid comparison. */
+export async function buildUnknownReviewedExtractionSourceState(evidence: Evidence, observedAt: string): Promise<ReviewedExtractionSourceState> {
+  let reviewed: ReviewedExtractionEvidenceInput;
+  try { const authenticated = await restoreReviewedExtractionEvidenceBrowser(evidence); reviewed = restoreReviewedExtractionEvidence(authenticated); }
+  catch { throw new ReviewedExtractionSourceObservationError("invalid-observation", "Evidence is not valid reviewed extraction evidence."); }
+  if (!validDate(observedAt)) throw new ReviewedExtractionSourceObservationError("invalid-observation", "Observation check time is invalid.");
+  return {
+    evidenceId: evidence.id,
+    status: "unknown",
+    expectedSnapshotRef: reviewed.importRecord.spec.envelope.source.snapshotRef ?? reviewed.importRecord.spec.envelope.source.ref,
+    observedAt,
+  };
 }
 
 function buildReviewedExtractionSourceStateFromRestored(evidenceId: string, expectedSnapshotRef: string, observation: ReviewedExtractionSourceObservation, observedAt: string): ReviewedExtractionSourceState {

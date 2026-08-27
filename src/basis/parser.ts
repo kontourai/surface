@@ -1,5 +1,5 @@
 import { deriveBasisStanding } from "./standing.js";
-import { SURFACE_ANSWER_ASSESSMENT_VERSION, SURFACE_BASIS_VERSION, type AnswerAssessmentProjection, type AnswerObservationRead, type BasisCompositionInput, type BasisContextProjection, type BasisContribution, type BasisContributionRef, type BasisGap, type BasisOwnerDescriptor, type BasisParseResult, type BasisProjection, type BasisProjectionParseResult, type ContributionRead, type OwnerRead, type SurfaceAssessmentRead, type SurfaceAnswerAssessmentRef, type SurfacePolicyOutcome, type ThreadAnswerRef } from "./types.js";
+import { SURFACE_ANSWER_ASSESSMENT_VERSION, SURFACE_BASIS_VERSION, SURFACE_BASIS_V2_VERSION, type AnswerAssessmentProjection, type AnswerObservationRead, type BasisCompositionInput, type BasisCompositionInputV2, type BasisContextProjection, type BasisContextProjectionV2, type BasisContribution, type BasisContributionRef, type BasisContributionRefV2, type BasisGap, type BasisOwnerDescriptor, type BasisParseResult, type BasisProjection, type BasisProjectionParseResult, type BasisProjectionV2, type BasisV2ParseResult, type BasisV2ProjectionParseResult, type ContributionRead, type ContributionReadV2, type OwnerRead, type SurfaceAssessmentRead, type SurfaceAnswerAssessmentRef, type SurfacePolicyOutcome, type ThreadAnswerRef } from "./types.js";
 import { BASIS_MAX_STRING_BYTES, hasExactKeys, isBasisAuthority, isBasisInertDisplayScalar, isBasisOpaqueRefScalar, isBasisRestrictedContractScalar, isPlainRecord, parseSurfacePolicyOutcome } from "./validation.js";
 
 export const BASIS_MAX_TOTAL_BYTES = 65_536;
@@ -104,3 +104,65 @@ function safeSnapshot(input: unknown): Parse<R> {
   try { const result = visit(input, 0); return isRecord(result) ? { ok: true, value: result } : fail("invalid-shape", "Basis input must be an object."); } catch { return fail("hostile-input", "Basis input is hostile, cyclic, or exceeds a parser budget."); }
 }
 function fail(code: string, message: string): { ok: false; gap: BasisGap } { return { ok: false, gap: { code, message } }; }
+
+/** V2 is a parallel closed wire. It delegates all unchanged owner arms to the
+ * frozen v1 parser and validates its one additive Fieldwork arm locally. */
+export function parseBasisCompositionV2(input: unknown): BasisV2ParseResult {
+  const snapshot = safeSnapshot(input); if (!snapshot.ok) return snapshot; const value = snapshot.value;
+  if (!exact(value, ["version", "answer", "assessment", "contributions"]) || value.version !== SURFACE_BASIS_V2_VERSION || !Array.isArray(value.contributions)) return fail("invalid-shape", "Basis v2 composition has an invalid shape or version.");
+  const fieldwork = value.contributions.filter((read) => isRecord(read) && isRecord(read.owner) && read.owner.authority === "@kontourai/fieldwork");
+  for (const read of fieldwork) { const checked = parseFieldworkRead(read, value.answer, value.assessment); if (!checked.ok) return checked; }
+  const legacy = { ...value, version: SURFACE_BASIS_VERSION, contributions: value.contributions.map((read) => fieldwork.includes(read as R) ? { owner: { authority: "@kontourai/station" }, state: "not-captured", observedAt: (read as R).observedAt } : read) };
+  const parsed = parseBasisComposition(legacy);
+  if (!parsed.ok) return parsed;
+  return { ok: true, value: { version: SURFACE_BASIS_V2_VERSION, answer: parsed.value.answer, assessment: parsed.value.assessment, contributions: value.contributions as ContributionReadV2[] } };
+}
+
+export function parseBasisProjectionV2(input: unknown): BasisV2ProjectionParseResult {
+  const snapshot = safeSnapshot(input); if (!snapshot.ok) return snapshot; const value = snapshot.value;
+  if (!exact(value, ["version", "answer", "standing", "unresolvedReason", "assessment", "regions", "relationships", "gaps"]) || value.version !== SURFACE_BASIS_V2_VERSION || !isRecord(value.regions)) return fail("invalid-projection", "Basis v2 projection has an invalid shape.");
+  const regions = value.regions; const names = ["inputs", "execution", "process", "outcomes", "support", "sources", "live"] as const;
+  if (!names.every((name) => Array.isArray(regions[name]))) return fail("invalid-projection", "Basis v2 regions are invalid.");
+  const fieldworkItems = (regions.sources as unknown[]).filter((item) => isRecord(item) && isFieldworkRef(item.ref));
+  for (const item of fieldworkItems) { const checked = parseFieldworkContribution(item, value.answer, value.assessment, false); if (!checked.ok) return checked; }
+  const syntheticRegions: R = { ...regions };
+  syntheticRegions.sources = (regions.sources as unknown[]).filter((item) => !fieldworkItems.includes(item as R));
+  const legacy = parseBasisProjection({ ...value, version: SURFACE_BASIS_VERSION, regions: syntheticRegions });
+  if (!legacy.ok) return legacy;
+  return { ok: true, value: { ...legacy.value, version: SURFACE_BASIS_V2_VERSION, regions: regions as BasisProjectionV2["regions"] } };
+}
+
+function parseFieldworkRead(read: R, answer: unknown, assessment: unknown): Parse<ContributionReadV2> {
+  if (!exact(read, ["owner", "state", "observedAt"], ["value"]) || !exact(read.owner, ["authority"]) || read.owner.authority !== "@kontourai/fieldwork" || !safeTimestamp(read.observedAt)) return fail("invalid-owner-read", "Fieldwork owner read is invalid.");
+  if (["restricted", "unsupported-version", "corrupt", "unavailable"].includes(String(read.state))) { if (Object.hasOwn(read, "value")) return fail("invalid-owner-read", "Unavailable Fieldwork reads are descriptor-only."); return { ok: true, value: read as ContributionReadV2 }; }
+  if (read.state !== "available" || !Array.isArray(read.value)) return fail("invalid-owner-read", "Fieldwork owner read is invalid.");
+  for (const value of read.value) { const parsed = parseFieldworkContribution(value, answer, assessment, true); if (!parsed.ok) return parsed; }
+  return { ok: true, value: read as ContributionReadV2 };
+}
+function isFieldworkRef(value: unknown): value is R { return isRecord(value) && value.authority === "@kontourai/fieldwork"; }
+function parseFieldworkContribution(value: unknown, answer: unknown, assessment: unknown, requireAnswer: boolean): Parse<unknown> {
+  if (!isRecord(value) || !exact(value, requireAnswer ? ["ref", "answer", "role", "context"] : ["ref", "role", "context", "gaps"], requireAnswer ? ["gaps"] : []) || !isFieldworkRef(value.ref) || !exact(value.ref, ["authority", "schemaVersion", "kind", "exactRef", "evidenceId"]) || value.ref.schemaVersion !== "fieldwork.kontourai.io/v1" || value.ref.kind !== "reviewed-web-source" || typeof value.ref.exactRef !== "string" || !/^fieldwork-reviewed-source:v1:[a-f0-9]{64}$/.test(value.ref.exactRef) || !safeIdentifier(value.ref.evidenceId)) return fail("invalid-contribution-ref", "Fieldwork contribution requires the published exact ref.");
+  if (requireAnswer) { const parsedAnswer = parseThreadAnswerRef(value.answer); if (!parsedAnswer.ok || !sameAnswer(parsedAnswer.value, answer)) return fail("answer-owner-spoof", "Contribution must bind the exact answer observation."); }
+  if (value.role !== "source") return fail("invalid-contribution-placement", "Fieldwork reviewed source belongs in Sources.");
+  const context = parseReviewedSourceContext(value.context); const gaps = value.gaps === undefined ? { ok: true as const, value: [] as BasisGap[] } : parseGaps(value.gaps); if (!context.ok) return context; if (!gaps.ok || !validReviewedSourceGaps(gaps.value)) return fail("invalid-gaps", "Reviewed source gaps are invalid.");
+  if (context.value.sourceEvidenceId !== value.ref.evidenceId || context.value.assessmentRevision < 1) return fail("reviewed-source-binding-mismatch", "Reviewed source binding is incoherent.");
+  const assessmentParsed = parseAssessmentRead(assessment); if (!assessmentParsed.ok) return assessmentParsed;
+  if (assessmentParsed.value.state === "available") {
+    const a = assessmentParsed.value.value;
+    if (!a.found || !a.claim || a.claim.id !== context.value.answerClaimId || a.ref.claimId !== context.value.answerClaimId || a.evidence.cited.filter((item) => item.id === context.value.answerCitationEvidenceId).length !== 1 || a.derivation.directInputs.filter((item) => item.claimId === context.value.sourceClaimId).length !== 1) return fail("reviewed-source-association-mismatch", "Reviewed source does not match the Surface assessment.");
+  }
+  return { ok: true, value };
+}
+function parseReviewedSourceContext(value: unknown): Parse<Extract<BasisContextProjectionV2, { kind: "reviewed-source" }>> {
+  if (!exact(value, ["kind", "sourceClaimId", "sourceEvidenceId", "answerClaimId", "answerCitationEvidenceId", "assessmentRevision", "review", "reviewedAt", "currentness", "checkedAt", "expectedCapture", "observedCapture"]) || value.kind !== "reviewed-source" || !safeIdentifier(value.sourceClaimId) || !safeIdentifier(value.sourceEvidenceId) || !safeIdentifier(value.answerClaimId) || !safeIdentifier(value.answerCitationEvidenceId) || !Number.isSafeInteger(value.assessmentRevision) || (value.assessmentRevision as number) < 1 || !["accepted", "not-accepted", "not-captured"].includes(String(value.review)) || !(value.reviewedAt === null || safeTimestamp(value.reviewedAt)) || !["current", "drifted", "unknown"].includes(String(value.currentness)) || !safeTimestamp(value.checkedAt) || !capture(value.expectedCapture) || !capture(value.observedCapture)) return fail("unsafe-context", "Reviewed source context is invalid.");
+  const noCaptures = value.expectedCapture === null && value.observedCapture === null;
+  const bothCaptures = value.expectedCapture !== null && value.observedCapture !== null;
+  if ((value.currentness === "unknown" && !noCaptures) || (value.currentness !== "unknown" && !bothCaptures)) return fail("unsafe-context", "Reviewed source capture facts are incoherent.");
+  const expectedCapture = value.expectedCapture as { contentDigest: string } | null; const observedCapture = value.observedCapture as { contentDigest: string } | null;
+  if (value.currentness === "current" && bothCaptures && expectedCapture!.contentDigest !== observedCapture!.contentDigest) return fail("unsafe-context", "Current reviewed source captures must agree.");
+  if (value.currentness === "drifted" && bothCaptures && expectedCapture!.contentDigest === observedCapture!.contentDigest) return fail("unsafe-context", "Drifted reviewed source captures must differ.");
+  return { ok: true, value: value as unknown as Extract<BasisContextProjectionV2, { kind: "reviewed-source" }> };
+}
+function capture(value: unknown): boolean { return value === null || (exact(value, ["capturedAt", "contentDigest"]) && safeTimestamp(value.capturedAt) && typeof value.contentDigest === "string" && /^[a-f0-9]{64}$/.test(value.contentDigest)); }
+function validReviewedSourceGaps(gaps: readonly BasisGap[]): boolean { const codes = ["reviewed-source-review-not-accepted", "reviewed-source-review-not-captured", "reviewed-source-currentness-unknown", "reviewed-source-drifted", "reviewed-source-capture-comparison-unavailable", "reviewed-source-claim-not-verified"]; return gaps.every((gap) => codes.includes(gap.code) && gap.message === "Reviewed source context is incomplete or requires attention." && gap.metadata === undefined); }
+function sameAnswer(left: ThreadAnswerRef, read: unknown): boolean { const parsed = parseAnswerRead(read); return parsed.ok && parsed.value.state === "available" && parsed.value.value.ref.threadId === left.threadId && parsed.value.value.ref.messageId === left.messageId; }
