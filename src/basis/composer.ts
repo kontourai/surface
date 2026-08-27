@@ -29,12 +29,15 @@ export function composeBasisProjectionV2(input: BasisCompositionInputV2): BasisP
   const parsed = parseBasisCompositionV2(input);
   if (!parsed.ok) return invalidCompositionV2(parsed.gap);
   const regions: { [K in keyof BasisProjectionV2["regions"]]: BasisProjectionV2["regions"][K][number][] } = { inputs: [], execution: [], process: [], outcomes: [], support: [], sources: [], live: [] };
-  const all: BasisContributionV2[] = [];
-  for (const read of parsed.value.contributions) if (read.state === "available") all.push(...read.value);
-  for (const contribution of all) regions[regionForV2(contribution.role)].push({ ref: contribution.ref, role: contribution.role, context: contribution.context, gaps: [...(contribution.gaps ?? [])] });
+  const normalized = parsed.value;
+  const selected: BasisContributionV2[] = [];
+  if (normalized.answer.state === "available") { const answer = normalized.answer.value.ref; selected.push(...normalized.contributions.flatMap((read) => read.state === "available" ? read.value.filter((item) => sameAnswer(item.answer, answer)) : [])); }
+  const deduped = dedupeAndSort(selected as unknown as BasisContribution[]);
+  for (const contribution of deduped.items as unknown as BasisContributionV2[]) regions[regionForV2(contribution.role)].push({ ref: contribution.ref, role: contribution.role, context: contribution.context, gaps: [...(contribution.gaps ?? [])] });
   const legacyAssessmentInput = { version: SURFACE_BASIS_VERSION, answer: parsed.value.answer, assessment: parsed.value.assessment, contributions: [] } as BasisCompositionInput;
   const base = composeBasisProjection(legacyAssessmentInput);
-  const result: BasisProjectionV2 = { ...base, version: SURFACE_BASIS_V2_VERSION, regions };
+  const ownerGaps = normalized.answer.state === "available" ? normalized.contributions.filter((read) => read.state !== "available" && read.state !== "observed-empty").map((read) => ({ code: `owner-${read.state}`, message: `Context from ${read.owner.authority} is ${read.state}.` })) : [];
+  const result: BasisProjectionV2 = { ...base, version: SURFACE_BASIS_V2_VERSION, regions, gaps: [...base.gaps, ...ownerGaps, ...deduped.gaps] };
   const checked = parseBasisProjectionV2(result);
   return checked.ok ? checked.value : result;
 }

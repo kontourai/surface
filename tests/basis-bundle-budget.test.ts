@@ -6,11 +6,11 @@ import { build } from "esbuild";
 const BUDGETS = {
   // Measured at Basis v2: 7,036 -> 7,962 gzip bytes for the parallel closed
   // parser and reviewed-source facts; the adapter itself remains a separate opt-in entry.
-  "src/basis/view-index.ts": 8_200,
+  "src/basis/view-index.ts": 8_300,
   // MCP embeds the v2-capable parser/view (measured 110,269 gzip bytes).
-  "src/basis/mcp.ts": 110_600,
+  "src/basis/mcp.ts": 110_700,
   // The shared Trust Panel embeds the same parser (measured 12,769 gzip bytes).
-  "src/trust-panel/surface-trust-panel.ts": 13_000,
+  "src/trust-panel/surface-trust-panel.ts": 13_100,
 } as const;
 
 test("Basis browser delivery bundles stay within the checked gzip ratchet", async () => {

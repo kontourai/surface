@@ -31,3 +31,12 @@ test("v1 remains frozen while v2 accepts the reviewed-source fixture", async () 
   const projection = composeBasisProjectionV2(parsed.value);
   assert.equal(parseBasisProjectionV2(projection).ok, true);
 });
+
+test("v2 rejects unsafe Fieldwork gaps and ignores a contribution for another answer", async () => {
+  const fixture = JSON.parse(await readFile("examples/fixtures/station-basis-context.v2.json", "utf8"));
+  fixture.contributions[0].value[0].gaps = [{ code: "unsafe", message: "https://private.example/path" }];
+  assert.equal(parseBasisCompositionV2(fixture).ok, false);
+  delete fixture.contributions[0].value[0].gaps;
+  fixture.contributions[0].value[0].answer.messageId = "other-message";
+  assert.equal(parseBasisCompositionV2(fixture).ok, false);
+});
