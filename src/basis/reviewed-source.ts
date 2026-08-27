@@ -21,7 +21,7 @@ export async function buildReviewedSourceBasisContribution(input: BuildReviewedS
   try { evidence = await restoreReviewedExtractionEvidenceBrowser(input.evidence); }
   catch { throw fail("invalid-reviewed-evidence"); }
   const { ref, association, sourceState, assessment } = input;
-  if (!/^fieldwork-reviewed-source:v1:[a-f0-9]{64}$/.test(ref.exactRef)) throw fail("owner-ref-mismatch");
+  if (!exactRef(ref)) throw fail("owner-ref-mismatch");
   if (evidence.id !== ref.evidenceId || evidence.id !== association.sourceEvidenceId || evidence.id !== sourceState.evidenceId) throw fail("source-evidence-mismatch");
   if (evidence.claimId !== association.sourceClaimId) throw fail("source-claim-mismatch");
   if (!positive(assessment.revision) || !positive(association.assessmentRevision) || assessment.revision !== association.assessmentRevision) throw fail("assessment-revision-mismatch");
@@ -61,12 +61,15 @@ function sourceFacts(evidence: Evidence, state: ReviewedExtractionSourceState): 
   if (!state.observation) return state.status === "unknown" && state.observedSnapshotRef === undefined ? { currentness: "unknown", checkedAt: state.observedAt, expectedCapture: null, observedCapture: null, comparisonUnavailable: true } : null;
   const observation = state.observation;
   const expected = observation.expected; const observed = observation.observed;
-  if (observation.version !== "surface.reviewed-source-observation/v1" || observation.expected.snapshotRef !== expectedRef || !validCapture(expected) || !validCapture(observed) || expected.sourceId !== observed.sourceId || expected.resourceRef !== observed.resourceRef || Date.parse(expected.capturedAt) > Date.parse(state.observedAt) || Date.parse(observed.capturedAt) > Date.parse(state.observedAt)) return null;
+  if (!exactKeys(observation, ["version", "owner", "expected", "observed"]) || observation.version !== "surface.reviewed-source-observation/v1" || !exactKeys(observation.owner, ["authority", "observationRef"]) || !nonEmpty(observation.owner.authority) || !nonEmpty(observation.owner.observationRef) || observation.expected.snapshotRef !== expectedRef || !validCapture(expected) || !validCapture(observed) || expected.sourceId !== observed.sourceId || expected.resourceRef !== observed.resourceRef || Date.parse(expected.capturedAt) > Date.parse(state.observedAt) || Date.parse(observed.capturedAt) > Date.parse(state.observedAt)) return null;
   const currentness = expected.contentDigest.value === observed.contentDigest.value ? "current" : "drifted";
   if (state.status !== currentness || state.observedSnapshotRef !== observed.snapshotRef) return null;
   return { currentness, checkedAt: state.observedAt, expectedCapture: { capturedAt: expected.capturedAt, contentDigest: expected.contentDigest.value }, observedCapture: { capturedAt: observed.capturedAt, contentDigest: observed.contentDigest.value }, comparisonUnavailable: false };
 }
-function validCapture(capture: { capturedAt: string; contentDigest: { algorithm: string; value: string }; envelopeDigest: { algorithm: string; value: string } }): boolean { return validTime(capture.capturedAt) && capture.contentDigest.algorithm === "sha256" && capture.envelopeDigest.algorithm === "sha256" && /^[a-f0-9]{64}$/.test(capture.contentDigest.value) && /^[a-f0-9]{64}$/.test(capture.envelopeDigest.value); }
+function validCapture(capture: { snapshotRef: string; sourceId: string; resourceRef: string; capturedAt: string; contentDigest: { algorithm: string; value: string }; envelopeDigest: { algorithm: string; value: string } }): boolean { return exactKeys(capture, ["snapshotRef", "sourceId", "resourceRef", "capturedAt", "envelopeDigest", "contentDigest"]) && nonEmpty(capture.snapshotRef) && nonEmpty(capture.sourceId) && nonEmpty(capture.resourceRef) && validTime(capture.capturedAt) && exactKeys(capture.contentDigest, ["algorithm", "value"]) && exactKeys(capture.envelopeDigest, ["algorithm", "value"]) && capture.contentDigest.algorithm === "sha256" && capture.envelopeDigest.algorithm === "sha256" && /^[a-f0-9]{64}$/.test(capture.contentDigest.value) && /^[a-f0-9]{64}$/.test(capture.envelopeDigest.value); }
+function exactRef(value: FieldworkReviewedSourceRef): boolean { return Object.keys(value).length === 5 && value.authority === "@kontourai/fieldwork" && value.schemaVersion === "fieldwork.kontourai.io/v1" && value.kind === "reviewed-web-source" && /^fieldwork-reviewed-source:v1:[a-f0-9]{64}$/.test(value.exactRef) && nonEmpty(value.evidenceId); }
+function exactKeys(value: unknown, keys: readonly string[]): value is Record<string, unknown> { return value !== null && typeof value === "object" && !Array.isArray(value) && Object.keys(value).length === keys.length && keys.every((key) => Object.hasOwn(value, key)); }
+function nonEmpty(value: unknown): value is string { return typeof value === "string" && value.length > 0; }
 function validTime(value: unknown): value is string { return typeof value === "string" && Number.isFinite(Date.parse(value)); }
 function positive(value: unknown): value is number { return Number.isSafeInteger(value) && (value as number) > 0; }
 function fail(code: ConstructorParameters<typeof ReviewedSourceBasisBuildError>[0]): ReviewedSourceBasisBuildError { return new ReviewedSourceBasisBuildError(code); }
