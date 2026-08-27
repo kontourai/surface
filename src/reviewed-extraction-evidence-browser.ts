@@ -1,0 +1,33 @@
+/** Browser-safe authentication of the reviewed-extraction evidence profile.
+ *
+ * This deliberately has no Node, storage, network, or product-runtime edge.
+ * The synchronous Node projector/restorer remains the compatibility API; Basis
+ * uses this Web Crypto verifier when it must authenticate evidence in a browser
+ * delivery graph.
+ */
+import type { Evidence } from "./types.js";
+
+const profile = "surface.reviewed-extraction-evidence/v1";
+const encoder = new TextEncoder();
+
+export async function restoreReviewedExtractionEvidenceBrowser(evidence: Evidence): Promise<Evidence> {
+  if (!evidence || typeof evidence !== "object" || Array.isArray(evidence)) throw new Error("Reviewed extraction evidence is invalid.");
+  const metadata = evidence.metadata?.reviewedExtraction as Record<string, unknown> | undefined;
+  if (!metadata || metadata.profile !== profile || typeof metadata.profileDigest !== "string" || !isRecord(metadata.input) || !Array.isArray(metadata.gaps)) throw new Error("Evidence does not carry a complete reviewed extraction evidence profile.");
+  const input = metadata.input as Record<string, unknown>;
+  // These binding fields are sufficient to reject profile substitution before
+  // any protected profile detail can be projected into Basis.
+  if (!nonEmpty(input.evidenceId) || !nonEmpty(input.claimId) || input.evidenceId !== evidence.id || input.claimId !== evidence.claimId || !Number.isSafeInteger(input.proposalIndex) || (input.proposalIndex as number) < 0 || !isRecord(input.importRecord)) throw new Error("Reviewed extraction evidence profile is structurally invalid.");
+  const anchors = withoutMetadata(evidence);
+  const actual = await digest({ anchors, input, gaps: metadata.gaps });
+  if (actual !== metadata.profileDigest) throw new Error("Reviewed extraction evidence profile integrity binding is invalid.");
+  // Return a JSON clone so caller-owned getters/prototypes cannot cross the
+  // semantic adapter boundary after authentication.
+  return JSON.parse(JSON.stringify(evidence)) as Evidence;
+}
+
+function withoutMetadata(evidence: Evidence): Omit<Evidence, "metadata"> { const { metadata: _metadata, ...rest } = evidence; return rest; }
+function isRecord(value: unknown): value is Record<string, unknown> { return value !== null && typeof value === "object" && !Array.isArray(value); }
+function nonEmpty(value: unknown): value is string { return typeof value === "string" && value.length > 0; }
+async function digest(value: unknown): Promise<string> { const bytes = await globalThis.crypto.subtle.digest("SHA-256", encoder.encode(canonicalJson(value))); return `sha256:${[...new Uint8Array(bytes)].map((byte) => byte.toString(16).padStart(2, "0")).join("")}`; }
+function canonicalJson(value: unknown): string { if (value === null || typeof value !== "object") return JSON.stringify(value); if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`; return `{${Object.keys(value as Record<string, unknown>).sort().map((key) => `${JSON.stringify(key)}:${canonicalJson((value as Record<string, unknown>)[key])}`).join(",")}}`; }

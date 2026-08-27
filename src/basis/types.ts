@@ -1,5 +1,7 @@
 /** A small, portable and deliberately headless answer-basis contract. */
 export const SURFACE_BASIS_VERSION = "surface.basis-projection/v1" as const;
+/** Basis v2 is additive: v1 remains a closed, frozen wire contract. */
+export const SURFACE_BASIS_V2_VERSION = "surface.basis-projection/v2" as const;
 /** Closed Surface-owned assessment wire. Basis v1 carries this known nested wire. */
 export const SURFACE_ANSWER_ASSESSMENT_VERSION = "surface.answer-assessment/v2" as const;
 
@@ -16,6 +18,9 @@ export type BasisContributionRef =
   | { authority: "@kontourai/station"; schemaVersion: "1"; kind: "task-output"; taskId: string; outputId: string }
   | { authority: "@kontourai/station"; schemaVersion: "1"; kind: "live"; sessionId: string; observationId: string }
   | { authority: "@kontourai/flow-agents"; schemaVersion: "grounded-execution-narrative/v1"; kind: "narrative"; narrativeId: string };
+/** Authorized owner-routing descriptor only. The exact ref is never display text. */
+export interface FieldworkReviewedSourceRef { authority: "@kontourai/fieldwork"; schemaVersion: "fieldwork.kontourai.io/v1"; kind: "reviewed-web-source"; exactRef: string; evidenceId: string; }
+export type BasisContributionRefV2 = BasisContributionRef | FieldworkReviewedSourceRef;
 /** A non-sensitive descriptor is all an unavailable/restricted owner read exposes. */
 export interface BasisOwnerDescriptor<A extends string = string> { authority: A; }
 export type OwnerRead<T, A extends string> =
@@ -37,7 +42,24 @@ export type BasisContextProjection =
   | { kind: "station-output"; title: string; mediaType: string; byteLength: number; digest: string }
   | { kind: "station-live"; state: string; observedAt: string }
   | { kind: "grounded-narrative"; statementCount: number; sourceCompleteness: "complete" | "partial" | "unknown" };
+/** Closed, URL/path/text-free Source facts. Historical and observed captures never merge. */
+export interface ReviewedSourceBasisContext {
+  kind: "reviewed-source";
+  sourceClaimId: string;
+  sourceEvidenceId: string;
+  answerClaimId: string;
+  answerCitationEvidenceId: string;
+  assessmentRevision: number;
+  review: "accepted" | "not-accepted" | "not-captured";
+  reviewedAt: string | null;
+  currentness: "current" | "drifted" | "unknown";
+  checkedAt: string;
+  expectedCapture: { capturedAt: string; contentDigest: string } | null;
+  observedCapture: { capturedAt: string; contentDigest: string } | null;
+}
+export type BasisContextProjectionV2 = BasisContextProjection | ReviewedSourceBasisContext;
 export interface BasisContribution<TRef extends BasisContributionRef = BasisContributionRef> { ref: TRef; answer: ThreadAnswerRef; role: BasisContributionRole; context: BasisContextProjection; gaps?: readonly BasisGap[]; }
+export interface BasisContributionV2<TRef extends BasisContributionRefV2 = BasisContributionRefV2> { ref: TRef; answer: ThreadAnswerRef; role: BasisContributionRole; context: BasisContextProjectionV2; gaps?: readonly BasisGap[]; }
 /** Basis v1 relationships are Surface assessment edges, never owner workflow assertions. */
 export interface BasisRelationship { kind: "cites" | "supports" | "derived-from" | "counterevidence"; from: string; to: string; source: "surface-assessment"; /** Edge-local only. */ gaps: readonly BasisGap[]; }
 /** Optional bounded owner provenance for a weak derivation gap. */
@@ -87,6 +109,8 @@ export type SurfaceAssessmentRead = OwnerRead<AnswerAssessmentProjection, "@kont
 /** Each read arm statically binds its exact owner authority to its value refs. */
 export type ContributionRead = { [A in BasisContributionRef["authority"]]: OwnerRead<readonly BasisContribution<Extract<BasisContributionRef, { authority: A }>>[], A> }[BasisContributionRef["authority"]];
 export interface BasisCompositionInput { version: typeof SURFACE_BASIS_VERSION; answer: AnswerObservationRead; assessment: SurfaceAssessmentRead; contributions: readonly ContributionRead[]; }
+export type ContributionReadV2 = { [A in BasisContributionRefV2["authority"]]: OwnerRead<readonly BasisContributionV2<Extract<BasisContributionRefV2, { authority: A }>>[], A> }[BasisContributionRefV2["authority"]];
+export interface BasisCompositionInputV2 { version: typeof SURFACE_BASIS_V2_VERSION; answer: AnswerObservationRead; assessment: SurfaceAssessmentRead; contributions: readonly ContributionReadV2[]; }
 export type BasisStanding = "policy-met" | "assessed-with-gaps" | "execution-only" | "unresolved";
 export type BasisUnresolvedReason = "answer-not-captured" | "answer-observed-empty" | "answer-unavailable" | "answer-stale" | "answer-corrupt" | "answer-unsupported-version" | "answer-restricted" | "assessment-not-captured" | "assessment-observed-empty" | "assessment-unavailable" | "assessment-stale" | "assessment-corrupt" | "assessment-unsupported-version" | "assessment-restricted" | "claim-not-in-assessment" | "no-matching-context";
 export interface BasisRegionItem { ref: BasisContributionRef; role: BasisContributionRole; context: BasisContextProjection; gaps: readonly BasisGap[]; }
@@ -94,5 +118,16 @@ export interface BasisProjection {
   version: typeof SURFACE_BASIS_VERSION; answer: AnswerObservationRead; standing: BasisStanding; unresolvedReason: BasisUnresolvedReason | null; assessment: SurfaceAssessmentRead;
   regions: { inputs: readonly BasisRegionItem[]; execution: readonly BasisRegionItem[]; process: readonly BasisRegionItem[]; outcomes: readonly BasisRegionItem[]; support: readonly BasisRegionItem[]; sources: readonly BasisRegionItem[]; live: readonly BasisRegionItem[] }; relationships: readonly BasisRelationship[]; gaps: readonly BasisGap[];
 }
+export interface BasisRegionItemV2 { ref: BasisContributionRefV2; role: BasisContributionRole; context: BasisContextProjectionV2; gaps: readonly BasisGap[]; }
+export interface BasisProjectionV2 {
+  version: typeof SURFACE_BASIS_V2_VERSION; answer: AnswerObservationRead; standing: BasisStanding; unresolvedReason: BasisUnresolvedReason | null; assessment: SurfaceAssessmentRead;
+  regions: { inputs: readonly BasisRegionItemV2[]; execution: readonly BasisRegionItemV2[]; process: readonly BasisRegionItemV2[]; outcomes: readonly BasisRegionItemV2[]; support: readonly BasisRegionItemV2[]; sources: readonly BasisRegionItemV2[]; live: readonly BasisRegionItemV2[] }; relationships: readonly BasisRelationship[]; gaps: readonly BasisGap[];
+}
 export type BasisParseResult = { ok: true; value: BasisCompositionInput } | { ok: false; gap: BasisGap };
 export type BasisProjectionParseResult = { ok: true; value: BasisProjection } | { ok: false; gap: BasisGap };
+export type BasisV2ParseResult = { ok: true; value: BasisCompositionInputV2 } | { ok: false; gap: BasisGap };
+export type BasisV2ProjectionParseResult = { ok: true; value: BasisProjectionV2 } | { ok: false; gap: BasisGap };
+
+export interface ReviewedSourceBasisAssociationV1 { version: "surface.reviewed-source-basis-association/v1"; sourceClaimId: string; sourceEvidenceId: string; answerClaimId: string; answerCitationEvidenceId: string; assessmentRevision: number; }
+export type ReviewedSourceBasisBuildErrorCode = "invalid-reviewed-evidence" | "owner-ref-mismatch" | "source-evidence-mismatch" | "source-claim-mismatch" | "answer-claim-mismatch" | "answer-citation-mismatch" | "assessment-revision-mismatch" | "source-state-incoherent";
+export class ReviewedSourceBasisBuildError extends Error { constructor(readonly code: ReviewedSourceBasisBuildErrorCode) { super(`Reviewed source Basis construction failed: ${code}.`); this.name = "ReviewedSourceBasisBuildError"; } }
