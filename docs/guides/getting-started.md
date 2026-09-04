@@ -13,7 +13,7 @@ npm install -D @kontourai/surface
 For local development in this repo:
 
 ```bash
-npm install
+pnpm install
 npm test
 ```
 
