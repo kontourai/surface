@@ -236,7 +236,7 @@ The dependency direction is one-way: producers depend on Surface; Surface does n
 ## Local development
 
 ```bash
-npm install
+pnpm install
 npm run setup:repo-hooks
 npm run validate:repo-hooks
 npm run verify

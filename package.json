@@ -120,6 +120,7 @@
   "engines": {
     "node": ">=22"
   },
+  "packageManager": "pnpm@11.25.0",
   "optionalDependencies": {
     "@sigstore/sign": "^5.0.0",
     "@sigstore/verify": "^4.1.0"
