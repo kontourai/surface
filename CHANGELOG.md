@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.2.1](https://github.com/kontourai/surface/compare/v3.2.0...v3.2.1) (2026-09-04)
+
+
+### Fixes
+
+* **release:** fail closed Sigstore bundle verification ([#251](https://github.com/kontourai/surface/issues/251)) ([c059bf0](https://github.com/kontourai/surface/commit/c059bf0c3a3540e608b71577397060979da05975))
+
 ## [3.2.0](https://github.com/kontourai/surface/compare/v3.1.0...v3.2.0) (2026-08-27)
 
 
