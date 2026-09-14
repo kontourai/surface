@@ -107,15 +107,15 @@
     "@kontourai/lookout": "0.3.6",
     "@kontourai/survey": "^2.4.1",
     "@kontourai/ui": "^1.1.0",
-    "@modelcontextprotocol/ext-apps": "1.7.5",
+    "@modelcontextprotocol/ext-apps": "2.0.0",
     "@modelcontextprotocol/server": "2.0.0",
     "@playwright/test": "^1.60.0",
     "@types/node": "^26.1.2",
     "ajv": "^8.20.0",
-    "esbuild": "0.28.1",
+    "esbuild": "0.28.2",
     "hachure": "^0.15.0",
     "typescript": "^7.0.2",
-    "zod": "4.2.0"
+    "zod": "4.6.2"
   },
   "engines": {
     "node": ">=22"
