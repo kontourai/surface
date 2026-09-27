@@ -55,9 +55,28 @@ function normalizeClaimFacetForRead(raw: unknown): unknown {
   return rest;
 }
 
+// The Hachure trust-bundle schema is closed at the top level
+// (`additionalProperties: false`). Rejecting unknown keys here matches the
+// per-record validators, so a block an older reader does not understand fails
+// loudly instead of disappearing from the returned bundle and its report.
+const TRUST_BUNDLE_TOP_LEVEL_KEYS = new Set([
+  "schemaVersion",
+  "source",
+  "producerId",
+  "claims",
+  "evidence",
+  "policies",
+  "events",
+  "identityLinks",
+  "claimGroups",
+  "authorityTrace",
+  "proof",
+]);
+
 export function validateTrustBundle(input: unknown): TrustBundle {
   if (!isObject(input)) throw new Error("Trust bundle must be an object");
   const schemaVersion = requireSchemaVersion(input);
+  rejectUnknownKeys(input, TRUST_BUNDLE_TOP_LEVEL_KEYS, "trust bundle");
   const source = requireString(input, "source");
   // Optional stable producer identity (hachure merge.md §2). requireString
   // already rejects empty strings, matching the "minLength 1 when present" rule
