@@ -71,6 +71,7 @@ export type ReviewedGroundingPolicyGap =
   | { kind: "source-not-current"; claimId: string; evidenceId: string; status: "drifted" | "unknown" }
   | { kind: "source-state-incoherent"; claimId: string; evidenceId: string }
   | { kind: "invalid-reviewed-evidence"; claimId: string; evidenceId: string }
+  | { kind: "extraction-coverage-incomplete"; claimId: string; evidenceId: string; outcome: "partial" | "failure" | "provider-failure"; reason?: string; providerFailureCount?: number }
   | { kind: "profile-gap"; claimId: string; evidenceId: string; gap: ReviewedExtractionProvenanceGap };
 
 export interface ReviewedGroundingDimension {
@@ -186,8 +187,28 @@ function evaluateEvidenceGaps(policy: ReviewedGroundingPolicy, evidence: Evidenc
   if (policy.requireValidatedStructure && reviewed.structuralTrust !== "validated") gaps.push({ kind: "structure-not-validated", ...base, structuralTrust: reviewed.structuralTrust });
   if (!coherentSourceState) gaps.push({ kind: "source-state-incoherent", ...base });
   if (policy.requireCurrentSource && dimension.sourceState.status !== "current") gaps.push({ kind: "source-not-current", ...base, status: dimension.sourceState.status });
+  const coverage = extractionCoverageGap(reviewed);
+  if (coverage) gaps.push({ kind: "extraction-coverage-incomplete", ...base, ...coverage });
   for (const gap of profileGapsFor(evidence)) gaps.push({ kind: "profile-gap", ...base, gap });
   return gaps;
+}
+
+/**
+ * A partial or partly failed extraction did not read all of the source, so a
+ * field in the unread part has no claim at all. This is a fact about the
+ * evidence item (not a policy option), derived from the digest-bound envelope.
+ */
+function extractionCoverageGap(reviewed: ReviewedExtractionEvidenceInput): { outcome: "partial" | "failure" | "provider-failure"; reason?: string; providerFailureCount?: number } | undefined {
+  const result = reviewed.importRecord.spec.envelope.result;
+  const failures = Array.isArray(result.providerFailures) ? result.providerFailures.length : 0;
+  // The profile validator does not constrain `outcome`; an absent or malformed
+  // outcome cannot show a complete read, so it is treated as a failure.
+  const recorded = isObject(result.outcome) ? result.outcome : undefined;
+  const status = recorded?.status;
+  if (status === "success" && failures === 0) return undefined;
+  const outcome = status === "partial" ? "partial" : status === "success" ? "provider-failure" : "failure";
+  const reason = typeof recorded?.reason === "string" ? recorded.reason : typeof recorded?.code === "string" ? recorded.code : undefined;
+  return { outcome, ...(reason !== undefined ? { reason } : {}), ...(failures > 0 ? { providerFailureCount: failures } : {}) };
 }
 
 function sourceStateCoherent(state: ReviewedExtractionSourceState, expectedSnapshotRef: string): boolean {

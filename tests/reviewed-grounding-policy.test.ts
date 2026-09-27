@@ -253,6 +253,37 @@ test("treats property-order and deep-key reordered duplicate source states as eq
   assert.deepEqual(decision.gaps, []);
 });
 
+test("refuses evidence from a partial extraction with a typed coverage gap", async () => {
+  const input = await fixture();
+  const result = input.importRecord.spec.envelope.result;
+  result.outcome = { status: "partial", reason: "max-chunks" };
+  result.partial = { reason: "max-chunks", completedChunks: 1, remainingChunks: 1 };
+  const projected = projectReviewedExtractionEvidence(input);
+  assert.equal(projected.evidence.supportStrength, "entails");
+  const decision = evaluateReviewedGroundingPolicy({ policy, evidence: [projected.evidence], sourceStates: [current(projected.evidence.id)] });
+  assert.equal(decision.outcome, "refused");
+  assert.deepEqual(decision.gaps, [{ kind: "extraction-coverage-incomplete", claimId: "claim.directory.title", evidenceId: projected.evidence.id, outcome: "partial", reason: "max-chunks" }]);
+});
+
+test("refuses evidence from a success envelope that recorded provider failures", async () => {
+  const input = await fixture();
+  input.importRecord.spec.envelope.result.providerFailures = [{ provider: "portable-fixture", kind: "unavailable", retryable: true }];
+  const projected = projectReviewedExtractionEvidence(input);
+  const decision = evaluateReviewedGroundingPolicy({ policy, evidence: [projected.evidence], sourceStates: [current(projected.evidence.id)] });
+  assert.equal(decision.outcome, "refused");
+  assert.deepEqual(decision.gaps, [{ kind: "extraction-coverage-incomplete", claimId: "claim.directory.title", evidenceId: projected.evidence.id, outcome: "provider-failure", providerFailureCount: 1 }]);
+});
+
+test("coverage gap is emitted even when no optional requirement is set", async () => {
+  const input = await fixture();
+  input.importRecord.spec.envelope.result.outcome = { status: "failure", category: "provider", code: "provider-failure" };
+  input.importRecord.spec.envelope.result.providerFailures = [{ provider: "portable-fixture", kind: "unavailable", retryable: true }, { provider: "portable-fixture", kind: "unknown", retryable: false }];
+  const projected = projectReviewedExtractionEvidence(input);
+  const decision = evaluateReviewedGroundingPolicy({ policy: { id: "policy.minimal", action: "publish", requiredClaimIds: ["claim.directory.title"] }, evidence: [projected.evidence] });
+  assert.equal(decision.outcome, "refused");
+  assert.deepEqual(decision.gaps, [{ kind: "extraction-coverage-incomplete", claimId: "claim.directory.title", evidenceId: projected.evidence.id, outcome: "failure", reason: "provider-failure", providerFailureCount: 2 }]);
+});
+
 function reorderKeys(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(reorderKeys);
   if (value === null || typeof value !== "object") return value;
