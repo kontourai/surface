@@ -11,6 +11,9 @@ const BUDGETS = {
   "src/basis/mcp.ts": 110_700,
   // The shared Trust Panel embeds the same parser (measured 12,769 gzip bytes).
   "src/trust-panel/surface-trust-panel.ts": 13_100,
+  // Display names + claim basis view (measured 3,919 gzip bytes); bundling for
+  // platform "browser" also proves the subpath pulls in no Node-only module.
+  "src/display.ts": 4_400,
 } as const;
 
 test("Basis browser delivery bundles stay within the checked gzip ratchet", async () => {

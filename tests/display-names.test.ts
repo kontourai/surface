@@ -27,6 +27,14 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 import {
+  CLAIM_BASIS_MISSING_DISPLAY_NAMES,
+  DERIVATION_METHOD_DISPLAY_NAMES,
+  EVIDENCE_RESULT_DISPLAY_NAMES,
+  EVIDENCE_RESULT_LABELS,
+  EVIDENCE_STRENGTH_DISPLAY_NAMES,
+  EVIDENCE_SUPPORT_DISPLAY_NAMES,
+  EVIDENCE_SUPPORT_LABELS,
+  REVIEWER_AUTHORITY_DISPLAY_NAMES,
   EVIDENCE_METHOD_DISPLAY_NAMES,
   EVIDENCE_METHOD_LABELS,
   EVIDENCE_TYPE_DISPLAY_NAMES,
@@ -37,7 +45,13 @@ import {
   evidenceTypeLabel,
   trustStatusLabel,
 } from "../src/display-names.js";
-import { EVIDENCE_METHODS, EVIDENCE_TYPES, TRUST_STATUSES } from "../src/validation/constants.js";
+import {
+  DERIVATION_METHODS,
+  EVIDENCE_METHODS,
+  EVIDENCE_SUPPORT_STRENGTHS,
+  EVIDENCE_TYPES,
+  TRUST_STATUSES,
+} from "../src/validation/constants.js";
 import { CONSOLE_SCRIPT } from "../src/console/assets.generated.js";
 import { buildConsoleHtml } from "../src/console/shell.js";
 
@@ -134,6 +148,81 @@ test("trust panel renders display labels, not raw wire enums, in the evidence he
   // Raw enums stay machine-readable on data attributes.
   assert.match(source, /data-evidence-type="\$\{escapeHtml\(rawEvidenceType\)\}"/);
   assert.match(source, /data-method="\$\{escapeHtml\(rawMethod\)\}"/);
+});
+
+// ── 2b. claim basis vocabulary (kontourai/ui#87) ───────────────────────────
+
+test("basis tables cover their value sets exactly", () => {
+  assert.deepEqual(Object.keys(DERIVATION_METHOD_DISPLAY_NAMES).sort(), [...DERIVATION_METHODS].sort());
+  assert.deepEqual(Object.keys(EVIDENCE_SUPPORT_DISPLAY_NAMES).sort(), [...EVIDENCE_SUPPORT_STRENGTHS, "unstated"].sort());
+  // reviewerAuthority / evidenceStrength have no runtime constant; pinned here
+  // independently of the type so a dropped or invented member fails.
+  assert.deepEqual(Object.keys(REVIEWER_AUTHORITY_DISPLAY_NAMES).sort(), ["domain_expert", "none", "operator", "system"]);
+  assert.deepEqual(Object.keys(EVIDENCE_STRENGTH_DISPLAY_NAMES).sort(), ["moderate", "none", "strong", "weak"]);
+  assert.deepEqual(Object.keys(EVIDENCE_RESULT_DISPLAY_NAMES).sort(), ["failed", "failed-blocking", "not-evaluated", "passed"]);
+  assert.deepEqual(Object.keys(CLAIM_BASIS_MISSING_DISPLAY_NAMES).sort(), ["not-available", "not-recorded", "restricted", "unavailable"]);
+});
+
+test("basis tables: non-empty unique labels, one-line glosses, and the agreed voice", () => {
+  const tables = [
+    DERIVATION_METHOD_DISPLAY_NAMES,
+    EVIDENCE_SUPPORT_DISPLAY_NAMES,
+    EVIDENCE_RESULT_DISPLAY_NAMES,
+    REVIEWER_AUTHORITY_DISPLAY_NAMES,
+    EVIDENCE_STRENGTH_DISPLAY_NAMES,
+    CLAIM_BASIS_MISSING_DISPLAY_NAMES,
+  ];
+  for (const table of tables) {
+    const entries = Object.values(table) as Array<{ label: string; gloss: string }>;
+    const labels = entries.map((entry) => entry.label);
+    assert.equal(new Set(labels).size, labels.length);
+    for (const entry of entries) {
+      assert.ok(entry.label.trim().length > 0);
+      assert.ok(entry.gloss.trim().length > 0 && !entry.gloss.includes("\n"));
+      // "Verified" belongs to the status chip; basis copy never claims certainty.
+      assert.doesNotMatch(`${entry.label} ${entry.gloss}`, /\b(verified|confirmed|trusted|certain|AI)\b/i);
+    }
+  }
+  assert.equal(DERIVATION_METHOD_DISPLAY_NAMES.model.label, "Model-derived");
+  for (const entry of Object.values(EVIDENCE_STRENGTH_DISPLAY_NAMES)) assert.match(entry.label, /\(producer-rated\)$/);
+});
+
+/**
+ * The trust panel's support and result chips are string literals inside
+ * supportFacet/resultFacet (importing the canonical tables would pull their
+ * glosses into the panel bundle, past tests/basis-bundle-budget.test.ts).
+ * Extract each state's label from the function bodies; extraction failure
+ * fails the test.
+ */
+function extractPanelFacetLabels(source: string): { support: Record<string, string>; result: Record<string, string> } {
+  const body = (name: string): string => {
+    const match = source.match(new RegExp(`function ${name}\\([^)]*\\)(?::\\s*\\w+)?\\s*\\{([\\s\\S]*?)\\n  \\}`));
+    assert.ok(match, `expected to find ${name} in the trust panel source`);
+    return match[1]!;
+  };
+  const decode = (literal: string): string => JSON.parse(`"${literal}"`) as string;
+  const pairs = (text: string): Record<string, string> => {
+    const out: Record<string, string> = {};
+    for (const match of text.matchAll(/state: "([\w-]+)", label: "((?:[^"\\]|\\.)*)"/g)) out[match[1]!] = decode(match[2]!);
+    return out;
+  };
+  const support = pairs(body("supportFacet"));
+  const resultBody = body("resultFacet");
+  const result = pairs(resultBody);
+  const failed = resultBody.match(/state: blocks \? "failed-blocking" : "failed",\s*label: blocks \? "((?:[^"\\]|\\.)*)" : "((?:[^"\\]|\\.)*)"/);
+  assert.ok(failed, "expected the failed / failed-blocking label ternary in resultFacet");
+  result["failed-blocking"] = decode(failed[1]!);
+  result.failed = decode(failed[2]!);
+  return { support, result };
+}
+
+test("trust panel support and result chip labels equal the canonical basis tables (source and built module)", async () => {
+  const source = await readFile("src/trust-panel/surface-trust-panel.ts", "utf8");
+  for (const text of [source, TRUST_PANEL_JS]) {
+    const { support, result } = extractPanelFacetLabels(text);
+    assert.deepEqual(support, EVIDENCE_SUPPORT_LABELS);
+    assert.deepEqual(result, EVIDENCE_RESULT_LABELS);
+  }
 });
 
 // ── 3. console: canonical defaults injected, client resolves from vocab ────

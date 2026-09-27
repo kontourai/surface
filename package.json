@@ -25,6 +25,10 @@
       "types": "./dist/src/index.d.ts",
       "import": "./dist/src/index.js"
     },
+    "./display": {
+      "types": "./dist/src/display.d.ts",
+      "import": "./dist/src/display.js"
+    },
     "./trust-panel/element": {
       "types": "./dist/src/trust-panel/surface-trust-panel.d.ts",
       "import": "./dist/src/trust-panel/surface-trust-panel.js"
