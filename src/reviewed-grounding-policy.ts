@@ -205,10 +205,21 @@ function extractionCoverageGap(reviewed: ReviewedExtractionEvidenceInput): { out
   // outcome cannot show a complete read, so it is treated as a failure.
   const recorded = isObject(result.outcome) ? result.outcome : undefined;
   const status = recorded?.status;
-  if (status === "success" && failures === 0) return undefined;
-  const outcome = status === "partial" ? "partial" : status === "success" ? "provider-failure" : "failure";
+  // A success outcome is only trusted when the rest of the envelope agrees
+  // with it: failures recorded as an array, no partial record, and every
+  // coverage range read completely. Anything else is treated as a failure.
+  const contradicted = (result.providerFailures !== undefined && !Array.isArray(result.providerFailures))
+    || (status === "success" && result.partial !== undefined)
+    || coverageIncomplete(result.coverage);
+  if (status === "success" && failures === 0 && !contradicted) return undefined;
+  const outcome = status === "partial" ? "partial" : status === "success" && !contradicted ? "provider-failure" : "failure";
   const reason = typeof recorded?.reason === "string" ? recorded.reason : typeof recorded?.code === "string" ? recorded.code : undefined;
   return { outcome, ...(reason !== undefined ? { reason } : {}), ...(failures > 0 ? { providerFailureCount: failures } : {}) };
+}
+
+function coverageIncomplete(coverage: unknown): boolean {
+  if (coverage === undefined) return false;
+  return !Array.isArray(coverage) || coverage.some((entry) => !isObject(entry) || entry.status !== "complete");
 }
 
 function sourceStateCoherent(state: ReviewedExtractionSourceState, expectedSnapshotRef: string): boolean {
