@@ -250,7 +250,7 @@ test("checkpoint: a revocation folded before the checkpoint stays stale", () => 
 test("checkpoint: a checkpoint without input digests, or from a cloned report, replays in full", () => {
   const bundle = validateTrustBundle(digestBase());
   const report = buildTrustReport(bundle, { now: digestNow });
-  const { inputDigestByClaimId: _digests, ownStatusByClaimId: _own, ...legacy } = checkpointFromReport(report);
+  const { inputDigestByClaimId: _digests, untimedOwnStatusByClaimId: _own, ...legacy } = checkpointFromReport(report);
   const fromClone = checkpointFromReport(structuredClone(report));
   assert.equal(fromClone.inputDigestByClaimId, undefined);
   for (const checkpoint of [legacy, fromClone]) {
@@ -279,5 +279,98 @@ test("checkpoint: random edits without new events derive the same report as a fu
     const result = statusesWithAndWithoutCheckpoint(digestBase(), after);
     assert.deepEqual(volatile(result.sinceReport), volatile(result.fullReport), `round ${round}`);
     assert.equal(foldedFor(result.probes, "claim.c").eventsFolded, 0, `round ${round}: untouched claim must not be re-folded`);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Checkpoints re-apply time exactly for a `now` earlier or later than `asOf`.
+// ---------------------------------------------------------------------------
+
+function sinceMatchesFull(bundle: TrustBundle, checkpointAt: Date, at: Date) {
+  const checkpoint = checkpointFromReport(buildTrustReport(bundle, { now: checkpointAt }));
+  const run = probesByClaim();
+  const since = buildTrustReport(bundle, { now: at, since: checkpoint, instrument: run.instrument });
+  const full = buildTrustReport(bundle, { now: at });
+  const statuses = (report: ReturnType<typeof buildTrustReport>) => Object.fromEntries(report.claims.map((claim) => [claim.id, claim.status]));
+  return { since: statuses(since), full: statuses(full), sinceReport: since, fullReport: full, probes: run.probes };
+}
+
+// A verified claim with a blocking failure and an intrinsic expiry: disputed
+// before 06-15, stale after it.
+const expiringDisputed = (): TrustBundle => ({
+  ...digestBase(),
+  claims: [claimFor("claim.a", { expiresAt: "2026-06-15T00:00:00.000Z" }), ...digestBase().claims.slice(1)],
+  evidence: [...digestBase().evidence, evidenceFor("evidence.a.fail", "claim.a", { passing: false, blocking: true })],
+} as unknown as TrustBundle);
+
+test("checkpoint: a stale checkpoint replayed at an earlier now does not hide a blocking failure", () => {
+  const result = sinceMatchesFull(expiringDisputed(), new Date("2026-07-01T00:00:00.000Z"), new Date("2026-06-01T00:00:00.000Z"));
+  assert.equal(result.full["claim.a"], "disputed");
+  assert.deepEqual(result.since, result.full);
+  assert.equal(foldedFor(result.probes, "claim.a").fromCheckpoint, true);
+});
+
+test("checkpoint: a disputed checkpoint replayed after the expiry derives stale", () => {
+  const result = sinceMatchesFull(expiringDisputed(), new Date("2026-06-01T00:00:00.000Z"), new Date("2026-07-01T00:00:00.000Z"));
+  assert.equal(result.full["claim.a"], "stale");
+  assert.deepEqual(result.since, result.full);
+  assert.equal(foldedFor(result.probes, "claim.a").fromCheckpoint, true);
+});
+
+test("checkpoint: an authorized dispute resolution is not re-aged by time", () => {
+  const trace = {
+    id: "authority.reviewer", subject: { subjectType: "service", subjectId: "svc" }, actorRef: "actor:reviewer",
+    authorityType: "role", authorityRef: "role:owner", sourceRef: "directory", observedAt: T0,
+    validFrom: "2026-01-01T00:00:00.000Z", validUntil: "2026-12-31T23:59:59.000Z",
+  };
+  const bundle = {
+    ...expiringDisputed(),
+    events: [...digestBase().events, eventFor("event.a.resolved", "claim.a", "verified", "2026-05-02T00:00:00.000Z", { resolvesDispute: true, actor: "actor:reviewer", authorityRef: "role:owner" })],
+    authorityTrace: [trace],
+  } as unknown as TrustBundle;
+  const result = sinceMatchesFull(bundle, new Date("2026-06-01T00:00:00.000Z"), new Date("2026-07-01T00:00:00.000Z"));
+  // A full fold returns the resolution's status without a staleness test.
+  assert.equal(result.full["claim.a"], "verified");
+  assert.deepEqual(result.since, result.full);
+  assert.equal(foldedFor(result.probes, "claim.a").fromCheckpoint, true);
+});
+
+test("checkpoint: an invalidation event with status verified stays stale", () => {
+  const bundle = {
+    ...digestBase(),
+    events: [...digestBase().events, eventFor("event.a.invalidated", "claim.a", "verified", "2026-05-02T00:00:00.000Z", { type: "invalidation" })],
+  } as unknown as TrustBundle;
+  const result = sinceMatchesFull(bundle, new Date("2026-06-01T00:00:00.000Z"), new Date("2026-07-01T00:00:00.000Z"));
+  assert.equal(result.full["claim.a"], "stale");
+  assert.deepEqual(result.since, result.full);
+  assert.equal(foldedFor(result.probes, "claim.a").fromCheckpoint, true);
+});
+
+test("checkpoint: replay at random nows before and after the checkpoint equals a full derivation", () => {
+  let seed = 0x7a11;
+  const random = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+  const pick = <T,>(items: readonly T[]): T => items[Math.floor(random() * items.length)]!;
+  const day = (offset: number) => new Date(Date.parse("2026-06-15T00:00:00.000Z") + offset * 86_400_000);
+  const volatile = (report: ReturnType<typeof buildTrustReport>) => ({
+    claims: report.claims.map(({ freshness, ...claim }) => ({ ...claim, stale: freshness?.stale })),
+    transparencyGaps: report.transparencyGaps.map(({ createdAt: _createdAt, ...gap }) => gap),
+    changeRecords: report.changeRecords.map(({ createdAt: _createdAt, ...record }) => record),
+  });
+  for (let round = 0; round < 80; round += 1) {
+    const base = digestBase();
+    const bundle = {
+      ...base,
+      claims: [
+        claimFor("claim.a", pick([{}, { expiresAt: day(pick([-10, 0, 10])).toISOString() }, { ttlSeconds: pick([86_400 * 30, 86_400 * 60]) }])),
+        ...base.claims.slice(1),
+      ],
+      evidence: [...base.evidence, ...(random() < 0.5 ? [evidenceFor("evidence.a.fail", "claim.a", { passing: false, blocking: pick([true, false]) })] : [])],
+      policies: [{ ...apiPolicy, requiredEvidence: pick([["test_output"], ["runtime_observation"]]), validityRule: pick([{ kind: "manual" }, { kind: "duration", durationDays: pick([30, 50]) }]) }, untouchedPolicy],
+    } as unknown as TrustBundle;
+    const checkpointAt = day(pick([-30, -5, 0, 5, 30]));
+    const at = day(pick([-40, -10, -1, 1, 10, 40]));
+    const result = sinceMatchesFull(bundle, checkpointAt, at);
+    assert.deepEqual(volatile(result.sinceReport), volatile(result.fullReport), `round ${round}: checkpoint ${checkpointAt.toISOString()} now ${at.toISOString()}`);
+    assert.equal(foldedFor(result.probes, "claim.a").fromCheckpoint, true, `round ${round}: unchanged claim must be served from the checkpoint`);
   }
 });

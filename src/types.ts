@@ -739,11 +739,13 @@ export interface DerivationCheckpoint {
    */
   inputDigestByClaimId?: Record<string, string>;
   /**
-   * Per-claim own status (before the derivation ceiling) captured at `asOf`.
-   * The checkpoint path reuses this, then applies the ceiling from the current
-   * input statuses, exactly as a full derivation does.
+   * Per-claim own status before the derivation ceiling and without the
+   * verified-event staleness test, so it does not depend on `asOf`. The
+   * checkpoint path re-applies staleness for the new `now` (earlier or later)
+   * and then the ceiling from current input statuses, exactly as a full
+   * derivation does.
    */
-  ownStatusByClaimId?: Record<string, TrustStatus>;
+  untimedOwnStatusByClaimId?: Record<string, TrustStatus>;
   statusFunctionVersion: string;
 }
 

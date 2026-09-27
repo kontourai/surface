@@ -106,12 +106,14 @@ it from that evidence is circular: a claim that should have reviewed evidence
 but has none is never required, so `missing-reviewed-evidence` cannot fire. An
 empty list is refused with a `no-required-claims` gap.
 
-Pass `claims` to bind claim values to the reviewed evidence. Each dimension
-carries `candidateValueDigest`, `valueDigest(candidateValue)` (SHA-256 over
-canonical JSON, so object key order does not matter). With `claims`, a required
-claim that is absent is a `claim-missing` gap and a claim whose value digest
-differs is a `value-mismatch` gap. Without `claims` the decision is unbound: it
-says the evidence was reviewed, not that any claim carries the reviewed value.
+`claims` is required and binds claim values to the reviewed evidence. Each
+dimension carries `candidateValueDigest`, `valueDigest(candidateValue)`
+(SHA-256 over canonical JSON, so object key order does not matter). A required
+claim that is absent from `claims` is a `claim-missing` gap, and a claim whose
+value digest differs is a `value-mismatch` gap. A call without a `claims` array
+(possible from untyped callers) is refused with `claims-not-supplied`, because
+it could only say the evidence was reviewed, not that any claim carries the
+reviewed value.
 `evaluateAnswerAssessmentPolicy` applies the same binding to entailing
 reviewed-extraction evidence and reports `value-unbound` on a mismatch.
 

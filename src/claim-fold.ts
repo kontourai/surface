@@ -12,7 +12,7 @@ import type {
 import { type ClaimEvidenceEvaluation, evaluateClaimEvidence, evidenceRequirementFromPolicy } from "./claim-evaluation.js";
 import { partitionEvidenceBySupport } from "./evidence-support.js";
 import { resolvePolicyForClaim } from "./policy-resolver.js";
-import { claimIntrinsicExpiry, deriveTrustStatus, reapplyVerifiedFreshness } from "./status.js";
+import { applyVerifiedStaleness, claimIntrinsicExpiry, deriveTrustStatus, verifiedBranchEvent } from "./status.js";
 
 /** Evidence types that report a check result through `passing`. */
 const CHECK_EVIDENCE_TYPES: ReadonlySet<string> = new Set(["test_output", "calculation_trace", "runtime_observation"]);
@@ -34,6 +34,10 @@ export interface ClaimFoldInput {
   allEvents: VerificationEvent[];
   authorityTrace?: import("./types.js").AuthorityTrace[];
   now: Date;
+  /**
+   * The claim's untimed own status from a checkpoint (`untimedOwnStatus` of an
+   * earlier fold over the same inputs). Time is re-applied to it for `now`.
+   */
   checkpointStatus?: TrustStatus;
   checkpointUsable: boolean;
   checkpointSeenClaim: boolean;
@@ -43,6 +47,12 @@ export interface ClaimFoldInput {
 export interface ClaimFoldResult {
   claim: Claim;
   ownStatus: TrustStatus;
+  /**
+   * `ownStatus` without the verified-event staleness test: the value a
+   * checkpoint stores, so that re-applying time for any later or earlier `now`
+   * reproduces a full derivation.
+   */
+  untimedOwnStatus: TrustStatus;
   producerStatus?: TrustStatus;
   policy?: VerificationPolicy;
   evidence: Evidence[];
@@ -73,10 +83,12 @@ export function foldClaim(input: ClaimFoldInput): ClaimFoldResult {
     input.checkpointStatus !== undefined;
 
   let ownStatus: TrustStatus;
+  let untimedOwnStatus: TrustStatus;
   let eventsFolded: number;
   if (canShortCircuit) {
-    ownStatus = reapplyVerifiedFreshness({
-      priorStatus: input.checkpointStatus as TrustStatus,
+    untimedOwnStatus = input.checkpointStatus as TrustStatus;
+    ownStatus = applyVerifiedStaleness({
+      untimedStatus: untimedOwnStatus,
       claim: input.claim,
       evidence: entailingEvidence,
       events: input.events,
@@ -86,7 +98,7 @@ export function foldClaim(input: ClaimFoldInput): ClaimFoldResult {
     });
     eventsFolded = 0;
   } else {
-    ownStatus = deriveTrustStatus({
+    const statusInput = {
       claim: input.claim,
       evidence: entailingEvidence,
       policy,
@@ -94,13 +106,19 @@ export function foldClaim(input: ClaimFoldInput): ClaimFoldResult {
       now: input.now,
       authorityTrace: input.authorityTrace,
       evaluation,
-    });
+    };
+    ownStatus = deriveTrustStatus(statusInput);
+    // Only the verified-event branch reads `now`; elsewhere the untimed status is the status.
+    untimedOwnStatus = verifiedBranchEvent(input.claim, input.events, input.authorityTrace) === undefined
+      ? ownStatus
+      : deriveTrustStatus({ ...statusInput, ignoreVerifiedStaleness: true });
     eventsFolded = input.events.length;
   }
 
   return {
     claim: input.claim,
     ownStatus,
+    untimedOwnStatus,
     producerStatus: input.claim.status,
     policy,
     evidence: input.evidence,

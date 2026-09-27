@@ -57,7 +57,7 @@ export interface BuildTrustReportOptions {
  */
 const checkpointInputsByReport = new WeakMap<TrustReport, {
   inputDigestByClaimId: Record<string, string>;
-  ownStatusByClaimId: Record<string, TrustStatus>;
+  untimedOwnStatusByClaimId: Record<string, TrustStatus>;
 }>();
 
 export function buildTrustReport(input: TrustBundle, options: BuildTrustReportOptions = {}): TrustReport {
@@ -92,7 +92,7 @@ export function buildTrustReport(input: TrustBundle, options: BuildTrustReportOp
   };
   checkpointInputsByReport.set(report, {
     inputDigestByClaimId: snapshot.inputDigestByClaimId,
-    ownStatusByClaimId: snapshot.ownStatusByClaimId,
+    untimedOwnStatusByClaimId: snapshot.untimedOwnStatusByClaimId,
   });
   return report;
 }
@@ -135,7 +135,7 @@ export function checkpointFromReport(report: TrustReport): DerivationCheckpoint 
     expiresAtByClaimId: Object.keys(expiresAtByClaimId).length > 0 ? expiresAtByClaimId : undefined,
     throughEventCreatedAt,
     throughEventCreatedAtByClaimId,
-    ...(inputs ? { inputDigestByClaimId: { ...inputs.inputDigestByClaimId }, ownStatusByClaimId: { ...inputs.ownStatusByClaimId } } : {}),
+    ...(inputs ? { inputDigestByClaimId: { ...inputs.inputDigestByClaimId }, untimedOwnStatusByClaimId: { ...inputs.untimedOwnStatusByClaimId } } : {}),
     statusFunctionVersion: report.statusFunctionVersion,
   };
 }

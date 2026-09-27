@@ -75,6 +75,7 @@ export class ReviewedExtractionSourceObservationError extends Error {
 export type ReviewedGroundingPolicyGap =
   | { kind: "no-required-claims" }
   | { kind: "missing-reviewed-evidence"; claimId: string }
+  | { kind: "claims-not-supplied" }
   | { kind: "claim-missing"; claimId: string }
   | { kind: "value-mismatch"; claimId: string; evidenceId: string; claimValueDigest: string; candidateValueDigest: string }
   | { kind: "evidence-not-entailing"; claimId: string; evidenceId: string }
@@ -120,14 +121,12 @@ export function evaluateReviewedGroundingPolicy(input: {
   evidence: readonly Evidence[];
   sourceStates?: readonly ReviewedExtractionSourceState[];
   /**
-   * The claims whose values the evidence must support. When supplied, each
-   * required claim must be present (`claim-missing`) and its value must equal
-   * the reviewed candidate value by `valueDigest` (`value-mismatch`). When
-   * omitted, the decision is unbound: it says the evidence was reviewed, not
-   * that any claim carries the reviewed value. Planned to become required in the
-   * next major version.
+   * The claims whose values the evidence must support. Each required claim must
+   * be present (`claim-missing`) and its value must equal the reviewed
+   * candidate value by `valueDigest` (`value-mismatch`). A call without a
+   * `claims` array cannot bind any value and is refused with `claims-not-supplied`.
    */
-  claims?: readonly Pick<Claim, "id" | "value">[];
+  claims: readonly Pick<Claim, "id" | "value">[];
 }): ReviewedGroundingPolicyDecision {
   const dimensions: ReviewedGroundingDimension[] = [];
   const gaps: ReviewedGroundingPolicyGap[] = [];
@@ -142,10 +141,14 @@ export function evaluateReviewedGroundingPolicy(input: {
   // An empty requirement set says nothing about what the action needs, so it
   // cannot be allowed by default.
   if (input.policy.requiredClaimIds.length === 0) gaps.push({ kind: "no-required-claims" });
+  // Untyped callers can still omit `claims`; without them no value is bound, so
+  // the decision cannot be allowed.
+  const claims = Array.isArray(input.claims) ? input.claims : undefined;
+  if (claims === undefined) gaps.push({ kind: "claims-not-supplied" });
 
   for (const claimId of input.policy.requiredClaimIds) {
-    const claim = input.claims?.find((candidate) => candidate.id === claimId);
-    if (input.claims !== undefined && claim === undefined) gaps.push({ kind: "claim-missing", claimId });
+    const claim = claims?.find((candidate) => candidate.id === claimId);
+    if (claims !== undefined && claim === undefined) gaps.push({ kind: "claim-missing", claimId });
     const candidates = input.evidence.filter((item) => item.claimId === claimId && isReviewedExtractionEvidence(item));
     if (candidates.length === 0) {
       gaps.push({ kind: "missing-reviewed-evidence", claimId });

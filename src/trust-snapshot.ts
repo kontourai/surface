@@ -39,8 +39,8 @@ export interface TrustSnapshotDerivation {
   waiverValidityByClaimId: Record<string, WaiverValidity>;
   /** Per-claim checkpoint input digest (see `DerivationCheckpoint.inputDigestByClaimId`). */
   inputDigestByClaimId: Record<string, string>;
-  /** Per-claim own status before the derivation ceiling. */
-  ownStatusByClaimId: Record<string, TrustStatus>;
+  /** Per-claim untimed own status (see `DerivationCheckpoint.untimedOwnStatusByClaimId`). */
+  untimedOwnStatusByClaimId: Record<string, TrustStatus>;
 }
 
 export interface DeriveTrustSnapshotOptions {
@@ -51,9 +51,9 @@ export interface DeriveTrustSnapshotOptions {
    * (its `inputDigestByClaimId` entry matches: same claim, evidence, events,
    * resolved policy and authority trace) and that has **no events newer than
    * the checkpoint's per-claim high-water mark** is not event-replayed at all:
-   * its own status is taken from the checkpoint, only time-based freshness is
-   * re-applied against `now`, and the derivation ceiling is applied from the
-   * current input statuses. Any other claim is fully re-folded, and a
+   * its untimed own status is taken from the checkpoint, time is re-applied
+   * against `now` (earlier or later than the checkpoint), and the derivation
+   * ceiling is applied from the current input statuses. Any other claim is fully re-folded, and a
    * checkpoint without input digests replays every claim. The result is
    * identical to a full derivation for the same `now`.
    */
@@ -108,7 +108,7 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
   // checkpoints without the per-claim map fall back to full replay.
   const perClaimMark = checkpoint?.throughEventCreatedAtByClaimId;
   const checkpointDigests = checkpoint?.inputDigestByClaimId;
-  const checkpointOwnStatuses = checkpoint?.ownStatusByClaimId;
+  const checkpointOwnStatuses = checkpoint?.untimedOwnStatusByClaimId;
   // (c) A checkpoint must also carry per-claim input digests and own statuses:
   // without them an evidence, policy or input-claim change since the checkpoint
   // is invisible, so such checkpoints replay in full.
@@ -120,6 +120,7 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
     checkpointOwnStatuses !== undefined;
   const authorityTraceDigest = sha256Hex(canonicalJson(input.authorityTrace ?? []));
   const inputDigestByClaimId: Record<string, string> = Object.create(null);
+  const untimedOwnStatusByClaimId: Record<string, TrustStatus> = Object.create(null);
 
   const ownStatusByClaimId = new Map<string, TrustStatus>();
   const claimsById = new Map<string, Claim>();
@@ -162,6 +163,7 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
       fromCheckpoint: folded.fromCheckpoint,
     });
     ownStatusByClaimId.set(claim.id, folded.ownStatus);
+    untimedOwnStatusByClaimId[claim.id] = folded.untimedOwnStatus;
     if (folded.policy) policyByClaimId.set(claim.id, folded.policy);
     if (folded.evidenceRequirement) evidenceRequirementsByClaimId[claim.id] = folded.evidenceRequirement;
     transparencyGaps.push(...folded.transparencyGaps);
@@ -216,7 +218,7 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
     claimGroupRollups: deriveClaimGroupRollups({ claimGroups: input.claimGroups, claims }),
     waiverValidityByClaimId,
     inputDigestByClaimId,
-    ownStatusByClaimId: Object.assign(Object.create(null) as Record<string, TrustStatus>, Object.fromEntries(ownStatusByClaimId)),
+    untimedOwnStatusByClaimId,
   };
 }
 
