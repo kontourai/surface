@@ -58,6 +58,7 @@ Maintainer-only material stays repo-only: this index, brand language, ADRs, audi
 - [Trust Analytics Projection](reference/analytics.md) — evidence intelligence derived from `TrustReport`
 - [Answer Card Projection](reference/answer-card-projection.md) — compact report-only answer-card read model
 - [Basis Headless Projection](reference/basis.md) — bounded answer evidence and owner-context projection
+- [Claim Basis View](reference/claim-basis-view.md) — the "how was this established" line after a claim's status, and its label tables
 - [Surface Console](reference/console.md) — local Console server over producer read models
 - [Agents and MCP](reference/mcp.md) — `surface mcp` trust-state tools over the Model Context Protocol
 - [Trust Panel Embed](reference/trust-panel.md) — the dependency-free `surface-trust-panel` web component
@@ -94,6 +95,6 @@ Maintainer-only material stays repo-only: this index, brand language, ADRs, audi
 
 ## Package Boundary
 
-The public npm package exposes `@kontourai/surface`, the headless `@kontourai/surface/basis` subpath, and the `surface` CLI. The root declarations are published through `dist/src/index.d.ts`; Basis has its own tree-shaken declaration entrypoint. Consumers should not import deep `dist/` paths directly.
+The public npm package exposes `@kontourai/surface`, the headless `@kontourai/surface/basis` subpath, the browser-safe `@kontourai/surface/display` subpath (display names and the claim basis view), and the `surface` CLI. The root declarations are published through `dist/src/index.d.ts`; Basis has its own tree-shaken declaration entrypoint. Consumers should not import deep `dist/` paths directly.
 
 The package intentionally includes docs, schemas, examples, and built runtime files. It intentionally excludes source files, tests, scripts, generated docs-site output, Playwright artifacts, and local workflow artifacts. `npm run check:package-contents` is the release guard for that boundary.

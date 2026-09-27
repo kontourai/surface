@@ -36,7 +36,7 @@ test("package files whitelist excludes generated example output", async () => {
 test("package entrypoint exposes explicit ESM and TypeScript contracts", async () => {
   const packageJson = await readPackageJson();
 
-  assert.deepEqual(Object.keys(packageJson.exports ?? {}).sort(), [".", "./basis", "./basis/mcp", "./basis/view", "./trust-panel/element"]);
+  assert.deepEqual(Object.keys(packageJson.exports ?? {}).sort(), [".", "./basis", "./basis/mcp", "./basis/view", "./display", "./trust-panel/element"]);
   assert.equal(packageJson.types, "./dist/src/index.d.ts");
   assert.deepEqual(packageJson.exports?.["."], {
     types: "./dist/src/index.d.ts",
@@ -60,6 +60,11 @@ test("package entrypoint exposes explicit ESM and TypeScript contracts", async (
   assert.deepEqual(packageJson.exports?.["./basis/mcp"], {
     types: "./dist/src/basis/mcp.d.ts",
     import: "./dist/src/basis/mcp.js",
+  });
+  // Browser-safe display names + claim basis view (kontourai/ui#87).
+  assert.deepEqual(packageJson.exports?.["./display"], {
+    types: "./dist/src/display.d.ts",
+    import: "./dist/src/display.js",
   });
 });
 
