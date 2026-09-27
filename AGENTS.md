@@ -25,6 +25,7 @@ Surface is the canonical source for this repo. Treat generated agent bundles, se
 - Release, package, npm publish, provenance, or pre-release confidence checks: read `docs/maintenance/RELEASING.md`.
 - Public API, module boundaries, or future split candidates: read `docs/audits/source-module-audit.md`.
 - Product/runtime boundary questions between Surface and product layers: read `docs/architecture/surface-foundation.md` and `docs/architecture/developer-architecture.md`.
+- UI, brand, and product-copy rules: `DESIGN.md` in `@kontourai/ui` (https://github.com/kontourai/ui/blob/main/DESIGN.md; also shipped at `node_modules/@kontourai/ui/DESIGN.md` from 1.13.0). Style with the `--k-*` tokens instead of hard-coded colors, spacing, radii or font sizes, and don't resolve anything the doc marks OPEN.
 
 ## Match Checks To Change Type
 
