@@ -38,7 +38,9 @@ export interface MergeCollision {
    *
    * Note: for a WITHIN-BUNDLE collision — two same-id, differing-content records
    * that both originate from a single input bundle (a malformed producer bundle;
-   * `validateReferences` does not itself enforce per-bundle id uniqueness) —
+   * `validateReferences` rejects duplicate claim and evidence ids, but merge
+   * inputs need not have been validated, and ids in the other collections are
+   * not checked for uniqueness) —
    * `keptFromBundle` and `droppedFromBundle` are the SAME index. Do not assume
    * the two indices always name distinct bundles.
    */

@@ -140,6 +140,15 @@ id. A producer adding a new block must wait for a schema and Surface release
 that define it; an older reader fails loudly instead of returning a bundle and
 report that silently dropped the block.
 
+Rollout note: this rejects some bundles that validated before. Two known
+producer shapes add a root key. Fieldwork's reviewed export adds
+`reviewedGrounding`; it still works where the export validates the bundle
+before adding that key, but the exported file is refused if it is fed back
+into `validateTrustBundle` or `surface report`. At least one CLI tool writes a
+`critique_resolution_events` key at the root, which is now refused. Producers
+should carry such data outside the bundle, or in the record-level `metadata`
+fields of claims and evidence.
+
 The [Quickstart](../../README.md#quickstart) intentionally ships
 `examples/surface-example-bundle.json` still in this legacy `surface` /
 `schemaVersion: 3` shape (rather than migrating it) so a first-run `surface
