@@ -218,7 +218,7 @@ export const EVIDENCE_SUPPORT_DISPLAY_NAMES: Record<EvidenceSupportState, Displa
   },
   unstated: {
     label: "Support strength not stated",
-    gloss: "The producer did not say whether this evidence establishes the claim or is only cited.",
+    gloss: "The producer did not say whether this evidence establishes the claim or is only cited; Surface counts it as entailing when deriving status.",
   },
 };
 
@@ -236,7 +236,7 @@ export const EVIDENCE_RESULT_DISPLAY_NAMES: Record<EvidenceResultState, DisplayN
   },
   failed: {
     label: "Failed",
-    gloss: "The evidence's own check failed and is not marked as blocking the claim.",
+    gloss: "The evidence's own check failed and is not marked blocking; status derivation still treats a failed entailing check as blocking unless it is marked non-blocking.",
   },
   "failed-blocking": {
     label: "Failed — blocking",

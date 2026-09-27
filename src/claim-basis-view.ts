@@ -8,8 +8,20 @@
 // Rules (docs/reference/claim-basis-view.md):
 // - At most 3 facets on the line. Caveats come first, in a fixed order, and
 //   are never dropped to meet that limit: when there are more than 3 caveats
-//   the line carries all of them and nothing else.
-// - After caveats: method, then support counts, then review.
+//   the line carries all of them and nothing else. A failed check always
+//   reaches the line, as "contradicts the claim" or "failed (not blocking)".
+// - After caveats: method, then support counts, then review. Line support
+//   counts cover only evidence that did not fail, so one item never reads as
+//   both failing and supporting the claim.
+// - Only evidence linked to this claim (`claimId === claim.id`) bears on it.
+//   Execution-trail tool calls and other claims' evidence never reach the
+//   line or its counts.
+// - Results come from `passing` / `blocking` only. `execution.isError` and a
+//   non-zero `exitCode` mean the check ran and failed (producers set isError
+//   from the exit code or the MCP tool result), so they are classified like
+//   any other result, as status derivation does. No field says "the check
+//   could not run" yet; hachure-org/spec#25 proposes `evidence.inconclusive`,
+//   and a "could not run" caveat belongs after Model-derived once it lands.
 // - Multiple methods are listed in Surface's enum order (no depth ranking
 //   exists), collapsed to "<first> + N more methods".
 // - The producer's own `confidenceBasis.evidenceStrength` and the calibrated
@@ -42,7 +54,6 @@ export const CLAIM_BASIS_LINE_MAX_FACETS = 3;
 /** Which field a basis facet summarizes. */
 export type TrustBasisFacetField =
   | "derivationMethod"
-  | "execution"
   | "result"
   | "supportStrength"
   | "counterevidence"
@@ -113,7 +124,21 @@ function plural(count: number, one: string, many: string): string {
 function supportCountLabel(state: EvidenceSupportState, count: number): string {
   if (state === "entails") return `${count} ${count === 1 ? "entails" : "entail"} the claim`;
   if (state === "cited") return `${count} cited only`;
-  return `${count} support not stated`;
+  return `${count} with support not stated`;
+}
+
+function contradictsLabel(count: number): string {
+  return `${count} ${count === 1 ? "contradicts" : "contradict"} the claim`;
+}
+
+/** Label for a wire value; an unrecognized one is named as such, not shown bare. */
+function knownLabel(labels: Record<string, string>, value: string, kind: string): string {
+  return Object.hasOwn(labels, value) ? labels[value]! : `Unrecognized ${kind} (${value})`;
+}
+
+/** A finite probability in [0, 1], else undefined. */
+function probability(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1 ? value : undefined;
 }
 
 function countBy<T extends string>(values: readonly T[]): Map<T, number> {
@@ -131,7 +156,7 @@ function enumOrdered(counts: Map<string, number>, order: readonly string[]): str
 
 function methodFacet(field: "method" | "derivationMethod", ordered: string[], labels: Record<string, string>): TrustBasisFacet {
   const first = ordered[0]!;
-  const firstLabel = labels[first] ?? first;
+  const firstLabel = knownLabel(labels, first, "method");
   const more = ordered.length - 1;
   return {
     field,
@@ -162,14 +187,16 @@ export function claimBasisView(claim: Claim | null | undefined, evidence: readon
   const confidence = claim.conclusionConfidence;
 
   // ── Evidence partitions ────────────────────────────────────────────────
-  // A check that could not run (`execution.isError`) has no result of its
-  // own: it is reported only as "could not run", never as failed, not
-  // evaluated, or counterevidence, whatever `passing` says.
-  const couldNotRun = items.filter((item) => item.execution?.isError === true);
-  const ran = items.filter((item) => item.execution?.isError !== true);
-  const notEvaluated = ran.filter((item) => evidenceResultState(item) === "not-evaluated");
+  // Counterevidence is exactly Surface's `isStandingCounterevidence`. Every
+  // other failure (cited, or explicitly non-blocking) is "failed (not
+  // blocking)", so no failure is left off the line.
+  const notEvaluated = items.filter((item) => evidenceResultState(item) === "not-evaluated");
+  const counterevidence = items.filter(isStandingCounterevidence).length;
+  const failedNotBlocking = items.filter((item) => item.passing === false && !isStandingCounterevidence(item)).length;
+  // Inspector: full partition. Line: only evidence that did not fail, so one
+  // item never reads as both contradicting and supporting the claim.
   const support = countBy(items.map(evidenceSupportState));
-  const counterevidence = ran.filter(isStandingCounterevidence).length;
+  const lineSupport = countBy(items.filter((item) => item.passing !== false).map(evidenceSupportState));
   const evidenceMethods = countBy(items.map((item) => String(item.method ?? "")).filter((value) => value !== ""));
   const orderedEvidenceMethods = enumOrdered(evidenceMethods, EVIDENCE_METHODS);
 
@@ -182,16 +209,16 @@ export function claimBasisView(claim: Claim | null | undefined, evidence: readon
   // ── Facets: caveats in fixed order, then method, support, review ────────
   const caveats: TrustBasisFacet[] = [];
   if (modelInputs > 0) caveats.push({ field: "derivationMethod", code: "model", label: DERIVATION_METHOD_LABELS.model, caveat: true });
-  if (couldNotRun.length > 0) {
-    caveats.push({ field: "execution", code: "could-not-run", label: plural(couldNotRun.length, "check could not run", "checks could not run"), caveat: true });
-  }
   if (notEvaluated.length > 0) {
     caveats.push({ field: "result", code: "not-evaluated", label: `${notEvaluated.length} not evaluated`, caveat: true });
   }
-  const cited = support.get("cited") ?? 0;
+  const cited = lineSupport.get("cited") ?? 0;
   if (cited > 0) caveats.push({ field: "supportStrength", code: "cited", label: supportCountLabel("cited", cited), caveat: true });
   if (counterevidence > 0) {
-    caveats.push({ field: "counterevidence", code: "counterevidence", label: `${counterevidence} counterevidence`, caveat: true });
+    caveats.push({ field: "counterevidence", code: "counterevidence", label: contradictsLabel(counterevidence), caveat: true });
+  }
+  if (failedNotBlocking > 0) {
+    caveats.push({ field: "result", code: "failed-not-blocking", label: `${failedNotBlocking} failed (not blocking)`, caveat: true });
   }
 
   const rest: TrustBasisFacet[] = [];
@@ -202,12 +229,12 @@ export function claimBasisView(claim: Claim | null | undefined, evidence: readon
   } else if (edges.length > 0 && modelInputs === 0) {
     rest.push({ field: "derivationMethod", code: "unstated", label: `Derived from ${plural(edges.length, "input", "inputs")}`, caveat: false });
   }
-  const entails = support.get("entails") ?? 0;
+  const entails = lineSupport.get("entails") ?? 0;
   if (entails > 0) rest.push({ field: "supportStrength", code: "entails", label: supportCountLabel("entails", entails), caveat: false });
-  const unstated = support.get("unstated") ?? 0;
+  const unstated = lineSupport.get("unstated") ?? 0;
   if (unstated > 0) rest.push({ field: "supportStrength", code: "unstated", label: supportCountLabel("unstated", unstated), caveat: false });
   if (reviewer !== undefined && reviewer !== "none") {
-    rest.push({ field: "reviewerAuthority", code: reviewer, label: REVIEWER_AUTHORITY_LABELS[reviewer] ?? reviewer, caveat: false });
+    rest.push({ field: "reviewerAuthority", code: reviewer, label: knownLabel(REVIEWER_AUTHORITY_LABELS, reviewer, "reviewer"), caveat: false });
   }
 
   const facets = [...caveats, ...rest.slice(0, Math.max(0, CLAIM_BASIS_LINE_MAX_FACETS - caveats.length))];
@@ -217,27 +244,26 @@ export function claimBasisView(claim: Claim | null | undefined, evidence: readon
   if (orderedEvidenceMethods.length > 0) {
     detail.push({
       label: "How",
-      value: orderedEvidenceMethods.map((method) => `${EVIDENCE_METHOD_LABELS[method as keyof typeof EVIDENCE_METHOD_LABELS] ?? method} (${evidenceMethods.get(method)})`).join(" · "),
+      value: orderedEvidenceMethods.map((method) => `${knownLabel(EVIDENCE_METHOD_LABELS, method, "method")} (${evidenceMethods.get(method)})`).join(" · "),
     });
   }
   if (items.length > 0) {
     const parts = (["entails", "cited", "unstated"] as const)
       .filter((state) => (support.get(state) ?? 0) > 0)
       .map((state) => supportCountLabel(state, support.get(state)!));
-    if (counterevidence > 0) parts.push(`${counterevidence} counterevidence`);
+    if (counterevidence > 0) parts.push(contradictsLabel(counterevidence));
     detail.push({ label: "Support", value: parts.join(" · ") });
 
-    const results = countBy(ran.map(evidenceResultState));
+    const results = countBy(items.map(evidenceResultState));
     const resultParts = (["passed", "failed", "failed-blocking", "not-evaluated"] as const)
       .filter((state) => (results.get(state) ?? 0) > 0)
       .map((state) => `${results.get(state)} ${EVIDENCE_RESULT_LABELS[state].toLowerCase()}`);
-    if (couldNotRun.length > 0) resultParts.push(`${couldNotRun.length} could not run`);
     detail.push({ label: "Results", value: resultParts.join(" · ") });
   }
   if (edges.length > 0) {
     const ordered = enumOrdered(derivationMethods, DERIVATION_METHODS);
     const parts = ordered.map((method) => {
-      const label = DERIVATION_METHOD_LABELS[method as keyof typeof DERIVATION_METHOD_LABELS] ?? method;
+      const label = knownLabel(DERIVATION_METHOD_LABELS, method, "method");
       return `${label} (${plural(derivationMethods.get(method)!, "input", "inputs")})`;
     });
     const unstatedEdges = edges.filter((edge) => !edge.method).length;
@@ -245,19 +271,28 @@ export function claimBasisView(claim: Claim | null | undefined, evidence: readon
     detail.push({ label: "Derived", value: parts.join(" · ") });
   }
   if (reviewer !== undefined) {
-    detail.push({ label: "Review", value: REVIEWER_AUTHORITY_LABELS[reviewer] ?? reviewer });
+    detail.push({ label: "Review", value: knownLabel(REVIEWER_AUTHORITY_LABELS, reviewer, "reviewer") });
   }
   if (producerStrength !== undefined) {
-    detail.push({ label: "Producer rating", value: EVIDENCE_STRENGTH_LABELS[producerStrength] ?? `${producerStrength} (producer-rated)` });
+    detail.push({
+      label: "Producer rating",
+      value: Object.hasOwn(EVIDENCE_STRENGTH_LABELS, producerStrength)
+        ? EVIDENCE_STRENGTH_LABELS[producerStrength]
+        : `Unrecognized rating (${producerStrength}) (producer-rated)`,
+    });
   }
-  if (confidence && typeof confidence.value === "number") {
+  const confidenceValue = probability(confidence?.value);
+  if (confidence && confidenceValue !== undefined) {
     // The value and interval bound the probability that the conclusion is
-    // correct; they are not a range for the claim's value.
-    const interval = confidence.interval ? `, interval ${formatNumber(confidence.interval.low)}–${formatNumber(confidence.interval.high)}` : "";
-    const method = confidence.method ? ` · ${confidence.method}` : "";
+    // correct; they are not a range for the claim's value. Values outside
+    // [0, 1] (or non-finite) are not probabilities and are left out.
+    const low = probability(confidence.interval?.low);
+    const high = probability(confidence.interval?.high);
+    const interval = low !== undefined && high !== undefined && low <= high ? `, interval ${formatNumber(low)}–${formatNumber(high)}` : "";
+    const method = typeof confidence.method === "string" && confidence.method !== "" ? ` · ${confidence.method}` : "";
     detail.push({
       label: "Calibrated confidence (producer-supplied)",
-      value: `${formatNumber(confidence.value)} probability the conclusion is correct${interval}${method}`,
+      value: `${formatNumber(confidenceValue)} probability the conclusion is correct${interval}${method}`,
     });
   }
   if (items.length > 0) {

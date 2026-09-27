@@ -2,8 +2,8 @@
  * claimBasisView (kontourai/ui#87): the basis line shown after the status chip.
  *
  * Each rule below has a test that fails when the rule is reverted: caveats
- * first and never truncated, absent `passing` never read as a pass, a check
- * that could not run named as such, methods in enum order, and the producer's
+ * first and never truncated, absent `passing` never read as a pass, every
+ * failure on the line (execution errors included), methods in enum order, and the producer's
  * own strength rating kept out of the line.
  */
 import test from "node:test";
@@ -106,24 +106,66 @@ test("a model-derived claim with passing evidence leads with 'Model-derived'", (
   assert.equal(detailValue(view, "Derived"), "Model-derived (1 input)");
 });
 
-test("execution.isError reads 'check could not run', and is not also counted as not evaluated", () => {
-  const view = claimBasisView(claim(), [
-    evidence({ method: "validation", evidenceType: "test_output", passing: undefined, execution: { runner: "bash", label: "npm test", isError: true } }),
-  ]);
-  const { facets } = recorded(view);
-  assert.deepEqual(facets[0], { field: "execution", code: "could-not-run", label: "1 check could not run", caveat: true });
-  assert.ok(!facets.some((facet) => facet.code === "not-evaluated"));
-  assert.match(detailValue(view, "Results") ?? "", /1 could not run/);
-});
-
-test("a check that could not run is never a failed result or counterevidence, even with passing: false", () => {
+test("execution.isError is a check that ran and failed: classified by passing/blocking, never 'could not run'", () => {
+  // Producers set isError from a non-zero exit code or an MCP tool error, so a
+  // real failure carries it; the view must agree with status derivation.
   const view = claimBasisView(claim(), [
     evidence({ method: "validation", passing: false, execution: { runner: "bash", label: "npm test", exitCode: 1, isError: true } }),
   ]);
-  const { facets } = recorded(view);
-  assert.deepEqual(facets.map((facet) => facet.code), ["could-not-run", "validation", "entails"]);
-  assert.equal(detailValue(view, "Results"), "1 could not run");
-  assert.doesNotMatch(detailValue(view, "Support") ?? "", /counterevidence/);
+  assert.deepEqual(labels(view), ["1 contradicts the claim", "Checked against expectations"]);
+  assert.equal(detailValue(view, "Results"), "1 failed");
+  for (const text of [...labels(view), ...(view.detail ?? []).map((row) => row.value)]) assert.doesNotMatch(text, /could not run/i);
+
+  const nonBlocking = claimBasisView(claim(), [
+    evidence({ passing: false, blocking: false, execution: { runner: "mcp", label: "tool@server", isError: true } }),
+  ]);
+  assert.deepEqual(labels(nonBlocking), ["1 failed (not blocking)", "Extracted from a source"]);
+
+  const noResult = claimBasisView(claim(), [evidence({ passing: undefined, execution: { runner: "mcp", label: "tool@server", isError: true } })]);
+  assert.deepEqual(labels(noResult), ["1 not evaluated", "Extracted from a source", "1 entails the claim"]);
+});
+
+test("a non-zero exitCode without isError is classified the same way", () => {
+  const view = claimBasisView(claim(), [
+    evidence({ method: "validation", passing: false, execution: { runner: "bash", label: "npm test", exitCode: 1 } }),
+  ]);
+  assert.deepEqual(labels(view), ["1 contradicts the claim", "Checked against expectations"]);
+});
+
+test("only evidence linked to this claim bears on it: another claim's failed check never reaches the line or counts", () => {
+  const unrelated = evidence({
+    claimId: "claim.other",
+    method: "validation",
+    passing: false,
+    blocking: true,
+    sourceRef: "https://example.org/other",
+    execution: { runner: "bash", label: "unrelated tool call", exitCode: 1, isError: true },
+  });
+  const withUnrelated = claimBasisView(claim(), [evidence(), unrelated]);
+  assert.deepEqual(withUnrelated, claimBasisView(claim(), [evidence()]));
+  assert.deepEqual(labels(withUnrelated), ["Extracted from a source", "1 entails the claim"]);
+  assert.equal(detailValue(withUnrelated, "Results"), "1 passed");
+  assert.equal(detailValue(withUnrelated, "Sources"), "1 distinct source");
+});
+
+test("a failure that is not counterevidence still reaches the line as 'failed (not blocking)'", () => {
+  const nonBlocking = claimBasisView(claim(), [evidence({ passing: false, blocking: false })]);
+  assert.deepEqual(recorded(nonBlocking).facets[0], { field: "result", code: "failed-not-blocking", label: "1 failed (not blocking)", caveat: true });
+  assert.ok(!labels(nonBlocking).some((label) => /entail/.test(label)));
+
+  const citedFailures = claimBasisView(claim(), [evidence({ supportStrength: "cited", passing: false }), evidence({ supportStrength: "cited", passing: false })]);
+  assert.deepEqual(labels(citedFailures), ["2 failed (not blocking)", "Extracted from a source"]);
+});
+
+test("line support counts only evidence that did not fail; the inspector keeps the full partition", () => {
+  // A sole entailing, blocking failure must not read as both contradicting and entailing the claim.
+  const view = claimBasisView(claim(), [evidence({ passing: false, blocking: true })]);
+  assert.deepEqual(labels(view), ["1 contradicts the claim", "Extracted from a source"]);
+  assert.equal(detailValue(view, "Support"), "1 entails the claim · 1 contradicts the claim");
+  assert.equal(detailValue(view, "Results"), "1 failed — blocking");
+
+  const mixed = claimBasisView(claim(), [evidence(), evidence({ passing: false }), evidence({ supportStrength: undefined })]);
+  assert.deepEqual(labels(mixed), ["1 contradicts the claim", "Extracted from a source", "1 entails the claim"]);
 });
 
 test("absent `passing` is 'Not evaluated', never a pass", () => {
@@ -162,15 +204,30 @@ test("more than 3 candidate facets: caveats come first and none is dropped by tr
       evidence({ passing: undefined }), // not evaluated
       evidence({ supportStrength: "cited" }), // cited only
       evidence({ passing: false }), // counterevidence
-      evidence({ method: "validation", passing: false, blocking: false, execution: { runner: "bash", label: "check", isError: true } }),
+      evidence({ method: "validation", passing: false, blocking: false, execution: { runner: "bash", label: "check", isError: true } }), // failed (not blocking)
     ],
   );
   assert.deepEqual(
     recorded(view).facets.map((facet) => facet.code),
-    ["model", "could-not-run", "not-evaluated", "cited", "counterevidence"],
+    ["model", "not-evaluated", "cited", "counterevidence", "failed-not-blocking"],
     "all five caveats, in the fixed order, and no non-caveat facet",
   );
   assert.ok(recorded(view).facets.every((facet) => facet.caveat));
+
+  const all = claimBasisView(claim({ derivationEdges: [{ inputClaimId: "claim.input", method: "model" }] }), [
+    evidence({ passing: undefined }),
+    evidence({ supportStrength: "cited" }),
+    evidence({ passing: false }),
+    evidence({ passing: false, blocking: false }),
+    evidence(),
+  ]);
+  assert.deepEqual(labels(all), [
+    "Model-derived",
+    "1 not evaluated",
+    "1 cited only",
+    "1 contradicts the claim",
+    "1 failed (not blocking)",
+  ]);
 });
 
 test("with fewer caveats than the limit, remaining slots go to method, then support, then review", () => {
@@ -214,11 +271,35 @@ test("a derived claim without evidence shows its derivation method; unstated met
   assert.deepEqual(recorded(view).facets, [
     { field: "derivationMethod", code: "sum", label: "Calculated (sum) + 1 more method", caveat: false },
   ]);
+  const unstatedSupport = claimBasisView(claim(), [evidence({ supportStrength: undefined }), evidence({ supportStrength: undefined })]);
+  assert.deepEqual(labels(unstatedSupport), ["Extracted from a source", "2 with support not stated"]);
   const unstated = claimBasisView(claim({ derivationEdges: [{ inputClaimId: "a" }, { inputClaimId: "b" }] }), []);
   assert.deepEqual(labels(unstated), ["Derived from 2 inputs"]);
 });
 
 // ── producer-supplied signals stay in the inspector ────────────────────────
+
+test("calibrated confidence is shown only when it is a probability in [0, 1]", () => {
+  const row = (conclusionConfidence: Claim["conclusionConfidence"]) =>
+    detailValue(claimBasisView(claim({ conclusionConfidence }), [evidence()]), "Calibrated confidence (producer-supplied)");
+  assert.equal(row({ value: 1.5 }), undefined);
+  assert.equal(row({ value: Number.NaN }), undefined);
+  assert.equal(row({ value: -0.1 }), undefined);
+  assert.equal(row({ value: 0.5, interval: { low: -1, high: 0.7 } }), "0.5 probability the conclusion is correct");
+  assert.equal(row({ value: 0.5, interval: { low: 0.7, high: 0.4 } }), "0.5 probability the conclusion is correct");
+  assert.equal(row({ value: 0 }), "0 probability the conclusion is correct");
+});
+
+test("unrecognized wire values are named as unrecognized, never shown bare", () => {
+  const view = claimBasisView(
+    claim({ confidenceBasis: { reviewerAuthority: "oracle" as never } }),
+    [evidence({ method: "telepathy" as never })],
+  );
+  assert.deepEqual(labels(view), ["Unrecognized method (telepathy)", "1 entails the claim", "Unrecognized reviewer (oracle)"]);
+  assert.equal(detailValue(view, "How"), "Unrecognized method (telepathy) (1)");
+  const derived = claimBasisView(claim({ derivationEdges: [{ inputClaimId: "a", method: "guess" as never }] }), []);
+  assert.deepEqual(labels(derived), ["Unrecognized method (guess)"]);
+});
 
 test("producer-rated evidence strength and calibrated confidence never appear as facets", () => {
   const view = claimBasisView(

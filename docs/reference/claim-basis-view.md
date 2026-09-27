@@ -7,6 +7,7 @@ example:
 ```text
 Verified   Extracted from a source · 2 entail the claim · 1 cited only
 Pending review   Model-derived · 1 not evaluated
+Disputed   1 contradicts the claim · Checked against expectations
 No evidence   Basis not recorded
 ```
 
@@ -18,7 +19,7 @@ primitive, kontourai/ui#87) take the view as-is.
 ```ts
 import { claimBasisView, missingClaimBasisView } from "@kontourai/surface/display";
 
-const view = claimBasisView(claim, bundle.evidence); // only evidence with claimId === claim.id is used
+const view = claimBasisView(claim, bundle.evidence); // only evidence linked to the claim (claimId === claim.id) is used
 ```
 
 `@kontourai/surface/display` imports no Node-only modules, so it can be bundled
@@ -41,44 +42,66 @@ type TrustBasisView =
     };
 ```
 
-`field` is one of `derivationMethod`, `execution`, `result`, `supportStrength`,
+`field` is one of `derivationMethod`, `result`, `supportStrength`,
 `counterevidence`, `method` or `reviewerAuthority`. `code` is the wire enum or
-derived state (`model`, `could-not-run`, `not-evaluated`, `cited`,
-`counterevidence`, `extraction`, `entails`, `operator`, …). A renderer can put
-`field`, `code` and `caveat` on data attributes.
+derived state (`model`, `not-evaluated`, `cited`, `counterevidence`,
+`failed-not-blocking`, `extraction`, `entails`, `operator`, …). A renderer can
+put `field`, `code` and `caveat` on data attributes.
 
 ## Rules
 
-1. **Never blank.** A claim with no evidence, no derivation edges and no
+1. **Only linked evidence bears on a claim.** Not every tool call is evidence.
+   The view uses only evidence whose `claimId` equals `claim.id` (supporting,
+   cited, or counterevidence). Execution-trail tool calls and other claims'
+   evidence never reach the line or its counts, whether they succeeded,
+   failed, or were retried; they stay inspectable at the raw-execution layer.
+2. **Never blank.** A claim with no linked evidence, no derivation edges and no
    reviewer (other than `none`) is `not-recorded`. A missing claim is
    `not-available`. `restricted` and `unavailable` come from the host, which
    knows about permission denials and failed reads: use
    `missingClaimBasisView(state)` for the canonical label.
-2. **At most 3 facets**, except that caveats are never dropped: when there are
+3. **At most 3 facets**, except that caveats are never dropped: when there are
    more than 3 caveats the line holds every caveat and nothing else.
-3. **Caveats first**, in this order: Model-derived (a `model` derivation edge),
-   N check(s) could not run (`execution.isError`), N not evaluated (absent
-   `passing`), N cited only, N counterevidence (entailing evidence that failed
-   and is not marked non-blocking, the same predicate as Basis
-   counterevidence). A check that could not run has no result of its own: it
-   is never counted as failed, not evaluated, or counterevidence, whatever its
-   `passing` says.
-4. **Then method, support, review.** Method is the evidence `method`s in
+4. **Caveats first**, in this order:
+   - Model-derived (a `model` derivation edge)
+   - N not evaluated (absent `passing`)
+   - N cited only
+   - N contradict(s) the claim: exactly Surface's `isStandingCounterevidence`
+     (entailing evidence with `passing: false` and `blocking` not `false`)
+   - N failed (not blocking): every other `passing: false` item, i.e. cited or
+     explicitly non-blocking failures. A failure is never left off the line.
+5. **Then method, support, review.** Method is the evidence `method`s in
    Surface enum order (no depth ranking exists); more than one becomes
    `Extracted from a source + 2 more methods`. With no evidence, the non-model
    derivation methods are used instead, or `Derived from N inputs` when edges
    state no method. Support is `N entail(s) the claim`, then
-   `N support not stated`. Review is the `confidenceBasis.reviewerAuthority`
-   label when it is not `none`.
-5. **Absent `passing` is never a pass.** It is counted as not evaluated.
-   Absent `supportStrength` is shown as "support not stated", as in the trust
-   panel's evidence rows, even though status derivation treats it as entailing.
-6. **Producer-supplied values stay in the inspector.**
+   `N with support not stated`, counting only evidence that did not fail, so
+   one item never reads as both contradicting and supporting the claim (the
+   inspector's Support row keeps the full partition). Review is the
+   `confidenceBasis.reviewerAuthority` label when it is not `none`. It is
+   producer-asserted, like the rating below, but stays on the line because a
+   recorded review is first-class provenance.
+6. **Results come from `passing` / `blocking` only.** Absent `passing` is never
+   a pass; it is counted as not evaluated. `execution.isError` and a non-zero
+   `exitCode` mean the check ran and failed (producers set `isError` from the
+   exit code or the MCP tool result), so they are classified like any other
+   result, exactly as status derivation does. There is no "check could not run"
+   caveat yet: no field records that today. hachure-org/spec#25 proposes an
+   explicit `evidence.inconclusive` record; once it lands, a "could not run"
+   caveat goes after Model-derived, and surface#277 tracks excluding such
+   evidence from status.
+7. **Absent `supportStrength`** is shown as "with support not stated", as in the
+   trust panel's evidence rows, even though status derivation treats it as
+   entailing (the gloss says so).
+8. **Unrecognized wire values** are shown as `Unrecognized method (value)` /
+   `Unrecognized reviewer (value)`, never as the bare string.
+9. **Producer-supplied values stay in the inspector.**
    `confidenceBasis.evidenceStrength` appears only as a `Producer rating`
    detail row ("Strong support (producer-rated)"), and `conclusionConfidence`
    only as a `Calibrated confidence (producer-supplied)` row, worded as the
    probability that the conclusion is correct (its interval bounds that
-   probability, not the claim's value). Neither is ever a facet.
+   probability, not the claim's value). A value or interval bound that is not
+   a finite number in [0, 1] is left out. Neither is ever a facet.
 
 Detail rows, when there is data for them: How, Support, Results, Derived,
 Review, Producer rating, Calibrated confidence (producer-supplied), Sources.
