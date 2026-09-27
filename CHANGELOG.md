@@ -1,5 +1,22 @@
 # Changelog
 
+## [3.3.0](https://github.com/kontourai/surface/compare/v3.2.0...v3.3.0) (2026-09-27)
+
+
+### Features
+
+* **display:** add claim basis view and basis label tables ([#276](https://github.com/kontourai/surface/issues/276)) ([42ab7b3](https://github.com/kontourai/surface/commit/42ab7b3b3d4fbf7a325e7b8e6be68059746269c9))
+
+
+### Fixes
+
+* **release:** fail closed Sigstore bundle verification ([#251](https://github.com/kontourai/surface/issues/251)) ([c059bf0](https://github.com/kontourai/surface/commit/c059bf0c3a3540e608b71577397060979da05975))
+
+
+### Documentation
+
+* **agents:** point UI work at the Kontour DESIGN.md ([#273](https://github.com/kontourai/surface/issues/273)) ([3531f78](https://github.com/kontourai/surface/commit/3531f78e442481223a607d348d5cea1bd5556003))
+
 ## [3.2.0](https://github.com/kontourai/surface/compare/v3.1.0...v3.2.0) (2026-08-27)
 
 
