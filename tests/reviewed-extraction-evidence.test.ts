@@ -157,6 +157,43 @@ test("owner invariants reject credential identities, occurrence drift, artifact-
   assert.throws(() => projectReviewedExtractionEvidence(contradictory), /cannot use status/);
 });
 
+test("known optional envelope keys added by producers project, restore, and are digest-bound", async () => {
+  const input = await fixture();
+  const result = input.importRecord.spec.envelope.result;
+  const proposal = result.proposals[0]!;
+  proposal.producedBy = { model: "generic-model", modelSource: "provider-reported", requestDigest: `sha256:${"d".repeat(64)}` };
+  proposal.evidenceMatch = { checkerVersion: "evidence-match-v1", schema: "ok", valueInExcerpt: "match", tokenBoundary: true };
+  result.providerFailures = [{ provider: "portable-fixture", kind: "unknown", retryable: false, code: "AUTHORIZATION_PERSISTENCE_FAILED" }];
+  result.coverage = [{ chunk: 1, start: 0, end: 16, status: "complete" }];
+  const projection = projectReviewedExtractionEvidence(input);
+  assert.deepEqual(restoreReviewedExtractionEvidence(projection.evidence), input);
+  const baseline = projectReviewedExtractionEvidence(await fixture());
+  const profileDigest = (evidence: typeof projection.evidence) => (evidence.metadata!.reviewedExtraction as { profileDigest: string }).profileDigest;
+  assert.notEqual(profileDigest(projection.evidence), profileDigest(baseline.evidence));
+  // A tampered new key must break the digest binding, proving the profile covers it.
+  const tampered = structuredClone(projection.evidence);
+  ((tampered.metadata!.reviewedExtraction as { input: ReviewedExtractionEvidenceInput }).input.importRecord.spec.envelope.result.proposals[0]!.evidenceMatch as Record<string, unknown>).schema = "type-mismatch";
+  assert.throws(() => restoreReviewedExtractionEvidence(tampered), /integrity binding is invalid/);
+});
+
+test("candidate model is bound to the proposal's own producedBy model when present", async () => {
+  const multiModel = await fixture();
+  multiModel.importRecord.spec.envelope.result.model = "m1";
+  multiModel.importRecord.spec.envelope.result.proposals[0]!.producedBy = { model: "m2", modelSource: "provider-reported", requestDigest: `sha256:${"e".repeat(64)}` };
+  multiModel.reviewItem!.spec.candidates[0]!.extraction.model = "m2";
+  const projection = projectReviewedExtractionEvidence(multiModel);
+  assert.deepEqual(restoreReviewedExtractionEvidence(projection.evidence), multiModel);
+
+  const mismatched = structuredClone(multiModel);
+  mismatched.reviewItem!.spec.candidates[0]!.extraction.model = "m1";
+  assert.throws(() => projectReviewedExtractionEvidence(mismatched), /candidate extraction does not match proposal/);
+
+  const credential = structuredClone(multiModel);
+  credential.importRecord.spec.envelope.result.proposals[0]!.producedBy = { model: "token=abc" };
+  credential.reviewItem!.spec.candidates[0]!.extraction.model = "token=abc";
+  assert.throws(() => projectReviewedExtractionEvidence(credential), /proposal\.producedBy\.model must be a credential-free stable identity/);
+});
+
 function bundleFor(input: ReviewedExtractionEvidenceInput, evidence: ReturnType<typeof projectReviewedExtractionEvidence>["evidence"]): Parameters<typeof validateTrustBundle>[0] {
   const proposal = input.importRecord.spec.envelope.result.proposals[input.proposalIndex]!;
   return {
