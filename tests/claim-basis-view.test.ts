@@ -153,8 +153,25 @@ test("a failure that is not counterevidence still reaches the line as 'failed (n
   assert.deepEqual(recorded(nonBlocking).facets[0], { field: "result", code: "failed-not-blocking", label: "1 failed (not blocking)", caveat: true });
   assert.ok(!labels(nonBlocking).some((label) => /entail/.test(label)));
 
-  const citedFailures = claimBasisView(claim(), [evidence({ supportStrength: "cited", passing: false }), evidence({ supportStrength: "cited", passing: false })]);
-  assert.deepEqual(labels(citedFailures), ["2 failed (not blocking)", "Extracted from a source"]);
+  // Cited failures are not counterevidence because they are cited, even when
+  // marked blocking; they must not read as "not blocking".
+  const citedFailures = claimBasisView(claim(), [
+    evidence({ supportStrength: "cited", passing: false, blocking: true }),
+    evidence({ supportStrength: "cited", passing: false }),
+  ]);
+  assert.deepEqual(recorded(citedFailures).facets[0], { field: "result", code: "failed-cited-only", label: "2 failed (cited only)", caveat: true });
+  assert.ok(!labels(citedFailures).some((label) => /not blocking/.test(label)));
+
+  // Cited and non-blocking: cited is checked first.
+  const both = claimBasisView(claim(), [evidence({ supportStrength: "cited", passing: false, blocking: false })]);
+  assert.equal(labels(both)[0], "1 failed (cited only)");
+
+  const mixed = claimBasisView(claim(), [
+    evidence({ passing: false, blocking: false }),
+    evidence({ supportStrength: "cited", passing: false, blocking: true }),
+    evidence({ supportStrength: "cited", passing: false }),
+  ]);
+  assert.deepEqual(recorded(mixed).facets[0], { field: "result", code: "failed-mixed", label: "3 failed (1 not blocking, 2 cited only)", caveat: true });
 });
 
 test("line support counts only evidence that did not fail; the inspector keeps the full partition", () => {

@@ -68,8 +68,13 @@ put `field`, `code` and `caveat` on data attributes.
    - N cited only
    - N contradict(s) the claim: exactly Surface's `isStandingCounterevidence`
      (entailing evidence with `passing: false` and `blocking` not `false`)
-   - N failed (not blocking): every other `passing: false` item, i.e. cited or
-     explicitly non-blocking failures. A failure is never left off the line.
+   - N failed (reason): every other `passing: false` item, labelled by why it
+     is not counterevidence. `supportStrength: "cited"` gives "cited only"
+     (checked first, since cited evidence never counts whatever `blocking`
+     says); otherwise `blocking: false` gives "not blocking". Both reasons
+     share one slot: "2 failed (cited only)", "1 failed (not blocking)", or
+     "3 failed (1 not blocking, 2 cited only)". A failure is never left off
+     the line.
 5. **Then method, support, review.** Method is the evidence `method`s in
    Surface enum order (no depth ranking exists); more than one becomes
    `Extracted from a source + 2 more methods`. With no evidence, the non-model

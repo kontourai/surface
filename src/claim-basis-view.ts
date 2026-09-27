@@ -9,7 +9,8 @@
 // - At most 3 facets on the line. Caveats come first, in a fixed order, and
 //   are never dropped to meet that limit: when there are more than 3 caveats
 //   the line carries all of them and nothing else. A failed check always
-//   reaches the line, as "contradicts the claim" or "failed (not blocking)".
+//   reaches the line, as "contradicts the claim" or "failed (cited only)" /
+//   "failed (not blocking)".
 // - After caveats: method, then support counts, then review. Line support
 //   counts cover only evidence that did not fail, so one item never reads as
 //   both failing and supporting the claim.
@@ -188,11 +189,15 @@ export function claimBasisView(claim: Claim | null | undefined, evidence: readon
 
   // ── Evidence partitions ────────────────────────────────────────────────
   // Counterevidence is exactly Surface's `isStandingCounterevidence`. Every
-  // other failure (cited, or explicitly non-blocking) is "failed (not
-  // blocking)", so no failure is left off the line.
+  // other failure is labelled by why it is not counterevidence, so no failure
+  // is left off the line: `supportStrength: "cited"` → "cited only"
+  // (checked first: cited evidence never counts, whatever `blocking` says),
+  // otherwise `blocking: false` → "not blocking".
   const notEvaluated = items.filter((item) => evidenceResultState(item) === "not-evaluated");
   const counterevidence = items.filter(isStandingCounterevidence).length;
-  const failedNotBlocking = items.filter((item) => item.passing === false && !isStandingCounterevidence(item)).length;
+  const otherFailures = items.filter((item) => item.passing === false && !isStandingCounterevidence(item));
+  const failedCitedOnly = otherFailures.filter((item) => item.supportStrength === "cited").length;
+  const failedNotBlocking = otherFailures.length - failedCitedOnly;
   // Inspector: full partition. Line: only evidence that did not fail, so one
   // item never reads as both contradicting and supporting the claim.
   const support = countBy(items.map(evidenceSupportState));
@@ -217,8 +222,13 @@ export function claimBasisView(claim: Claim | null | undefined, evidence: readon
   if (counterevidence > 0) {
     caveats.push({ field: "counterevidence", code: "counterevidence", label: contradictsLabel(counterevidence), caveat: true });
   }
-  if (failedNotBlocking > 0) {
-    caveats.push({ field: "result", code: "failed-not-blocking", label: `${failedNotBlocking} failed (not blocking)`, caveat: true });
+  if (otherFailures.length > 0) {
+    // One slot, labelled by reason: "2 failed (cited only)",
+    // "1 failed (not blocking)", or "3 failed (1 not blocking, 2 cited only)".
+    const code = failedCitedOnly === 0 ? "failed-not-blocking" : failedNotBlocking === 0 ? "failed-cited-only" : "failed-mixed";
+    const reason =
+      code === "failed-not-blocking" ? "not blocking" : code === "failed-cited-only" ? "cited only" : `${failedNotBlocking} not blocking, ${failedCitedOnly} cited only`;
+    caveats.push({ field: "result", code, label: `${otherFailures.length} failed (${reason})`, caveat: true });
   }
 
   const rest: TrustBasisFacet[] = [];
