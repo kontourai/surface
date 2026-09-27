@@ -14,6 +14,9 @@ import { partitionEvidenceBySupport } from "./evidence-support.js";
 import { resolvePolicyForClaim } from "./policy-resolver.js";
 import { claimIntrinsicExpiry, deriveTrustStatus, reapplyVerifiedFreshness } from "./status.js";
 
+/** Evidence types that report a check result through `passing`. */
+const CHECK_EVIDENCE_TYPES: ReadonlySet<string> = new Set(["test_output", "calculation_trace", "runtime_observation"]);
+
 const TRANSPARENCY_GAP_TYPES: TransparencyGapType[] = [
   "contradiction",
   "provenance_gap",
@@ -79,6 +82,7 @@ export function foldClaim(input: ClaimFoldInput): ClaimFoldResult {
       events: input.events,
       policy,
       now: input.now,
+      authorityTrace: input.authorityTrace,
     });
     eventsFolded = 0;
   } else {
@@ -102,18 +106,23 @@ export function foldClaim(input: ClaimFoldInput): ClaimFoldResult {
     evidence: input.evidence,
     entailingEvidence,
     evidenceRequirement: policy ? evidenceRequirementFromPolicy(policy) : undefined,
-    transparencyGaps: policy && evaluation
-      ? deriveTransparencyGaps({
-        claim: input.claim,
-        evidence: input.evidence,
-        entailingEvidence,
-        events: input.events,
-        policy,
-        evaluation,
-        status: ownStatus,
-        now: input.now,
-      })
-      : input.evidence.length === 0 ? [noPolicyEvidenceGap(input.claim, input.now)] : [],
+    transparencyGaps: [
+      ...(policy && evaluation
+        ? deriveTransparencyGaps({
+          claim: input.claim,
+          evidence: input.evidence,
+          entailingEvidence,
+          events: input.events,
+          policy,
+          evaluation,
+          status: ownStatus,
+          now: input.now,
+        })
+        : [input.evidence.length === 0 ? noPolicyEvidenceGap(input.claim, input.now) : noPolicyGap(input.claim, input.now)]),
+      ...(input.claim.verificationPolicyId && !input.policies.some((candidate) => candidate.id === input.claim.verificationPolicyId)
+        ? [danglingPolicyReferenceGap(input.claim, input.now)]
+        : []),
+    ],
     eventsFolded,
     eventsTotal: input.events.length,
     fromCheckpoint: canShortCircuit,
@@ -150,6 +159,44 @@ function noPolicyEvidenceGap(claim: Claim, now: Date): TransparencyGap {
     message: `Claim ${claim.id} has no evidence and no verification policy.`,
     blocking: true,
     createdAt: now.toISOString(),
+  };
+}
+
+/**
+ * A claim with evidence but no resolved verification policy cannot present as
+ * healthy: status function v2 may still derive `verified`, so this blocking gap
+ * is what gap-gated consumers refuse on.
+ */
+function noPolicyGap(claim: Claim, now: Date): TransparencyGap {
+  return {
+    id: `${claim.id}.gap.no-verification-policy`,
+    claimId: claim.id,
+    type: "policy_violation",
+    severity: claim.impactLevel ?? "medium",
+    ...materialityFromClaim(claim),
+    message: `Claim ${claim.id} has no resolved verification policy.`,
+    blocking: true,
+    createdAt: now.toISOString(),
+    metadata: { source: "policy.unresolved" },
+  };
+}
+
+/**
+ * A claim that names a `verificationPolicyId` absent from the bundle's policies.
+ * Resolution falls back to the claim type (or no policy), which is not the
+ * policy the producer asked for.
+ */
+function danglingPolicyReferenceGap(claim: Claim, now: Date): TransparencyGap {
+  return {
+    id: `${claim.id}.gap.unresolved-verification-policy`,
+    claimId: claim.id,
+    type: "policy_violation",
+    severity: claim.impactLevel ?? "medium",
+    ...materialityFromClaim(claim),
+    message: `Claim ${claim.id} names verification policy ${claim.verificationPolicyId}, which is not present.`,
+    blocking: true,
+    createdAt: now.toISOString(),
+    metadata: { source: "policy.unresolvedReference", verificationPolicyId: claim.verificationPolicyId },
   };
 }
 
@@ -266,7 +313,35 @@ function deriveTransparencyGaps(input: {
   const unevaluableValidityGap = deriveUnevaluableValidityGap(input);
   if (unevaluableValidityGap) transparencyGaps.push(unevaluableValidityGap);
 
-  for (const item of input.entailingEvidence.filter((evidence) => evidence.passing === false)) {
+  // Check-type evidence should satisfy a policy requirement only by reporting a
+  // result. Status still follows status function v2 (type presence); this gap
+  // keeps a result-less check from reading as satisfied support. A reported
+  // failure is not flagged here: it already has its own gap below, blocking or
+  // not as the producer marked it.
+  for (const evidenceType of input.policy.requiredEvidence) {
+    if (!CHECK_EVIDENCE_TYPES.has(evidenceType) || missingEvidence.includes(evidenceType)) continue;
+    const checks = input.entailingEvidence.filter((item) => item.evidenceType === evidenceType);
+    if (checks.some((item) => item.passing === true)) continue;
+    const resultLess = checks.filter((item) => typeof item.passing !== "boolean");
+    if (resultLess.length === 0) continue;
+    transparencyGaps.push({
+      id: `${input.claim.id}.gap.check-result-missing-${evidenceType}`,
+      claimId: input.claim.id,
+      type: "policy_violation",
+      severity: input.claim.impactLevel ?? input.policy.impactLevel,
+      ...materialityFromClaim(input.claim),
+      message: `Required ${evidenceType} evidence reports no result (passing is not set).`,
+      evidenceIds: resultLess.map((item) => item.id),
+      policyId: input.policy.id,
+      blocking: true,
+      createdAt,
+      metadata: { source: "policy.checkResultMissing", evidenceType },
+    });
+  }
+
+  // Every explicitly failed item stays visible, whatever its support label. A
+  // cited failure still does not count as support or counterevidence for status.
+  for (const item of input.evidence.filter((evidence) => evidence.passing === false)) {
     transparencyGaps.push({
       id: `${input.claim.id}.gap.evidence-${item.id}`,
       claimId: input.claim.id,

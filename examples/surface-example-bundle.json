@@ -92,6 +92,7 @@
   "evidence": [
     {
       "id": "evidence.repo-governance.test-output",
+      "passing": true,
       "claimId": "claim.repo-governance.api-proof",
       "evidenceType": "test_output",
       "method": "validation",
@@ -138,6 +139,7 @@
     },
     {
       "id": "evidence.fact-resolution.calculation-trace",
+      "passing": true,
       "claimId": "claim.fact-resolution.w2-wages",
       "evidenceType": "calculation_trace",
       "method": "validation",

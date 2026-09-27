@@ -9,7 +9,7 @@
       "expect": {
         "valid": true,
         "statusByClaimId": { "claim.api.rate-limit": "verified" },
-        "transparencyGapTypesByClaimId": { "claim.api.rate-limit": [] }
+        "transparencyGapTypesByClaimId": { "claim.api.rate-limit": ["policy_violation"] }
       }
     },
     {
@@ -27,7 +27,7 @@
       "expect": {
         "valid": true,
         "statusByClaimId": { "claim.api.rate-limit": "stale" },
-        "transparencyGapTypesByClaimId": { "claim.api.rate-limit": ["freshness_breach"] }
+        "transparencyGapTypesByClaimId": { "claim.api.rate-limit": ["freshness_breach", "policy_violation"] }
       }
     },
     {

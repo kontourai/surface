@@ -33,7 +33,8 @@ function derivationShape(report: ReturnType<typeof buildTrustReport>) {
       freshness: freshness ? { expiresAt: freshness.expiresAt, stale: freshness.stale } : undefined,
     })),
     changeRecords: report.changeRecords,
-    transparencyGaps: report.transparencyGaps,
+    // A gap's `createdAt` is the evaluation instant, an echo like `asOf`.
+    transparencyGaps: report.transparencyGaps.map(({ createdAt: _createdAt, ...gap }) => gap),
     summary: report.summary,
     claimGroupRollups: report.claimGroupRollups,
     evidenceRequirementsByClaimId: report.evidenceRequirementsByClaimId,

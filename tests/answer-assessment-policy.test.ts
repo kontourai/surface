@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { buildTrustReport, evaluateAnswerAssessmentPolicy, ordinaryVerificationPolicy } from "../src/index.js";
+import { buildTrustReport, evaluateAnswerAssessmentPolicy, ordinaryVerificationPolicy, projectReviewedExtractionEvidence, type ReviewedExtractionEvidenceInput } from "../src/index.js";
 import type { TrustBundle } from "../src/types.js";
 
 function bundle(input: { policy?: boolean; supportStrength?: "entails" | "cited" }): TrustBundle {
@@ -76,4 +77,31 @@ test("assessment bundle identity remains the caller-authorized immutable report 
   const leftReport = buildTrustReport(left, { now: at, id: "authorized-bundle-a" });
   const rightReport = buildTrustReport(right, { now: at, id: "authorized-bundle-b" });
   assert.notEqual(leftReport.id, rightReport.id);
+});
+
+async function reviewedBundle(claimValue: unknown): Promise<TrustBundle> {
+  const input = JSON.parse(await readFile(new URL("tests/fixtures/reviewed-extraction-evidence.v1.json", `file://${process.cwd()}/`), "utf8")) as ReviewedExtractionEvidenceInput;
+  const evidence = projectReviewedExtractionEvidence(input).evidence;
+  const policy = { ...ordinaryVerificationPolicy, requiredEvidence: ["source_excerpt" as const] };
+  return {
+    schemaVersion: 5,
+    source: "fixture:reviewed-answer",
+    claims: [{ id: input.claimId, subjectType: "record", subjectId: "fixture", claimType: ordinaryVerificationPolicy.claimType, fieldOrBehavior: "title", value: claimValue, createdAt: "2026-07-20T00:00:00.000Z", updatedAt: "2026-07-20T00:05:00.000Z", verificationPolicyId: ordinaryVerificationPolicy.id }],
+    evidence: [evidence],
+    policies: [policy],
+    events: [{ id: "event.review", claimId: input.claimId, status: "verified", actor: "reviewer:fixture", method: "review", evidenceIds: [evidence.id], createdAt: "2026-07-20T00:05:00.000Z" }],
+  };
+}
+
+test("answer assessment refuses a claim whose value differs from the reviewed extraction value", async () => {
+  const now = new Date("2026-07-21T00:00:00.000Z");
+  const beta = buildTrustReport(await reviewedBundle("Beta"), { now });
+  // Status function v2 does not read claim values, so the claim still derives verified.
+  assert.equal(beta.claims[0]!.status, "verified");
+  const outcome = evaluateAnswerAssessmentPolicy(beta, "claim.directory.title");
+  assert.equal(outcome?.outcome, "not-satisfied");
+  assert.deepEqual(outcome?.reasons, ["value-unbound"]);
+
+  const alpha = buildTrustReport(await reviewedBundle("Alpha"), { now });
+  assert.equal(evaluateAnswerAssessmentPolicy(alpha, "claim.directory.title")?.outcome, "satisfied");
 });

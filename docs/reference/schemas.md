@@ -113,6 +113,28 @@ therefore derives stale immediately.
 resolves, Surface does not invent a validity window or a validity-rule gap;
 producers that need freshness guarantees must attach a policy explicitly.
 
+A claim with no resolved policy cannot present as healthy. Status function v2
+may still derive `verified` for it, so the snapshot adds a blocking gap: the
+existing `provenance_gap` (`<claim>.gap.provenance-gap`) when the claim has no
+evidence, otherwise a `policy_violation` (`<claim>.gap.no-verification-policy`,
+`metadata.source: "policy.unresolved"`). A claim whose `verificationPolicyId`
+names a policy absent from the bundle also gets a blocking `policy_violation`
+(`<claim>.gap.unresolved-verification-policy`), even when claim-type resolution
+finds another policy. Consumers that gate on blocking gaps (answer assessment,
+Basis) refuse these claims.
+
+### Check results
+
+`test_output`, `calculation_trace` and `runtime_observation` evidence reports
+its result through `passing`. Every item with `passing: false` produces a
+`policy_violation` gap (`<claim>.gap.evidence-<evidence id>`), blocking unless
+the item says `blocking: false`, whatever its `supportStrength`: a `cited`
+failure still does not count as support or as counterevidence for status, but it
+is no longer invisible. When a policy requires one of these types and no
+entailing item of that type reports `passing: true`, any result-less item
+(`passing` unset) produces a blocking `policy_violation` gap
+(`<claim>.gap.check-result-missing-<type>`). Status is unchanged by these gaps.
+
 ## Verification Event
 
 Events are append-only status transitions for a claim.

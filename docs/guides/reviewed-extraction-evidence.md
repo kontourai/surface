@@ -51,6 +51,18 @@ These three signals are deliberately independent:
 
 A reviewed value can therefore be accepted with low extraction confidence or
 with an unvalidated structure without appearing stronger than its provenance.
+
+Surface derives structural trust from the proposal itself
+(`deriveStructuralTrust`): the candidate value must conform to the declared
+`valueType` (`string`, `number`, `boolean`, `date`; `date` requires a string, as
+in Traverse) and lie inside `enumValues` when present. A non-conforming value is
+`invalid`; a proposal with no checkable type (none, `array`, `object`, or `enum`
+without `enumValues`) is `unvalidated`. The projection uses the weaker of the
+derived value and the caller's `structuralTrust`, so a caller can downgrade but
+never upgrade. Restore re-derives it, so relabelling a non-conforming item as
+`validated` does not restore as entailing evidence. For a conforming value the
+label still round-trips, because the profile digest is unkeyed and cannot say
+who asserted it.
 `collectedBy` identifies the collector/ingester. Reviewer identity remains in
 the ReviewDecision metadata and is never relabeled as the collector.
 
@@ -87,6 +99,21 @@ locator, artifact state, and source state separately. A source observation with
 source even when `extractedValueChanged` is false. Missing artifacts, digest
 mismatches, unresolved source state, and the profile's typed provenance gaps
 remain explicit refusal reasons.
+
+`requiredClaimIds` must come from the caller's intent (the task's fields or the
+output schema), independently of the evidence passed to the same call. Building
+it from that evidence is circular: a claim that should have reviewed evidence
+but has none is never required, so `missing-reviewed-evidence` cannot fire. An
+empty list is refused with a `no-required-claims` gap.
+
+Pass `claims` to bind claim values to the reviewed evidence. Each dimension
+carries `candidateValueDigest`, `valueDigest(candidateValue)` (SHA-256 over
+canonical JSON, so object key order does not matter). With `claims`, a required
+claim that is absent is a `claim-missing` gap and a claim whose value digest
+differs is a `value-mismatch` gap. Without `claims` the decision is unbound: it
+says the evidence was reviewed, not that any claim carries the reviewed value.
+`evaluateAnswerAssessmentPolicy` applies the same binding to entailing
+reviewed-extraction evidence and reports `value-unbound` on a mismatch.
 
 ## Source observation facts
 

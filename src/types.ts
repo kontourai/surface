@@ -729,6 +729,21 @@ export interface DerivationCheckpoint {
    * derivation without it falls back to full replay for safety.
    */
   throughEventCreatedAtByClaimId?: Record<string, string | null>;
+  /**
+   * Per-claim digest of everything the claim's own status is folded from: the
+   * claim, its evidence, its events, its resolved verification policy, and the
+   * bundle's authority trace. A claim is served from the checkpoint only when
+   * its current digest equals this one. Checkpoints without it (legacy, or built
+   * from a report object `buildTrustReport` did not return in this process)
+   * fall back to full replay.
+   */
+  inputDigestByClaimId?: Record<string, string>;
+  /**
+   * Per-claim own status (before the derivation ceiling) captured at `asOf`.
+   * The checkpoint path reuses this, then applies the ceiling from the current
+   * input statuses, exactly as a full derivation does.
+   */
+  ownStatusByClaimId?: Record<string, TrustStatus>;
   statusFunctionVersion: string;
 }
 

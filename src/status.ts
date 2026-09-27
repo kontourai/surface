@@ -112,8 +112,11 @@ export function deriveTrustStatus(input: {
  * (`verified` or `stale`); any other prior status passes through unchanged.
  *
  * The governing verified event (anchor for `ttlSeconds` and the policy duration
- * window) is taken from the unchanged ledger. This is identical to what
- * `deriveTrustStatus` would compute for the same `now`, by construction.
+ * window) is taken from the unchanged ledger. Time is re-applied only when that
+ * status came from the latest event being a `verified` event: a `stale` from a
+ * revocation or invalidation, or a status set by an authorized dispute
+ * resolution, does not move with the clock and passes through unchanged. This
+ * is identical to what `deriveTrustStatus` would compute for the same `now`.
  */
 export function reapplyVerifiedFreshness(input: {
   priorStatus: TrustStatus;
@@ -122,11 +125,23 @@ export function reapplyVerifiedFreshness(input: {
   events: VerificationEvent[];
   policy?: VerificationPolicy;
   now: Date;
+  /** Needed to recognise an authorized dispute resolution, which takes precedence over time. */
+  authorityTrace?: AuthorityTrace[];
 }): TrustStatus {
   if (input.priorStatus !== "verified" && input.priorStatus !== "stale") return input.priorStatus;
-  const governing = input.events
-    .filter((event) => event.claimId === input.claim.id && event.status === "verified")
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0];
+  const claimEvents = input.events
+    .filter((event) => event.claimId === input.claim.id)
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  const latestEvent = claimEvents[0];
+  if (
+    latestEvent === undefined ||
+    latestEvent.status !== "verified" ||
+    latestEvent.type === "invalidation" ||
+    findLatestResolutionEvent(claimEvents, input.authorityTrace ?? []) !== undefined
+  ) {
+    return input.priorStatus;
+  }
+  const governing = claimEvents.find((event) => event.status === "verified");
   if (governing === undefined) return input.priorStatus;
   return isVerifiedEventStale(governing, input.claim, input.evidence, input.policy, input.now) ? "stale" : "verified";
 }

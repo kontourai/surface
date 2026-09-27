@@ -38,6 +38,7 @@ export { startConsoleServer } from "./console/server.js";
 export type { SurfaceConsoleConfig, SurfaceConsoleTheme, SurfaceConsoleVocab } from "./console/types.js";
 export * from "./canonical.js";
 export * from "./inquiry.js";
+export { valueDigest } from "./canonical-digest.js";
 export * from "./reviewed-extraction-evidence.js";
 export * from "./reviewed-grounding-policy.js";
 export * from "./dispute.js";
