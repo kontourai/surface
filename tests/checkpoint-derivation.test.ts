@@ -19,6 +19,7 @@ import { join } from "node:path";
 import {
   buildTrustReport,
   checkpointFromReport,
+  reapplyVerifiedFreshness,
   validateTrustBundle,
   type SnapshotEventProbe,
   type TrustBundle,
@@ -373,4 +374,25 @@ test("checkpoint: replay at random nows before and after the checkpoint equals a
     assert.deepEqual(volatile(result.sinceReport), volatile(result.fullReport), `round ${round}: checkpoint ${checkpointAt.toISOString()} now ${at.toISOString()}`);
     assert.equal(foldedFor(result.probes, "claim.a").fromCheckpoint, true, `round ${round}: unchanged claim must be served from the checkpoint`);
   }
+});
+
+test("reapplyVerifiedFreshness leaves a stale from an invalidation, and an authorized resolution, untouched", () => {
+  const claim = claimFor("claim.a", { expiresAt: "2026-06-15T00:00:00.000Z" }) as unknown as Parameters<typeof reapplyVerifiedFreshness>[0]["claim"];
+  const verified = eventFor("event.a", "claim.a", "verified") as unknown as TrustBundle["events"][number];
+  const before = new Date("2026-06-01T00:00:00.000Z");
+  const after = new Date("2026-07-01T00:00:00.000Z");
+
+  // An invalidation event that carries status "verified" derives stale, not verified.
+  const invalidation = eventFor("event.a.invalidated", "claim.a", "verified", "2026-05-02T00:00:00.000Z", { type: "invalidation" }) as unknown as TrustBundle["events"][number];
+  assert.equal(reapplyVerifiedFreshness({ priorStatus: "stale", claim, evidence: [], events: [verified, invalidation], now: before }), "stale");
+
+  // An authorized resolution to verified is not aged by the claim's expiry.
+  const resolution = eventFor("event.a.resolved", "claim.a", "verified", "2026-05-02T00:00:00.000Z", { resolvesDispute: true, actor: "actor:reviewer" }) as unknown as TrustBundle["events"][number];
+  const trace = {
+    id: "authority.reviewer", subject: { subjectType: "service", subjectId: "svc" }, actorRef: "actor:reviewer",
+    authorityType: "role", authorityRef: "role:owner", sourceRef: "directory", observedAt: T0,
+  } as unknown as NonNullable<TrustBundle["authorityTrace"]>[number];
+  assert.equal(reapplyVerifiedFreshness({ priorStatus: "verified", claim, evidence: [], events: [verified, resolution], now: after, authorityTrace: [trace] }), "verified");
+  // Without the trace the resolution is not authorized and time applies.
+  assert.equal(reapplyVerifiedFreshness({ priorStatus: "verified", claim, evidence: [], events: [verified, resolution], now: after }), "stale");
 });
