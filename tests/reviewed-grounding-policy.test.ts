@@ -410,13 +410,17 @@ test("a success envelope whose warnings record truncated content or output is a 
     ["output-truncated", { category: "provider", code: "output-truncated" }],
     ["content-truncated-at-dispatch", { category: "limit", code: "content-truncated-at-dispatch" }],
     ["content-truncated", { category: "limit", code: "content-truncated" }],
+    // Traverse 1.0.0 classifies "provider returned no extraction tool call" this way, with no provider failure.
+    ["missing-tool-call", { category: "provider", code: "missing-tool-call" }],
+    ["chunk-provider-failure", { category: "provider", code: "chunk-provider-failure" }],
   ];
   for (const [label, warning] of cases) {
     const { projected, decision } = await coverageDecision((result) => { result.warningClassifications = [{ category: "other", code: "unclassified" }, warning]; });
     assert.equal(decision.outcome, "refused", label);
     assert.deepEqual(decision.gaps, [{ kind: "extraction-coverage-incomplete", claimId: "claim.directory.title", evidenceId: projected.evidence.id, outcome: "failure" }], label);
   }
-  const unrelated = await coverageDecision((result) => { result.warningClassifications = [{ category: "other", code: "unclassified" }, { category: "limit", code: "max-chunks" }]; });
+  // Accepted gap: the generic pre-1.0 `provider-warning` code is not treated as a loss.
+  const unrelated = await coverageDecision((result) => { result.warningClassifications = [{ category: "other", code: "unclassified" }, { category: "limit", code: "max-chunks" }, { category: "provider", code: "provider-warning" }]; });
   assert.equal(unrelated.decision.outcome, "allowed");
   assert.deepEqual(unrelated.decision.gaps, []);
   // A recorded provider failure keeps its label when a truncation warning is also present.

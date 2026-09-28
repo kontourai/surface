@@ -561,8 +561,15 @@ try {
     console.log(`  Assurance level: ${assuranceLevel}`);
   }
 } catch (err) {
-  // Any unexpected error during signing is non-fatal (dial, not gate).
-  console.warn(`  Signing failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`);
+  const message = err instanceof Error ? err.message : String(err);
+  if (bundleSerializationError) {
+    // Fatal: the run exits non-zero after the summary.
+    assuranceLevel = "signature produced but not publishable (Sigstore bundle not serialisable)";
+    console.error(`  Sigstore bundle serialisation failed (fatal): ${message}`);
+  } else {
+    // Any other error during signing is non-fatal (dial, not gate).
+    console.warn(`  Signing failed (non-fatal): ${message}`);
+  }
   console.log(`  Assurance level: ${assuranceLevel}`);
 }
 

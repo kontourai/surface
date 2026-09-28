@@ -255,9 +255,13 @@ function extractionCoverageGap(reviewed: ReviewedExtractionEvidenceInput): { out
   const contradicted = (result.providerFailures !== undefined && !Array.isArray(result.providerFailures))
     || (status === "success" && result.partial !== undefined)
     || coverageIncomplete(result.coverage);
-  // Producers before Traverse 2.0.0 wrote a success outcome for a run whose
-  // chunk text was cut before dispatch or whose answer hit the output cap, and
-  // recorded the loss only as a warning. Such a run did not read everything.
+  // Producers before Traverse 2.0.0 wrote a success outcome for a run that
+  // lost a chunk (text cut before dispatch, answer at the output cap, no tool
+  // call returned) and recorded the loss only as a typed warning. Such a run
+  // did not read everything. Accepted gap: producers before Traverse 1.0.0
+  // classify truncated output, a missing tool call, and an adapter-level
+  // provider notice all as the generic `provider-warning` code, with no other
+  // structured field to tell them apart, so that code is not treated as a loss.
   const truncated = status === "success" && truncationWarning(result.warningClassifications);
   if (status === "success" && failures === 0 && !contradicted && !truncated) return undefined;
   const outcome = status === "partial" ? "partial" : status === "success" && !contradicted && failures > 0 ? "provider-failure" : "failure";
@@ -265,7 +269,7 @@ function extractionCoverageGap(reviewed: ReviewedExtractionEvidenceInput): { out
   return { outcome, ...(reason !== undefined ? { reason } : {}), ...(failures > 0 ? { providerFailureCount: failures } : {}) };
 }
 
-const truncationWarningCodes = new Set(["output-truncated", "content-truncated-at-dispatch", "content-truncated"]);
+const truncationWarningCodes = new Set(["output-truncated", "content-truncated-at-dispatch", "content-truncated", "missing-tool-call", "chunk-provider-failure"]);
 
 function truncationWarning(warnings: unknown): boolean {
   return Array.isArray(warnings) && warnings.some((entry) => isObject(entry) && typeof entry.code === "string" && truncationWarningCodes.has(entry.code));
