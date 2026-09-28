@@ -153,7 +153,10 @@ jobs:
           node-version: '24'
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3.9.1
+        with:
+          # Pinned: the verify step below is proven against this release.
+          cosign-release: v2.5.2
 
       - name: Install
         run: pnpm install --frozen-lockfile

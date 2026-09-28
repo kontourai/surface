@@ -52,9 +52,10 @@ import type { DsseEnvelope, InTotoStatement } from "../interop/in-toto.js";
  *                    and whose signature was produced by Fulcio+Rekor.  This
  *                    is what standard `cosign verify-blob --bundle` checks.
  *
- * `sigstoreBundle` — the full sigstore bundle (Fulcio cert + Rekor entry) in
- *                    the @sigstore/bundle protobuf-JSON shape.  Persist this as
- *                    `trust-bundle.sigstore.json` for independent verification.
+ * `sigstoreBundle` — the full sigstore bundle (Fulcio cert + Rekor entry) as
+ *                    the in-memory @sigstore/bundle object.  Serialise it with
+ *                    `bundleToJSON` from @sigstore/bundle (not JSON.stringify)
+ *                    before persisting it as `trust-bundle.sigstore.json`.
  *
  * `assuranceLevel` — always "signed" when returned (non-null result).
  */
