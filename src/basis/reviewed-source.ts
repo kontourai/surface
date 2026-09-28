@@ -1,4 +1,5 @@
 import type { Evidence } from "../types.js";
+import { restoreReviewedExtractionEvidence, type ReviewedExtractionRestoreOptions } from "../reviewed-extraction-evidence.js";
 import { restoreReviewedExtractionEvidenceBrowser } from "../reviewed-extraction-evidence-browser.js";
 import { buildReviewedExtractionSourceState, type ReviewedExtractionSourceState } from "../reviewed-grounding-policy.js";
 import type { AnswerAssessmentProjection, BasisContributionV2, BasisGap, FieldworkReviewedSourceRef, ReviewedSourceBasisAssociationV1, ReviewedSourceBasisContext, ThreadAnswerRef } from "./types.js";
@@ -11,6 +12,8 @@ export interface BuildReviewedSourceBasisContributionInput {
   sourceState: ReviewedExtractionSourceState;
   association: ReviewedSourceBasisAssociationV1;
   assessment: { revision: number; value: AnswerAssessmentProjection };
+  /** Supplies the import record for v2 (reference-profile) evidence. */
+  resolveImportRecord?: ReviewedExtractionRestoreOptions["resolveImportRecord"];
 }
 
 /** Pure semantic bridge from authenticated reviewed evidence to a bounded Basis
@@ -18,8 +21,13 @@ export interface BuildReviewedSourceBasisContributionInput {
  * promotion capability. */
 export async function buildReviewedSourceBasisContribution(input: BuildReviewedSourceBasisContributionInput): Promise<BasisContributionV2<FieldworkReviewedSourceRef>> {
   let evidence: Evidence;
-  try { evidence = await restoreReviewedExtractionEvidenceBrowser(input.evidence); }
-  catch { throw fail("invalid-reviewed-evidence"); }
+  let expectedRef: string;
+  const restore: ReviewedExtractionRestoreOptions = { resolveImportRecord: input.resolveImportRecord };
+  try {
+    evidence = await restoreReviewedExtractionEvidenceBrowser(input.evidence, restore);
+    const source = restoreReviewedExtractionEvidence(evidence, restore).importRecord.spec.envelope.source;
+    expectedRef = source.snapshotRef ?? source.ref;
+  } catch { throw fail("invalid-reviewed-evidence"); }
   const { ref, association, sourceState, assessment } = input;
   if (!exactRef(ref)) throw fail("owner-ref-mismatch");
   if (!exactAssociation(association)) throw fail("source-claim-mismatch");
@@ -33,7 +41,7 @@ export async function buildReviewedSourceBasisContribution(input: BuildReviewedS
   const citations = answerAssessment.evidence.cited.filter((item) => item.id === association.answerCitationEvidenceId);
   const citation = citations[0];
   if (citations.length !== 1 || !citation || citation.id === evidence.id || citation.result === "failed" || citation.blocksClaim || citation.supportStrength !== "cited" || citation.sourceRef !== evidence.sourceRef || citation.locator !== (evidence.sourceLocator ?? null)) throw fail("answer-citation-mismatch");
-  const state = sourceFacts(evidence, sourceState);
+  const state = sourceFacts(evidence, sourceState, expectedRef, restore);
   if (!state) throw fail("source-state-incoherent");
   const reviewed = evidence.metadata?.reviewedExtraction as { input?: { reviewDecision?: { spec?: { status?: string; resolution?: string; reviewedAt?: string } }; structuralTrust?: string }; gaps?: unknown[] } | undefined;
   const decision = reviewed?.input?.reviewDecision?.spec;
@@ -54,16 +62,14 @@ export async function buildReviewedSourceBasisContribution(input: BuildReviewedS
   return { ref: { ...ref }, answer: { ...input.answer }, role: "source", context, gaps };
 }
 
-function sourceFacts(evidence: Evidence, state: ReviewedExtractionSourceState): { currentness: "current" | "drifted" | "unknown"; checkedAt: string; expectedCapture: ReviewedSourceBasisContext["expectedCapture"]; observedCapture: ReviewedSourceBasisContext["observedCapture"]; comparisonUnavailable: boolean } | null {
+function sourceFacts(evidence: Evidence, state: ReviewedExtractionSourceState, expectedRef: string, restore: ReviewedExtractionRestoreOptions): { currentness: "current" | "drifted" | "unknown"; checkedAt: string; expectedCapture: ReviewedSourceBasisContext["expectedCapture"]; observedCapture: ReviewedSourceBasisContext["observedCapture"]; comparisonUnavailable: boolean } | null {
   if (!validTime(state.observedAt)) return null;
-  const expectedSnapshot = ((evidence.metadata?.reviewedExtraction as { input?: { importRecord?: { spec?: { envelope?: { source?: { snapshotRef?: string; ref?: string } } } } } })?.input?.importRecord?.spec?.envelope?.source);
-  const expectedRef = expectedSnapshot?.snapshotRef ?? expectedSnapshot?.ref;
-  if (typeof expectedRef !== "string" || state.expectedSnapshotRef !== expectedRef) return null;
+  if (state.expectedSnapshotRef !== expectedRef) return null;
   if (!state.observation) return state.status === "unknown" && state.observedSnapshotRef === undefined ? { currentness: "unknown", checkedAt: state.observedAt, expectedCapture: null, observedCapture: null, comparisonUnavailable: true } : null;
   const observation = state.observation;
   const expected = observation.expected; const observed = observation.observed;
   if (!exactKeys(observation, ["version", "owner", "expected", "observed"]) || observation.version !== "surface.reviewed-source-observation/v1" || !exactKeys(observation.owner, ["authority", "observationRef"]) || observation.owner.authority !== "fieldwork-source-check-receipt/v2" || !nonEmpty(observation.owner.observationRef) || observation.expected.snapshotRef !== expectedRef || !validCapture(expected) || !validCapture(observed) || expected.sourceId !== observed.sourceId || expected.resourceRef !== observed.resourceRef || Date.parse(expected.capturedAt) > Date.parse(state.observedAt) || Date.parse(observed.capturedAt) > Date.parse(state.observedAt)) return null;
-  try { const rebuilt = buildReviewedExtractionSourceState(evidence, observation, state.observedAt); if (!sameStructure(rebuilt, state)) return null; } catch { return null; }
+  try { const rebuilt = buildReviewedExtractionSourceState(evidence, observation, state.observedAt, restore); if (!sameStructure(rebuilt, state)) return null; } catch { return null; }
   const currentness = expected.contentDigest.value === observed.contentDigest.value ? "current" : "drifted";
   if (state.status !== currentness || state.observedSnapshotRef !== observed.snapshotRef) return null;
   return { currentness, checkedAt: state.observedAt, expectedCapture: { capturedAt: expected.capturedAt, contentDigest: expected.contentDigest.value }, observedCapture: { capturedAt: observed.capturedAt, contentDigest: observed.contentDigest.value }, comparisonUnavailable: false };

@@ -25,6 +25,32 @@ integrity presence. This makes
 the ordinary Hachure-compatible fields useful to generic consumers while
 preserving the complete reviewed extraction for profile-aware consumers.
 
+### Reference profile (v2)
+
+The v1 profile above embeds the whole import record in every evidence item, so
+a run with many reviewed proposals repeats its full envelope once per item. To
+keep each item's size independent of the run, project with
+`{ profile: reviewedExtractionEvidenceReferenceProfile }`
+(`surface.reviewed-extraction-evidence/v2`). The item then carries the cited
+proposal and `importRecordDigest` (`reviewedExtractionImportRecordDigest` of the
+record) instead of the record. Store each import record once, keyed by that
+digest, and pass a resolver when restoring:
+
+```ts
+const records = new Map([[reviewedExtractionImportRecordDigest(record), record]]);
+const input = restoreReviewedExtractionEvidence(evidence, { resolveImportRecord: (digest) => records.get(digest) });
+```
+
+Restore checks that the resolved record has the bound digest and that its
+`proposals[proposalIndex]` is the embedded proposal, then applies every v1
+check. Without a record it throws `ReviewedExtractionImportRecordUnresolvedError`
+(`code: "import-record-unresolved"`). The same optional `resolveImportRecord`
+is accepted by `restoreReviewedExtractionEvidenceBrowser`,
+`evaluateReviewedGroundingPolicy`, `buildReviewedExtractionSourceState`,
+`buildUnknownReviewedExtractionSourceState`, `evaluateAnswerAssessmentPolicy`,
+`buildAnswerAssessmentProjection`, and `buildReviewedSourceBasisContribution`;
+each refuses v2 evidence it cannot resolve. v1 evidence ignores the resolver.
+
 The profile validates only the envelope fields it reads, so additive producer
 keys pass through unchanged and stay inside the profile digest. This covers a
 proposal's `producedBy` model record and `evidenceMatch` annotation, a provider

@@ -5,6 +5,8 @@ decided: 2026-07-20
 evidence:
   - kind: issue
     ref: "161"
+  - kind: issue
+    ref: "262"
   - kind: doc
     ref: docs/guides/reviewed-extraction-evidence.md
   - kind: doc
@@ -37,3 +39,30 @@ tampering, credentials, forged artifact identity, incoherent spans, and JSON
 collapse; a policy regression proves rejected or invalid evidence cannot verify.
 The resulting evidence validates against the upstream schema. This proves the
 current upstream Evidence structure is sufficient, so no schema change is needed.
+
+## Reference profile (v2)
+
+The v1 profile embeds the whole import record, so a bundle with one evidence
+item per reviewed proposal of an N-proposal run carries N copies of every
+proposal. `surface.reviewed-extraction-evidence/v2` is an opt-in alternative
+(`projectReviewedExtractionEvidence(input, { profile })`); v1 stays the default
+and keeps restoring unchanged, so existing bundles and the pinned v1 profile
+digest are unaffected.
+
+A v2 item carries the cited proposal and `importRecordDigest`, the canonical
+JSON SHA-256 of the import record, in place of the record. The profile digest
+covers that input, so it binds the record by digest. The record is supplied out
+of line through a synchronous `resolveImportRecord(digest)` option, not as a
+carrier item in the bundle: that needs no bundle or Evidence schema change and
+matches how prepared artifacts are already resolved outside the bundle. Restore
+refuses a resolved record whose digest differs and an embedded proposal that is
+not `proposals[proposalIndex]`, then runs the v1 validation and re-projection on
+the rebuilt input, so every v1 check applies. Without a record it throws a typed
+`ReviewedExtractionImportRecordUnresolvedError`; the grounding policy reports it
+as an `import-record-unresolved` gap, and the other readers that restore
+(source-state builders, answer assessment, the Basis reviewed-source adapter)
+take the same optional resolver and fail closed without it.
+
+Where the producer stores import records, and how it looks them up by digest,
+is the producer's choice. The v2 profile does not change the review shape; the
+two-candidate transition review (#195) is still out of scope.

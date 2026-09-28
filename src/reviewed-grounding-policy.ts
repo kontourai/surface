@@ -3,7 +3,9 @@ import { valueDigest } from "./canonical-digest.js";
 import {
   restoreReviewedExtractionEvidence,
   reviewedExtractionStructuralTrust,
+  ReviewedExtractionImportRecordUnresolvedError,
   type ReviewedExtractionEvidenceInput,
+  type ReviewedExtractionRestoreOptions,
   type ReviewedExtractionProvenanceGap,
 } from "./reviewed-extraction-evidence.js";
 import { restoreReviewedExtractionEvidenceBrowser } from "./reviewed-extraction-evidence-browser.js";
@@ -63,7 +65,8 @@ export interface ReviewedExtractionSourceObservation {
 
 export type ReviewedExtractionSourceObservationErrorCode =
   | "invalid-observation" | "unknown-version" | "invalid-digest"
-  | "expected-snapshot-mismatch" | "incompatible-source-identity" | "contradictory-capture";
+  | "expected-snapshot-mismatch" | "incompatible-source-identity" | "contradictory-capture"
+  | "import-record-unresolved";
 
 export class ReviewedExtractionSourceObservationError extends Error {
   constructor(readonly code: ReviewedExtractionSourceObservationErrorCode, message: string) {
@@ -86,6 +89,8 @@ export type ReviewedGroundingPolicyGap =
   | { kind: "source-not-current"; claimId: string; evidenceId: string; status: "drifted" | "unknown" }
   | { kind: "source-state-incoherent"; claimId: string; evidenceId: string }
   | { kind: "invalid-reviewed-evidence"; claimId: string; evidenceId: string }
+  /** v2 evidence whose import record the caller's `resolveImportRecord` did not supply. */
+  | { kind: "import-record-unresolved"; claimId: string; evidenceId: string; importRecordDigest: string }
   | { kind: "extraction-coverage-incomplete"; claimId: string; evidenceId: string; outcome: "partial" | "failure" | "provider-failure"; reason?: string; providerFailureCount?: number }
   | { kind: "profile-gap"; claimId: string; evidenceId: string; gap: ReviewedExtractionProvenanceGap };
 
@@ -129,6 +134,8 @@ export function evaluateReviewedGroundingPolicy(input: {
    * `claims` array cannot bind any value and is refused with `claims-not-supplied`.
    */
   claims: readonly Pick<Claim, "id" | "value">[];
+  /** Supplies import records for v2 (reference-profile) evidence; see `restoreReviewedExtractionEvidence`. */
+  resolveImportRecord?: ReviewedExtractionRestoreOptions["resolveImportRecord"];
 }): ReviewedGroundingPolicyDecision {
   const dimensions: ReviewedGroundingDimension[] = [];
   const gaps: ReviewedGroundingPolicyGap[] = [];
@@ -157,7 +164,7 @@ export function evaluateReviewedGroundingPolicy(input: {
       continue;
     }
     for (const evidence of candidates) {
-      const result = evaluateEvidence(input.policy, claimId, evidence, sourceStates.get(evidence.id), conflictingSourceStateIds.has(evidence.id));
+      const result = evaluateEvidence(input.policy, claimId, evidence, { resolveImportRecord: input.resolveImportRecord }, sourceStates.get(evidence.id), conflictingSourceStateIds.has(evidence.id));
       if (result.dimension) {
         dimensions.push(result.dimension);
         if (claim !== undefined) {
@@ -184,13 +191,16 @@ export function evaluateReviewedGroundingPolicy(input: {
   };
 }
 
-function evaluateEvidence(policy: ReviewedGroundingPolicy, claimId: string, evidence: Evidence, suppliedSourceState?: ReviewedExtractionSourceState, duplicateConflict = false): {
+function evaluateEvidence(policy: ReviewedGroundingPolicy, claimId: string, evidence: Evidence, options: ReviewedExtractionRestoreOptions, suppliedSourceState?: ReviewedExtractionSourceState, duplicateConflict = false): {
   dimension?: ReviewedGroundingDimension;
   gaps: ReviewedGroundingPolicyGap[];
 } {
   let reviewed: ReviewedExtractionEvidenceInput;
-  try { reviewed = restoreReviewedExtractionEvidence(evidence); }
-  catch { return { gaps: [{ kind: "invalid-reviewed-evidence", claimId, evidenceId: evidence.id }] }; }
+  try { reviewed = restoreReviewedExtractionEvidence(evidence, options); }
+  catch (error) {
+    if (error instanceof ReviewedExtractionImportRecordUnresolvedError) return { gaps: [{ kind: "import-record-unresolved", claimId, evidenceId: evidence.id, importRecordDigest: error.importRecordDigest }] };
+    return { gaps: [{ kind: "invalid-reviewed-evidence", claimId, evidenceId: evidence.id }] };
+  }
   const proposal = reviewed.importRecord.spec.envelope.result.proposals[reviewed.proposalIndex]!;
   const artifact = reviewed.importRecord.spec.envelope.result.preparedArtifact;
   const artifactState = reviewed.importRecord.spec.envelope.result.preparedArtifactState;
@@ -297,10 +307,10 @@ function sourceStateCoherent(state: ReviewedExtractionSourceState, expectedSnaps
  * Builds source state from frozen reviewed evidence and a producer-owned observation.
  * It is intentionally pure: callers must authenticate and resolve captures before use.
  */
-export function buildReviewedExtractionSourceState(evidence: Evidence, observation: ReviewedExtractionSourceObservation, observedAt: string): ReviewedExtractionSourceState {
+export function buildReviewedExtractionSourceState(evidence: Evidence, observation: ReviewedExtractionSourceObservation, observedAt: string, options: ReviewedExtractionRestoreOptions = {}): ReviewedExtractionSourceState {
   let reviewed: ReviewedExtractionEvidenceInput;
-  try { reviewed = restoreReviewedExtractionEvidence(evidence); }
-  catch { throw new ReviewedExtractionSourceObservationError("invalid-observation", "Evidence is not valid reviewed extraction evidence."); }
+  try { reviewed = restoreReviewedExtractionEvidence(evidence, options); }
+  catch (error) { throw restoreFailure(error); }
   const expectedSnapshotRef = reviewed.importRecord.spec.envelope.source.snapshotRef ?? reviewed.importRecord.spec.envelope.source.ref;
   return buildReviewedExtractionSourceStateFromRestored(evidence.id, expectedSnapshotRef, observation, observedAt);
 }
@@ -308,10 +318,10 @@ export function buildReviewedExtractionSourceState(evidence: Evidence, observati
 /** Builds the only coherent no-comparison state. Callers cannot attach capture
  * facts to an unknown status, which prevents a moved or unavailable owner read
  * from being mistaken for a valid comparison. */
-export async function buildUnknownReviewedExtractionSourceState(evidence: Evidence, observedAt: string): Promise<ReviewedExtractionSourceState> {
+export async function buildUnknownReviewedExtractionSourceState(evidence: Evidence, observedAt: string, options: ReviewedExtractionRestoreOptions = {}): Promise<ReviewedExtractionSourceState> {
   let reviewed: ReviewedExtractionEvidenceInput;
-  try { const authenticated = await restoreReviewedExtractionEvidenceBrowser(evidence); reviewed = restoreReviewedExtractionEvidence(authenticated); }
-  catch { throw new ReviewedExtractionSourceObservationError("invalid-observation", "Evidence is not valid reviewed extraction evidence."); }
+  try { const authenticated = await restoreReviewedExtractionEvidenceBrowser(evidence, options); reviewed = restoreReviewedExtractionEvidence(authenticated, options); }
+  catch (error) { throw restoreFailure(error); }
   if (!validDate(observedAt)) throw new ReviewedExtractionSourceObservationError("invalid-observation", "Observation check time is invalid.");
   return {
     evidenceId: evidence.id,
@@ -319,6 +329,11 @@ export async function buildUnknownReviewedExtractionSourceState(evidence: Eviden
     expectedSnapshotRef: reviewed.importRecord.spec.envelope.source.snapshotRef ?? reviewed.importRecord.spec.envelope.source.ref,
     observedAt,
   };
+}
+
+function restoreFailure(error: unknown): ReviewedExtractionSourceObservationError {
+  if (error instanceof ReviewedExtractionImportRecordUnresolvedError) return new ReviewedExtractionSourceObservationError("import-record-unresolved", "Reviewed extraction evidence references an import record that was not resolved.");
+  return new ReviewedExtractionSourceObservationError("invalid-observation", "Evidence is not valid reviewed extraction evidence.");
 }
 
 function buildReviewedExtractionSourceStateFromRestored(evidenceId: string, expectedSnapshotRef: string, observation: ReviewedExtractionSourceObservation, observedAt: string): ReviewedExtractionSourceState {

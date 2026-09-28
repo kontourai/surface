@@ -1,6 +1,6 @@
 import { valueDigest } from "./canonical-digest.js";
 import { evaluateClaimEvidence } from "./claim-evaluation.js";
-import { restoreReviewedExtractionEvidence } from "./reviewed-extraction-evidence.js";
+import { restoreReviewedExtractionEvidence, type ReviewedExtractionRestoreOptions } from "./reviewed-extraction-evidence.js";
 import { resolvePolicyForClaim } from "./policy-resolver.js";
 import type { Evidence, SurfaceExtension, TrustReport, VerificationPolicy } from "./types.js";
 import type { SurfacePolicyOutcome } from "./basis/types.js";
@@ -13,6 +13,8 @@ import type { SurfacePolicyOutcome } from "./basis/types.js";
 export function evaluateAnswerAssessmentPolicy(
   report: TrustReport,
   claimId: string,
+  /** Needed to bind the value of v2 (reference-profile) reviewed evidence; without it such evidence is `value-unbound`. */
+  options: ReviewedExtractionRestoreOptions = {},
 ): SurfacePolicyOutcome | null {
   const claim = report.claims.find((candidate) => candidate.id === claimId);
   if (!claim) return null;
@@ -36,7 +38,7 @@ export function evaluateAnswerAssessmentPolicy(
   if (entailing.length === 0) reasons.push("explicit-entailing-evidence-missing");
   if (blockingEvidence) reasons.push("blocking-evidence");
   if (blockingGap) reasons.push("blocking-gap");
-  if (entailing.some((item) => reviewedValueUnbound(item, claim.value))) reasons.push("value-unbound");
+  if (entailing.some((item) => reviewedValueUnbound(item, claim.value, options))) reasons.push("value-unbound");
   const satisfied = reasons.length === 0;
   return {
     version: "surface.answer-assessment-policy/v1",
@@ -53,10 +55,10 @@ export function evaluateAnswerAssessmentPolicy(
  * reviewed candidate value is not the claim's value (compared by `valueDigest`),
  * or whose profile cannot be restored, so no reviewed value can be bound.
  */
-function reviewedValueUnbound(evidence: Evidence, claimValue: unknown): boolean {
+function reviewedValueUnbound(evidence: Evidence, claimValue: unknown, options: ReviewedExtractionRestoreOptions): boolean {
   if (evidence.metadata?.reviewedExtraction === undefined) return false;
   try {
-    const reviewed = restoreReviewedExtractionEvidence(evidence);
+    const reviewed = restoreReviewedExtractionEvidence(evidence, options);
     const proposal = reviewed.importRecord.spec.envelope.result.proposals[reviewed.proposalIndex]!;
     return valueDigest(proposal.candidateValue) !== valueDigest(claimValue);
   } catch {
