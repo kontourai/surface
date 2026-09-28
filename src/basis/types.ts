@@ -86,7 +86,7 @@ export interface BasisAssessmentDirectInput {
   source: "derivedFrom" | "derivationEdges";
   edge: BasisAssessmentDerivationEdge | null;
 }
-export type SurfacePolicyReason = "claim-not-verified" | "claim-stale" | "required-evidence-unmet" | "explicit-entailing-evidence-missing" | "blocking-evidence" | "blocking-gap";
+export type SurfacePolicyReason = "claim-not-verified" | "claim-stale" | "required-evidence-unmet" | "explicit-entailing-evidence-missing" | "blocking-evidence" | "blocking-gap" | "value-unbound";
 /** Closed owner evaluation facts. This is a result, not caller-supplied standing. */
 export interface SurfacePolicyOutcome {
   version: "surface.answer-assessment-policy/v1";

@@ -20,6 +20,12 @@ export function deriveTrustStatus(input: {
    * entailing evidence. Either way the requirement decision is identical.
    */
   evaluation?: ClaimEvidenceEvaluation;
+  /**
+   * Skip the time-based staleness test on the verified-event branch. The result
+   * is the claim's own status with time left out; `applyVerifiedStaleness`
+   * re-applies time to it exactly. Used to store checkpoint statuses.
+   */
+  ignoreVerifiedStaleness?: boolean;
 }): TrustStatus {
   const now = input.now ?? new Date();
   const claimEvents = input.events
@@ -64,7 +70,7 @@ export function deriveTrustStatus(input: {
   }
 
   if (latestEvent?.status === "verified") {
-    if (isVerifiedEventStale(latestEvent, input.claim, input.evidence, input.policy, now)) {
+    if (!input.ignoreVerifiedStaleness && isVerifiedEventStale(latestEvent, input.claim, input.evidence, input.policy, now)) {
       return "stale";
     }
 
@@ -112,9 +118,63 @@ export function deriveTrustStatus(input: {
  * (`verified` or `stale`); any other prior status passes through unchanged.
  *
  * The governing verified event (anchor for `ttlSeconds` and the policy duration
- * window) is taken from the unchanged ledger. This is identical to what
- * `deriveTrustStatus` would compute for the same `now`, by construction.
+ * window) is taken from the unchanged ledger. Time is re-applied only when that
+ * status came from the latest event being a `verified` event: a `stale` from a
+ * revocation or invalidation, or a status set by an authorized dispute
+ * resolution, does not move with the clock and passes through unchanged.
+ *
+ * A prior `stale` can hide a `proposed` or `disputed` outcome that reappears
+ * when `now` moves back before the expiry, and a prior `proposed`/`disputed`
+ * cannot become `stale` here. Derivation from a checkpoint therefore uses
+ * `applyVerifiedStaleness` on an untimed status instead.
  */
+/**
+ * The latest event of the claim when `deriveTrustStatus` decides the claim on
+ * its verified-event branch (the only branch that reads `now`): the latest
+ * event is a `verified` event that is not an invalidation, and no authorized
+ * dispute resolution governs. Undefined otherwise.
+ */
+export function verifiedBranchEvent(
+  claim: Claim,
+  events: VerificationEvent[],
+  authorityTrace: AuthorityTrace[] = [],
+): VerificationEvent | undefined {
+  const claimEvents = events
+    .filter((event) => event.claimId === claim.id)
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  const latestEvent = claimEvents[0];
+  if (
+    latestEvent === undefined ||
+    latestEvent.status !== "verified" ||
+    latestEvent.type === "invalidation" ||
+    findLatestResolutionEvent(claimEvents, authorityTrace) !== undefined
+  ) {
+    return undefined;
+  }
+  return latestEvent;
+}
+
+/**
+ * Re-apply time to a status derived with `ignoreVerifiedStaleness`. On the
+ * verified-event branch the staleness test precedes every other outcome, so the
+ * result is `stale` when the governing event is stale at `now` and the untimed
+ * status otherwise. Off that branch the status does not depend on `now`. The
+ * result equals `deriveTrustStatus` for the same inputs and `now`.
+ */
+export function applyVerifiedStaleness(input: {
+  untimedStatus: TrustStatus;
+  claim: Claim;
+  evidence: Evidence[];
+  events: VerificationEvent[];
+  policy?: VerificationPolicy;
+  now: Date;
+  authorityTrace?: AuthorityTrace[];
+}): TrustStatus {
+  const governing = verifiedBranchEvent(input.claim, input.events, input.authorityTrace);
+  if (governing === undefined) return input.untimedStatus;
+  return isVerifiedEventStale(governing, input.claim, input.evidence, input.policy, input.now) ? "stale" : input.untimedStatus;
+}
+
 export function reapplyVerifiedFreshness(input: {
   priorStatus: TrustStatus;
   claim: Claim;
@@ -122,11 +182,11 @@ export function reapplyVerifiedFreshness(input: {
   events: VerificationEvent[];
   policy?: VerificationPolicy;
   now: Date;
+  /** Needed to recognise an authorized dispute resolution, which takes precedence over time. */
+  authorityTrace?: AuthorityTrace[];
 }): TrustStatus {
   if (input.priorStatus !== "verified" && input.priorStatus !== "stale") return input.priorStatus;
-  const governing = input.events
-    .filter((event) => event.claimId === input.claim.id && event.status === "verified")
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0];
+  const governing = verifiedBranchEvent(input.claim, input.events, input.authorityTrace);
   if (governing === undefined) return input.priorStatus;
   return isVerifiedEventStale(governing, input.claim, input.evidence, input.policy, input.now) ? "stale" : "verified";
 }

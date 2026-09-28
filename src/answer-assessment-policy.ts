@@ -1,6 +1,8 @@
+import { valueDigest } from "./canonical-digest.js";
 import { evaluateClaimEvidence } from "./claim-evaluation.js";
+import { restoreReviewedExtractionEvidence } from "./reviewed-extraction-evidence.js";
 import { resolvePolicyForClaim } from "./policy-resolver.js";
-import type { SurfaceExtension, TrustReport, VerificationPolicy } from "./types.js";
+import type { Evidence, SurfaceExtension, TrustReport, VerificationPolicy } from "./types.js";
 import type { SurfacePolicyOutcome } from "./basis/types.js";
 
 /**
@@ -34,6 +36,7 @@ export function evaluateAnswerAssessmentPolicy(
   if (entailing.length === 0) reasons.push("explicit-entailing-evidence-missing");
   if (blockingEvidence) reasons.push("blocking-evidence");
   if (blockingGap) reasons.push("blocking-gap");
+  if (entailing.some((item) => reviewedValueUnbound(item, claim.value))) reasons.push("value-unbound");
   const satisfied = reasons.length === 0;
   return {
     version: "surface.answer-assessment-policy/v1",
@@ -43,6 +46,22 @@ export function evaluateAnswerAssessmentPolicy(
     satisfied,
     reasons,
   };
+}
+
+/**
+ * True when entailing evidence carries a reviewed-extraction profile whose
+ * reviewed candidate value is not the claim's value (compared by `valueDigest`),
+ * or whose profile cannot be restored, so no reviewed value can be bound.
+ */
+function reviewedValueUnbound(evidence: Evidence, claimValue: unknown): boolean {
+  if (evidence.metadata?.reviewedExtraction === undefined) return false;
+  try {
+    const reviewed = restoreReviewedExtractionEvidence(evidence);
+    const proposal = reviewed.importRecord.spec.envelope.result.proposals[reviewed.proposalIndex]!;
+    return valueDigest(proposal.candidateValue) !== valueDigest(claimValue);
+  } catch {
+    return true;
+  }
 }
 
 /** A small reference policy; products own their concrete policy templates. */

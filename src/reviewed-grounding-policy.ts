@@ -1,6 +1,8 @@
-import type { Evidence } from "./types.js";
+import type { Claim, Evidence } from "./types.js";
+import { valueDigest } from "./canonical-digest.js";
 import {
   restoreReviewedExtractionEvidence,
+  reviewedExtractionStructuralTrust,
   type ReviewedExtractionEvidenceInput,
   type ReviewedExtractionProvenanceGap,
 } from "./reviewed-extraction-evidence.js";
@@ -9,6 +11,15 @@ import { restoreReviewedExtractionEvidenceBrowser } from "./reviewed-extraction-
 export interface ReviewedGroundingPolicy {
   id: string;
   action: string;
+  /**
+   * The claims the action depends on. Derive this list from the caller's intent
+   * (the task's fields or the output schema), independently of the evidence
+   * passed to the same call. Building it from that evidence (for example
+   * `new Set(evidence.map((item) => item.claimId))`) is circular: a claim that
+   * should have reviewed evidence but has none is then never required, so
+   * `missing-reviewed-evidence` cannot fire for it. An empty list is refused
+   * with a `no-required-claims` gap.
+   */
   requiredClaimIds: string[];
   requireExactLocator?: boolean;
   requirePreparedArtifact?: boolean;
@@ -62,7 +73,11 @@ export class ReviewedExtractionSourceObservationError extends Error {
 }
 
 export type ReviewedGroundingPolicyGap =
+  | { kind: "no-required-claims" }
   | { kind: "missing-reviewed-evidence"; claimId: string }
+  | { kind: "claims-not-supplied" }
+  | { kind: "claim-missing"; claimId: string }
+  | { kind: "value-mismatch"; claimId: string; evidenceId: string; claimValueDigest: string; candidateValueDigest: string }
   | { kind: "evidence-not-entailing"; claimId: string; evidenceId: string }
   | { kind: "missing-exact-locator"; claimId: string; evidenceId: string }
   | { kind: "missing-prepared-artifact"; claimId: string; evidenceId: string }
@@ -80,6 +95,8 @@ export interface ReviewedGroundingDimension {
   reviewItemName?: string;
   reviewDecisionName?: string;
   candidateConfidence: number;
+  /** `valueDigest` of the reviewed candidate value, for binding a claim value to this evidence. */
+  candidateValueDigest: string;
   reviewDisposition: string;
   structuralTrust: ReviewedExtractionEvidenceInput["structuralTrust"];
   typeOrigin: "explicit" | "inferred";
@@ -104,6 +121,13 @@ export function evaluateReviewedGroundingPolicy(input: {
   policy: ReviewedGroundingPolicy;
   evidence: readonly Evidence[];
   sourceStates?: readonly ReviewedExtractionSourceState[];
+  /**
+   * The claims whose values the evidence must support. Each required claim must
+   * be present (`claim-missing`) and its value must equal the reviewed
+   * candidate value by `valueDigest` (`value-mismatch`). A call without a
+   * `claims` array cannot bind any value and is refused with `claims-not-supplied`.
+   */
+  claims: readonly Pick<Claim, "id" | "value">[];
 }): ReviewedGroundingPolicyDecision {
   const dimensions: ReviewedGroundingDimension[] = [];
   const gaps: ReviewedGroundingPolicyGap[] = [];
@@ -115,7 +139,17 @@ export function evaluateReviewedGroundingPolicy(input: {
     else if (!previous) sourceStates.set(state.evidenceId, state);
   }
 
+  // An empty requirement set says nothing about what the action needs, so it
+  // cannot be allowed by default.
+  if (input.policy.requiredClaimIds.length === 0) gaps.push({ kind: "no-required-claims" });
+  // Untyped callers can still omit `claims`; without them no value is bound, so
+  // the decision cannot be allowed.
+  const claims = Array.isArray(input.claims) ? input.claims : undefined;
+  if (claims === undefined) gaps.push({ kind: "claims-not-supplied" });
+
   for (const claimId of input.policy.requiredClaimIds) {
+    const claim = claims?.find((candidate) => candidate.id === claimId);
+    if (claims !== undefined && claim === undefined) gaps.push({ kind: "claim-missing", claimId });
     const candidates = input.evidence.filter((item) => item.claimId === claimId && isReviewedExtractionEvidence(item));
     if (candidates.length === 0) {
       gaps.push({ kind: "missing-reviewed-evidence", claimId });
@@ -123,7 +157,15 @@ export function evaluateReviewedGroundingPolicy(input: {
     }
     for (const evidence of candidates) {
       const result = evaluateEvidence(input.policy, claimId, evidence, sourceStates.get(evidence.id), conflictingSourceStateIds.has(evidence.id));
-      if (result.dimension) dimensions.push(result.dimension);
+      if (result.dimension) {
+        dimensions.push(result.dimension);
+        if (claim !== undefined) {
+          const claimValueDigest = valueDigest(claim.value);
+          if (claimValueDigest !== result.dimension.candidateValueDigest) {
+            result.gaps.push({ kind: "value-mismatch", claimId, evidenceId: evidence.id, claimValueDigest, candidateValueDigest: result.dimension.candidateValueDigest });
+          }
+        }
+      }
       gaps.push(...result.gaps);
     }
   }
@@ -166,8 +208,9 @@ function buildDimension(claimId: string, evidence: Evidence, reviewed: ReviewedE
     claimId, evidenceId: evidence.id,
     ...(reviewItemName ? { reviewItemName } : {}), ...(reviewDecisionName ? { reviewDecisionName } : {}),
     candidateConfidence: proposal.confidence,
+    candidateValueDigest: valueDigest(proposal.candidateValue),
     reviewDisposition: reviewed.reviewDecision?.spec.resolution ?? reviewed.reviewDecision?.spec.status ?? "not-reviewed",
-    structuralTrust: reviewed.structuralTrust, typeOrigin: proposal.inferenceType ?? "inferred",
+    structuralTrust: reviewedExtractionStructuralTrust(reviewed), typeOrigin: proposal.inferenceType ?? "inferred",
     ...(evidence.sourceLocator ? { exactLocator: evidence.sourceLocator } : {}),
     preparedArtifact: artifactAvailable
       ? { status: "available", ...(evidence.integrityRef ? { integrityRef: evidence.integrityRef } : {}) }
@@ -184,7 +227,7 @@ function evaluateEvidenceGaps(policy: ReviewedGroundingPolicy, evidence: Evidenc
   if (policy.requireExactLocator && !evidence.sourceLocator) gaps.push({ kind: "missing-exact-locator", ...base });
   if (policy.requirePreparedArtifact && (!artifactAvailable || !evidence.integrityRef)) gaps.push({ kind: "missing-prepared-artifact", ...base });
   if (policy.requireAcceptedReview && !accepted) gaps.push({ kind: "review-not-accepted", ...base, ...(dimension.reviewDecisionName ? { reviewDecisionName: dimension.reviewDecisionName } : {}) });
-  if (policy.requireValidatedStructure && reviewed.structuralTrust !== "validated") gaps.push({ kind: "structure-not-validated", ...base, structuralTrust: reviewed.structuralTrust });
+  if (policy.requireValidatedStructure && dimension.structuralTrust !== "validated") gaps.push({ kind: "structure-not-validated", ...base, structuralTrust: dimension.structuralTrust });
   if (!coherentSourceState) gaps.push({ kind: "source-state-incoherent", ...base });
   if (policy.requireCurrentSource && dimension.sourceState.status !== "current") gaps.push({ kind: "source-not-current", ...base, status: dimension.sourceState.status });
   const coverage = extractionCoverageGap(reviewed);

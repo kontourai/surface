@@ -15,6 +15,7 @@ import {
   type ReviewedExtractionSourceObservation,
   type ReviewedExtractionSourceState,
   type ReviewedGroundingPolicy,
+  valueDigest,
 } from "../src/index.js";
 
 const fixtureUrl = new URL("tests/fixtures/reviewed-extraction-evidence.v1.json", `file://${process.cwd()}/`);
@@ -30,6 +31,8 @@ const policy: ReviewedGroundingPolicy = {
   requireValidatedStructure: true,
   requireCurrentSource: true,
 };
+
+const alpha = [{ id: "claim.directory.title", value: "Alpha" }];
 
 function current(evidenceId: string): ReviewedExtractionSourceState {
   return { evidenceId, status: "current", expectedSnapshotRef: "snapshot:fixture-v1", observedSnapshotRef: "snapshot:fixture-v1", observedAt: "2026-07-20T00:06:00.000Z", extractedValueChanged: false };
@@ -61,7 +64,7 @@ function observation(overrides: Partial<ReviewedExtractionSourceObservation> = {
 
 test("allows an additive downstream policy and cites exact evidence and review resources", async () => {
   const projected = projectReviewedExtractionEvidence(await fixture());
-  const decision = evaluateReviewedGroundingPolicy({ policy, evidence: [projected.evidence], sourceStates: [current(projected.evidence.id)] });
+  const decision = evaluateReviewedGroundingPolicy({ claims: alpha, policy, evidence: [projected.evidence], sourceStates: [current(projected.evidence.id)] });
   assert.equal(decision.outcome, "allowed");
   assert.deepEqual(decision.evidenceIds, [projected.evidence.id]);
   assert.deepEqual(decision.reviewItemNames, ["extraction-envelope.5bfdf37f230ab6e21807"]);
@@ -70,13 +73,13 @@ test("allows an additive downstream policy and cites exact evidence and review r
   assert.deepEqual(decision.dimensions[0], {
     claimId: "claim.directory.title", evidenceId: projected.evidence.id,
     reviewItemName: "extraction-envelope.5bfdf37f230ab6e21807", reviewDecisionName: "decision.directory.title",
-    candidateConfidence: 0.8, reviewDisposition: "verified", structuralTrust: "validated", typeOrigin: "explicit",
+    candidateConfidence: 0.8, candidateValueDigest: valueDigest("Alpha"), reviewDisposition: "verified", structuralTrust: "validated", typeOrigin: "explicit",
     exactLocator: "chars:0-5", preparedArtifact: { status: "available", integrityRef: projected.evidence.integrityRef }, sourceState: current(projected.evidence.id),
   });
 });
 
 test("refuses missing reviewed evidence without changing core policy or claim types", () => {
-  const decision = evaluateReviewedGroundingPolicy({ policy, evidence: [] });
+  const decision = evaluateReviewedGroundingPolicy({ claims: alpha, policy, evidence: [] });
   assert.equal(decision.outcome, "refused");
   assert.deepEqual(decision.gaps, [{ kind: "missing-reviewed-evidence", claimId: "claim.directory.title" }]);
 });
@@ -84,7 +87,7 @@ test("refuses missing reviewed evidence without changing core policy or claim ty
 test("malformed reviewed evidence fails closed as a typed refusal", async () => {
   const projected = projectReviewedExtractionEvidence(await fixture());
   projected.evidence.metadata = { reviewedExtraction: {} };
-  const decision = evaluateReviewedGroundingPolicy({ policy, evidence: [projected.evidence] });
+  const decision = evaluateReviewedGroundingPolicy({ claims: alpha, policy, evidence: [projected.evidence] });
   assert.equal(decision.outcome, "refused");
   assert.deepEqual(decision.gaps, [{ kind: "invalid-reviewed-evidence", claimId: "claim.directory.title", evidenceId: projected.evidence.id }]);
 });
@@ -92,7 +95,7 @@ test("malformed reviewed evidence fails closed as a typed refusal", async () => 
 test("keeps source drift visible even when the extracted value is unchanged", async () => {
   const projected = projectReviewedExtractionEvidence(await fixture());
   const drift: ReviewedExtractionSourceState = { ...current(projected.evidence.id), status: "drifted", observedSnapshotRef: "snapshot:fixture-v2", extractedValueChanged: false };
-  const decision = evaluateReviewedGroundingPolicy({ policy, evidence: [projected.evidence], sourceStates: [drift] });
+  const decision = evaluateReviewedGroundingPolicy({ claims: alpha, policy, evidence: [projected.evidence], sourceStates: [drift] });
   assert.equal(decision.outcome, "refused");
   assert.deepEqual(decision.gaps, [{ kind: "source-not-current", claimId: "claim.directory.title", evidenceId: projected.evidence.id, status: "drifted" }]);
   assert.equal(decision.dimensions[0]!.sourceState.extractedValueChanged, false);
@@ -101,7 +104,7 @@ test("keeps source drift visible even when the extracted value is unchanged", as
 test("refuses a forged current source observation that does not match the bound snapshot", async () => {
   const projected = projectReviewedExtractionEvidence(await fixture());
   const forged = { ...current(projected.evidence.id), observedSnapshotRef: "snapshot:fixture-v2" };
-  const decision = evaluateReviewedGroundingPolicy({ policy, evidence: [projected.evidence], sourceStates: [forged] });
+  const decision = evaluateReviewedGroundingPolicy({ claims: alpha, policy, evidence: [projected.evidence], sourceStates: [forged] });
   assert.equal(decision.outcome, "refused");
   assert.ok(decision.gaps.some((gap) => gap.kind === "source-state-incoherent"));
 });
@@ -122,7 +125,7 @@ test("missing artifacts and digest mismatches cannot satisfy a grounding policy"
       delete input.reviewItem; delete input.reviewDecision;
     }
     const projected = projectReviewedExtractionEvidence(input);
-    const decision = evaluateReviewedGroundingPolicy({ policy, evidence: [projected.evidence], sourceStates: [current(projected.evidence.id)] });
+    const decision = evaluateReviewedGroundingPolicy({ claims: alpha, policy, evidence: [projected.evidence], sourceStates: [current(projected.evidence.id)] });
     assert.equal(decision.outcome, "refused");
     assert.ok(decision.gaps.some((gap) => gap.kind === "missing-prepared-artifact"));
     if (mode === "digest-mismatch") assert.ok(decision.gaps.some((gap) => gap.kind === "profile-gap" && gap.gap.kind === "digest-mismatch"));
@@ -134,7 +137,7 @@ test("does not translate extraction confidence into reviewer or structural trust
   input.importRecord.spec.envelope.result.proposals[0]!.confidence = 0.01;
   input.reviewItem!.spec.candidates[0]!.confidence = 0.01;
   const projected = projectReviewedExtractionEvidence(input);
-  const decision = evaluateReviewedGroundingPolicy({ policy, evidence: [projected.evidence], sourceStates: [current(projected.evidence.id)] });
+  const decision = evaluateReviewedGroundingPolicy({ claims: alpha, policy, evidence: [projected.evidence], sourceStates: [current(projected.evidence.id)] });
   assert.equal(decision.outcome, "allowed");
   assert.equal(decision.dimensions[0]!.candidateConfidence, 0.01);
   assert.equal(decision.dimensions[0]!.reviewDisposition, "verified");
@@ -151,7 +154,7 @@ test("builds a content-current state from distinct, owner-resolved captures whil
   assert.equal(state.extractedValueChanged, undefined);
   assert.equal(state.observation?.expected.envelopeDigest.value, digest("a").value);
   assert.equal(state.observation?.observed.envelopeDigest.value, digest("c").value);
-  const decision = evaluateReviewedGroundingPolicy({ policy, evidence: [projected.evidence], sourceStates: [state] });
+  const decision = evaluateReviewedGroundingPolicy({ claims: alpha, policy, evidence: [projected.evidence], sourceStates: [state] });
   assert.equal(decision.outcome, "allowed");
 });
 
@@ -202,7 +205,7 @@ test("marks raw content drift without claiming an extracted field changed", asyn
   assert.equal(state.status, "drifted");
   assert.equal(state.extractedValueChanged, undefined);
   assert.equal("extractedValueChanged" in state, false);
-  const decision = evaluateReviewedGroundingPolicy({ policy, evidence: [projected.evidence], sourceStates: [state] });
+  const decision = evaluateReviewedGroundingPolicy({ claims: alpha, policy, evidence: [projected.evidence], sourceStates: [state] });
   assert.equal(decision.outcome, "refused");
   assert.equal(decision.dimensions[0]!.sourceState.extractedValueChanged, undefined);
 });
@@ -240,7 +243,7 @@ test("rejects bad digests and conflicting duplicate states instead of accepting 
   assert.throws(() => buildReviewedExtractionSourceState(projected.evidence, bad, "2026-07-21T00:01:00.000Z"), (error: unknown) => error instanceof ReviewedExtractionSourceObservationError && error.code === "invalid-digest");
   const first = buildReviewedExtractionSourceState(projected.evidence, observation(), "2026-07-21T00:01:00.000Z");
   const second = { ...first, observedAt: "2026-07-22T00:01:00.000Z" };
-  const decision = evaluateReviewedGroundingPolicy({ policy, evidence: [projected.evidence], sourceStates: [first, second] });
+  const decision = evaluateReviewedGroundingPolicy({ claims: alpha, policy, evidence: [projected.evidence], sourceStates: [first, second] });
   assert.ok(decision.gaps.some((gap) => gap.kind === "source-state-incoherent"));
 });
 
@@ -248,9 +251,75 @@ test("treats property-order and deep-key reordered duplicate source states as eq
   const projected = projectReviewedExtractionEvidence(await fixture());
   const state = buildReviewedExtractionSourceState(projected.evidence, observation(), "2026-07-21T00:01:00.000Z");
   const reordered = reorderKeys(state) as ReviewedExtractionSourceState;
-  const decision = evaluateReviewedGroundingPolicy({ policy, evidence: [projected.evidence], sourceStates: [state, reordered] });
+  const decision = evaluateReviewedGroundingPolicy({ claims: alpha, policy, evidence: [projected.evidence], sourceStates: [state, reordered] });
   assert.equal(decision.outcome, "allowed");
   assert.deepEqual(decision.gaps, []);
+});
+
+function withCandidate(input: ReviewedExtractionEvidenceInput, value: unknown, valueType?: string): ReviewedExtractionEvidenceInput {
+  const proposal = input.importRecord.spec.envelope.result.proposals[input.proposalIndex]!;
+  proposal.candidateValue = value;
+  if (valueType === undefined) delete proposal.valueType; else proposal.valueType = valueType;
+  input.reviewItem!.spec.candidates[0]!.value = value;
+  return input;
+}
+
+test("a claim whose value is not the reviewed value is refused with one value-mismatch gap", async () => {
+  const projected = projectReviewedExtractionEvidence(await fixture());
+  const decision = evaluateReviewedGroundingPolicy({
+    policy, evidence: [projected.evidence], sourceStates: [current(projected.evidence.id)],
+    claims: [{ id: "claim.directory.title", value: "Beta" }],
+  });
+  assert.equal(decision.outcome, "refused");
+  assert.deepEqual(decision.gaps, [{
+    kind: "value-mismatch", claimId: "claim.directory.title", evidenceId: projected.evidence.id,
+    claimValueDigest: valueDigest("Beta"), candidateValueDigest: valueDigest("Alpha"),
+  }]);
+});
+
+test("a claim carrying the reviewed value is allowed, and omitting claims is refused", async () => {
+  const projected = projectReviewedExtractionEvidence(await fixture());
+  const bound = evaluateReviewedGroundingPolicy({
+    policy, evidence: [projected.evidence], sourceStates: [current(projected.evidence.id)],
+    claims: [{ id: "claim.directory.title", value: "Alpha" }],
+  });
+  assert.equal(bound.outcome, "allowed");
+  assert.deepEqual(bound.gaps, []);
+  // An untyped caller that omits claims cannot get an unbound allow.
+  const unbound = evaluateReviewedGroundingPolicy({ policy, evidence: [projected.evidence], sourceStates: [current(projected.evidence.id)] } as unknown as Parameters<typeof evaluateReviewedGroundingPolicy>[0]);
+  assert.equal(unbound.outcome, "refused");
+  assert.deepEqual(unbound.gaps, [{ kind: "claims-not-supplied" }]);
+});
+
+test("value binding ignores object key order and reports a required claim that was not supplied", async () => {
+  assert.equal(valueDigest({ a: 1, b: 2 }), valueDigest({ b: 2, a: 1 }));
+  assert.notEqual(valueDigest({ a: 1, b: 2 }), valueDigest({ a: 1, b: 3 }));
+  const projected = projectReviewedExtractionEvidence(withCandidate(await fixture(), { a: 1, b: 2 }, "object"));
+  const reordered = evaluateReviewedGroundingPolicy({
+    policy, evidence: [projected.evidence], sourceStates: [current(projected.evidence.id)],
+    claims: [{ id: "claim.directory.title", value: { b: 2, a: 1 } }],
+  });
+  assert.equal(reordered.gaps.some((gap) => gap.kind === "value-mismatch"), false);
+
+  const missing = evaluateReviewedGroundingPolicy({ policy, evidence: [projectReviewedExtractionEvidence(await fixture()).evidence], claims: [] });
+  assert.ok(missing.gaps.some((gap) => gap.kind === "claim-missing" && gap.claimId === "claim.directory.title"));
+});
+
+test("an empty requiredClaimIds is refused with one no-required-claims gap, with or without evidence", async () => {
+  const projected = projectReviewedExtractionEvidence(await fixture());
+  for (const evidence of [[], [projected.evidence]]) {
+    const decision = evaluateReviewedGroundingPolicy({ claims: alpha, policy: { ...policy, requiredClaimIds: [] }, evidence, sourceStates: [current(projected.evidence.id)] });
+    assert.equal(decision.outcome, "refused");
+    assert.deepEqual(decision.gaps, [{ kind: "no-required-claims" }]);
+  }
+});
+
+test("a validated label on a non-conforming value fails requireValidatedStructure", async () => {
+  const projected = projectReviewedExtractionEvidence(withCandidate(await fixture(), "forty-five", "number"));
+  const decision = evaluateReviewedGroundingPolicy({ claims: alpha, policy, evidence: [projected.evidence], sourceStates: [current(projected.evidence.id)] });
+  assert.equal(decision.outcome, "refused");
+  assert.equal(decision.dimensions[0]!.structuralTrust, "invalid");
+  assert.ok(decision.gaps.some((gap) => gap.kind === "structure-not-validated" && gap.structuralTrust === "invalid"));
 });
 
 test("refuses evidence from a partial extraction with a typed coverage gap", async () => {
@@ -260,7 +329,7 @@ test("refuses evidence from a partial extraction with a typed coverage gap", asy
   result.partial = { reason: "max-chunks", completedChunks: 1, remainingChunks: 1 };
   const projected = projectReviewedExtractionEvidence(input);
   assert.equal(projected.evidence.supportStrength, "entails");
-  const decision = evaluateReviewedGroundingPolicy({ policy, evidence: [projected.evidence], sourceStates: [current(projected.evidence.id)] });
+  const decision = evaluateReviewedGroundingPolicy({ claims: alpha, policy, evidence: [projected.evidence], sourceStates: [current(projected.evidence.id)] });
   assert.equal(decision.outcome, "refused");
   assert.deepEqual(decision.gaps, [{ kind: "extraction-coverage-incomplete", claimId: "claim.directory.title", evidenceId: projected.evidence.id, outcome: "partial", reason: "max-chunks" }]);
 });
@@ -269,7 +338,7 @@ test("refuses evidence from a success envelope that recorded provider failures",
   const input = await fixture();
   input.importRecord.spec.envelope.result.providerFailures = [{ provider: "portable-fixture", kind: "unavailable", retryable: true }];
   const projected = projectReviewedExtractionEvidence(input);
-  const decision = evaluateReviewedGroundingPolicy({ policy, evidence: [projected.evidence], sourceStates: [current(projected.evidence.id)] });
+  const decision = evaluateReviewedGroundingPolicy({ claims: alpha, policy, evidence: [projected.evidence], sourceStates: [current(projected.evidence.id)] });
   assert.equal(decision.outcome, "refused");
   assert.deepEqual(decision.gaps, [{ kind: "extraction-coverage-incomplete", claimId: "claim.directory.title", evidenceId: projected.evidence.id, outcome: "provider-failure", providerFailureCount: 1 }]);
 });
@@ -279,7 +348,7 @@ test("coverage gap is emitted even when no optional requirement is set", async (
   input.importRecord.spec.envelope.result.outcome = { status: "failure", category: "provider", code: "provider-failure" };
   input.importRecord.spec.envelope.result.providerFailures = [{ provider: "portable-fixture", kind: "unavailable", retryable: true }, { provider: "portable-fixture", kind: "unknown", retryable: false }];
   const projected = projectReviewedExtractionEvidence(input);
-  const decision = evaluateReviewedGroundingPolicy({ policy: { id: "policy.minimal", action: "publish", requiredClaimIds: ["claim.directory.title"] }, evidence: [projected.evidence] });
+  const decision = evaluateReviewedGroundingPolicy({ claims: alpha, policy: { id: "policy.minimal", action: "publish", requiredClaimIds: ["claim.directory.title"] }, evidence: [projected.evidence] });
   assert.equal(decision.outcome, "refused");
   assert.deepEqual(decision.gaps, [{ kind: "extraction-coverage-incomplete", claimId: "claim.directory.title", evidenceId: projected.evidence.id, outcome: "failure", reason: "provider-failure", providerFailureCount: 2 }]);
 });
@@ -288,7 +357,7 @@ async function coverageDecision(mutate: (result: Record<string, unknown>) => voi
   const input = await fixture();
   mutate(input.importRecord.spec.envelope.result as unknown as Record<string, unknown>);
   const projected = projectReviewedExtractionEvidence(input);
-  return { projected, decision: evaluateReviewedGroundingPolicy({ policy, evidence: [projected.evidence], sourceStates: [current(projected.evidence.id)] }) };
+  return { projected, decision: evaluateReviewedGroundingPolicy({ claims: alpha, policy, evidence: [projected.evidence], sourceStates: [current(projected.evidence.id)] }) };
 }
 
 test("a missing or malformed extraction outcome cannot show a complete read", async () => {

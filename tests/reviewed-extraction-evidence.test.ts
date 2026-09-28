@@ -6,6 +6,7 @@ import { buildReviewDecision } from "@kontourai/survey/review-workbench";
 import type { ReviewItem } from "@kontourai/survey";
 import {
   buildTrustReport,
+  deriveStructuralTrust,
   projectReviewedExtractionEvidence,
   restoreReviewedExtractionEvidence,
   validateTrustBundle,
@@ -155,6 +156,77 @@ test("owner invariants reject credential identities, occurrence drift, artifact-
   assert.throws(() => projectReviewedExtractionEvidence(extra), /unexpected/);
   const contradictory = await fixture(); contradictory.reviewDecision!.spec.resolution = "could_not_confirm"; contradictory.reviewDecision!.spec.status = "verified";
   assert.throws(() => projectReviewedExtractionEvidence(contradictory), /cannot use status/);
+});
+
+/** Sets the proposal's candidate value (and the review candidate that must mirror it) plus its declared type. */
+function withCandidate(input: ReviewedExtractionEvidenceInput, value: unknown, valueType?: string, enumValues?: string[]): ReviewedExtractionEvidenceInput {
+  const proposal = input.importRecord.spec.envelope.result.proposals[input.proposalIndex]!;
+  proposal.candidateValue = value;
+  if (valueType === undefined) delete proposal.valueType; else proposal.valueType = valueType;
+  if (enumValues === undefined) delete proposal.enumValues; else proposal.enumValues = enumValues;
+  input.reviewItem!.spec.candidates[0]!.value = value;
+  return input;
+}
+
+test("structural trust is derived from the proposal: a non-conforming value cannot project as validated", async () => {
+  for (const [value, valueType, enumValues] of [
+    ["forty-five", "number", undefined],
+    ["Gamma", "enum", ["Alpha", "Beta"]],
+  ] as const) {
+    const input = withCandidate(await fixture(), value, valueType, enumValues ? [...enumValues] : undefined);
+    assert.equal(input.structuralTrust, "validated");
+    const projection = projectReviewedExtractionEvidence(input);
+    assert.deepEqual(projection.gaps, [{ kind: "structural-trust", status: "invalid" }], `${valueType}: ${value}`);
+    assert.equal(projection.evidence.supportStrength, "cited");
+    assert.equal(projection.evidence.passing, false);
+    assert.equal(projection.evidence.blocking, true);
+  }
+});
+
+test("relabelling a non-conforming reviewed extraction as validated does not re-project as support", async () => {
+  const invalid = withCandidate(await fixture(), "forty-five", "number");
+  invalid.structuralTrust = "invalid";
+  const original = projectReviewedExtractionEvidence(invalid).evidence;
+  const restored = restoreReviewedExtractionEvidence(original);
+  restored.structuralTrust = "validated";
+  const relabelled = projectReviewedExtractionEvidence(restored);
+  assert.equal(relabelled.evidence.supportStrength, "cited");
+  assert.equal(relabelled.evidence.passing, false);
+  assert.deepEqual(relabelled.gaps, [{ kind: "structural-trust", status: "invalid" }]);
+  // Restore re-derives the same projection, so the relabelled item never restores as entailing evidence.
+  const tampered = { ...relabelled.evidence, supportStrength: "entails" as const, passing: true, blocking: false };
+  assert.throws(() => restoreReviewedExtractionEvidence(tampered), /integrity binding|do not match/);
+});
+
+test("the conforming fixture projects byte-identically and a caller can still downgrade structural trust", async () => {
+  const projection = projectReviewedExtractionEvidence(await fixture());
+  // Pinned from the projection before structural trust was derived.
+  assert.equal((projection.evidence.metadata!.reviewedExtraction as { profileDigest: string }).profileDigest, "sha256:42b11897b9014f7af8a891893b380260a28ce00fb1e9ec19ff9e70e7b9ceb4ea");
+  const downgraded = await fixture();
+  downgraded.structuralTrust = "unvalidated";
+  assert.deepEqual(projectReviewedExtractionEvidence(downgraded).gaps, [{ kind: "structural-trust", status: "unvalidated" }]);
+});
+
+test("deriveStructuralTrust follows the Traverse value vocabulary", () => {
+  const cases: Array<[unknown, string | undefined, string[] | undefined, string]> = [
+    ["Alpha", "string", undefined, "validated"],
+    [45, "string", undefined, "invalid"],
+    [45, "number", undefined, "validated"],
+    ["45", "number", undefined, "invalid"],
+    [true, "boolean", undefined, "validated"],
+    ["yes", "boolean", undefined, "invalid"],
+    ["2026-01-01", "date", undefined, "validated"],
+    ["Alpha", "enum", ["Alpha"], "validated"],
+    ["Gamma", "enum", ["Alpha"], "invalid"],
+    ["Alpha", "enum", undefined, "unvalidated"],
+    ["Gamma", "string", ["Alpha"], "invalid"],
+    [["a"], "array", undefined, "unvalidated"],
+    [{ a: 1 }, "object", undefined, "unvalidated"],
+    ["Alpha", undefined, undefined, "unvalidated"],
+  ];
+  for (const [candidateValue, valueType, enumValues, expected] of cases) {
+    assert.equal(deriveStructuralTrust({ candidateValue, valueType, enumValues }), expected, `${JSON.stringify(candidateValue)} as ${valueType}`);
+  }
 });
 
 test("known optional envelope keys added by producers project, restore, and are digest-bound", async () => {

@@ -48,6 +48,7 @@
     },
     {
       "id": "evidence.service.live-backed.output",
+      "passing": true,
       "claimId": "claim.service.live-backed",
       "evidenceType": "test_output",
       "method": "validation",
@@ -64,6 +65,7 @@
     },
     {
       "id": "evidence.service.live-backed.runtime",
+      "passing": true,
       "claimId": "claim.service.live-backed",
       "evidenceType": "runtime_observation",
       "method": "observation",

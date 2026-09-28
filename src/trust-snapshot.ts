@@ -4,6 +4,7 @@ import type {
   DerivationChangeRecord,
   DerivationCheckpoint,
   DerivedReportClaim,
+  Evidence,
   EvidenceRequirement,
   SubjectGroup,
   TransparencyGap,
@@ -17,6 +18,8 @@ import { deriveClaimGroupRollups } from "./claim-groups.js";
 import { deriveConflictTransparencyGaps } from "./conflict-derivation.js";
 import { applyDerivation } from "./derivation.js";
 import { buildIdentityIndex } from "./identity.js";
+import { canonicalJson, sha256Hex } from "./canonical-digest.js";
+import { resolvePolicyForClaim } from "./policy-resolver.js";
 import { statusFunctionVersion } from "./status.js";
 import { deriveWaiverValidity, type WaiverValidity } from "./waiver.js";
 
@@ -34,19 +37,25 @@ export interface TrustSnapshotDerivation {
    * `docs/reference/waiver-validity.md`).
    */
   waiverValidityByClaimId: Record<string, WaiverValidity>;
+  /** Per-claim checkpoint input digest (see `DerivationCheckpoint.inputDigestByClaimId`). */
+  inputDigestByClaimId: Record<string, string>;
+  /** Per-claim untimed own status (see `DerivationCheckpoint.untimedOwnStatusByClaimId`). */
+  untimedOwnStatusByClaimId: Record<string, TrustStatus>;
 }
 
 export interface DeriveTrustSnapshotOptions {
   now?: Date;
   /**
    * Optional checkpoint enabling cost-bounded (tail-only) re-derivation. When
-   * supplied, a claim with **no events newer than the checkpoint's high-water
-   * mark** (`throughEventCreatedAt`) is not event-replayed at all: its
-   * event-driven status is taken from the checkpoint (which already folded that
-   * claim's full ledger), and only time-based freshness is re-applied against
-   * `now`. A claim that DOES have tail events is fully re-folded. The status
-   * function is pure, so the result is byte-identical to a full derivation for
-   * the same `now`; the win is that the event fold only touches the tail.
+   * supplied, a claim whose status inputs are unchanged since the checkpoint
+   * (its `inputDigestByClaimId` entry matches: same claim, evidence, events,
+   * resolved policy and authority trace) and that has **no events newer than
+   * the checkpoint's per-claim high-water mark** is not event-replayed at all:
+   * its untimed own status is taken from the checkpoint, time is re-applied
+   * against `now` (earlier or later than the checkpoint), and the derivation
+   * ceiling is applied from the current input statuses. Any other claim is fully re-folded, and a
+   * checkpoint without input digests replays every claim. The result is
+   * identical to a full derivation for the same `now`.
    */
   since?: DerivationCheckpoint;
   /**
@@ -98,10 +107,20 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
   // own last folded event, and would be silently dropped from the tail. Legacy
   // checkpoints without the per-claim map fall back to full replay.
   const perClaimMark = checkpoint?.throughEventCreatedAtByClaimId;
+  const checkpointDigests = checkpoint?.inputDigestByClaimId;
+  const checkpointOwnStatuses = checkpoint?.untimedOwnStatusByClaimId;
+  // (c) A checkpoint must also carry per-claim input digests and own statuses:
+  // without them an evidence, policy or input-claim change since the checkpoint
+  // is invisible, so such checkpoints replay in full.
   const checkpointUsable =
     checkpoint !== undefined &&
     checkpoint.statusFunctionVersion === statusFunctionVersion &&
-    perClaimMark !== undefined;
+    perClaimMark !== undefined &&
+    checkpointDigests !== undefined &&
+    checkpointOwnStatuses !== undefined;
+  const authorityTraceDigest = sha256Hex(canonicalJson(input.authorityTrace ?? []));
+  const inputDigestByClaimId: Record<string, string> = Object.create(null);
+  const untimedOwnStatusByClaimId: Record<string, TrustStatus> = Object.create(null);
 
   const ownStatusByClaimId = new Map<string, TrustStatus>();
   const claimsById = new Map<string, Claim>();
@@ -113,7 +132,13 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
       ? (claim.id in perClaimMark ? perClaimMark[claim.id] : undefined)
       : undefined;
     const claimMark = typeof claimMarkIso === "string" ? Date.parse(claimMarkIso) : undefined;
-    const claimSeenByCheckpoint = checkpointUsable && perClaimMark ? claim.id in perClaimMark : false;
+    const inputDigest = claimInputDigest(claim, evidence, claimEvents, resolvePolicyForClaim(claim, input.policies), authorityTraceDigest);
+    inputDigestByClaimId[claim.id] = inputDigest;
+    const claimSeenByCheckpoint = checkpointUsable && perClaimMark
+      ? Object.hasOwn(perClaimMark, claim.id) &&
+        Object.hasOwn(checkpointDigests!, claim.id) &&
+        checkpointDigests![claim.id] === inputDigest
+      : false;
 
     const folded = foldClaim({
       claim,
@@ -123,7 +148,9 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
       allEvents: input.events,
       authorityTrace: input.authorityTrace,
       now,
-      checkpointStatus: checkpoint?.statusByClaimId[claim.id],
+      checkpointStatus: claimSeenByCheckpoint && Object.hasOwn(checkpointOwnStatuses!, claim.id)
+        ? checkpointOwnStatuses![claim.id]
+        : undefined,
       checkpointUsable,
       checkpointSeenClaim: claimSeenByCheckpoint,
       checkpointMark: claimMark,
@@ -136,6 +163,7 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
       fromCheckpoint: folded.fromCheckpoint,
     });
     ownStatusByClaimId.set(claim.id, folded.ownStatus);
+    untimedOwnStatusByClaimId[claim.id] = folded.untimedOwnStatus;
     if (folded.policy) policyByClaimId.set(claim.id, folded.policy);
     if (folded.evidenceRequirement) evidenceRequirementsByClaimId[claim.id] = folded.evidenceRequirement;
     transparencyGaps.push(...folded.transparencyGaps);
@@ -189,5 +217,21 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
     subjectGroups: identityIndex.groups,
     claimGroupRollups: deriveClaimGroupRollups({ claimGroups: input.claimGroups, claims }),
     waiverValidityByClaimId,
+    inputDigestByClaimId,
+    untimedOwnStatusByClaimId,
   };
+}
+
+/**
+ * Digest of every input a claim's own status is folded from. Evidence and
+ * events keep their bundle order: a reorder only costs a re-fold.
+ */
+function claimInputDigest(
+  claim: Claim,
+  evidence: Evidence[],
+  events: VerificationEvent[],
+  policy: VerificationPolicy | undefined,
+  authorityTraceDigest: string,
+): string {
+  return `sha256:${sha256Hex(canonicalJson({ claim, evidence, events, policy: policy ?? null, authorityTraceDigest }))}`;
 }

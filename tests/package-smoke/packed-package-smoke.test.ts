@@ -80,7 +80,7 @@ test("packed npm artifact installs, imports, and serves modern plus legacy MCP f
           "const sourceState = buildReviewedExtractionSourceState(projected.evidence, observation, '2026-07-21T00:00:00.000Z');",
           "if (sourceState.observation.expected.snapshotRef !== 'snapshot:fixture-v1' || sourceState.observation.observed.snapshotRef !== 'forage:capture-304') throw new Error('capture identities were not preserved');",
           "if (sourceState.observation.expected.envelopeDigest.value !== sha('a').value || sourceState.observation.observed.envelopeDigest.value !== sha('c').value) throw new Error('capture digests were not preserved');",
-          "const reviewedPolicy = evaluateReviewedGroundingPolicy({ policy: { id: 'packed-policy', action: 'publish', requiredClaimIds: [projected.evidence.claimId], requireCurrentSource: true }, evidence: [projected.evidence], sourceStates: [sourceState] });",
+          "const reviewedPolicy = evaluateReviewedGroundingPolicy({ policy: { id: 'packed-policy', action: 'publish', requiredClaimIds: [projected.evidence.claimId], requireCurrentSource: true }, evidence: [projected.evidence], sourceStates: [sourceState], claims: [{ id: projected.evidence.claimId, value: reviewedFixture.importRecord.spec.envelope.result.proposals[reviewedFixture.proposalIndex].candidateValue }] });",
           "if (reviewedPolicy.outcome !== 'allowed') throw new Error('reviewed policy rejected a current packed consumer observation');",
           "const root = await import('@kontourai/surface');",
           "if ('composeBasisProjection' in root) throw new Error('basis leaked through root barrel');",

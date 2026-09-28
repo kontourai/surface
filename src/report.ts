@@ -32,11 +32,13 @@ export interface BuildTrustReportOptions {
   id?: string;
   /**
    * Optional checkpoint enabling cost-bounded re-derivation. When supplied,
-   * derivation still produces an identical report for the same `now` (the
-   * status function is pure), but the checkpoint is validated for consistency
-   * and surfaced so callers can chain derivations. Re-derivation is bounded by
-   * the event tail newer than the checkpoint's high-water mark; time-based
-   * freshness is always re-applied against `now`.
+   * derivation still produces an identical report for the same `now`: a claim
+   * is served from the checkpoint only when its per-claim input digest (claim,
+   * evidence, events, resolved policy, authority trace) is unchanged and it has
+   * no tail events; every other claim is re-folded, and the derivation ceiling
+   * is always applied from current input statuses. Time-based freshness is
+   * always re-applied against `now`. A checkpoint without input digests
+   * replays every claim.
    */
   since?: DerivationCheckpoint;
   /**
@@ -47,11 +49,22 @@ export interface BuildTrustReportOptions {
   instrument?: (probe: SnapshotEventProbe) => void;
 }
 
+/**
+ * Checkpoint inputs for reports this module returned, keyed by report object
+ * identity. They are not report fields (the report schema is closed), so a
+ * report that was cloned, deserialized or rebuilt yields a checkpoint without
+ * them, and the next derivation from that checkpoint replays in full.
+ */
+const checkpointInputsByReport = new WeakMap<TrustReport, {
+  inputDigestByClaimId: Record<string, string>;
+  untimedOwnStatusByClaimId: Record<string, TrustStatus>;
+}>();
+
 export function buildTrustReport(input: TrustBundle, options: BuildTrustReportOptions = {}): TrustReport {
   const now = options.now ?? new Date();
   const snapshot = deriveTrustSnapshot(input, { now, since: options.since, instrument: options.instrument });
 
-  return {
+  const report: TrustReport = {
     // Hachure 0.15 widens the embedded Evidence/VerificationPolicy schemas for
     // v7 vocabulary, but trust-report.schema.json still permits only top-level
     // schemaVersion 5 or 6. Keep reports at 5 until that upstream contract is
@@ -77,13 +90,21 @@ export function buildTrustReport(input: TrustBundle, options: BuildTrustReportOp
     waiverValidityByClaimId: snapshot.waiverValidityByClaimId,
     waiverValidityFunctionVersion,
   };
+  checkpointInputsByReport.set(report, {
+    inputDigestByClaimId: snapshot.inputDigestByClaimId,
+    untimedOwnStatusByClaimId: snapshot.untimedOwnStatusByClaimId,
+  });
+  return report;
 }
 
 /**
  * Freeze a derivation checkpoint from a report. The checkpoint is the immutable
  * inquiry record AND the performance lever for `buildTrustReport(bundle, { now,
- * since })`: subsequent derivations only need to fold events newer than its
- * `throughEventCreatedAt`.
+ * since })`: subsequent derivations skip the fold for claims whose inputs are
+ * unchanged. Only a report object returned by `buildTrustReport` in this
+ * process carries the input digests that enable that; a checkpoint from any
+ * other report object (a clone or a deserialized copy) omits them,
+ * and derivations from it replay in full.
  */
 export function checkpointFromReport(report: TrustReport): DerivationCheckpoint {
   const statusByClaimId: Record<string, TrustStatus> = {};
@@ -107,12 +128,14 @@ export function checkpointFromReport(report: TrustReport): DerivationCheckpoint 
       throughEventCreatedAtByClaimId[event.claimId] = event.createdAt;
     }
   }
+  const inputs = checkpointInputsByReport.get(report);
   return {
     asOf: report.generatedAt,
     statusByClaimId,
     expiresAtByClaimId: Object.keys(expiresAtByClaimId).length > 0 ? expiresAtByClaimId : undefined,
     throughEventCreatedAt,
     throughEventCreatedAtByClaimId,
+    ...(inputs ? { inputDigestByClaimId: { ...inputs.inputDigestByClaimId }, untimedOwnStatusByClaimId: { ...inputs.untimedOwnStatusByClaimId } } : {}),
     statusFunctionVersion: report.statusFunctionVersion,
   };
 }
