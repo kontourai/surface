@@ -246,11 +246,11 @@ export function resolverFromBundle(bundle: { evidence: readonly Evidence[] }): N
   };
 }
 
-/** Checks an item's own sidecar against its digest. A supplied resolver is still consulted first, so a digest it refuses stays refused. */
 /**
- * Puts one `importRecord` sidecar on the first v2 item for each distinct
- * `importRecordDigest` that `records` supplies and no item already carries, so
- * the bundle meets `resolverFromBundle`'s precondition. Idempotent: items that
+ * For each distinct `importRecordDigest` that `records` supplies and no item
+ * already carries, puts one `importRecord` sidecar on the first v2 item citing
+ * it, so the bundle meets `resolverFromBundle`'s precondition. An existing
+ * matching carrier stays where it is, even on a later item. Idempotent: items that
  * already carry the right record are left alone, and other items are returned
  * unchanged (same object). Throws on an item whose sidecar does not match its
  * digest. Digests with no supplied record stay uncarried; check them with
@@ -277,10 +277,19 @@ export function attachImportRecords(evidence: readonly Evidence[], records: Iter
   });
 }
 
-/** The v2 `importRecordDigest`s in a bundle that no item carries a matching sidecar for; empty when the bundle verifies on its own. */
+/**
+ * Checks carrier completeness and consistency: returns the v2
+ * `importRecordDigest`s that `resolverFromBundle` cannot supply, either because
+ * no item carries a matching sidecar or because any carrier of that digest
+ * does not match it (which makes the resolver refuse the digest). Empty means
+ * every digest has a consistent carrier; it is not a full integrity check, and
+ * evidence that is internally consistent but tampered still fails at restore.
+ */
 export function findUncarriedImportRecordDigests(bundle: { evidence: readonly Evidence[] }): string[] {
   const carried = new Set<string>();
-  for (const item of bundle.evidence) { const sidecar = carriedRecord(item); if (sidecar?.matches) carried.add(sidecar.declared); }
+  const mismatched = new Set<string>();
+  for (const item of bundle.evidence) { const sidecar = carriedRecord(item); if (sidecar) (sidecar.matches ? carried : mismatched).add(sidecar.declared); }
+  for (const declared of mismatched) carried.delete(declared);
   const uncarried: string[] = [];
   for (const item of bundle.evidence) { const declared = referenceDigest(item); if (declared !== undefined && !carried.has(declared) && !uncarried.includes(declared)) uncarried.push(declared); }
   return uncarried;
@@ -301,6 +310,7 @@ function carriedRecord(evidence: Evidence): { declared: string; matches: boolean
   return { declared, matches, record: metadata.importRecord as SurveyExtractionEnvelopeImport };
 }
 
+/** Checks an item's own sidecar against its digest. A supplied resolver is still consulted first, so a digest it refuses stays refused. */
 function withSidecar(sidecar: unknown, declared: unknown, options: ReviewedExtractionRestoreOptions): ReviewedExtractionRestoreOptions {
   if (!isRecord(sidecar)) throw new Error("importRecord sidecar must be an object.");
   assertJsonValue(sidecar, "importRecord sidecar");

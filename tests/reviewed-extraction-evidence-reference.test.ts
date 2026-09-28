@@ -263,8 +263,10 @@ test("two sidecars with the same digest and different content refuse every item 
   const bundle = { evidence: [...evidence, forged] };
   const resolveImportRecord = resolverFromBundle(bundle);
   for (const item of [evidence[0]!, evidence[3]!]) {
-    assert.throws(() => restoreReviewedExtractionEvidence(item, { resolveImportRecord }), /bundle carries an import record sidecar that does not match/);
+    assert.throws(() => restoreReviewedExtractionEvidence(item, { resolveImportRecord }), /bundle carries an import record sidecar that does not match its importRecordDigest \(evidence evidence\.forged\)/);
   }
+  // The producer check agrees with the resolver: the genuine carrier does not make that digest usable.
+  assert.deepEqual(findUncarriedImportRecordDigests(bundle), [profileInput(evidence[0]!).importRecordDigest]);
 });
 
 test("only v2 evidence may carry an import record sidecar", async () => {

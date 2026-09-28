@@ -60,9 +60,13 @@ metadata, outside the digested profile input, accepted only when it hashes to
 that item's `importRecordDigest`. This is a producer precondition, not a
 default. Projection leaves the sidecar off (`includeImportRecord` defaults to
 false, since a sidecar on every item re-bloats the bundle past v1). The producer
-calls `attachImportRecords(evidence, records)`, which puts exactly one sidecar
-on the first v2 item for each digest, and can assert
-`findUncarriedImportRecordDigests(bundle)` is empty before publishing. A reader
+calls `attachImportRecords(evidence, records)`, which gives each digest exactly
+one carrier (the first v2 item citing it, unless a matching carrier already
+exists elsewhere, which stays where it is), and can assert
+`findUncarriedImportRecordDigests(bundle)` is empty before publishing. That
+check covers carrier completeness and consistency (a digest with any
+mismatching carrier is reported), not full integrity: consistently tampered
+evidence still fails at restore. A reader
 then passes `resolverFromBundle(bundle)` to any restore or policy call. A bundle
 that misses the precondition is not accepted on trust: its uncarried items fail
 closed as unresolved.

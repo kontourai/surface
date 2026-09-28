@@ -36,9 +36,12 @@ proposal and `importRecordDigest` (`reviewedExtractionImportRecordDigest` of the
 record) instead of the record. The bundle verifies on its own only when it
 carries each record once: after projecting (the per-item `includeImportRecord`
 default is false), call `attachImportRecords(evidence, records)` to put one
-`importRecord` sidecar, outside the digested input, on the first v2 item for
-each digest, and check that `findUncarriedImportRecordDigests(bundle)` is empty
-before publishing. A reader holding only the bundle then restores any item with
+`importRecord` sidecar, outside the digested input, on the first v2 item citing
+each digest that is not already carried (an existing matching carrier stays
+where it is), and check that `findUncarriedImportRecordDigests(bundle)` is empty
+before publishing. The check reports a digest with no carrier or with any
+mismatching carrier; it checks carriers, not full integrity, so tampered
+evidence still fails at restore. A reader holding only the bundle then restores any item with
 `resolverFromBundle`:
 
 ```ts
