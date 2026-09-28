@@ -1,5 +1,22 @@
 # Changelog
 
+## [4.0.0](https://github.com/kontourai/surface/compare/v3.3.0...v4.0.0) (2026-09-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* **trust:** evaluateReviewedGroundingPolicy refuses requiredClaimIds: [] (previously allowed). Reports carry new blocking gaps for policy-free claims, cited failed checks and result-less required checks. Checkpoints without input digests, including those from cloned reports, no longer short-circuit.
+* bundles with unknown top-level keys, or with repeated claim or evidence ids, validated before and now throw.
+
+### Features
+
+* **trust:** bind reviewed values, derive structural trust, close checkpoint and gap holes ([#280](https://github.com/kontourai/surface/issues/280)) ([e48c707](https://github.com/kontourai/surface/commit/e48c70789da2d3e5615cb4c3cc5193e22b91ddda))
+
+
+### Fixes
+
+* reject unknown bundle keys, bind proposal model, refuse incomplete extractions ([#279](https://github.com/kontourai/surface/issues/279)) ([60a6348](https://github.com/kontourai/surface/commit/60a63480265a5ca744d94e1b882c09107d01a562)), closes [#268](https://github.com/kontourai/surface/issues/268)
+
 ## [3.3.0](https://github.com/kontourai/surface/compare/v3.2.0...v3.3.0) (2026-09-27)
 
 
