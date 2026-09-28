@@ -144,6 +144,18 @@ test("does not translate extraction confidence into reviewer or structural trust
   assert.equal(decision.dimensions[0]!.structuralTrust, "validated");
 });
 
+test("a proposal without confidence is allowed and its dimension carries no confidence", async () => {
+  const input = await fixture();
+  delete input.importRecord.spec.envelope.result.proposals[0]!.confidence;
+  delete input.reviewItem!.spec.candidates[0]!.confidence;
+  delete input.reviewItem!.spec.candidates[0]!.extraction.confidence;
+  const projected = projectReviewedExtractionEvidence(input);
+  const decision = evaluateReviewedGroundingPolicy({ claims: alpha, policy, evidence: [projected.evidence], sourceStates: [current(projected.evidence.id)] });
+  assert.equal(decision.outcome, "allowed");
+  assert.deepEqual(decision.gaps, []);
+  assert.equal("candidateConfidence" in decision.dimensions[0]!, false);
+});
+
 test("builds a content-current state from distinct, owner-resolved captures while preserving both identities", async () => {
   const projected = projectReviewedExtractionEvidence(await fixture());
   const fact = observation();
@@ -390,6 +402,33 @@ test("a success outcome contradicted by the rest of the envelope is a coverage f
   const complete = await coverageDecision((result) => { result.coverage = [{ chunk: 1, start: 0, end: 12, status: "complete" }, { chunk: 2, start: 10, end: 16, status: "complete" }]; });
   assert.equal(complete.decision.outcome, "allowed");
   assert.deepEqual(complete.decision.gaps, []);
+});
+
+test("a success envelope whose warnings record truncated content or output is a coverage failure", async () => {
+  // Classifications as written by Traverse's envelope builder before 2.0.0 made truncation a partial outcome.
+  const cases: Array<[string, { category: string; code: string }]> = [
+    ["output-truncated", { category: "provider", code: "output-truncated" }],
+    ["content-truncated-at-dispatch", { category: "limit", code: "content-truncated-at-dispatch" }],
+    ["content-truncated", { category: "limit", code: "content-truncated" }],
+    // Traverse 1.0.0 classifies "provider returned no extraction tool call" this way, with no provider failure.
+    ["missing-tool-call", { category: "provider", code: "missing-tool-call" }],
+    ["chunk-provider-failure", { category: "provider", code: "chunk-provider-failure" }],
+  ];
+  for (const [label, warning] of cases) {
+    const { projected, decision } = await coverageDecision((result) => { result.warningClassifications = [{ category: "other", code: "unclassified" }, warning]; });
+    assert.equal(decision.outcome, "refused", label);
+    assert.deepEqual(decision.gaps, [{ kind: "extraction-coverage-incomplete", claimId: "claim.directory.title", evidenceId: projected.evidence.id, outcome: "failure" }], label);
+  }
+  // Accepted gap: the generic pre-1.0 `provider-warning` code is not treated as a loss.
+  const unrelated = await coverageDecision((result) => { result.warningClassifications = [{ category: "other", code: "unclassified" }, { category: "limit", code: "max-chunks" }, { category: "provider", code: "provider-warning" }]; });
+  assert.equal(unrelated.decision.outcome, "allowed");
+  assert.deepEqual(unrelated.decision.gaps, []);
+  // A recorded provider failure keeps its label when a truncation warning is also present.
+  const withFailures = await coverageDecision((result) => {
+    result.warningClassifications = [{ category: "provider", code: "output-truncated" }];
+    result.providerFailures = [{ provider: "portable-fixture", kind: "unavailable", retryable: true }];
+  });
+  assert.deepEqual(withFailures.decision.gaps, [{ kind: "extraction-coverage-incomplete", claimId: "claim.directory.title", evidenceId: withFailures.projected.evidence.id, outcome: "provider-failure", providerFailureCount: 1 }]);
 });
 
 function reorderKeys(value: unknown): unknown {

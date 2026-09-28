@@ -504,6 +504,7 @@ console.log(`Wrote trust report → ${reportPath}`);
 console.log("\nAttempting Sigstore keyless signing …");
 
 let assuranceLevel = "unsigned (no ambient identity)";
+let bundleSerializationError;
 
 try {
   // Dynamic import keeps this optional — @sigstore/sign is an optionalDependency.
@@ -534,21 +535,24 @@ try {
   if (signResult === null) {
     console.log(`  Signing skipped: ${assuranceLevel}`);
   } else {
+    // Serialise the sigstore verification material bundle (cert + Rekor entry)
+    // before writing anything, so a bundle cosign cannot read is never written.
+    // A signature was produced, so failing here is a release defect, not an
+    // absent identity: it fails the run below instead of degrading to unsigned.
+    let bundleJson;
+    try {
+      const { sigstoreBundleJson } = await import("./sigstore-bundle-json.mjs");
+      bundleJson = sigstoreBundleJson(signResult.sigstoreBundle);
+    } catch (err) {
+      bundleSerializationError = err;
+      throw err;
+    }
+
     // The envelope payload is the raw statement bytes (base64) — no double-PAE.
     const dssePath = path.join(outDir, "trust-bundle.dsse.json");
     await writeFile(dssePath, JSON.stringify(signResult.envelope, null, 2));
     console.log(`  Wrote DSSE envelope  → ${dssePath}`);
 
-    // Persist the sigstore verification material bundle (cert + Rekor entry).
-    // Use @sigstore/bundle's bundleToJSON for canonical serialisation.
-    let bundleJson;
-    try {
-      const { bundleToJSON } = await import("@sigstore/bundle");
-      bundleJson = bundleToJSON(signResult.sigstoreBundle);
-    } catch {
-      // Fallback: plain JSON (sufficient for inspection even if not canonical).
-      bundleJson = signResult.sigstoreBundle;
-    }
     const sigstorePath = path.join(outDir, "trust-bundle.sigstore.json");
     await writeFile(sigstorePath, JSON.stringify(bundleJson, null, 2));
     console.log(`  Wrote sigstore bundle → ${sigstorePath}`);
@@ -557,8 +561,15 @@ try {
     console.log(`  Assurance level: ${assuranceLevel}`);
   }
 } catch (err) {
-  // Any unexpected error during signing is non-fatal (dial, not gate).
-  console.warn(`  Signing failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`);
+  const message = err instanceof Error ? err.message : String(err);
+  if (bundleSerializationError) {
+    // Fatal: the run exits non-zero after the summary.
+    assuranceLevel = "signature produced but not publishable (Sigstore bundle not serialisable)";
+    console.error(`  Sigstore bundle serialisation failed (fatal): ${message}`);
+  } else {
+    // Any other error during signing is non-fatal (dial, not gate).
+    console.warn(`  Signing failed (non-fatal): ${message}`);
+  }
   console.log(`  Assurance level: ${assuranceLevel}`);
 }
 
@@ -575,9 +586,14 @@ for (const c of claims) {
 console.log(`  all verified:    ${claims.every((c) => c.status === "verified")}`);
 console.log(`  assurance level: ${assuranceLevel}`);
 
-// Exit non-zero if any release check failed (signing failure never blocks).
+// Exit non-zero if any release check failed. An absent signing identity never
+// blocks; a signature that was produced but cannot be serialised does.
 const allPassed = testPassed && allVectorsPassed && versionMatch;
 if (!allPassed) {
   console.error("\nOne or more release checks failed. See claims above.");
+  process.exit(1);
+}
+if (bundleSerializationError) {
+  console.error("\nA signature was produced but its Sigstore bundle could not be serialised for verification.");
   process.exit(1);
 }

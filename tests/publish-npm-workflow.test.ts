@@ -106,3 +106,16 @@ test("absent Sigstore bundle skips verification successfully", async () => {
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+// The Sigstore bundle a release uploads, serialised the way the release script
+// writes it. The fixture is the bundle published with the v3.2.0 release.
+test("release script serialises the signed Sigstore bundle to the wire shape cosign reads", async () => {
+  const root = `file://${process.cwd()}/`;
+  const published = JSON.parse(await readFile(new URL("tests/fixtures/release-trust-bundle.sigstore.json", root), "utf8"));
+  const { bundleFromJSON } = await import("@sigstore/bundle");
+  const { sigstoreBundleJson } = await import(new URL("scripts/sigstore-bundle-json.mjs", root).href) as { sigstoreBundleJson: (bundle: unknown) => unknown };
+  const inMemory = bundleFromJSON(published);
+  const serialised = JSON.parse(JSON.stringify(sigstoreBundleJson(inMemory)));
+  assert.deepEqual(serialised, published);
+  assert.equal(typeof serialised.verificationMaterial.certificate.rawBytes, "string");
+});

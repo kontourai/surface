@@ -207,6 +207,36 @@ test("the conforming fixture projects byte-identically and a caller can still do
   assert.deepEqual(projectReviewedExtractionEvidence(downgraded).gaps, [{ kind: "structural-trust", status: "unvalidated" }]);
 });
 
+test("a proposal without confidence projects and restores; confidence is never defaulted", async () => {
+  const input = await fixture();
+  delete input.importRecord.spec.envelope.result.proposals[0]!.confidence;
+  delete input.reviewItem!.spec.candidates[0]!.confidence;
+  delete input.reviewItem!.spec.candidates[0]!.extraction.confidence;
+  const projection = projectReviewedExtractionEvidence(input);
+  assert.deepEqual(projection.gaps, []);
+  assert.equal(projection.evidence.supportStrength, "entails");
+  const restored = restoreReviewedExtractionEvidence(projection.evidence);
+  assert.deepEqual(restored, input);
+  assert.equal("confidence" in restored.importRecord.spec.envelope.result.proposals[0]!, false);
+  assert.equal("confidence" in restored.reviewItem!.spec.candidates[0]!, false);
+});
+
+test("confidence must be present on both proposal and candidate or on neither, and stays range-checked", async () => {
+  const proposalOnly = await fixture();
+  delete proposalOnly.reviewItem!.spec.candidates[0]!.confidence;
+  assert.throws(() => projectReviewedExtractionEvidence(proposalOnly), /candidate value or confidence does not match proposal/);
+  const candidateOnly = await fixture();
+  delete candidateOnly.importRecord.spec.envelope.result.proposals[0]!.confidence;
+  assert.throws(() => projectReviewedExtractionEvidence(candidateOnly), /candidate value or confidence does not match proposal/);
+  // Non-finite numbers are refused earlier by the JSON-value guard; the rest by the confidence check.
+  for (const bad of [-0.1, 1.1, Number.NaN, Number.POSITIVE_INFINITY, null, "0.5"]) {
+    const input = await fixture();
+    (input.importRecord.spec.envelope.result.proposals[0] as { confidence: unknown }).confidence = bad;
+    (input.reviewItem!.spec.candidates[0] as { confidence: unknown }).confidence = bad;
+    assert.throws(() => projectReviewedExtractionEvidence(input), /proposal\.confidence is invalid|non-lossless number/, String(bad));
+  }
+});
+
 test("deriveStructuralTrust follows the Traverse value vocabulary", () => {
   const cases: Array<[unknown, string | undefined, string[] | undefined, string]> = [
     ["Alpha", "string", undefined, "validated"],

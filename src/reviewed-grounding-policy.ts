@@ -94,7 +94,8 @@ export interface ReviewedGroundingDimension {
   evidenceId: string;
   reviewItemName?: string;
   reviewDecisionName?: string;
-  candidateConfidence: number;
+  /** Producer-reported candidate confidence; omitted when the proposal carries none. */
+  candidateConfidence?: number;
   /** `valueDigest` of the reviewed candidate value, for binding a claim value to this evidence. */
   candidateValueDigest: string;
   reviewDisposition: string;
@@ -207,7 +208,7 @@ function buildDimension(claimId: string, evidence: Evidence, reviewed: ReviewedE
   return {
     claimId, evidenceId: evidence.id,
     ...(reviewItemName ? { reviewItemName } : {}), ...(reviewDecisionName ? { reviewDecisionName } : {}),
-    candidateConfidence: proposal.confidence,
+    ...(proposal.confidence !== undefined ? { candidateConfidence: proposal.confidence } : {}),
     candidateValueDigest: valueDigest(proposal.candidateValue),
     reviewDisposition: reviewed.reviewDecision?.spec.resolution ?? reviewed.reviewDecision?.spec.status ?? "not-reviewed",
     structuralTrust: reviewedExtractionStructuralTrust(reviewed), typeOrigin: proposal.inferenceType ?? "inferred",
@@ -254,10 +255,24 @@ function extractionCoverageGap(reviewed: ReviewedExtractionEvidenceInput): { out
   const contradicted = (result.providerFailures !== undefined && !Array.isArray(result.providerFailures))
     || (status === "success" && result.partial !== undefined)
     || coverageIncomplete(result.coverage);
-  if (status === "success" && failures === 0 && !contradicted) return undefined;
-  const outcome = status === "partial" ? "partial" : status === "success" && !contradicted ? "provider-failure" : "failure";
+  // Producers before Traverse 2.0.0 wrote a success outcome for a run that
+  // lost a chunk (text cut before dispatch, answer at the output cap, no tool
+  // call returned) and recorded the loss only as a typed warning. Such a run
+  // did not read everything. Accepted gap: producers before Traverse 1.0.0
+  // classify truncated output, a missing tool call, and an adapter-level
+  // provider notice all as the generic `provider-warning` code, with no other
+  // structured field to tell them apart, so that code is not treated as a loss.
+  const truncated = status === "success" && truncationWarning(result.warningClassifications);
+  if (status === "success" && failures === 0 && !contradicted && !truncated) return undefined;
+  const outcome = status === "partial" ? "partial" : status === "success" && !contradicted && failures > 0 ? "provider-failure" : "failure";
   const reason = typeof recorded?.reason === "string" ? recorded.reason : typeof recorded?.code === "string" ? recorded.code : undefined;
   return { outcome, ...(reason !== undefined ? { reason } : {}), ...(failures > 0 ? { providerFailureCount: failures } : {}) };
+}
+
+const truncationWarningCodes = new Set(["output-truncated", "content-truncated-at-dispatch", "content-truncated", "missing-tool-call", "chunk-provider-failure"]);
+
+function truncationWarning(warnings: unknown): boolean {
+  return Array.isArray(warnings) && warnings.some((entry) => isObject(entry) && typeof entry.code === "string" && truncationWarningCodes.has(entry.code));
 }
 
 function coverageIncomplete(coverage: unknown): boolean {

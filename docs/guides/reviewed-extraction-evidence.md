@@ -134,10 +134,29 @@ supplied by the caller: `outcome: "partial"` when the envelope outcome is
 partial, `"provider-failure"` when a successful outcome still recorded provider
 failures, and `"failure"` for any other non-success (or missing) outcome. It
 carries the outcome `reason` or `code` when one is recorded, and
-`providerFailureCount` when failures were recorded. The gap is per evidence
-item, not per field: the v1 envelope does not say which part of the source was
-unread, so a field in the unread part has no claim at all and only this gap
-shows that coverage was incomplete.
+`providerFailureCount` when failures were recorded.
+
+A success outcome is trusted only when the rest of the envelope agrees with it.
+It is treated as `"failure"` when `providerFailures` is not an array, when a
+`partial` record is present, or when `coverage` is not an array or has a range
+whose status is not `complete`. It is also incomplete when
+`warningClassifications` carries an `output-truncated`,
+`content-truncated-at-dispatch`, `content-truncated`, `missing-tool-call`, or
+`chunk-provider-failure` code: producers before Traverse 2.0.0 recorded a run
+that lost a chunk as a success with only such a warning. That case is labelled
+`"failure"`, or `"provider-failure"` when provider failures were also recorded.
+
+Accepted gap: producers before Traverse 1.0.0 classify a truncated answer, a
+missing tool call, and other adapter notices all as the generic
+`provider-warning` code, and the classification carries no other field that
+tells them apart. Surface does not match warning text, so a success envelope
+from such a producer whose only loss signal is `provider-warning` still
+evaluates as complete.
+
+The gap is per evidence item, not per field. A partial envelope may carry
+`coverage` ranges naming which part of the prepared text was unread, but the
+policy does not map fields to ranges: a field in the unread part has no claim
+at all, and only this gap shows that coverage was incomplete.
 
 ## Source observation facts
 
