@@ -15,7 +15,7 @@ async function readPackageJson(): Promise<PackageJson> {
 test("Kontour UI stays a development asset source, not a runtime dependency", async () => {
   const packageJson = await readPackageJson();
 
-  assert.equal(packageJson.devDependencies?.["@kontourai/ui"], "^1.1.0");
+  assert.equal(packageJson.devDependencies?.["@kontourai/ui"], "^1.15.0");
   assert.equal(packageJson.dependencies?.["@kontourai/ui"], undefined);
   assert.equal(packageJson.devDependencies?.["@kontourai/console-kit"], undefined);
   assert.equal(packageJson.dependencies?.["@kontourai/console-kit"], undefined);

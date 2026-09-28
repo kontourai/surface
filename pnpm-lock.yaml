@@ -24,8 +24,8 @@ importers:
         specifier: ^2.4.1
         version: 2.4.1(typescript@7.0.2)
       '@kontourai/ui':
-        specifier: ^1.1.0
-        version: 1.11.2(react@19.2.7)
+        specifier: ^1.15.0
+        version: 1.15.0(react@19.2.7)
       '@modelcontextprotocol/ext-apps':
         specifier: 1.7.5
         version: 1.7.5(@modelcontextprotocol/sdk@1.30.0(zod@4.2.0))(react@19.2.7)(zod@4.2.0)
@@ -392,8 +392,8 @@ packages:
       typescript:
         optional: true
 
-  '@kontourai/ui@1.11.2':
-    resolution: {integrity: sha512-orOytuCojKqJG37hG/6R8vZd41B9BGrFjVgvxgAQGW9eKdVDGix8PZCitV51Dpi1j4hwEmf0t+T6a0cZMaQPaA==}
+  '@kontourai/ui@1.15.0':
+    resolution: {integrity: sha512-0nIOkxybHXZuZeJg4K3kGuuDYyxEDDnfgi5zU20FmAji3KJ0hAQstre0nY5wD8LxoamEEFbicjtXWuj+K5QCGA==}
     engines: {node: '>=22'}
     peerDependencies:
       react: ^19.0.0
@@ -1557,7 +1557,7 @@ snapshots:
       - canvas
       - playwright
 
-  '@kontourai/ui@1.11.2(react@19.2.7)':
+  '@kontourai/ui@1.15.0(react@19.2.7)':
     dependencies:
       react: 19.2.7
 

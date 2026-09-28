@@ -72,6 +72,7 @@ Surface keeps its own standalone Surface Console. Keep product-specific trust be
 | Standalone UI asset sources | `src/console/client/parts/`, `src/console/styles/parts/` | Owns the editable browser behavior and Kontour UI-compatible token aliases for the standalone Surface Console. |
 | Generated UI asset constants | `scripts/build-console-assets.mjs`, `src/console/client/index.js`, `src/console/styles/index.css`, `src/console/assets.generated.ts`, `src/console/script.ts`, `src/console/styles.ts` | Concatenates ordered client and CSS parts, then converts JS/CSS assets into TypeScript constants consumed by `/console.js` and `/console.css`; regenerate with `npm run build:console-assets`. |
 | Browser coverage | `tests/browser/console.spec.ts` | Starts `bin/surface.mjs console` and verifies the real standalone page on desktop and mobile. |
+| Trust-state chip | `src/trust-state-chip.ts`, `src/console/styles/parts/11-trust-state.css`, `scripts/check-console-token-drift.mjs`, `tests/trust-state-chip-drift.test.ts`, `tests/browser/support/ui-trust-state.ts` | Renders claim statuses with Kontour UI's trust-state chip. The Console copies the chip's CSS and `--k-trust-*` tokens so the CLI stays standalone; the gates fail when the copies, glyphs, or markup drift from the installed `@kontourai/ui`. |
 | Docs-site Kontour UI assets | `scripts/sync-ui-assets.mjs`, `docs-site/vendor/kontourai-ui/` | Copies token CSS from the installed public `@kontourai/ui` package for generated docs pages. |
 | Package boundary guard | `tests/package-files.test.ts`, `scripts/check-package-contents.mjs` | Keeps Kontour UI dev-only, prevents React/runtime leakage, and verifies published package contents. |
 
@@ -111,7 +112,7 @@ The header row shows summary chips for total claims, verified count, and attenti
 Each claim card shows:
 
 - Claim ID and surface path
-- Human-readable status label: **Verified**, **Needs refresh**, **Disputed**, **Rejected**, **No evidence**, **Pending**
+- The claim status as Kontour UI's shared trust-state chip: its display label (**Verified**, **Needs refresh**, **Disputed**, **Pending review**, **No evidence**, and so on), a glyph unique to the status, and a line style, with the status's own colour in light and dark. The card's left edge uses the same colour. A product `vocab.statusLabels` override replaces the visible label; the default label stays available to assistive technology.
 - Impact level badge
 - Policy ID when present
 

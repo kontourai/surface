@@ -288,27 +288,16 @@
   transition: background 0.15s ease;
 }
 
-/* Status left-border via :has() — colour the ::before pseudo */
-.claim-card:has(.dot-good)::before   { background: var(--green); }
-.claim-card:has(.dot-bad)::before    { background: var(--red); }
-.claim-card:has(.dot-warn)::before   { background: var(--orange); }
-.claim-card:has(.dot-amber)::before  { background: var(--amber); }
-.claim-card:has(.dot-muted)::before  { background: var(--muted); }
-
-/* The dot element itself becomes invisible — the ::before IS the indicator */
-.card-dot {
-  width: 0;
-  height: 0;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-
-/* Dot colour classes retained for :has() selector logic */
-.dot-good   { /* colour carried by ::before */ }
-.dot-bad    { /* colour carried by ::before */ }
-.dot-warn   { /* colour carried by ::before */ }
-.dot-amber  { /* colour carried by ::before */ }
-.dot-muted  { /* colour carried by ::before */ }
+/* Status left border, in the claim status's trust-state ink. */
+.claim-card[data-trust-state="unknown"]::before { background: var(--k-trust-unknown); }
+.claim-card[data-trust-state="proposed"]::before { background: var(--k-trust-proposed); }
+.claim-card[data-trust-state="assumed"]::before { background: var(--k-trust-assumed); }
+.claim-card[data-trust-state="verified"]::before { background: var(--k-trust-verified); }
+.claim-card[data-trust-state="stale"]::before { background: var(--k-trust-stale); }
+.claim-card[data-trust-state="disputed"]::before { background: var(--k-trust-disputed); }
+.claim-card[data-trust-state="superseded"]::before { background: var(--k-trust-superseded); }
+.claim-card[data-trust-state="rejected"]::before { background: var(--k-trust-rejected); }
+.claim-card[data-trust-state="revoked"]::before { background: var(--k-trust-revoked); }
 
 .claim-card:hover,
 .claim-card:focus-visible {
@@ -372,61 +361,6 @@
   font-weight: 600;
   font-family: ui-monospace, "Cascadia Code", monospace;
 }
-
-/* Status pill on card */
-.card-status-text {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.1rem 0.45rem;
-  border-radius: 99px;
-  font-size: 0.68rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  background: var(--soft);
-  color: var(--muted);
-  border: 1px solid var(--line);
-}
-
-.status-disputed .card-status-text,
-.status-rejected .card-status-text,
-.card-status-text.status-disputed,
-.card-status-text.status-rejected {
-  background: var(--red-bg);
-  color: var(--red);
-  border-color: color-mix(in srgb, var(--red) 35%, transparent);
-}
-
-.status-stale .card-status-text,
-.card-status-text.status-stale {
-  background: var(--orange-bg);
-  color: var(--orange);
-  border-color: color-mix(in srgb, var(--orange) 35%, transparent);
-}
-
-.status-verified .card-status-text,
-.card-status-text.status-verified {
-  background: var(--green-bg);
-  color: var(--green);
-  border-color: color-mix(in srgb, var(--green) 35%, transparent);
-}
-
-.status-assumed .card-status-text,
-.card-status-text.status-assumed,
-.status-proposed .card-status-text,
-.card-status-text.status-proposed {
-  background: var(--amber-bg);
-  color: var(--amber);
-  border-color: color-mix(in srgb, var(--amber) 35%, transparent);
-}
-
-/* Direct status class on card-status-text element */
-.status-disputed { color: var(--red); }
-.status-rejected { color: var(--red); }
-.status-stale    { color: var(--orange); }
-.status-verified { color: var(--green); }
-.status-assumed { color: var(--amber); }
-.status-proposed { color: var(--amber); }
 
 /* Impact chip — shown for medium, high, critical only */
 .card-impact {

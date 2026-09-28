@@ -48,6 +48,42 @@
   --k-font-mono: "SFMono-Regular", "Cascadia Code", "Liberation Mono", Menlo, Consolas, monospace;
   --k-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --k-dur: 160ms;
+  --k-border-thin: 1px;
+  --k-border-thick: 2px;
+  --k-leading-tight: 1.1;
+  --k-leading-normal: 1.45;
+  --k-tracking-wide: 0.08em;
+
+  /* Trust states (@kontourai/ui DESIGN.md "Trust UX"): ink, fill, and line
+     per Surface claim status. check:console-token-drift fails when one is
+     missing or differs from the kit, in dark and in both light blocks. */
+  --k-trust-unknown: #a2acb7;
+  --k-trust-unknown-fill: #252d39;
+  --k-trust-unknown-line: dotted;
+  --k-trust-proposed: #87b1fd;
+  --k-trust-proposed-fill: #222d42;
+  --k-trust-proposed-line: dashed;
+  --k-trust-assumed: #c4a4fe;
+  --k-trust-assumed-fill: #2a2c43;
+  --k-trust-assumed-line: dashed;
+  --k-trust-verified: #50d492;
+  --k-trust-verified-fill: #1a3233;
+  --k-trust-verified-line: solid;
+  --k-trust-stale: #f6b84d;
+  --k-trust-stale-fill: #312e2a;
+  --k-trust-stale-line: dotted;
+  --k-trust-disputed: #ec81c0;
+  --k-trust-disputed-fill: #30273a;
+  --k-trust-disputed-line: double;
+  --k-trust-superseded: #6bc8d3;
+  --k-trust-superseded-fill: #1e313d;
+  --k-trust-superseded-line: dotted;
+  --k-trust-rejected: #f66d67;
+  --k-trust-rejected-fill: #31242d;
+  --k-trust-rejected-line: solid;
+  --k-trust-revoked: #fdc2a2;
+  --k-trust-revoked-fill: #323036;
+  --k-trust-revoked-line: dotted;
 
   /* Surface Console aliases for the existing standalone CSS. */
   --bg: var(--k-bg);
@@ -102,6 +138,24 @@
   --k-negative: #c24141;
   --k-neutral: #6b7785;
   --k-active: #3266d6;
+  --k-trust-unknown: #535c66;
+  --k-trust-unknown-fill: #eeeff0;
+  --k-trust-proposed: #2855ad;
+  --k-trust-proposed-fill: #eaeef7;
+  --k-trust-assumed: #6938a7;
+  --k-trust-assumed-fill: #f0ebf6;
+  --k-trust-verified: #006d42;
+  --k-trust-verified-fill: #e6f0ec;
+  --k-trust-stale: #855a00;
+  --k-trust-stale-fill: #f3efe6;
+  --k-trust-disputed: #94296f;
+  --k-trust-disputed-fill: #f4eaf1;
+  --k-trust-superseded: #016770;
+  --k-trust-superseded-fill: #e6f0f1;
+  --k-trust-rejected: #a12628;
+  --k-trust-rejected-fill: #f6e9ea;
+  --k-trust-revoked: #713408;
+  --k-trust-revoked-fill: #f1ebe6;
 }
 
 [data-theme="light"] .theme-surface {
@@ -128,6 +182,24 @@
     --k-negative: #c24141;
     --k-neutral: #6b7785;
     --k-active: #3266d6;
+    --k-trust-unknown: #535c66;
+    --k-trust-unknown-fill: #eeeff0;
+    --k-trust-proposed: #2855ad;
+    --k-trust-proposed-fill: #eaeef7;
+    --k-trust-assumed: #6938a7;
+    --k-trust-assumed-fill: #f0ebf6;
+    --k-trust-verified: #006d42;
+    --k-trust-verified-fill: #e6f0ec;
+    --k-trust-stale: #855a00;
+    --k-trust-stale-fill: #f3efe6;
+    --k-trust-disputed: #94296f;
+    --k-trust-disputed-fill: #f4eaf1;
+    --k-trust-superseded: #016770;
+    --k-trust-superseded-fill: #e6f0f1;
+    --k-trust-rejected: #a12628;
+    --k-trust-rejected-fill: #f6e9ea;
+    --k-trust-revoked: #713408;
+    --k-trust-revoked-fill: #f1ebe6;
   }
 
   :root:not([data-theme="dark"]) .theme-surface {

@@ -7,10 +7,14 @@ const BUDGETS = {
   // Measured at Basis v2: 7,036 -> 7,962 gzip bytes for the parallel closed
   // parser and reviewed-source facts; the adapter itself remains a separate opt-in entry.
   "src/basis/view-index.ts": 8_300,
-  // MCP embeds the v2-capable parser/view (measured 110,269 gzip bytes).
-  "src/basis/mcp.ts": 110_700,
-  // The shared Trust Panel embeds the same parser (measured 12,769 gzip bytes).
-  "src/trust-panel/surface-trust-panel.ts": 13_100,
+  // MCP embeds the v2-capable parser/view and the Trust Panel module (measured
+  // 110,634 gzip bytes before, and 112,398 after, the panel adopted
+  // @kontourai/ui's trust-state chip, #274).
+  "src/basis/mcp.ts": 112_900,
+  // The shared Trust Panel embeds the same parser. Measured 13,050 gzip bytes
+  // before, and 14,602 after, it adopted @kontourai/ui's trust-state chip
+  // (#274): the copied chip CSS with light-mode fallbacks and the nine glyphs.
+  "src/trust-panel/surface-trust-panel.ts": 15_000,
   // Display names + claim basis view (measured 3,919 gzip bytes); bundling for
   // platform "browser" also proves the subpath pulls in no Node-only module.
   "src/display.ts": 4_400,

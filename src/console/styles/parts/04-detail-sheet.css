@@ -102,50 +102,9 @@
   flex-wrap: wrap;
 }
 
-/* (a) Big status badge — prominent in the header */
-.status-badge {
+/* (a) Status chip — prominent in the header (see 11-trust-state.css) */
+.detail-badge {
   display: inline-flex;
-  align-items: center;
-  padding: 0.2rem 0.6rem;
-  border-radius: 99px;
-  font-size: 0.68rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
-  background: var(--soft);
-  color: var(--muted);
-  border: 1px solid var(--line);
-}
-
-.detail-badge-lg {
-  padding: 0.3rem 0.8rem;
-  font-size: 0.76rem;
-  letter-spacing: 0.1em;
-}
-
-.badge-good  {
-  background: var(--green-bg);
-  color: var(--green);
-  border-color: color-mix(in srgb, var(--green) 35%, transparent);
-}
-.badge-bad   {
-  background: var(--red-bg);
-  color: var(--red);
-  border-color: color-mix(in srgb, var(--red) 35%, transparent);
-}
-.badge-warn  {
-  background: var(--orange-bg);
-  color: var(--orange);
-  border-color: color-mix(in srgb, var(--orange) 35%, transparent);
-}
-.badge-amber {
-  background: var(--amber-bg);
-  color: var(--amber);
-  border-color: color-mix(in srgb, var(--amber) 35%, transparent);
-}
-.badge-muted {
-  background: var(--soft);
-  color: var(--muted);
 }
 
 .sheet-surface {

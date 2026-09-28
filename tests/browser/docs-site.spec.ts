@@ -105,7 +105,7 @@ test("snapshot viewer renders a sample report through the trust panel element", 
 
   const panel = page.locator("surface-trust-panel");
   await expect(panel.locator(".panel-title")).toHaveText("Surface Trust Panel");
-  await expect(panel.locator(".chip").first()).toBeVisible();
+  await expect(panel.locator('[part="standing"]').first()).toBeVisible();
   await expect(panel.locator("details.claim")).toHaveCount(4);
 
   const firstClaim = panel.locator("details.claim").first();

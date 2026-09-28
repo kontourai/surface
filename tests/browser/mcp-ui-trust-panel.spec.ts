@@ -339,7 +339,7 @@ test(
     // 4. At least one status chip is rendered.
     const chipCount = await page.evaluate(() => {
       const el = document.querySelector("surface-trust-panel");
-      return el?.shadowRoot?.querySelectorAll(".chip").length ?? 0;
+      return el?.shadowRoot?.querySelectorAll('[part="standing"]').length ?? 0;
     });
     expect(chipCount).toBeGreaterThan(0);
 

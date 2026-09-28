@@ -109,9 +109,31 @@ function renderObservedResult(result) {
     + "</div>";
 }
 
-function statusColor(status) {
-  const m = { verified:"good", disputed:"bad", rejected:"bad", stale:"warn", assumed:"amber", proposed:"amber", unknown:"muted" };
-  return m[status] ?? "muted";
+// A claim status renders as @kontourai/ui's shared trust-state chip. This
+// mirrors src/trust-state-chip.ts (the Trust Panel's renderer); the glyphs and
+// the default labels are injected by buildConsoleHtml from that module and
+// src/display-names.ts, and tests/browser/console.spec.ts holds this renderer
+// to ui's own <k-trust-state> element. A product's statusLabels
+// override replaces the visible label; the default stays as hidden text so
+// assistive tech still hears the status.
+function trustStateOf(status) {
+  const normalized = String(status ?? "").trim().toLowerCase();
+  return Object.prototype.hasOwnProperty.call(trustChipAssets.glyphs, normalized) ? normalized : null;
+}
+
+function trustChip(status, className) {
+  const state = trustStateOf(status);
+  const defaultLabel = state ? (trustChipAssets.defaultLabels[state] ?? state) : null;
+  const override = String(statusLabel(status) ?? "").trim();
+  const shown = override || defaultLabel || String(status ?? "").trim() || "Unrecognized trust state";
+  const hidden = state && defaultLabel && shown.toLowerCase() !== defaultLabel.toLowerCase() ? defaultLabel : null;
+  const classes = ["trust-state", state && "trust-state--" + state, className].filter(Boolean).join(" ");
+  const glyph = state
+    ? `<svg class="trust-state__glyph" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="${esc(trustChipAssets.glyphs[state])}"></path></svg>`
+    : "";
+  return `<span class="${esc(classes)}"${state ? ` data-trust-state="${state}"` : ""}>`
+    + `<span class="trust-state__chip">${glyph}<span class="trust-state__label">${esc(shown)}</span>`
+    + `${hidden ? `<span class="trust-state__hidden"> (${esc(hidden)})</span>` : ""}</span></span>`;
 }
 
 // Display labels come from the injected vocab, whose defaults are the

@@ -1,0 +1,21 @@
+/* ── Trust-state chip ─────────────────────────────────────────
+   A copy of @kontourai/ui's .trust-state rules (react/styles.css), so the
+   Console renders claim statuses with the same chip as every Kontour product.
+   The published CLI stays standalone, so the rules are copied rather than
+   imported; tests/trust-state-chip-drift.test.ts fails when they drift, and
+   check:console-token-drift fails when a token they read is missing. */
+.trust-state { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--k-space-1) var(--k-space-2); max-width: 100%; vertical-align: middle; }
+.trust-state__chip { box-sizing: border-box; display: inline-flex; align-items: center; gap: var(--k-space-1); min-height: var(--k-space-5); padding: 0 var(--k-space-2); color: var(--k-text-muted); background: var(--k-panel-raised); border-color: var(--k-line-strong); border-style: dotted; border-width: var(--k-border-thick); border-radius: var(--k-radius-sm); font-family: var(--k-font-mono); font-size: var(--k-text-xs); font-weight: 800; letter-spacing: var(--k-tracking-wide); line-height: var(--k-leading-tight); text-transform: uppercase; max-width: 100%; }
+.trust-state__glyph { flex: 0 0 auto; width: var(--k-text-sm); height: var(--k-text-sm); fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.trust-state__hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.trust-state__detail { min-width: 0; color: var(--k-text-muted); font-size: var(--k-text-sm); line-height: var(--k-leading-normal); overflow-wrap: anywhere; }
+.trust-state--unknown .trust-state__chip { color: var(--k-trust-unknown); background: var(--k-trust-unknown-fill); border-color: var(--k-trust-unknown); border-style: var(--k-trust-unknown-line); }
+.trust-state--proposed .trust-state__chip { color: var(--k-trust-proposed); background: var(--k-trust-proposed-fill); border-color: var(--k-trust-proposed); border-style: var(--k-trust-proposed-line); }
+.trust-state--assumed .trust-state__chip { color: var(--k-trust-assumed); background: var(--k-trust-assumed-fill); border-color: var(--k-trust-assumed); border-style: var(--k-trust-assumed-line); }
+.trust-state--verified .trust-state__chip { color: var(--k-trust-verified); background: var(--k-trust-verified-fill); border-color: var(--k-trust-verified); border-style: var(--k-trust-verified-line); }
+.trust-state--stale .trust-state__chip { color: var(--k-trust-stale); background: var(--k-trust-stale-fill); border-color: var(--k-trust-stale); border-style: var(--k-trust-stale-line); }
+.trust-state--disputed .trust-state__chip { color: var(--k-trust-disputed); background: var(--k-trust-disputed-fill); border-color: var(--k-trust-disputed); border-style: var(--k-trust-disputed-line); }
+.trust-state--superseded .trust-state__chip { color: var(--k-trust-superseded); background: var(--k-trust-superseded-fill); border-color: var(--k-trust-superseded); border-style: var(--k-trust-superseded-line); }
+.trust-state--rejected .trust-state__chip { color: var(--k-trust-rejected); background: var(--k-trust-rejected-fill); border-color: var(--k-trust-rejected); border-style: var(--k-trust-rejected-line); }
+.trust-state--revoked .trust-state__chip { color: var(--k-trust-revoked); background: var(--k-trust-revoked-fill); border-color: var(--k-trust-revoked); border-style: var(--k-trust-revoked-line); }
+.trust-state--disputed .trust-state__chip { border-width: calc(var(--k-border-thin) + var(--k-border-thick)); }
