@@ -94,7 +94,8 @@ export interface ReviewedGroundingDimension {
   evidenceId: string;
   reviewItemName?: string;
   reviewDecisionName?: string;
-  candidateConfidence: number;
+  /** Producer-reported candidate confidence; omitted when the proposal carries none. */
+  candidateConfidence?: number;
   /** `valueDigest` of the reviewed candidate value, for binding a claim value to this evidence. */
   candidateValueDigest: string;
   reviewDisposition: string;
@@ -207,7 +208,7 @@ function buildDimension(claimId: string, evidence: Evidence, reviewed: ReviewedE
   return {
     claimId, evidenceId: evidence.id,
     ...(reviewItemName ? { reviewItemName } : {}), ...(reviewDecisionName ? { reviewDecisionName } : {}),
-    candidateConfidence: proposal.confidence,
+    ...(proposal.confidence !== undefined ? { candidateConfidence: proposal.confidence } : {}),
     candidateValueDigest: valueDigest(proposal.candidateValue),
     reviewDisposition: reviewed.reviewDecision?.spec.resolution ?? reviewed.reviewDecision?.spec.status ?? "not-reviewed",
     structuralTrust: reviewedExtractionStructuralTrust(reviewed), typeOrigin: proposal.inferenceType ?? "inferred",

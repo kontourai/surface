@@ -144,6 +144,18 @@ test("does not translate extraction confidence into reviewer or structural trust
   assert.equal(decision.dimensions[0]!.structuralTrust, "validated");
 });
 
+test("a proposal without confidence is allowed and its dimension carries no confidence", async () => {
+  const input = await fixture();
+  delete input.importRecord.spec.envelope.result.proposals[0]!.confidence;
+  delete input.reviewItem!.spec.candidates[0]!.confidence;
+  delete input.reviewItem!.spec.candidates[0]!.extraction.confidence;
+  const projected = projectReviewedExtractionEvidence(input);
+  const decision = evaluateReviewedGroundingPolicy({ claims: alpha, policy, evidence: [projected.evidence], sourceStates: [current(projected.evidence.id)] });
+  assert.equal(decision.outcome, "allowed");
+  assert.deepEqual(decision.gaps, []);
+  assert.equal("candidateConfidence" in decision.dimensions[0]!, false);
+});
+
 test("builds a content-current state from distinct, owner-resolved captures while preserving both identities", async () => {
   const projected = projectReviewedExtractionEvidence(await fixture());
   const fact = observation();
