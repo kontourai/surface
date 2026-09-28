@@ -322,6 +322,76 @@ test("a validated label on a non-conforming value fails requireValidatedStructur
   assert.ok(decision.gaps.some((gap) => gap.kind === "structure-not-validated" && gap.structuralTrust === "invalid"));
 });
 
+test("refuses evidence from a partial extraction with a typed coverage gap", async () => {
+  const input = await fixture();
+  const result = input.importRecord.spec.envelope.result;
+  result.outcome = { status: "partial", reason: "max-chunks" };
+  result.partial = { reason: "max-chunks", completedChunks: 1, remainingChunks: 1 };
+  const projected = projectReviewedExtractionEvidence(input);
+  assert.equal(projected.evidence.supportStrength, "entails");
+  const decision = evaluateReviewedGroundingPolicy({ claims: alpha, policy, evidence: [projected.evidence], sourceStates: [current(projected.evidence.id)] });
+  assert.equal(decision.outcome, "refused");
+  assert.deepEqual(decision.gaps, [{ kind: "extraction-coverage-incomplete", claimId: "claim.directory.title", evidenceId: projected.evidence.id, outcome: "partial", reason: "max-chunks" }]);
+});
+
+test("refuses evidence from a success envelope that recorded provider failures", async () => {
+  const input = await fixture();
+  input.importRecord.spec.envelope.result.providerFailures = [{ provider: "portable-fixture", kind: "unavailable", retryable: true }];
+  const projected = projectReviewedExtractionEvidence(input);
+  const decision = evaluateReviewedGroundingPolicy({ claims: alpha, policy, evidence: [projected.evidence], sourceStates: [current(projected.evidence.id)] });
+  assert.equal(decision.outcome, "refused");
+  assert.deepEqual(decision.gaps, [{ kind: "extraction-coverage-incomplete", claimId: "claim.directory.title", evidenceId: projected.evidence.id, outcome: "provider-failure", providerFailureCount: 1 }]);
+});
+
+test("coverage gap is emitted even when no optional requirement is set", async () => {
+  const input = await fixture();
+  input.importRecord.spec.envelope.result.outcome = { status: "failure", category: "provider", code: "provider-failure" };
+  input.importRecord.spec.envelope.result.providerFailures = [{ provider: "portable-fixture", kind: "unavailable", retryable: true }, { provider: "portable-fixture", kind: "unknown", retryable: false }];
+  const projected = projectReviewedExtractionEvidence(input);
+  const decision = evaluateReviewedGroundingPolicy({ claims: alpha, policy: { id: "policy.minimal", action: "publish", requiredClaimIds: ["claim.directory.title"] }, evidence: [projected.evidence] });
+  assert.equal(decision.outcome, "refused");
+  assert.deepEqual(decision.gaps, [{ kind: "extraction-coverage-incomplete", claimId: "claim.directory.title", evidenceId: projected.evidence.id, outcome: "failure", reason: "provider-failure", providerFailureCount: 2 }]);
+});
+
+async function coverageDecision(mutate: (result: Record<string, unknown>) => void) {
+  const input = await fixture();
+  mutate(input.importRecord.spec.envelope.result as unknown as Record<string, unknown>);
+  const projected = projectReviewedExtractionEvidence(input);
+  return { projected, decision: evaluateReviewedGroundingPolicy({ claims: alpha, policy, evidence: [projected.evidence], sourceStates: [current(projected.evidence.id)] }) };
+}
+
+test("a missing or malformed extraction outcome cannot show a complete read", async () => {
+  const cases: Array<[string, (result: Record<string, unknown>) => void]> = [
+    ["missing", (result) => { delete result.outcome; }],
+    ["null", (result) => { result.outcome = null; }],
+    ["string", (result) => { result.outcome = "success"; }],
+    ["wrong-case status", (result) => { result.outcome = { status: "Success" }; }],
+  ];
+  for (const [label, mutate] of cases) {
+    const { projected, decision } = await coverageDecision(mutate);
+    assert.equal(decision.outcome, "refused", label);
+    assert.deepEqual(decision.gaps, [{ kind: "extraction-coverage-incomplete", claimId: "claim.directory.title", evidenceId: projected.evidence.id, outcome: "failure" }], label);
+  }
+});
+
+test("a success outcome contradicted by the rest of the envelope is a coverage failure", async () => {
+  const cases: Array<[string, (result: Record<string, unknown>) => void]> = [
+    ["non-array providerFailures", (result) => { result.providerFailures = { kind: "unavailable" }; }],
+    ["present partial record", (result) => { result.partial = { reason: "max-chunks", completedChunks: 1, remainingChunks: 1 }; }],
+    ["unread coverage range", (result) => { result.coverage = [{ chunk: 1, start: 0, end: 8, status: "complete" }, { chunk: 2, start: 8, end: 16, status: "unread", reason: "provider-failure" }]; }],
+    ["output-truncated coverage range", (result) => { result.coverage = [{ chunk: 1, start: 0, end: 16, status: "output-truncated" }]; }],
+    ["non-array coverage", (result) => { result.coverage = { status: "complete" }; }],
+  ];
+  for (const [label, mutate] of cases) {
+    const { projected, decision } = await coverageDecision(mutate);
+    assert.equal(decision.outcome, "refused", label);
+    assert.deepEqual(decision.gaps, [{ kind: "extraction-coverage-incomplete", claimId: "claim.directory.title", evidenceId: projected.evidence.id, outcome: "failure" }], label);
+  }
+  const complete = await coverageDecision((result) => { result.coverage = [{ chunk: 1, start: 0, end: 12, status: "complete" }, { chunk: 2, start: 10, end: 16, status: "complete" }]; });
+  assert.equal(complete.decision.outcome, "allowed");
+  assert.deepEqual(complete.decision.gaps, []);
+});
+
 function reorderKeys(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(reorderKeys);
   if (value === null || typeof value !== "object") return value;

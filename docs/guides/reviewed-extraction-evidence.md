@@ -25,6 +25,16 @@ integrity presence. This makes
 the ordinary Hachure-compatible fields useful to generic consumers while
 preserving the complete reviewed extraction for profile-aware consumers.
 
+The profile validates only the envelope fields it reads, so additive producer
+keys pass through unchanged and stay inside the profile digest. This covers a
+proposal's `producedBy` model record and `evidenceMatch` annotation, a provider
+failure's `code`, and a result's `coverage` ranges; a test pins that they
+project and restore. When a proposal carries `producedBy`, the ReviewItem
+candidate's model must equal `producedBy.model` (a credential-free stable
+identity); otherwise it must equal `result.model`. In a multi-chunk run
+`result.model` names only one chunk's model, so the per-proposal record is the
+one that identifies who produced the value.
+
 ## Gaps and trust boundaries
 
 The projection embeds typed gaps in `Evidence.metadata.reviewedExtraction.gaps`
@@ -116,6 +126,18 @@ it could only say the evidence was reviewed, not that any claim carries the
 reviewed value.
 `evaluateAnswerAssessmentPolicy` applies the same binding to entailing
 reviewed-extraction evidence and reports `value-unbound` on a mismatch.
+
+Evidence from an extraction that did not read the whole source is always
+refused with an `extraction-coverage-incomplete` gap, whatever the policy's
+optional requirements. The gap is derived from the digest-bound envelope, not
+supplied by the caller: `outcome: "partial"` when the envelope outcome is
+partial, `"provider-failure"` when a successful outcome still recorded provider
+failures, and `"failure"` for any other non-success (or missing) outcome. It
+carries the outcome `reason` or `code` when one is recorded, and
+`providerFailureCount` when failures were recorded. The gap is per evidence
+item, not per field: the v1 envelope does not say which part of the source was
+unread, so a field in the unread part has no claim at all and only this gap
+shows that coverage was incomplete.
 
 ## Source observation facts
 

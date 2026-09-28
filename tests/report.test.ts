@@ -130,6 +130,42 @@ test("rejects unsupported enum values, bad timestamps, and extra fields", () => 
   );
 });
 
+function minimalClaim(id: string) {
+  return {
+    id, subjectType: "repo", subjectId: "repo-1", facet: "surface", claimType: "software-evidence",
+    fieldOrBehavior: "evidence", value: true, createdAt: "2026-04-25T00:00:00.000Z", updatedAt: "2026-04-25T00:00:00.000Z",
+  };
+}
+
+function minimalEvidence(id: string, claimId: string) {
+  return {
+    id, claimId, evidenceType: "test_output", method: "validation", sourceRef: "ci", excerptOrSummary: "ok",
+    observedAt: "2026-04-25T00:00:00.000Z", collectedBy: "ci",
+  };
+}
+
+test("rejects unknown top-level trust bundle keys instead of dropping them", () => {
+  const bundle = { schemaVersion: 5, source: "extension", claims: [minimalClaim("claim-1")], evidence: [], policies: [], events: [] };
+  assert.doesNotThrow(() => validateTrustBundle(bundle));
+  assert.throws(
+    () => validateTrustBundle({ ...bundle, warrants: [] }),
+    /trust bundle contains unsupported field: warrants/,
+  );
+});
+
+test("rejects duplicate claim ids and duplicate evidence ids", () => {
+  const base = { schemaVersion: 5, source: "duplicates", policies: [], events: [] };
+  assert.doesNotThrow(() => validateTrustBundle({ ...base, claims: [minimalClaim("claim-1"), minimalClaim("claim-2")], evidence: [minimalEvidence("evidence-1", "claim-1"), minimalEvidence("evidence-2", "claim-2")] }));
+  assert.throws(
+    () => validateTrustBundle({ ...base, claims: [minimalClaim("claim-1"), minimalClaim("claim-1")], evidence: [] }),
+    /duplicate claim id claim-1/,
+  );
+  assert.throws(
+    () => validateTrustBundle({ ...base, claims: [minimalClaim("claim-1")], evidence: [minimalEvidence("evidence-1", "claim-1"), minimalEvidence("evidence-1", "claim-1")] }),
+    /duplicate evidence id evidence-1/,
+  );
+});
+
 test("rejects broken claim, evidence, and event references", () => {
   assert.throws(
     () => validateTrustBundle({
