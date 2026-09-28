@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.1.0](https://github.com/kontourai/surface/compare/v4.0.0...v4.1.0) (2026-09-28)
+
+
+### Features
+
+* accept proposals without confidence, refuse lost-chunk success envelopes, repair release bundle signing ([#287](https://github.com/kontourai/surface/issues/287)) ([d7d50f1](https://github.com/kontourai/surface/commit/d7d50f1e91911f323cdac182b5369177665960b8))
+
 ## [4.0.0](https://github.com/kontourai/surface/compare/v3.3.0...v4.0.0) (2026-09-28)
 
 
