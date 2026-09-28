@@ -248,6 +248,7 @@ function claimCard(claim, index, visibleIndex = 0) {
   return `<button type="button" class="claim-card${confidenceTier(claim)}${isAttention ? " card-attention" : ""}"
       data-claim-index="${index}" aria-label="${esc(label + " — " + statusLabel(claim.status))}"
       title="${esc(claim.id)}" style="--card-i:${Math.min(visibleIndex, 14)}"${trustStateOf(claim.status) ? ` data-trust-state="${trustStateOf(claim.status)}"` : ""}>
+    <span class="card-dot" aria-hidden="true"></span>
     <span class="card-body">
       <strong class="card-title">${esc(label)}</strong>
       <span class="card-meta">

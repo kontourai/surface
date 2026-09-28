@@ -299,6 +299,14 @@
 .claim-card[data-trust-state="rejected"]::before { background: var(--k-trust-rejected); }
 .claim-card[data-trust-state="revoked"]::before { background: var(--k-trust-revoked); }
 
+/* Holds the card grid's first (4px) column; the ::before edge is the indicator. */
+.card-dot {
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
 .claim-card:hover,
 .claim-card:focus-visible {
   transform: translateY(-1px);

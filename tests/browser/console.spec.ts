@@ -514,19 +514,31 @@ test("claim cards and the detail header render ui's trust-state chip for every s
     await page.goto(consoleServer.url);
     await expect(page.locator("#claimFeed .claim-card")).toHaveCount(TRUST_STATES.length);
 
-    const cards = await page.evaluate(() =>
-      [...document.querySelectorAll<HTMLElement>("#claimFeed .claim-card")].map((card) => ({
+    const cards = await page.evaluate(() => {
+      // Lines a text node wraps onto: a card whose grid collapses its body
+      // column wraps the title and the chip label letter by letter.
+      const lines = (element: Element | null): number => {
+        if (!element) return 0;
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        return new Set([...range.getClientRects()].map((rect) => Math.round(rect.top))).size;
+      };
+      return [...document.querySelectorAll<HTMLElement>("#claimFeed .claim-card")].map((card) => ({
         title: card.querySelector(".card-title")?.textContent?.trim() ?? "",
+        titleLines: lines(card.querySelector(".card-title")),
+        labelLines: lines(card.querySelector(".card-meta > .trust-state .trust-state__label")),
         cardState: card.getAttribute("data-trust-state") ?? "",
         chip: card.querySelector(".card-meta > .trust-state")?.outerHTML ?? "",
-      })),
-    );
+      }));
+    });
     const cardOracle = await uiTrustStateMarkup(context, TRUST_STATES.map((state) => ({ state, className: "card-status-text" })));
     for (const [index, state] of TRUST_STATES.entries()) {
       const card = cards.find((entry) => entry.title === `status ${state}`);
       expect(card, `no card for ${state}`).toBeDefined();
       expect(card!.chip, `card chip for ${state}`).toBe(cardOracle[index]);
       expect(card!.cardState).toBe(state);
+      expect(card!.titleLines, `title of the ${state} card wraps`).toBe(1);
+      expect(card!.labelLines, `chip label of the ${state} card wraps`).toBe(1);
     }
 
     const detailOracle = await uiTrustStateMarkup(context, TRUST_STATES.map((state) => ({ state })));
