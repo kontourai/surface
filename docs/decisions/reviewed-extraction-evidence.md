@@ -51,18 +51,36 @@ digest are unaffected.
 
 A v2 item carries the cited proposal and `importRecordDigest`, the canonical
 JSON SHA-256 of the import record, in place of the record. The profile digest
-covers that input, so it binds the record by digest. The record is supplied out
-of line through a synchronous `resolveImportRecord(digest)` option, not as a
-carrier item in the bundle: that needs no bundle or Evidence schema change and
-matches how prepared artifacts are already resolved outside the bundle. Restore
-refuses a resolved record whose digest differs and an embedded proposal that is
-not `proposals[proposalIndex]`, then runs the v1 validation and re-projection on
-the rebuilt input, so every v1 check applies. Without a record it throws a typed
-`ReviewedExtractionImportRecordUnresolvedError`; the grounding policy reports it
-as an `import-record-unresolved` gap, and the other readers that restore
-(source-state builders, answer assessment, the Basis reviewed-source adapter)
-take the same optional resolver and fail closed without it.
+covers that input, so it binds the record by digest.
 
-Where the producer stores import records, and how it looks them up by digest,
-is the producer's choice. The v2 profile does not change the review shape; the
-two-candidate transition review (#195) is still out of scope.
+**Self-verification.** A v2 bundle verifies from the bundle alone, as a v1
+bundle does. Each import record is carried once, as an optional `importRecord`
+sidecar in the `reviewedExtraction` metadata of one v2 item per record. The
+sidecar sits outside the digested profile input, and is accepted only when it
+hashes to that item's `importRecordDigest`. `resolverFromBundle(bundle)` turns
+a bundle's sidecars into the resolver, so a bundle-only reader passes it to any
+restore or policy call. A bundle-level map was rejected because `TrustBundle`
+is closed (`additionalProperties: false`) and merge drops `proof`; a separate
+carrier Evidence item was rejected because it needs a `claimId` and would enter
+claim evaluation. Evidence `metadata` is open, so the sidecar needs no schema
+change.
+
+Restore stays fail-closed. It resolves through the synchronous
+`resolveImportRecord(digest)` option (a caller may also back it with its own
+record store), refuses a record whose digest differs and an embedded proposal
+that is not `proposals[proposalIndex]`, then runs the v1 validation and
+re-projection on the rebuilt input, so every v1 check applies. With no record,
+as in a sliced bundle that lost its carrier, it throws a typed
+`ReviewedExtractionImportRecordUnresolvedError`; the grounding policy reports
+an `import-record-unresolved` gap, and the other readers that restore
+(source-state builders, answer assessment, the Basis reviewed-source adapter)
+take the same optional resolver and fail closed without it. A sidecar that
+does not match its digest is refused: restoring its own item fails, and
+`resolverFromBundle` refuses every lookup of that digest rather than falling
+back to another copy. Two sidecars claiming one digest with different content
+therefore refuse every item of that record, since at least one of them cannot
+hash to the digest. A supplied resolver is consulted before an item's own
+sidecar, so a refused digest stays refused for the carrier too.
+
+The v2 profile does not change the review shape; the two-candidate transition
+review (#195) is still out of scope.

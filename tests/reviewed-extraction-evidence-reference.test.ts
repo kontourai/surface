@@ -14,6 +14,9 @@ import {
   ReviewedExtractionSourceObservationError,
   reviewedExtractionEvidenceReferenceProfile,
   reviewedExtractionImportRecordDigest,
+  mergeBundles,
+  resolverFromBundle,
+  validateTrustBundle,
   type ReviewedExtractionEvidenceInput,
   type ReviewedExtractionProjectionOptions,
   type ReviewedExtractionSourceObservation,
@@ -198,4 +201,74 @@ test("the Basis reviewed-source adapter accepts v2 evidence with a resolver and 
   const v2Evidence = projectReviewedExtractionEvidence(input, v2).evidence;
   assert.deepEqual(await build(v2Evidence, resolveImportRecord), await build(projectReviewedExtractionEvidence(input).evidence));
   await assert.rejects(build(v2Evidence), /failed: invalid-reviewed-evidence\./);
+});
+
+/** A bundle of `count` v2 items that all cite proposals of one import record; item 0 carries the record sidecar. */
+async function selfContainedBundle(count: number): Promise<{ record: SurveyExtractionEnvelopeImport; evidence: Evidence[] }> {
+  const input = await runOf(count, 0);
+  const evidence = Array.from({ length: count }, (_, i) => projectReviewedExtractionEvidence({ ...structuredClone(input), evidenceId: `evidence.${i}`, claimId: `claim.${i}` }, { ...v2, includeImportRecord: i === 0 }).evidence);
+  return { record: input.importRecord, evidence };
+}
+const sidecarOf = (evidence: Evidence) => (evidence.metadata!.reviewedExtraction as { importRecord?: SurveyExtractionEnvelopeImport }).importRecord;
+const unresolvedError = (error: unknown) => error instanceof ReviewedExtractionImportRecordUnresolvedError;
+
+test("a bundle carrying each import record once verifies from the bundle alone", async () => {
+  const { record, evidence } = await selfContainedBundle(8);
+  assert.deepEqual(sidecarOf(evidence[0]!), record);
+  assert.equal(evidence.slice(1).some((item) => sidecarOf(item) !== undefined), false);
+  assert.equal("importRecord" in profileInput(evidence[0]!), false);
+  // The sidecar is outside the digested input: the carrier's anchors and profile digest equal a sidecar-free item's.
+  const plain = projectReviewedExtractionEvidence({ ...(await runOf(8, 0)), evidenceId: "evidence.0", claimId: "claim.0" }, v2).evidence;
+  assert.equal((evidence[0]!.metadata!.reviewedExtraction as { profileDigest: string }).profileDigest, (plain.metadata!.reviewedExtraction as { profileDigest: string }).profileDigest);
+  // It survives bundle validation, and a bundle-only reader restores every item.
+  const bundle = validateTrustBundle({ schemaVersion: 5, source: "fixture:v2-bundle", claims: evidence.map((item) => ({ id: item.claimId, subjectType: "record", subjectId: "fixture", claimType: "directory.field", fieldOrBehavior: "title", value: "Alpha", createdAt: "2026-07-20T00:00:00.000Z", updatedAt: "2026-07-20T00:05:00.000Z" })), evidence, policies: [], events: [] });
+  const resolveImportRecord = resolverFromBundle(bundle);
+  for (const item of bundle.evidence) assert.deepEqual(restoreReviewedExtractionEvidence(item, { resolveImportRecord }).importRecord, record);
+  // Merge unions evidence verbatim, so the sidecar survives it.
+  const merged = mergeBundles([bundle]);
+  assert.deepEqual(restoreReviewedExtractionEvidence(merged.evidence[5]!, { resolveImportRecord: resolverFromBundle(merged) }).importRecord, record);
+  // The carrier also verifies on its own.
+  assert.deepEqual(restoreReviewedExtractionEvidence(evidence[0]!).importRecord, record);
+  await restoreReviewedExtractionEvidenceBrowser(evidence[3]!, { resolveImportRecord });
+  const decision = evaluateReviewedGroundingPolicy({ claims: [{ id: "claim.3", value: "Alpha" }], policy: { ...policy, requiredClaimIds: ["claim.3"], requireCurrentSource: false }, evidence: bundle.evidence, resolveImportRecord });
+  assert.deepEqual(decision.gaps, []);
+});
+
+test("a sliced bundle that lost its carrier fails closed as unresolved", async () => {
+  const { evidence } = await selfContainedBundle(8);
+  const sliced = { evidence: evidence.slice(1) };
+  assert.throws(() => restoreReviewedExtractionEvidence(evidence[3]!, { resolveImportRecord: resolverFromBundle(sliced) }), unresolvedError);
+  const decision = evaluateReviewedGroundingPolicy({ claims: [{ id: "claim.3", value: "Alpha" }], policy: { ...policy, requiredClaimIds: ["claim.3"] }, evidence: sliced.evidence, resolveImportRecord: resolverFromBundle(sliced) });
+  assert.deepEqual(decision.gaps.map((gap) => gap.kind), ["import-record-unresolved"]);
+});
+
+test("a tampered sidecar is refused, never skipped", async () => {
+  const { evidence } = await selfContainedBundle(8);
+  sidecarOf(evidence[0]!)!.spec.envelope.result.proposals[5]!.candidateValue = "Tampered";
+  assert.throws(() => restoreReviewedExtractionEvidence(evidence[0]!), /importRecord sidecar does not match the bound importRecordDigest/);
+  const resolveImportRecord = resolverFromBundle({ evidence });
+  for (const item of evidence) assert.throws(() => restoreReviewedExtractionEvidence(item, { resolveImportRecord }), (error: unknown) => !unresolvedError(error) && /does not match/.test(String(error)));
+  const decision = evaluateReviewedGroundingPolicy({ claims: [{ id: "claim.3", value: "Alpha" }], policy: { ...policy, requiredClaimIds: ["claim.3"] }, evidence, resolveImportRecord });
+  assert.deepEqual(decision.gaps.map((gap) => gap.kind), ["invalid-reviewed-evidence"]);
+});
+
+test("two sidecars with the same digest and different content refuse every item of that record", async () => {
+  const { evidence } = await selfContainedBundle(8);
+  // A second carrier claims the same digest but carries different content; the genuine carrier comes first.
+  const forged = structuredClone(evidence[0]!);
+  forged.id = "evidence.forged";
+  sidecarOf(forged)!.spec.envelope.result.proposals[5]!.candidateValue = "Tampered";
+  const bundle = { evidence: [...evidence, forged] };
+  const resolveImportRecord = resolverFromBundle(bundle);
+  for (const item of [evidence[0]!, evidence[3]!]) {
+    assert.throws(() => restoreReviewedExtractionEvidence(item, { resolveImportRecord }), /bundle carries an import record sidecar that does not match/);
+  }
+});
+
+test("only v2 evidence may carry an import record sidecar", async () => {
+  const input = await fixture();
+  assert.throws(() => projectReviewedExtractionEvidence(input, { includeImportRecord: true }), /Only the v2 profile/);
+  const v1 = structuredClone(projectReviewedExtractionEvidence(input).evidence);
+  (v1.metadata!.reviewedExtraction as Record<string, unknown>).importRecord = input.importRecord;
+  assert.throws(() => restoreReviewedExtractionEvidence(v1), /do not match their bound profile/);
 });

@@ -33,17 +33,25 @@ keep each item's size independent of the run, project with
 `{ profile: reviewedExtractionEvidenceReferenceProfile }`
 (`surface.reviewed-extraction-evidence/v2`). The item then carries the cited
 proposal and `importRecordDigest` (`reviewedExtractionImportRecordDigest` of the
-record) instead of the record. Store each import record once, keyed by that
-digest, and pass a resolver when restoring:
+record) instead of the record. Carry each record once in the bundle by also
+passing `includeImportRecord: true` for one item per record; that item gets an
+`importRecord` sidecar outside the digested input. A reader holding only the
+bundle restores any item with `resolverFromBundle`:
 
 ```ts
-const records = new Map([[reviewedExtractionImportRecordDigest(record), record]]);
-const input = restoreReviewedExtractionEvidence(evidence, { resolveImportRecord: (digest) => records.get(digest) });
+const resolveImportRecord = resolverFromBundle(bundle);
+const input = restoreReviewedExtractionEvidence(evidence, { resolveImportRecord });
 ```
+
+A caller with its own record store can pass any function from digest to record
+instead; restore verifies whatever it returns.
 
 Restore checks that the resolved record has the bound digest and that its
 `proposals[proposalIndex]` is the embedded proposal, then applies every v1
-check. Without a record it throws `ReviewedExtractionImportRecordUnresolvedError`
+check. A sidecar that does not hash to its digest is refused, and
+`resolverFromBundle` then refuses that digest for every item. Without a record
+(for example a slice that dropped the carrier) it throws
+`ReviewedExtractionImportRecordUnresolvedError`
 (`code: "import-record-unresolved"`). The same optional `resolveImportRecord`
 is accepted by `restoreReviewedExtractionEvidenceBrowser`,
 `evaluateReviewedGroundingPolicy`, `buildReviewedExtractionSourceState`,

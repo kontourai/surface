@@ -130,6 +130,12 @@ export type ReviewedExtractionEvidenceReferenceInput = Omit<ReviewedExtractionEv
 export interface ReviewedExtractionProjectionOptions {
   /** Defaults to v1, which embeds the whole import record. */
   profile?: ReviewedExtractionEvidenceProfile;
+  /**
+   * v2 only: also carry the import record as the `importRecord` sidecar, outside
+   * the digested profile input. Set it on one evidence item per import record
+   * in a bundle so the bundle verifies on its own (`resolverFromBundle`).
+   */
+  includeImportRecord?: boolean;
 }
 
 export interface ReviewedExtractionRestoreOptions {
@@ -162,6 +168,8 @@ interface ProfileMetadata {
   profileDigest: string;
   input: ReviewedExtractionEvidenceInput | ReviewedExtractionEvidenceReferenceInput;
   gaps: ReviewedExtractionProvenanceGap[];
+  /** v2 only: the import record, carried once per bundle; outside the profile digest, checked against `input.importRecordDigest`. */
+  importRecord?: SurveyExtractionEnvelopeImport;
 }
 
 export function projectReviewedExtractionEvidence(input: ReviewedExtractionEvidenceInput, options: ReviewedExtractionProjectionOptions = {}): ReviewedExtractionEvidenceProjection {
@@ -184,7 +192,9 @@ export function projectReviewedExtractionEvidence(input: ReviewedExtractionEvide
   const clonedInput = clone(input);
   const profileInput = profile === reviewedExtractionEvidenceProfile ? clonedInput : referenceInput(clonedInput);
   const profileDigest = digest({ anchors, input: profileInput, gaps });
-  const evidence: Evidence = { ...anchors, metadata: { reviewedExtraction: { profile, profileDigest, input: profileInput, gaps } satisfies ProfileMetadata } };
+  if (options.includeImportRecord && profile !== reviewedExtractionEvidenceReferenceProfile) throw new Error("Only the v2 profile carries an import record sidecar.");
+  const sidecar = options.includeImportRecord ? { importRecord: clone(input.importRecord) } : {};
+  const evidence: Evidence = { ...anchors, metadata: { reviewedExtraction: { profile, profileDigest, input: profileInput, gaps, ...sidecar } satisfies ProfileMetadata } };
   return { evidence, gaps, compatibility: { hachureEvidenceSchema: "sufficient", upstreamSchemaChangeNeeded: false, profile } };
 }
 
@@ -199,13 +209,53 @@ export function restoreReviewedExtractionEvidence(evidence: Evidence, options: R
   if (!isRecord(metadata) || (metadata.profile !== reviewedExtractionEvidenceProfile && metadata.profile !== reviewedExtractionEvidenceReferenceProfile) || typeof metadata.profileDigest !== "string" || !isRecord(metadata.input) || !Array.isArray(metadata.gaps)) throw new Error("Evidence does not carry a complete reviewed extraction evidence profile.");
   const profile = metadata.profile as ReviewedExtractionEvidenceProfile;
   const profileInput = metadata.input;
-  const input = profile === reviewedExtractionEvidenceProfile ? profileInput as unknown as ReviewedExtractionEvidenceInput : resolveReferenceInput(profileInput, options);
+  const reference = profile === reviewedExtractionEvidenceReferenceProfile;
+  // The sidecar is not part of the bound profile; it is only a carrier for the
+  // record the digest names. Its own record, when present, must match that digest.
+  const hasSidecar = reference && Object.hasOwn(metadata, "importRecord");
+  const input = reference ? resolveReferenceInput(profileInput, hasSidecar ? withSidecar(metadata.importRecord, profileInput.importRecordDigest, options) : options) : profileInput as unknown as ReviewedExtractionEvidenceInput;
   validateInput(input);
-  const expected = projectReviewedExtractionEvidence(input, { profile });
+  const expected = projectReviewedExtractionEvidence(input, { profile, includeImportRecord: hasSidecar });
   const actualDigest = digest({ anchors: withoutMetadata(evidence), input: profileInput, gaps: metadata.gaps });
   if (actualDigest !== metadata.profileDigest || metadata.profileDigest !== (expected.evidence.metadata!.reviewedExtraction as ProfileMetadata).profileDigest) throw new Error("Reviewed extraction evidence profile integrity binding is invalid.");
   if (canonicalJson(evidence) !== canonicalJson(expected.evidence)) throw new Error("Reviewed extraction evidence fields do not match their bound profile.");
   return clone(input);
+}
+
+/**
+ * Builds a `resolveImportRecord` from the `importRecord` sidecars of a bundle's
+ * v2 evidence, so a reader holding only the bundle can verify it. A sidecar
+ * whose record does not hash to its item's `importRecordDigest` poisons that
+ * digest: every lookup of it throws instead of falling back to another copy.
+ * A digest with no sidecar in the bundle resolves to undefined (unresolved).
+ */
+export function resolverFromBundle(bundle: { evidence: readonly Evidence[] }): NonNullable<ReviewedExtractionRestoreOptions["resolveImportRecord"]> {
+  const records = new Map<string, SurveyExtractionEnvelopeImport>();
+  const refused = new Set<string>();
+  for (const evidence of bundle.evidence) {
+    const metadata = evidence.metadata?.reviewedExtraction;
+    if (!isRecord(metadata) || metadata.profile !== reviewedExtractionEvidenceReferenceProfile || !Object.hasOwn(metadata, "importRecord")) continue;
+    const declared = isRecord(metadata.input) ? metadata.input.importRecordDigest : undefined;
+    if (typeof declared !== "string") continue;
+    let actual: string | undefined;
+    try { assertJsonValue(metadata.importRecord, "importRecord sidecar"); actual = digest(metadata.importRecord); } catch { actual = undefined; }
+    if (actual !== declared) { refused.add(declared); continue; }
+    if (!records.has(declared)) records.set(declared, clone(metadata.importRecord as SurveyExtractionEnvelopeImport));
+  }
+  return (importRecordDigest) => {
+    if (refused.has(importRecordDigest)) throw new Error("The bundle carries an import record sidecar that does not match its importRecordDigest.");
+    const record = records.get(importRecordDigest);
+    return record === undefined ? undefined : clone(record);
+  };
+}
+
+/** Checks an item's own sidecar against its digest. A supplied resolver is still consulted first, so a digest it refuses stays refused. */
+function withSidecar(sidecar: unknown, declared: unknown, options: ReviewedExtractionRestoreOptions): ReviewedExtractionRestoreOptions {
+  if (!isRecord(sidecar)) throw new Error("importRecord sidecar must be an object.");
+  assertJsonValue(sidecar, "importRecord sidecar");
+  if (typeof declared !== "string" || digest(sidecar) !== declared) throw new Error("importRecord sidecar does not match the bound importRecordDigest.");
+  const own = sidecar as unknown as SurveyExtractionEnvelopeImport;
+  return { resolveImportRecord: (importRecordDigest) => options.resolveImportRecord?.(importRecordDigest) ?? own };
 }
 
 function referenceInput(input: ReviewedExtractionEvidenceInput): ReviewedExtractionEvidenceReferenceInput {
