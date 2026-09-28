@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.2.0](https://github.com/kontourai/surface/compare/v4.1.0...v4.2.0) (2026-09-28)
+
+
+### Features
+
+* reviewed-extraction evidence v2 reference profile (import record by digest) ([#290](https://github.com/kontourai/surface/issues/290)) ([a062dc9](https://github.com/kontourai/surface/commit/a062dc9abbbc50b2b65d9a6727d7bbaac265e53f)), closes [#262](https://github.com/kontourai/surface/issues/262)
+
 ## [4.1.0](https://github.com/kontourai/surface/compare/v4.0.0...v4.1.0) (2026-09-28)
 
 
