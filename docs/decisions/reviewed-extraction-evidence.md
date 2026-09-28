@@ -53,13 +53,20 @@ A v2 item carries the cited proposal and `importRecordDigest`, the canonical
 JSON SHA-256 of the import record, in place of the record. The profile digest
 covers that input, so it binds the record by digest.
 
-**Self-verification.** A v2 bundle verifies from the bundle alone, as a v1
-bundle does. Each import record is carried once, as an optional `importRecord`
-sidecar in the `reviewedExtraction` metadata of one v2 item per record. The
-sidecar sits outside the digested profile input, and is accepted only when it
-hashes to that item's `importRecordDigest`. `resolverFromBundle(bundle)` turns
-a bundle's sidecars into the resolver, so a bundle-only reader passes it to any
-restore or policy call. A bundle-level map was rejected because `TrustBundle`
+**Self-verification.** A v2 bundle can verify from the bundle alone, as a v1
+bundle does, when it carries each of its import records: one v2 item per record
+holds it as an optional `importRecord` sidecar in its `reviewedExtraction`
+metadata, outside the digested profile input, accepted only when it hashes to
+that item's `importRecordDigest`. This is a producer precondition, not a
+default. Projection leaves the sidecar off (`includeImportRecord` defaults to
+false, since a sidecar on every item re-bloats the bundle past v1). The producer
+calls `attachImportRecords(evidence, records)`, which puts exactly one sidecar
+on the first v2 item for each digest, and can assert
+`findUncarriedImportRecordDigests(bundle)` is empty before publishing. A reader
+then passes `resolverFromBundle(bundle)` to any restore or policy call. A bundle
+that misses the precondition is not accepted on trust: its uncarried items fail
+closed as unresolved.
+A bundle-level map was rejected because `TrustBundle`
 is closed (`additionalProperties: false`) and merge drops `proof`; a separate
 carrier Evidence item was rejected because it needs a `claimId` and would enter
 claim evaluation. Evidence `metadata` is open, so the sidecar needs no schema
@@ -81,6 +88,13 @@ back to another copy. Two sidecars claiming one digest with different content
 therefore refuse every item of that record, since at least one of them cannot
 hash to the digest. A supplied resolver is consulted before an item's own
 sidecar, so a refused digest stays refused for the carrier too.
+
+Known denial of service: merge keeps one copy per evidence id, choosing by
+content order. A tampered copy of the carrier with the same id can therefore
+replace the genuine carrier in a merged bundle. Every item of that record is
+then refused, and the refusal names the offending evidence id, so this fails
+closed. It is equivalent to deleting the carrier, and `mergeBundlesDetailed`
+reports the collision.
 
 The v2 profile does not change the review shape; the two-candidate transition
 review (#195) is still out of scope.

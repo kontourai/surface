@@ -231,25 +231,76 @@ export function restoreReviewedExtractionEvidence(evidence: Evidence, options: R
  */
 export function resolverFromBundle(bundle: { evidence: readonly Evidence[] }): NonNullable<ReviewedExtractionRestoreOptions["resolveImportRecord"]> {
   const records = new Map<string, SurveyExtractionEnvelopeImport>();
-  const refused = new Set<string>();
+  const refused = new Map<string, string>();
   for (const evidence of bundle.evidence) {
-    const metadata = evidence.metadata?.reviewedExtraction;
-    if (!isRecord(metadata) || metadata.profile !== reviewedExtractionEvidenceReferenceProfile || !Object.hasOwn(metadata, "importRecord")) continue;
-    const declared = isRecord(metadata.input) ? metadata.input.importRecordDigest : undefined;
-    if (typeof declared !== "string") continue;
-    let actual: string | undefined;
-    try { assertJsonValue(metadata.importRecord, "importRecord sidecar"); actual = digest(metadata.importRecord); } catch { actual = undefined; }
-    if (actual !== declared) { refused.add(declared); continue; }
-    if (!records.has(declared)) records.set(declared, clone(metadata.importRecord as SurveyExtractionEnvelopeImport));
+    const carried = carriedRecord(evidence);
+    if (!carried) continue;
+    if (!carried.matches) { if (!refused.has(carried.declared)) refused.set(carried.declared, evidence.id); continue; }
+    if (!records.has(carried.declared)) records.set(carried.declared, clone(carried.record));
   }
   return (importRecordDigest) => {
-    if (refused.has(importRecordDigest)) throw new Error("The bundle carries an import record sidecar that does not match its importRecordDigest.");
+    const offender = refused.get(importRecordDigest);
+    if (offender !== undefined) throw new Error(`The bundle carries an import record sidecar that does not match its importRecordDigest (evidence ${offender}); every item of that record is refused.`);
     const record = records.get(importRecordDigest);
     return record === undefined ? undefined : clone(record);
   };
 }
 
 /** Checks an item's own sidecar against its digest. A supplied resolver is still consulted first, so a digest it refuses stays refused. */
+/**
+ * Puts one `importRecord` sidecar on the first v2 item for each distinct
+ * `importRecordDigest` that `records` supplies and no item already carries, so
+ * the bundle meets `resolverFromBundle`'s precondition. Idempotent: items that
+ * already carry the right record are left alone, and other items are returned
+ * unchanged (same object). Throws on an item whose sidecar does not match its
+ * digest. Digests with no supplied record stay uncarried; check them with
+ * `findUncarriedImportRecordDigests`.
+ */
+export function attachImportRecords(evidence: readonly Evidence[], records: Iterable<SurveyExtractionEnvelopeImport>): Evidence[] {
+  const supplied = new Map<string, SurveyExtractionEnvelopeImport>();
+  for (const record of records) supplied.set(reviewedExtractionImportRecordDigest(record), record);
+  const carried = new Set<string>();
+  for (const item of evidence) {
+    const sidecar = carriedRecord(item);
+    if (!sidecar) continue;
+    if (!sidecar.matches) throw new Error(`Evidence ${item.id} carries an import record sidecar that does not match its importRecordDigest.`);
+    carried.add(sidecar.declared);
+  }
+  return evidence.map((item) => {
+    const declared = referenceDigest(item);
+    if (declared === undefined || carried.has(declared)) return item;
+    const record = supplied.get(declared);
+    if (record === undefined) return item;
+    carried.add(declared);
+    const metadata = item.metadata!.reviewedExtraction as Record<string, unknown>;
+    return { ...item, metadata: { ...item.metadata, reviewedExtraction: { ...metadata, importRecord: clone(record) } } };
+  });
+}
+
+/** The v2 `importRecordDigest`s in a bundle that no item carries a matching sidecar for; empty when the bundle verifies on its own. */
+export function findUncarriedImportRecordDigests(bundle: { evidence: readonly Evidence[] }): string[] {
+  const carried = new Set<string>();
+  for (const item of bundle.evidence) { const sidecar = carriedRecord(item); if (sidecar?.matches) carried.add(sidecar.declared); }
+  const uncarried: string[] = [];
+  for (const item of bundle.evidence) { const declared = referenceDigest(item); if (declared !== undefined && !carried.has(declared) && !uncarried.includes(declared)) uncarried.push(declared); }
+  return uncarried;
+}
+
+function referenceDigest(evidence: Evidence): string | undefined {
+  const metadata = evidence.metadata?.reviewedExtraction;
+  if (!isRecord(metadata) || metadata.profile !== reviewedExtractionEvidenceReferenceProfile || !isRecord(metadata.input)) return undefined;
+  return typeof metadata.input.importRecordDigest === "string" ? metadata.input.importRecordDigest : undefined;
+}
+
+function carriedRecord(evidence: Evidence): { declared: string; matches: boolean; record: SurveyExtractionEnvelopeImport } | undefined {
+  const declared = referenceDigest(evidence);
+  const metadata = evidence.metadata?.reviewedExtraction as Record<string, unknown> | undefined;
+  if (declared === undefined || !metadata || !Object.hasOwn(metadata, "importRecord")) return undefined;
+  let matches = false;
+  try { assertJsonValue(metadata.importRecord, "importRecord sidecar"); matches = isRecord(metadata.importRecord) && digest(metadata.importRecord) === declared; } catch { matches = false; }
+  return { declared, matches, record: metadata.importRecord as SurveyExtractionEnvelopeImport };
+}
+
 function withSidecar(sidecar: unknown, declared: unknown, options: ReviewedExtractionRestoreOptions): ReviewedExtractionRestoreOptions {
   if (!isRecord(sidecar)) throw new Error("importRecord sidecar must be an object.");
   assertJsonValue(sidecar, "importRecord sidecar");

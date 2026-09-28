@@ -14,6 +14,8 @@ import {
   ReviewedExtractionSourceObservationError,
   reviewedExtractionEvidenceReferenceProfile,
   reviewedExtractionImportRecordDigest,
+  attachImportRecords,
+  findUncarriedImportRecordDigests,
   mergeBundles,
   resolverFromBundle,
   validateTrustBundle,
@@ -271,4 +273,40 @@ test("only v2 evidence may carry an import record sidecar", async () => {
   const v1 = structuredClone(projectReviewedExtractionEvidence(input).evidence);
   (v1.metadata!.reviewedExtraction as Record<string, unknown>).importRecord = input.importRecord;
   assert.throws(() => restoreReviewedExtractionEvidence(v1), /do not match their bound profile/);
+});
+
+test("attachImportRecords carries each record exactly once and resolverFromBundle round-trips it", async () => {
+  // Two runs interleaved, all items projected with the per-item default (no sidecar).
+  const first = await runOf(4, 0);
+  const second = await runOf(5, 0);
+  second.importRecord.metadata.name = "directory-refresh-18";
+  const plain = [first, second, first, second, first].map((input, i) => projectReviewedExtractionEvidence({ ...structuredClone(input), evidenceId: `evidence.${i}`, claimId: `claim.${i}` }, v2).evidence);
+  const digests = [reviewedExtractionImportRecordDigest(first.importRecord), reviewedExtractionImportRecordDigest(second.importRecord)];
+  assert.deepEqual(findUncarriedImportRecordDigests({ evidence: plain }), digests);
+  const attached = attachImportRecords(plain, [first.importRecord, second.importRecord]);
+  assert.deepEqual(attached.map((item) => sidecarOf(item) !== undefined), [true, true, false, false, false]);
+  assert.deepEqual(findUncarriedImportRecordDigests({ evidence: attached }), []);
+  assert.equal(attached[2], plain[2]);
+  assert.equal(sidecarOf(plain[0]!), undefined);
+  const resolveImportRecord = resolverFromBundle({ evidence: attached });
+  attached.forEach((item, i) => assert.deepEqual(restoreReviewedExtractionEvidence(item, { resolveImportRecord }).importRecord, [first, second][i % 2]!.importRecord));
+  // Idempotent, and an item that already carries its record is left alone.
+  const again = attachImportRecords(attached, [first.importRecord, second.importRecord]);
+  assert.deepEqual(again, attached);
+  attached.forEach((item, i) => assert.equal(again[i], item));
+  // A digest with no supplied record stays uncarried and is reported.
+  const partial = attachImportRecords(plain, [first.importRecord]);
+  assert.deepEqual(findUncarriedImportRecordDigests({ evidence: partial }), [digests[1]]);
+  // An item whose sidecar does not match its digest is refused.
+  const tampered = structuredClone(attached);
+  sidecarOf(tampered[0]!)!.spec.envelope.result.proposals[2]!.candidateValue = "Tampered";
+  assert.throws(() => attachImportRecords(tampered, [first.importRecord]), /evidence\.0 carries an import record sidecar that does not match/);
+  assert.deepEqual(findUncarriedImportRecordDigests({ evidence: tampered }), [digests[0]]);
+});
+
+test("findUncarriedImportRecordDigests flags a bundle sliced away from its carrier", async () => {
+  const { record, evidence } = await selfContainedBundle(8);
+  assert.deepEqual(findUncarriedImportRecordDigests({ evidence }), []);
+  assert.deepEqual(findUncarriedImportRecordDigests({ evidence: evidence.slice(1) }), [reviewedExtractionImportRecordDigest(record)]);
+  assert.deepEqual(findUncarriedImportRecordDigests({ evidence: [projectReviewedExtractionEvidence(await fixture()).evidence] }), []);
 });

@@ -33,14 +33,19 @@ keep each item's size independent of the run, project with
 `{ profile: reviewedExtractionEvidenceReferenceProfile }`
 (`surface.reviewed-extraction-evidence/v2`). The item then carries the cited
 proposal and `importRecordDigest` (`reviewedExtractionImportRecordDigest` of the
-record) instead of the record. Carry each record once in the bundle by also
-passing `includeImportRecord: true` for one item per record; that item gets an
-`importRecord` sidecar outside the digested input. A reader holding only the
-bundle restores any item with `resolverFromBundle`:
+record) instead of the record. The bundle verifies on its own only when it
+carries each record once: after projecting (the per-item `includeImportRecord`
+default is false), call `attachImportRecords(evidence, records)` to put one
+`importRecord` sidecar, outside the digested input, on the first v2 item for
+each digest, and check that `findUncarriedImportRecordDigests(bundle)` is empty
+before publishing. A reader holding only the bundle then restores any item with
+`resolverFromBundle`:
 
 ```ts
-const resolveImportRecord = resolverFromBundle(bundle);
-const input = restoreReviewedExtractionEvidence(evidence, { resolveImportRecord });
+const evidence = attachImportRecords(projected, importRecords);
+if (findUncarriedImportRecordDigests({ evidence }).length > 0) throw new Error("bundle is not self-contained");
+const resolveImportRecord = resolverFromBundle({ evidence });
+const input = restoreReviewedExtractionEvidence(evidence[0], { resolveImportRecord });
 ```
 
 A caller with its own record store can pass any function from digest to record
