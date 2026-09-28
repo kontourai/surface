@@ -130,6 +130,25 @@ catch up. It is not a permanent feature: the next major release is expected
 to drop it, and the wire schema itself never accepted `surface` again after
 this bump.
 
+The tolerance does not extend to unknown keys. `validateTrustBundle` rejects a
+top-level key the Hachure trust-bundle schema does not define (the schema is
+closed with `additionalProperties: false`) with `trust bundle contains
+unsupported field: <key>`, the same way the claim, evidence, and event
+validators reject unknown record fields. It also rejects two claims or two
+evidence items that share an id, since every reference in a bundle resolves by
+id. A producer adding a new block must wait for a schema and Surface release
+that define it; an older reader fails loudly instead of returning a bundle and
+report that silently dropped the block.
+
+Rollout note: this rejects some bundles that validated before. Two known
+producer shapes add a root key. Fieldwork's reviewed export adds
+`reviewedGrounding`; it still works where the export validates the bundle
+before adding that key, but the exported file is refused if it is fed back
+into `validateTrustBundle` or `surface report`. At least one CLI tool writes a
+`critique_resolution_events` key at the root, which is now refused. Producers
+should carry such data outside the bundle, or in the record-level `metadata`
+fields of claims and evidence.
+
 The [Quickstart](../../README.md#quickstart) intentionally ships
 `examples/surface-example-bundle.json` still in this legacy `surface` /
 `schemaVersion: 3` shape (rather than migrating it) so a first-run `surface

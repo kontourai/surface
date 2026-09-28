@@ -1,8 +1,8 @@
 import type { TrustBundle } from "../types.js";
 
 export function validateReferences(input: TrustBundle): void {
-  const claimIds = new Set(input.claims.map((claim) => claim.id));
-  const evidenceIds = new Set(input.evidence.map((evidence) => evidence.id));
+  const claimIds = uniqueIds(input.claims, "claim");
+  const evidenceIds = uniqueIds(input.evidence, "evidence");
   const policyIds = new Set(input.policies.map((policy) => policy.id));
 
   for (const claim of input.claims) {
@@ -76,4 +76,15 @@ export function validateReferences(input: TrustBundle): void {
       }
     }
   }
+}
+
+// Every reference in a bundle resolves by id, so two records sharing one id
+// make the reference ambiguous and the report would list both.
+function uniqueIds(records: ReadonlyArray<{ id: string }>, label: string): Set<string> {
+  const ids = new Set<string>();
+  for (const record of records) {
+    if (ids.has(record.id)) throw new Error(`Trust bundle contains duplicate ${label} id ${record.id}`);
+    ids.add(record.id);
+  }
+  return ids;
 }
