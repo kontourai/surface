@@ -2,6 +2,7 @@ import { derivationInputsForClaim } from "../derivation.js";
 import { evaluateAnswerAssessmentPolicy } from "../answer-assessment-policy.js";
 import { isStandingCounterevidence } from "../evidence-support.js";
 import type { Evidence, TrustReport } from "../types.js";
+import type { ReviewedExtractionRestoreOptions } from "../reviewed-extraction-evidence.js";
 import { SURFACE_ANSWER_ASSESSMENT_VERSION, type AnswerAssessmentProjection, type BasisAssessmentEvidence } from "./types.js";
 import { isBasisInertDisplayScalar, isBasisOpaqueRefScalar, isBasisRestrictedContractScalar } from "./validation.js";
 
@@ -9,14 +10,14 @@ import { isBasisInertDisplayScalar, isBasisOpaqueRefScalar, isBasisRestrictedCon
  * Projects report facts for one claim.  This never derives a claim status and
  * never interprets owner workflow output as policy evidence.
  */
-export function buildAnswerAssessmentProjection(report: TrustReport, claimId: string): AnswerAssessmentProjection {
+export function buildAnswerAssessmentProjection(report: TrustReport, claimId: string, options: ReviewedExtractionRestoreOptions = {}): AnswerAssessmentProjection {
   const bundle = { id: report.id, schemaVersion: report.schemaVersion, source: report.source, generatedAt: report.generatedAt };
   const claim = report.claims.find((candidate) => candidate.id === claimId);
   assertBuildScalars(bundle, claimId);
   if (!claim) return emptyAssessment(bundle, claimId);
 
   const evidence = report.evidence.filter((candidate) => candidate.claimId === claimId);
-  const policy = evaluateAnswerAssessmentPolicy(report, claimId);
+  const policy = evaluateAnswerAssessmentPolicy(report, claimId, options);
 
   const projection: AnswerAssessmentProjection = {
     version: SURFACE_ANSWER_ASSESSMENT_VERSION,

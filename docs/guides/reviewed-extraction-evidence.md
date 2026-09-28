@@ -25,6 +25,48 @@ integrity presence. This makes
 the ordinary Hachure-compatible fields useful to generic consumers while
 preserving the complete reviewed extraction for profile-aware consumers.
 
+### Reference profile (v2)
+
+The v1 profile above embeds the whole import record in every evidence item, so
+a run with many reviewed proposals repeats its full envelope once per item. To
+keep each item's size independent of the run, project with
+`{ profile: reviewedExtractionEvidenceReferenceProfile }`
+(`surface.reviewed-extraction-evidence/v2`). The item then carries the cited
+proposal and `importRecordDigest` (`reviewedExtractionImportRecordDigest` of the
+record) instead of the record. The bundle verifies on its own only when it
+carries each record once: after projecting (the per-item `includeImportRecord`
+default is false), call `attachImportRecords(evidence, records)` to put one
+`importRecord` sidecar, outside the digested input, on the first v2 item citing
+each digest that is not already carried (an existing matching carrier stays
+where it is), and check that `findUncarriedImportRecordDigests(bundle)` is empty
+before publishing. The check reports a digest with no carrier or with any
+mismatching carrier; it checks carriers, not full integrity, so tampered
+evidence still fails at restore. A reader holding only the bundle then restores any item with
+`resolverFromBundle`:
+
+```ts
+const evidence = attachImportRecords(projected, importRecords);
+if (findUncarriedImportRecordDigests({ evidence }).length > 0) throw new Error("bundle is not self-contained");
+const resolveImportRecord = resolverFromBundle({ evidence });
+const input = restoreReviewedExtractionEvidence(evidence[0], { resolveImportRecord });
+```
+
+A caller with its own record store can pass any function from digest to record
+instead; restore verifies whatever it returns.
+
+Restore checks that the resolved record has the bound digest and that its
+`proposals[proposalIndex]` is the embedded proposal, then applies every v1
+check. A sidecar that does not hash to its digest is refused, and
+`resolverFromBundle` then refuses that digest for every item. Without a record
+(for example a slice that dropped the carrier) it throws
+`ReviewedExtractionImportRecordUnresolvedError`
+(`code: "import-record-unresolved"`). The same optional `resolveImportRecord`
+is accepted by `restoreReviewedExtractionEvidenceBrowser`,
+`evaluateReviewedGroundingPolicy`, `buildReviewedExtractionSourceState`,
+`buildUnknownReviewedExtractionSourceState`, `evaluateAnswerAssessmentPolicy`,
+`buildAnswerAssessmentProjection`, and `buildReviewedSourceBasisContribution`;
+each refuses v2 evidence it cannot resolve. v1 evidence ignores the resolver.
+
 The profile validates only the envelope fields it reads, so additive producer
 keys pass through unchanged and stay inside the profile digest. This covers a
 proposal's `producedBy` model record and `evidenceMatch` annotation, a provider

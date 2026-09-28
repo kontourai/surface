@@ -6,29 +6,33 @@
  * delivery graph.
  */
 import type { Evidence } from "./types.js";
-import { restoreReviewedExtractionEvidence } from "./reviewed-extraction-evidence.js";
+import { restoreReviewedExtractionEvidence, reviewedExtractionEvidenceProfile, reviewedExtractionEvidenceReferenceProfile, type ReviewedExtractionRestoreOptions } from "./reviewed-extraction-evidence.js";
 
-const profile = "surface.reviewed-extraction-evidence/v1";
 const encoder = new TextEncoder();
 
-export async function restoreReviewedExtractionEvidenceBrowser(evidence: Evidence): Promise<Evidence> {
+export async function restoreReviewedExtractionEvidenceBrowser(evidence: Evidence, options: ReviewedExtractionRestoreOptions = {}): Promise<Evidence> {
   // The synchronous restorer is now runtime-neutral and remains the canonical
   // input/profile/projector equality implementation for both environments.
-  restoreReviewedExtractionEvidence(evidence);
+  // For v2 evidence it also resolves the import record and checks its digest.
+  const restored = restoreReviewedExtractionEvidence(evidence, options);
   if (!evidence || typeof evidence !== "object" || Array.isArray(evidence)) throw new Error("Reviewed extraction evidence is invalid.");
   const metadata = evidence.metadata?.reviewedExtraction as Record<string, unknown> | undefined;
-  if (!metadata || metadata.profile !== profile || typeof metadata.profileDigest !== "string" || !isRecord(metadata.input) || !Array.isArray(metadata.gaps)) throw new Error("Evidence does not carry a complete reviewed extraction evidence profile.");
+  if (!metadata || (metadata.profile !== reviewedExtractionEvidenceProfile && metadata.profile !== reviewedExtractionEvidenceReferenceProfile) || typeof metadata.profileDigest !== "string" || !isRecord(metadata.input) || !Array.isArray(metadata.gaps)) throw new Error("Evidence does not carry a complete reviewed extraction evidence profile.");
+  const reference = metadata.profile === reviewedExtractionEvidenceReferenceProfile;
   const input = metadata.input as Record<string, unknown>;
   // These binding fields are sufficient to reject profile substitution before
   // any protected profile detail can be projected into Basis.
-  if (!nonEmpty(input.evidenceId) || !nonEmpty(input.claimId) || input.evidenceId !== evidence.id || input.claimId !== evidence.claimId || !Number.isSafeInteger(input.proposalIndex) || (input.proposalIndex as number) < 0 || !isRecord(input.importRecord)) throw new Error("Reviewed extraction evidence profile is structurally invalid.");
+  if (!nonEmpty(input.evidenceId) || !nonEmpty(input.claimId) || input.evidenceId !== evidence.id || input.claimId !== evidence.claimId || !Number.isSafeInteger(input.proposalIndex) || (input.proposalIndex as number) < 0 || (reference ? !nonEmpty(input.importRecordDigest) || "importRecord" in input : !isRecord(input.importRecord))) throw new Error("Reviewed extraction evidence profile is structurally invalid.");
   const anchors = withoutMetadata(evidence);
   const actual = await digest({ anchors, input, gaps: metadata.gaps });
   if (actual !== metadata.profileDigest) throw new Error("Reviewed extraction evidence profile integrity binding is invalid.");
+  // v2 binds the record by digest; re-check that binding with Web Crypto
+  // against the record the synchronous restorer resolved.
+  if (reference && await digest(restored.importRecord) !== input.importRecordDigest) throw new Error("Resolved import record does not match the bound importRecordDigest.");
   // Reconstruct the portable anchors from the reviewed profile. This is the
   // important second half of restoration: a valid digest over caller-chosen
   // fields is not sufficient if those fields are not the profile's projection.
-  const expected = expectedAnchors(input, metadata.gaps);
+  const expected = expectedAnchors(reference ? { ...input, importRecord: restored.importRecord } : input, metadata.gaps);
   if (!expected || canonicalJson(anchors) !== canonicalJson(expected)) throw new Error("Reviewed extraction evidence fields do not match their bound profile.");
   // Return a JSON clone so caller-owned getters/prototypes cannot cross the
   // semantic adapter boundary after authentication.
