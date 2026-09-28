@@ -404,6 +404,29 @@ test("a success outcome contradicted by the rest of the envelope is a coverage f
   assert.deepEqual(complete.decision.gaps, []);
 });
 
+test("a success envelope whose warnings record truncated content or output is a coverage failure", async () => {
+  // Classifications as written by Traverse's envelope builder before 2.0.0 made truncation a partial outcome.
+  const cases: Array<[string, { category: string; code: string }]> = [
+    ["output-truncated", { category: "provider", code: "output-truncated" }],
+    ["content-truncated-at-dispatch", { category: "limit", code: "content-truncated-at-dispatch" }],
+    ["content-truncated", { category: "limit", code: "content-truncated" }],
+  ];
+  for (const [label, warning] of cases) {
+    const { projected, decision } = await coverageDecision((result) => { result.warningClassifications = [{ category: "other", code: "unclassified" }, warning]; });
+    assert.equal(decision.outcome, "refused", label);
+    assert.deepEqual(decision.gaps, [{ kind: "extraction-coverage-incomplete", claimId: "claim.directory.title", evidenceId: projected.evidence.id, outcome: "failure" }], label);
+  }
+  const unrelated = await coverageDecision((result) => { result.warningClassifications = [{ category: "other", code: "unclassified" }, { category: "limit", code: "max-chunks" }]; });
+  assert.equal(unrelated.decision.outcome, "allowed");
+  assert.deepEqual(unrelated.decision.gaps, []);
+  // A recorded provider failure keeps its label when a truncation warning is also present.
+  const withFailures = await coverageDecision((result) => {
+    result.warningClassifications = [{ category: "provider", code: "output-truncated" }];
+    result.providerFailures = [{ provider: "portable-fixture", kind: "unavailable", retryable: true }];
+  });
+  assert.deepEqual(withFailures.decision.gaps, [{ kind: "extraction-coverage-incomplete", claimId: "claim.directory.title", evidenceId: withFailures.projected.evidence.id, outcome: "provider-failure", providerFailureCount: 1 }]);
+});
+
 function reorderKeys(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(reorderKeys);
   if (value === null || typeof value !== "object") return value;
