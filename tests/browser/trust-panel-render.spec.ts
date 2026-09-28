@@ -199,13 +199,7 @@ test("status chips are @kontourai/ui's trust-state chip, markup for markup", asy
 
 test("status chips resolve ui's trust-state colours, not the old tone bands", async ({ page }) => {
   await loadPanel(page, statusReport());
-  const colours = await page.evaluate(() => {
-    const panel = document.getElementById("viewer-panel") as HTMLElement;
-    return [...(panel.shadowRoot?.querySelectorAll('details.claim summary [part="standing"] .trust-state__chip') ?? [])].map((chip) => {
-      const style = getComputedStyle(chip);
-      return { state: chip.parentElement?.getAttribute("data-trust-state") ?? "", color: style.color, background: style.backgroundColor, line: style.borderTopStyle };
-    });
-  });
+  const colours = await chipColours(page);
   expect(colours).toHaveLength(TRUST_STATES.length);
   // Nine states, nine inks and nine fills: no two statuses share a colour.
   expect(new Set(colours.map((entry) => entry.color)).size).toBe(TRUST_STATES.length);
@@ -213,6 +207,31 @@ test("status chips resolve ui's trust-state colours, not the old tone bands", as
   const line = Object.fromEntries(colours.map((entry) => [entry.state, entry.line]));
   expect(line).toEqual({ unknown: "dotted", proposed: "dashed", assumed: "dashed", verified: "solid", stale: "dotted", disputed: "double", superseded: "dotted", rejected: "solid", revoked: "dotted" });
 });
+
+test("status chips follow the page's light or dark mode", async ({ page }) => {
+  // The viewer switches modes with prefers-color-scheme; the chips must use
+  // ui's light inks and fills on the light page and its dark ones on the dark.
+  const expected = {
+    light: { color: "rgb(0, 109, 66)", background: "rgb(230, 240, 236)" },
+    dark: { color: "rgb(80, 212, 146)", background: "rgb(26, 50, 51)" },
+  } as const;
+  for (const colorScheme of ["light", "dark"] as const) {
+    await page.emulateMedia({ colorScheme });
+    await loadPanel(page, statusReport());
+    const verified = (await chipColours(page)).find((entry) => entry.state === "verified");
+    expect({ color: verified?.color, background: verified?.background }, `${colorScheme} verified chip`).toEqual(expected[colorScheme]);
+  }
+});
+
+async function chipColours(page: Page): Promise<Array<{ state: string; color: string; background: string; line: string }>> {
+  return page.evaluate(() => {
+    const panel = document.getElementById("viewer-panel") as HTMLElement;
+    return [...(panel.shadowRoot?.querySelectorAll('details.claim summary [part="standing"] .trust-state__chip') ?? [])].map((chip) => {
+      const style = getComputedStyle(chip);
+      return { state: chip.parentElement?.getAttribute("data-trust-state") ?? "", color: style.color, background: style.backgroundColor, line: style.borderTopStyle };
+    });
+  });
+}
 
 test("no non-verified status renders as verified or as the positive band", async ({ page }) => {
   // This is the audit's all-green injection, stated as an assertion: a map

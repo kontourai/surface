@@ -10,10 +10,24 @@ import { renderViewerPage } from "./viewer.mjs";
 
 const execFileAsync = promisify(execFile);
 
+// The site switches light and dark with prefers-color-scheme, but the kit's
+// light values live under [data-theme="light"], so trust-state chips would
+// keep the kit's dark defaults on a light page. Read the kit's --k-trust-*
+// declarations for both modes from the installed package.
+async function kitTrustTokens() {
+  const tokens = (await readFile("node_modules/@kontourai/ui/tokens/tokens.css", "utf8")).replace(/\/\*[\s\S]*?\*\//g, "");
+  const declarations = (pattern) =>
+    [...(tokens.match(pattern)?.[1] ?? "").matchAll(/(--k-trust-[\w-]+)\s*:\s*([^;]+);/g)].map((match) => `${match[1]}: ${match[2].trim()};`);
+  const lightTrustTokens = declarations(/\[data-theme="light"\]\s*\{([^}]*)\}/);
+  const darkTrustTokens = declarations(/:root\s*\{([^}]*)\}/);
+  if (lightTrustTokens.length === 0 || darkTrustTokens.length === 0) throw new Error("The installed @kontourai/ui has no --k-trust-* tokens.");
+  return { lightTrustTokens, darkTrustTokens };
+}
+
 export async function buildDocsSite() {
   await mkdir("docs-site", { recursive: true });
   await cleanDocsSite();
-  await writeFile("docs-site/styles.css", buildStyles());
+  await writeFile("docs-site/styles.css", buildStyles(await kitTrustTokens()));
 
   for (const [slug, source, title, description] of pages) {
     const markdown = await readFile(source, "utf8");
