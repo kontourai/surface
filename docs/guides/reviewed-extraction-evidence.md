@@ -272,9 +272,11 @@ currently resolves a rival, so every listed rival is unresolved.
 Two more signals check the import record for values the item does not show.
 `hiddenRivalProposalIndices` lists non-excluded proposals of the cited claim
 slot with a different value that no candidate carries. `droppedProposalIndices`
-(only on an item whose Survey binding is intact) lists proposals Survey's
+(on an item whose Survey binding is intact) lists proposals Survey's
 grouping puts in the item that no candidate carries, which no Survey release
-writes. The dimension carries both as `hiddenConflict`. The policy refuses
+writes. On an item whose binding is broken it lists the hidden rivals when the
+import record carries `status.provenance`, which only Survey 6 and later write,
+so the item cannot be a Survey 4 one. The dimension carries both as `hiddenConflict`. The policy refuses
 dropped proposals by default with `hidden-conflict`; hidden rivals alone, as
 Survey 4 and earlier items have, are refused only under `refuseExcludedRivals`
 or `refuseChosenOverRivals`.

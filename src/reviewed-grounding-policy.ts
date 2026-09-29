@@ -117,8 +117,10 @@ export type ReviewedGroundingPolicyGap =
   /**
    * A conflicting value in the cited claim slot that the reviewed item does not
    * show. Always emitted when candidates were dropped from a Survey-grouped
-   * item (`droppedProposalIndices`); for an ungrouped (Survey 4 and earlier)
-   * item, only under `refuseExcludedRivals` or `refuseChosenOverRivals`.
+   * item (`droppedProposalIndices`), including one whose binding is broken but
+   * whose import record carries `status.provenance` (Survey 6 and later); for an
+   * ungrouped (Survey 4 and earlier) item, only under `refuseExcludedRivals` or
+   * `refuseChosenOverRivals`.
    */
   | { kind: "hidden-conflict"; claimId: string; evidenceId: string; rivalProposalIndices: number[]; droppedProposalIndices: number[] }
   | { kind: "invalid-reviewed-evidence"; claimId: string; evidenceId: string }

@@ -289,14 +289,32 @@ test("a chosen conflict downgraded to v1 or v2 by dropping its rivals is refused
   }
 });
 
+interface SurveyReviewedFixture {
+  proposalIndex: number;
+  importRecord: SurveyExtractionEnvelopeImport;
+  reviewItem?: SurveyExtractionReviewItem;
+  reviewDecision?: SurveyExtractionReviewDecision;
+  claim: { id: string; value: unknown };
+}
+/** Items as Survey 4.0.0 and 7.0.0 write them; see the fixture's own note. */
+const surveyReviewed = async (name: "survey4Ungrouped" | "survey7Single" | "survey7DuplicateAgree" | "survey7UnresolvedUnreviewed") => (await json<Record<string, SurveyReviewedFixture>>("reviewed-extraction-hidden-conflict.survey.json"))[name]!;
+function reviewedInput(fixture: SurveyReviewedFixture): ReviewedExtractionEvidenceInput {
+  return {
+    evidenceId: "evidence.reviewed", claimId: fixture.claim.id, proposalIndex: fixture.proposalIndex,
+    importRecord: fixture.importRecord, ...(fixture.reviewItem ? { reviewItem: fixture.reviewItem, reviewDecision: fixture.reviewDecision } : {}),
+    collectedBy: "survey-importer:fixture", structuralTrust: "validated",
+  };
+}
+const acceptedOnly = (claimId: string): ReviewedGroundingPolicy => ({ id: "p", action: "a", requiredClaimIds: [claimId], requireAcceptedReview: true });
+
 test("an ungrouped item beside a rival value, as Survey 4 wrote them, shows the rival and is refused only on opt-in", async () => {
-  const fixture = await survey();
-  const input = await downgraded((metadata) => { delete metadata.proposalIndices; });
-  const evidence = projectReviewedExtractionEvidence(input).evidence;
+  const fixture = await surveyReviewed("survey4Ungrouped");
+  assert.equal(Object.hasOwn(fixture.importRecord.status, "provenance"), false);
+  const evidence = projectReviewedExtractionEvidence(reviewedInput(fixture)).evidence;
   const signals = reviewedExtractionReviewSignals(restoreReviewedExtractionEvidence(evidence));
   assert.deepEqual(signals.hiddenRivalProposalIndices, [0, 2]);
   assert.equal(signals.droppedProposalIndices, undefined);
-  const policy = { id: "p", action: "a", requiredClaimIds: [fixture.claim.id], requireAcceptedReview: true };
+  const policy = acceptedOnly(fixture.claim.id);
   const allowed = evaluateReviewedGroundingPolicy({ policy, evidence: [evidence], claims: [fixture.claim] });
   assert.equal(allowed.outcome, "allowed");
   assert.deepEqual(allowed.dimensions[0]!.hiddenConflict, { rivalProposalIndices: [0, 2], droppedProposalIndices: [] });
@@ -304,6 +322,62 @@ test("an ungrouped item beside a rival value, as Survey 4 wrote them, shows the 
     const refused = evaluateReviewedGroundingPolicy({ policy: { ...policy, ...optIn }, evidence: [evidence], claims: [fixture.claim] });
     assert.deepEqual(refused.gaps, [{ kind: "hidden-conflict", claimId: fixture.claim.id, evidenceId: evidence.id, rivalProposalIndices: [0, 2], droppedProposalIndices: [] }]);
   }
+});
+
+test("a Survey 7 conflict with its rivals dropped and its binding broken is refused by default, because its import record carries status.provenance", async () => {
+  const fixture = await survey();
+  assert.equal(fixture.importRecord.status.provenance, "verified");
+  const policy = acceptedOnly(fixture.claim.id);
+  const variants: Array<[string, ReviewedExtractionEvidenceInput]> = [
+    ["proposalIndices stripped", await downgraded((metadata) => { delete metadata.proposalIndices; })],
+    ["importName renamed", await downgraded((metadata) => { metadata.importName = "renamed-import"; })],
+  ];
+  for (const [label, input] of variants) {
+    for (const options of [{}, { ...v2, includeImportRecord: true }, v2]) {
+      const evidence = projectReviewedExtractionEvidence(input, options).evidence;
+      // v2 without the record in the bundle: the caller's resolver supplies it (restore checks its digest).
+      const resolveImportRecord = "includeImportRecord" in options ? resolverFromBundle({ evidence: [evidence] }) : () => input.importRecord;
+      const signals = reviewedExtractionReviewSignals(restoreReviewedExtractionEvidence(evidence, { resolveImportRecord }));
+      assert.equal(signals.excerptVerification, "unverified", label);
+      assert.deepEqual([signals.hiddenRivalProposalIndices, signals.droppedProposalIndices], [[0, 2], [0, 2]], label);
+      const decision = evaluateReviewedGroundingPolicy({ policy, evidence: [evidence], claims: [fixture.claim], resolveImportRecord });
+      assert.equal(decision.outcome, "refused", label);
+      assert.deepEqual(decision.gaps, [{ kind: "hidden-conflict", claimId: fixture.claim.id, evidenceId: evidence.id, rivalProposalIndices: [0, 2], droppedProposalIndices: [0, 2] }], label);
+    }
+  }
+});
+
+test("Survey 7 single-value and duplicate-agree items are allowed by default, even with their binding broken", async () => {
+  for (const name of ["survey7Single", "survey7DuplicateAgree"] as const) {
+    const fixture = await surveyReviewed(name);
+    assert.equal(Object.hasOwn(fixture.importRecord.status, "provenance"), true, name);
+    const intact = reviewedInput(fixture);
+    const broken = structuredClone(intact);
+    const metadata = broken.reviewItem!.metadata.producer![producerKey] as Record<string, unknown>;
+    delete metadata.proposalIndices;
+    // Also drop the same-value listing: an agreeing proposal is never a rival.
+    delete (broken.reviewItem!.spec.candidates[0]!.producer![producerKey] as Record<string, unknown>).sameValueProposals;
+    for (const [label, input] of [["intact", intact], ["broken", broken]] as const) {
+      const evidence = projectReviewedExtractionEvidence(input).evidence;
+      const signals = reviewedExtractionReviewSignals(restoreReviewedExtractionEvidence(evidence));
+      assert.equal(signals.hiddenRivalProposalIndices, undefined, `${name} ${label}`);
+      assert.equal(signals.droppedProposalIndices, undefined, `${name} ${label}`);
+      const decision = evaluateReviewedGroundingPolicy({ policy: acceptedOnly(fixture.claim.id), evidence: [evidence], claims: [fixture.claim] });
+      assert.deepEqual([decision.outcome, decision.gaps], ["allowed", []], `${name} ${label}`);
+    }
+  }
+});
+
+test("an unreviewed Survey 7 import shows a rival but lists nothing as dropped: there is no item to drop it from", async () => {
+  const fixture = await surveyReviewed("survey7UnresolvedUnreviewed");
+  assert.equal(fixture.importRecord.status.provenance, "unverified");
+  const evidence = projectReviewedExtractionEvidence(reviewedInput(fixture)).evidence;
+  const signals = reviewedExtractionReviewSignals(restoreReviewedExtractionEvidence(evidence));
+  assert.deepEqual(signals.hiddenRivalProposalIndices, [0, 2]);
+  assert.equal(signals.droppedProposalIndices, undefined);
+  const decision = evaluateReviewedGroundingPolicy({ policy: { id: "p", action: "a", requiredClaimIds: [fixture.claim.id] }, evidence: [evidence], claims: [fixture.claim] });
+  assert.deepEqual(decision.dimensions[0]!.hiddenConflict, { rivalProposalIndices: [0, 2], droppedProposalIndices: [] });
+  assert.equal(decision.gaps.some((gap) => gap.kind === "hidden-conflict"), false);
 });
 
 function unknownState(evidence: Evidence) {
