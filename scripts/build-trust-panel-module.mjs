@@ -19,7 +19,10 @@ const basisAppSource = await bundleBasisApp();
 async function bundleTrustPanel() {
   const bundled = await build({
     entryPoints: [compiledSourcePath], bundle: true, format: "esm", platform: "browser",
-    target: "es2022", write: false, legalComments: "none",
+    // Whitespace-minified so esbuild's per-module path comments (which name
+    // pnpm's store directory, peer suffixes included) never reach the checked
+    // generated module: a lockfile refresh must not make it stale.
+    target: "es2022", write: false, legalComments: "none", minifyWhitespace: true,
   });
   const output = bundled.outputFiles[0]?.text;
   if (!output) throw new Error("Trust panel bundling produced no output.");

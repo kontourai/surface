@@ -162,6 +162,24 @@ function buildHtml(reportJson: string): string {
   --k-positive: #0f8f66;
   --k-caution: #a86612;
   --k-negative: #c24141;
+  --k-trust-unknown: #535c66;
+  --k-trust-unknown-fill: #eeeff0;
+  --k-trust-proposed: #2855ad;
+  --k-trust-proposed-fill: #eaeef7;
+  --k-trust-assumed: #6938a7;
+  --k-trust-assumed-fill: #f0ebf6;
+  --k-trust-verified: #006d42;
+  --k-trust-verified-fill: #e6f0ec;
+  --k-trust-stale: #855a00;
+  --k-trust-stale-fill: #f3efe6;
+  --k-trust-disputed: #94296f;
+  --k-trust-disputed-fill: #f4eaf1;
+  --k-trust-superseded: #016770;
+  --k-trust-superseded-fill: #e6f0f1;
+  --k-trust-rejected: #a12628;
+  --k-trust-rejected-fill: #f6e9ea;
+  --k-trust-revoked: #713408;
+  --k-trust-revoked-fill: #f1ebe6;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -174,6 +192,24 @@ function buildHtml(reportJson: string): string {
     --k-positive: #3ecf9c;
     --k-caution: #e09a3a;
     --k-negative: #f07070;
+    --k-trust-unknown: #a2acb7;
+    --k-trust-unknown-fill: #252d39;
+    --k-trust-proposed: #87b1fd;
+    --k-trust-proposed-fill: #222d42;
+    --k-trust-assumed: #c4a4fe;
+    --k-trust-assumed-fill: #2a2c43;
+    --k-trust-verified: #50d492;
+    --k-trust-verified-fill: #1a3233;
+    --k-trust-stale: #f6b84d;
+    --k-trust-stale-fill: #312e2a;
+    --k-trust-disputed: #ec81c0;
+    --k-trust-disputed-fill: #30273a;
+    --k-trust-superseded: #6bc8d3;
+    --k-trust-superseded-fill: #1e313d;
+    --k-trust-rejected: #f66d67;
+    --k-trust-rejected-fill: #31242d;
+    --k-trust-revoked: #fdc2a2;
+    --k-trust-revoked-fill: #323036;
   }
 }
 *, *::before, *::after { box-sizing: border-box; }

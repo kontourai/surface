@@ -128,17 +128,6 @@
   border-top: 1px solid var(--line);
 }
 
-/* ── 14. Stale dot pulse animation ──────────────────────────── */
-@keyframes pulse-stale {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.4; }
-}
-
-/* Applied via JS, but we define it here for completeness */
-.dot-warn {
-  animation: pulse-stale 2.2s ease-in-out infinite;
-}
-
 /* ── 15. Policy Gap Table ───────────────────────────────────── */
 .gap-table { display: grid; gap: 0.4rem; }
 
