@@ -318,6 +318,31 @@ test("unrecognized wire values are named as unrecognized, never shown bare", () 
   assert.deepEqual(labels(derived), ["Unrecognized method (guess)"]);
 });
 
+test("a reviewerAuthority or evidenceStrength that is not a non-empty string is treated as absent (#282)", () => {
+  // Every facet code the view may emit for this input: the reviewer enum
+  // (types.ts, pinned literally here) plus the derived codes this claim can
+  // produce. A non-string value must never reach `code`.
+  const knownCodes = new Set(["operator", "domain_expert", "system", "cited", "entails", "extraction"]);
+  for (const bad of [null, 5, { level: "operator" }, ""]) {
+    const view = claimBasisView(
+      claim({ confidenceBasis: { reviewerAuthority: bad as never, evidenceStrength: bad as never } }),
+      [evidence({ supportStrength: "cited" })],
+    );
+    const facets = recorded(view).facets;
+    for (const facet of facets) {
+      assert.equal(typeof facet.code, "string", `non-string code for ${JSON.stringify(bad)}: ${JSON.stringify(facet)}`);
+      assert.ok(knownCodes.has(facet.code), `unknown code ${JSON.stringify(facet.code)} for ${JSON.stringify(bad)}`);
+      assert.equal(typeof facet.label, "string");
+    }
+    assert.deepEqual(labels(view), ["1 cited only", "Extracted from a source"], `line for ${JSON.stringify(bad)}`);
+    assert.ok(!facets.some((facet) => facet.field === "reviewerAuthority"));
+    assert.equal(detailValue(view, "Review"), undefined);
+    assert.equal(detailValue(view, "Producer rating"), undefined);
+  }
+  // A claim whose only basis is a malformed reviewer has no basis, not an unrecognized one.
+  assert.equal(claimBasisView(claim({ confidenceBasis: { reviewerAuthority: null as never } }), []).state, "not-recorded");
+});
+
 test("producer-rated evidence strength and calibrated confidence never appear as facets", () => {
   const view = claimBasisView(
     claim({
