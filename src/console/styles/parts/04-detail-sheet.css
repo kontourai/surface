@@ -102,7 +102,7 @@
   flex-wrap: wrap;
 }
 
-/* (a) Status chip — prominent in the header (see 11-trust-state.css) */
+/* (a) Status chip — prominent in the header (styled by @kontourai/ui/trust-state.css) */
 .detail-badge {
   display: inline-flex;
 }

@@ -1,5 +1,6 @@
 import { buildBasisPanelViewModel, type BasisPanelViewModel } from "../basis/view.js";
-import { trustStateChipHtml } from "../trust-state-chip.js";
+import { renderTrustStateHtml } from "@kontourai/ui/trust-state";
+import { TRUST_STATE_PANEL_CSS } from "./trust-state-css.generated.js";
 
 // <surface-trust-panel> — a dependency-free, read-only Trust Panel custom element.
 //
@@ -217,12 +218,13 @@ interface TrustPanelReport {
     return `Observed ${String(value)}`;
   }
 
-  // A claim status renders as @kontourai/ui's shared trust-state chip. The
-  // documented `standing` part and `data-kind` band stay on its root, beside
-  // ui's `data-trust-state`, for adopters that style or select on them.
+  // A claim status renders as @kontourai/ui's shared trust-state chip, drawn by
+  // ui's renderer (bundled into this module at build time). The documented
+  // `standing` part and `data-kind` band sit on a wrapper around the chip,
+  // whose own root carries ui's `data-trust-state`.
   function statusChip(status: string, detail?: string): string {
     const kind = STATUS_KIND[status] ?? "neutral";
-    return trustStateChipHtml(status, STATUS_LABELS, { detail, attributes: ` part="standing" data-kind="${escapeHtml(kind)}"` });
+    return `<span class="standing" part="standing" data-kind="${escapeHtml(kind)}">${renderTrustStateHtml(status, { label: STATUS_LABELS[status] ?? status, detail })}</span>`;
   }
 
   function facetChip(item: EvidenceFacet, field: string): string {
@@ -271,25 +273,8 @@ interface TrustPanelReport {
     .panel-title { margin: 0; font-size: 1.05rem; font-weight: 700; }
     .panel-meta { margin: 0; color: var(--k-text-muted, #657267); font-size: 0.82rem; overflow-wrap: anywhere; }
     .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.8rem 0 0.4rem; }
-    /* Trust-state chip: a copy of @kontourai/ui's .trust-state rules
-       (react/styles.css), each var() given ui's light-mode value as its
-       fallback. A host that loads ui's tokens gets its own mode and theme.
-       tests/trust-state-chip-drift.test.ts fails when this copy drifts. */
-    .trust-state { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--k-space-1, 4px) var(--k-space-2, 8px); max-width: 100%; vertical-align: middle; }
-    .trust-state__chip { box-sizing: border-box; display: inline-flex; align-items: center; gap: var(--k-space-1, 4px); min-height: var(--k-space-5, 24px); padding: 0 var(--k-space-2, 8px); color: var(--k-text-muted, #5b626b); background: var(--k-panel-raised, #fbfaf7); border-color: var(--k-line-strong, rgba(36, 40, 46, 0.20)); border-style: dotted; border-width: var(--k-border-thick, 2px); border-radius: var(--k-radius-sm, 9px); font-family: var(--k-font-mono, "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace); font-size: var(--k-text-xs, 11px); font-weight: 800; letter-spacing: var(--k-tracking-wide, 0.08em); line-height: var(--k-leading-tight, 1.1); text-transform: uppercase; max-width: 100%; }
-    .trust-state__glyph { flex: 0 0 auto; width: var(--k-text-sm, 12.5px); height: var(--k-text-sm, 12.5px); fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
-    .trust-state__hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
-    .trust-state__detail { min-width: 0; color: var(--k-text-muted, #5b626b); font-size: var(--k-text-sm, 12.5px); line-height: var(--k-leading-normal, 1.45); overflow-wrap: anywhere; }
-    .trust-state--unknown .trust-state__chip { color: var(--k-trust-unknown, #535c66); background: var(--k-trust-unknown-fill, #eeeff0); border-color: var(--k-trust-unknown, #535c66); border-style: var(--k-trust-unknown-line, dotted); }
-    .trust-state--proposed .trust-state__chip { color: var(--k-trust-proposed, #2855ad); background: var(--k-trust-proposed-fill, #eaeef7); border-color: var(--k-trust-proposed, #2855ad); border-style: var(--k-trust-proposed-line, dashed); }
-    .trust-state--assumed .trust-state__chip { color: var(--k-trust-assumed, #6938a7); background: var(--k-trust-assumed-fill, #f0ebf6); border-color: var(--k-trust-assumed, #6938a7); border-style: var(--k-trust-assumed-line, dashed); }
-    .trust-state--verified .trust-state__chip { color: var(--k-trust-verified, #006d42); background: var(--k-trust-verified-fill, #e6f0ec); border-color: var(--k-trust-verified, #006d42); border-style: var(--k-trust-verified-line, solid); }
-    .trust-state--stale .trust-state__chip { color: var(--k-trust-stale, #855a00); background: var(--k-trust-stale-fill, #f3efe6); border-color: var(--k-trust-stale, #855a00); border-style: var(--k-trust-stale-line, dotted); }
-    .trust-state--disputed .trust-state__chip { color: var(--k-trust-disputed, #94296f); background: var(--k-trust-disputed-fill, #f4eaf1); border-color: var(--k-trust-disputed, #94296f); border-style: var(--k-trust-disputed-line, double); }
-    .trust-state--superseded .trust-state__chip { color: var(--k-trust-superseded, #016770); background: var(--k-trust-superseded-fill, #e6f0f1); border-color: var(--k-trust-superseded, #016770); border-style: var(--k-trust-superseded-line, dotted); }
-    .trust-state--rejected .trust-state__chip { color: var(--k-trust-rejected, #a12628); background: var(--k-trust-rejected-fill, #f6e9ea); border-color: var(--k-trust-rejected, #a12628); border-style: var(--k-trust-rejected-line, solid); }
-    .trust-state--revoked .trust-state__chip { color: var(--k-trust-revoked, #713408); background: var(--k-trust-revoked-fill, #f1ebe6); border-color: var(--k-trust-revoked, #713408); border-style: var(--k-trust-revoked-line, dotted); }
-    .trust-state--disputed .trust-state__chip { border-width: calc(var(--k-border-thin, 1px) + var(--k-border-thick, 2px)); }
+    .standing { display: inline-flex; max-width: 100%; }
+    ${TRUST_STATE_PANEL_CSS}
     .claim {
       border: 1px solid var(--k-line, rgba(36, 68, 52, 0.16));
       border-radius: 12px;

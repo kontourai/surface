@@ -25,7 +25,7 @@
  */
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { TRUST_STATES, uiTrustStateMarkup, withoutRootAttributes } from "./support/ui-trust-state.js";
+import { TRUST_STATES, uiTrustStateMarkup } from "./support/ui-trust-state.js";
 
 /** Every status the panel maps, with the label and colour band it must use. */
 const STATUS_RENDERING = [
@@ -158,8 +158,9 @@ async function claimChips(page: Page): Promise<Array<{ id: string; label: string
         id: row.querySelector(".claim-field")?.textContent?.trim() ?? "",
         label: chip?.querySelector(".trust-state__label")?.textContent?.trim() ?? "",
         kind: chip?.getAttribute("data-kind") ?? "",
-        state: chip?.getAttribute("data-trust-state") ?? "",
-        html: chip?.outerHTML ?? "",
+        state: chip?.querySelector(".trust-state")?.getAttribute("data-trust-state") ?? "",
+        // The standing part wraps ui's chip and nothing else.
+        html: chip?.innerHTML ?? "",
       };
     });
   });
@@ -193,7 +194,7 @@ test("status chips are @kontourai/ui's trust-state chip, markup for markup", asy
   expect(chips.map((chip) => chip.id)).toEqual([...STATUS_RENDERING.map((entry) => entry.status)]);
   for (const [index, state] of TRUST_STATES.entries()) {
     const chip = chips.find((entry) => entry.id === state);
-    expect(withoutRootAttributes(chip!.html, ["part", "data-kind"]), `panel chip for ${state}`).toBe(expected[index]);
+    expect(chip!.html, `panel chip for ${state}`).toBe(expected[index]);
   }
 });
 
@@ -256,7 +257,7 @@ test("summary chips count each status under its own label", async ({ page }) => 
       label: chip.querySelector(".trust-state__label")?.textContent?.trim() ?? "",
       detail: chip.querySelector(".trust-state__detail")?.textContent?.trim() ?? "",
       kind: chip.getAttribute("data-kind") ?? "",
-      state: chip.getAttribute("data-trust-state") ?? "",
+      state: chip.querySelector(".trust-state")?.getAttribute("data-trust-state") ?? "",
     }));
   });
 

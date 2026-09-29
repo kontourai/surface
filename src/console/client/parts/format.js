@@ -109,31 +109,18 @@ function renderObservedResult(result) {
     + "</div>";
 }
 
-// A claim status renders as @kontourai/ui's shared trust-state chip. This
-// mirrors src/trust-state-chip.ts (the Trust Panel's renderer); the glyphs and
-// the default labels are injected by buildConsoleHtml from that module and
-// src/display-names.ts, and tests/browser/console.spec.ts holds this renderer
-// to ui's own <k-trust-state> element. A product's statusLabels
-// override replaces the visible label; the default stays as hidden text so
-// assistive tech still hears the status.
+// A claim status renders as @kontourai/ui's shared trust-state chip, drawn by
+// ui's own renderer (kontourTrustState, bundled ahead of these parts by
+// scripts/build-console-assets.mjs). A product's statusLabels override
+// replaces the visible label; ui keeps the default as hidden text so
+// assistive tech still hears the status. An unrecognized status renders as
+// its own text, never coerced into a state.
 function trustStateOf(status) {
-  const normalized = String(status ?? "").trim().toLowerCase();
-  return Object.prototype.hasOwnProperty.call(trustChipAssets.glyphs, normalized) ? normalized : null;
+  return kontourTrustState.trustStateFor(status);
 }
 
 function trustChip(status, className) {
-  const state = trustStateOf(status);
-  const defaultLabel = state ? (trustChipAssets.defaultLabels[state] ?? state) : null;
-  const override = String(statusLabel(status) ?? "").trim();
-  const shown = override || defaultLabel || String(status ?? "").trim() || "Unrecognized trust state";
-  const hidden = state && defaultLabel && shown.toLowerCase() !== defaultLabel.toLowerCase() ? defaultLabel : null;
-  const classes = ["trust-state", state && "trust-state--" + state, className].filter(Boolean).join(" ");
-  const glyph = state
-    ? `<svg class="trust-state__glyph" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="${esc(trustChipAssets.glyphs[state])}"></path></svg>`
-    : "";
-  return `<span class="${esc(classes)}"${state ? ` data-trust-state="${state}"` : ""}>`
-    + `<span class="trust-state__chip">${glyph}<span class="trust-state__label">${esc(shown)}</span>`
-    + `${hidden ? `<span class="trust-state__hidden"> (${esc(hidden)})</span>` : ""}</span></span>`;
+  return kontourTrustState.renderTrustStateHtml(status, { label: statusLabel(status), className });
 }
 
 // Display labels come from the injected vocab, whose defaults are the

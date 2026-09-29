@@ -4,10 +4,6 @@ import {
   EVIDENCE_TYPE_LABELS,
   TRUST_STATUS_LABELS,
 } from "../display-names.js";
-import { TRUST_STATE_GLYPHS } from "../trust-state-chip.js";
-
-/** What the client's trustChip() needs to render @kontourai/ui's trust-state chip. */
-const TRUST_CHIP_ASSETS = { glyphs: TRUST_STATE_GLYPHS, defaultLabels: TRUST_STATUS_LABELS };
 
 /**
  * Merge the canonical display-name tables (src/display-names.ts, #224) under
@@ -256,7 +252,6 @@ export function buildConsoleHtml(rawConfig: SurfaceConsoleRuntimeConfig = {}): s
   </dialog>
 
   <script>window.__SURFACE_CONFIG__ = ${JSON.stringify(config).replace(/</g, "\\u003c")};</script>
-  <script>window.__SURFACE_TRUST_CHIP__ = ${JSON.stringify(TRUST_CHIP_ASSETS).replace(/</g, "\\u003c")};</script>
   <script src="/console.js"></script>
 </body>
 </html>`;

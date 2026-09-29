@@ -13,7 +13,7 @@
  * if the prop is listed in ALLOWED_VALUE_DRIFTS.
  *
  * Missing kit tokens only warn, except the trust-state tokens (--k-trust-*) and
- * every token the Console's trust-state chip rules read (11-trust-state.css):
+ * every token @kontourai/ui/trust-state.css (inlined into the Console) reads:
  * those fail, and the --k-trust-* values are also compared in both of the
  * Console's light blocks against the kit's [data-theme="light"] block.
  *
@@ -27,7 +27,7 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const consoleTokensPath = path.join(root, "src", "console", "styles", "parts", "01-tokens.css");
 const kitTokensPath = path.join(root, "node_modules", "@kontourai", "ui", "tokens", "tokens.css");
-const consoleTrustStatePath = path.join(root, "src", "console", "styles", "parts", "11-trust-state.css");
+const kitTrustStateCssPath = path.join(root, "node_modules", "@kontourai", "ui", "react", "trust-state.css");
 
 // Tokens where the console intentionally diverges from kit values (e.g. rem vs px,
 // or console-specific font stack). Add names here to suppress false drift errors.
@@ -55,21 +55,21 @@ function extractBlockTokens(css, blockPattern) {
   return tokens;
 }
 
-const [consoleCSS, kitCSS, consoleTrustStateCSS] = await Promise.all([
+const [consoleCSS, kitCSS, kitTrustStateCSS] = await Promise.all([
   readFile(consoleTokensPath, "utf8"),
   readFile(kitTokensPath, "utf8"),
-  readFile(consoleTrustStatePath, "utf8"),
+  readFile(kitTrustStateCssPath, "utf8"),
 ]);
 
 const consoleTokens = extractRootTokens(consoleCSS);
 const kitTokens = extractRootTokens(kitCSS);
 
 // Tokens the Console cannot go without: every trust-state token, and every
-// token the copied trust-state chip rules read. A chip whose var() resolves to
+// token the inlined trust-state chip rules read. A chip whose var() resolves to
 // nothing silently loses its colour or line style, so these are errors.
 const requiredTokens = new Set([
   ...[...kitTokens.keys()].filter((name) => name.startsWith("--k-trust-")),
-  ...[...consoleTrustStateCSS.matchAll(/var\((--k-[\w-]+)/g)].map((match) => match[1]),
+  ...[...kitTrustStateCSS.matchAll(/var\((--k-[\w-]+)/g)].map((match) => match[1]),
 ]);
 const kitTrustTokenCount = [...kitTokens.keys()].filter((name) => name.startsWith("--k-trust-")).length;
 if (kitTrustTokenCount === 0) {
@@ -126,7 +126,7 @@ if (missingRequired.length || lightDriftErrors.length) {
     console.error("Console light-mode trust-state tokens diverge from @kontourai/ui:");
     lightDriftErrors.forEach(e => console.error(e));
   }
-  console.error("\nTo fix: copy the kit's --k-trust-* values (and any token 11-trust-state.css reads) into src/console/styles/parts/01-tokens.css.");
+  console.error("\nTo fix: copy the kit's --k-trust-* values (and any token @kontourai/ui/trust-state.css reads) into src/console/styles/parts/01-tokens.css.");
   process.exit(1);
 }
 

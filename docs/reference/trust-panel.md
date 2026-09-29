@@ -56,7 +56,7 @@ The input is the output of `surface report` or `buildTrustReport` — a derived 
 - A summary header with the report source and generation time. The heading defaults to "Surface Trust Panel"; set the `heading` attribute to use your own copy.
 - Status chips with plain-language labels (`verified` → "Verified", `stale` → "Needs refresh", `unknown` → "No evidence"), drawn with Kontour UI's shared trust-state chip: every status has its own label, glyph, and colour, and a line style (solid, dashed, dotted, or double) that does not rely on colour, so a claim that was never checked can never read like one that was verified. The summary row shows one chip per status with its claim count beside it.
 
-  Each status chip is the `standing` part and carries `data-trust-state` (the status, for the nine trust statuses) and `data-kind` (`positive`, `caution`, `negative`, or `neutral`) for host styling and tests.
+  Each status chip sits in a `standing` part: a wrapper element that carries `data-kind` (`positive`, `caution`, `negative`, or `neutral`) and contains only the chip, whose root is `.trust-state` with `data-trust-state` (the status, for the nine trust statuses). Style or select the status band on the `standing` part, and the specific status on `[data-trust-state]` inside it.
 - One expandable row per claim: subject, asserted field and value, impact, policy, the evidence items behind it, and any transparency gaps, color-coded by severity.
 - Per evidence item, the state a reader needs in order to judge it — not just its type, method and summary:
   - **Support strength** — "Entails the claim", "Cited only", or "Support strength not stated". Evidence that is merely cited is not evidence that establishes the claim.

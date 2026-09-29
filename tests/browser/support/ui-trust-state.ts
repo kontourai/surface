@@ -51,15 +51,3 @@ export async function uiTrustStateMarkup(context: BrowserContext, cases: TrustSt
     await page.close();
   }
 }
-
-/**
- * Removes attributes a Surface renderer adds for its adopters (e.g. the Trust
- * Panel's `part` and `data-kind`) from the chip root, so the rest can be
- * compared with ui's markup byte for byte.
- */
-export function withoutRootAttributes(markup: string, names: string[]): string {
-  const rootEnd = markup.indexOf(">");
-  let root = markup.slice(0, rootEnd);
-  for (const name of names) root = root.replace(new RegExp(` ${name}="[^"]*"`), "");
-  return root + markup.slice(rootEnd);
-}
