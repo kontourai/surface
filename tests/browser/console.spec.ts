@@ -5,6 +5,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createServer } from "node:net";
+import { TRUST_STATES, uiTrustStateMarkup } from "./support/ui-trust-state.js";
 
 test("renders standalone Surface Console with embedded Kontour UI tokens", async ({ page }) => {
   const consoleErrors = collectConsoleErrors(page);
@@ -207,12 +208,13 @@ function collectConsoleErrors(page: Page): string[] {
   return consoleErrors;
 }
 
-async function startSurfaceConsole(opts: { emptyClaims?: boolean } = {}): Promise<{ url: string; stop: () => Promise<void> }> {
+async function startSurfaceConsole(opts: { emptyClaims?: boolean; readModel?: unknown } = {}): Promise<{ url: string; stop: () => Promise<void> }> {
   const port = await getFreePort();
   const dir = await mkdtemp(join(tmpdir(), "surface-console-browser-"));
   const readModelPath = join(dir, "latest.console.json");
   const storePath = join(dir, "veritas.claims.json");
-  await writeFile(readModelPath, `${JSON.stringify(opts.emptyClaims ? consoleReadModelEmpty() : consoleReadModel(), null, 2)}\n`);
+  const readModel = opts.readModel ?? (opts.emptyClaims ? consoleReadModelEmpty() : consoleReadModel());
+  await writeFile(readModelPath, `${JSON.stringify(readModel, null, 2)}\n`);
 
   const child = spawn(
     process.execPath,
@@ -310,6 +312,30 @@ function consoleReadModel() {
         verificationPolicyId: "policy.test",
       },
     ],
+  };
+}
+
+/** One claim per trust status, in Surface's TRUST_STATUSES order. */
+function consoleReadModelAllStatuses() {
+  return {
+    producer: { runId: "browser-fixture-statuses", timestamp: "2026-06-09T12:00:00.000Z", sourceKind: "working-tree", sourceScope: ["staged"] },
+    summary: {
+      claimCount: TRUST_STATES.length,
+      statusCounts: Object.fromEntries(TRUST_STATES.map((state) => [state, 1])),
+      transparencyGapCount: 0,
+      attentionClaimIds: [],
+      surfaceCounts: { "surface.console": TRUST_STATES.length },
+    },
+    claims: TRUST_STATES.map((state) => ({
+      id: `claim.status.${state}`,
+      status: state,
+      surface: "surface.console",
+      claimType: "test",
+      fieldOrBehavior: `status ${state}`,
+      subjectType: "repository",
+      subjectId: "kontour-surface",
+      evidence: [],
+    })),
   };
 }
 
@@ -478,3 +504,111 @@ function consoleReadModelWithThreeClaims() {
     ],
   };
 }
+
+// ── Claim status chips: @kontourai/ui's shared trust-state chip ─────────────
+
+test("claim cards and the detail header render ui's trust-state chip for every status", async ({ page, context }) => {
+  const consoleErrors = collectConsoleErrors(page);
+  const consoleServer = await startSurfaceConsole({ readModel: consoleReadModelAllStatuses() });
+  try {
+    await page.goto(consoleServer.url);
+    await expect(page.locator("#claimFeed .claim-card")).toHaveCount(TRUST_STATES.length);
+
+    const cards = await page.evaluate(() => {
+      // Lines a text node wraps onto: a card whose grid collapses its body
+      // column wraps the title and the chip label letter by letter.
+      const lines = (element: Element | null): number => {
+        if (!element) return 0;
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        return new Set([...range.getClientRects()].map((rect) => Math.round(rect.top))).size;
+      };
+      return [...document.querySelectorAll<HTMLElement>("#claimFeed .claim-card")].map((card) => ({
+        title: card.querySelector(".card-title")?.textContent?.trim() ?? "",
+        titleLines: lines(card.querySelector(".card-title")),
+        labelLines: lines(card.querySelector(".card-meta > .trust-state .trust-state__label")),
+        cardState: card.getAttribute("data-trust-state") ?? "",
+        chip: card.querySelector(".card-meta > .trust-state")?.outerHTML ?? "",
+      }));
+    });
+    const cardOracle = await uiTrustStateMarkup(context, TRUST_STATES.map((state) => ({ state, className: "card-status-text" })));
+    for (const [index, state] of TRUST_STATES.entries()) {
+      const card = cards.find((entry) => entry.title === `status ${state}`);
+      expect(card, `no card for ${state}`).toBeDefined();
+      expect(card!.chip, `card chip for ${state}`).toBe(cardOracle[index]);
+      expect(card!.cardState).toBe(state);
+      expect(card!.titleLines, `title of the ${state} card wraps`).toBe(1);
+      expect(card!.labelLines, `chip label of the ${state} card wraps`).toBe(1);
+    }
+
+    const detailOracle = await uiTrustStateMarkup(context, TRUST_STATES.map((state) => ({ state })));
+    for (const [index, state] of TRUST_STATES.entries()) {
+      await page.locator("#claimFeed .claim-card", { hasText: `status ${state}` }).click();
+      await expect(page.locator("#detailBadge .trust-state")).toHaveAttribute("data-trust-state", state);
+      expect(await page.locator("#detailBadge").innerHTML(), `detail chip for ${state}`).toBe(detailOracle[index]);
+      // On narrow viewports the detail is a modal sheet over the feed.
+      await page.keyboard.press("Escape");
+    }
+    expect(consoleErrors).toEqual([]);
+  } finally {
+    await consoleServer.stop();
+  }
+});
+
+test("console chips resolve ui's trust-state colours in dark and in light", async ({ page }) => {
+  const consoleServer = await startSurfaceConsole({ readModel: consoleReadModelAllStatuses() });
+  try {
+    const expected = {
+      dark: { verified: "rgb(80, 212, 146)", stale: "rgb(246, 184, 77)", assumed: "rgb(196, 164, 254)" },
+      light: { verified: "rgb(0, 109, 66)", stale: "rgb(133, 90, 0)", assumed: "rgb(105, 56, 167)" },
+    } as const;
+    for (const theme of ["dark", "light"] as const) {
+      await page.goto(consoleServer.url);
+      await page.evaluate((value) => { localStorage.setItem("surface-theme", value); }, theme);
+      await page.reload();
+      await expect(page.locator("#claimFeed .claim-card")).toHaveCount(TRUST_STATES.length);
+      const inks = await page.evaluate(() =>
+        [...document.querySelectorAll<HTMLElement>("#claimFeed .card-meta > .trust-state")].map((chip) => ({
+          state: chip.getAttribute("data-trust-state") ?? "",
+          color: getComputedStyle(chip.querySelector(".trust-state__chip")!).color,
+          background: getComputedStyle(chip.querySelector(".trust-state__chip")!).backgroundColor,
+          line: getComputedStyle(chip.querySelector(".trust-state__chip")!).borderTopStyle,
+          accent: getComputedStyle(chip.closest(".claim-card")!, "::before").backgroundColor,
+        })),
+      );
+      expect(new Set(inks.map((entry) => entry.color)).size, `${theme}: distinct inks`).toBe(TRUST_STATES.length);
+      expect(new Set(inks.map((entry) => entry.background)).size, `${theme}: distinct fills`).toBe(TRUST_STATES.length);
+      for (const [state, color] of Object.entries(expected[theme])) {
+        const chip = inks.find((entry) => entry.state === state)!;
+        expect(chip.color, `${theme} ${state} ink`).toBe(color);
+        expect(chip.accent, `${theme} ${state} card edge`).toBe(color);
+      }
+      expect(inks.find((entry) => entry.state === "disputed")!.line).toBe("double");
+    }
+  } finally {
+    await consoleServer.stop();
+  }
+});
+
+test("console trust chip keeps a product label override and never coerces an unknown status", async ({ page, context }) => {
+  const consoleServer = await startSurfaceConsole({ readModel: consoleReadModelAllStatuses() });
+  try {
+    await page.goto(consoleServer.url);
+    await expect(page.locator("#claimFeed .claim-card")).toHaveCount(TRUST_STATES.length);
+    const rendered = await page.evaluate(() => {
+      const w = window as unknown as { __SURFACE_CONFIG__: { vocab: { statusLabels: Record<string, string> } }; trustChip: (status: string, className?: string) => string };
+      w.__SURFACE_CONFIG__.vocab.statusLabels.proposed = "Awaiting owner review";
+      return [w.trustChip("proposed"), w.trustChip("not-a-status"), w.trustChip(""), w.trustChip(" Verified ")];
+    });
+    const expected = await uiTrustStateMarkup(context, [
+      { state: "proposed", label: "Awaiting owner review" },
+      { state: "not-a-status" },
+      { state: "" },
+      { state: " Verified " },
+    ]);
+    expect(rendered).toEqual(expected);
+    expect(rendered[0]).toContain("trust-state__hidden");
+  } finally {
+    await consoleServer.stop();
+  }
+});

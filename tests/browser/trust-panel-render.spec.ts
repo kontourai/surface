@@ -9,7 +9,8 @@
  *    so that every status rendered as a green "Verified" chip left the whole
  *    suite passing — the only chip assertion in the repo was
  *    `expect(chipCount).toBeGreaterThan(0)`. The status table below asserts
- *    the label AND the colour band for every status the panel knows.
+ *    the label AND the colour band for every status the panel knows, and the
+ *    chip markup is compared with @kontourai/ui's own <k-trust-state>.
  *
  * 2. Evidence rows rendered materially different evidence states
  *    byte-identically. An entailing-and-passing item, a cited-only item, an
@@ -24,6 +25,7 @@
  */
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { TRUST_STATES, uiTrustStateMarkup } from "./support/ui-trust-state.js";
 
 /** Every status the panel maps, with the label and colour band it must use. */
 const STATUS_RENDERING = [
@@ -146,16 +148,19 @@ async function loadPanel(page: Page, report: unknown): Promise<void> {
 }
 
 /** The chip rendered inside a claim row's own summary, by claim id. */
-async function claimChips(page: Page): Promise<Array<{ id: string; label: string; kind: string }>> {
+async function claimChips(page: Page): Promise<Array<{ id: string; label: string; kind: string; state: string; html: string }>> {
   return page.evaluate(() => {
     const panel = document.getElementById("viewer-panel") as HTMLElement;
     const rows = [...(panel.shadowRoot?.querySelectorAll("details.claim") ?? [])];
     return rows.map((row) => {
-      const chip = row.querySelector("summary .chip");
+      const chip = row.querySelector('summary [part="standing"]');
       return {
         id: row.querySelector(".claim-field")?.textContent?.trim() ?? "",
-        label: chip?.textContent?.trim() ?? "",
+        label: chip?.querySelector(".trust-state__label")?.textContent?.trim() ?? "",
         kind: chip?.getAttribute("data-kind") ?? "",
+        state: chip?.querySelector(".trust-state")?.getAttribute("data-trust-state") ?? "",
+        // The standing part wraps ui's chip and nothing else.
+        html: chip?.innerHTML ?? "",
       };
     });
   });
@@ -176,8 +181,75 @@ test("renders each claim status with its own label and colour band", async ({ pa
     expect(chip, `no rendered claim row for status ${entry.status}`).toBeDefined();
     expect(chip!.label, `label for ${entry.status}`).toBe(entry.label);
     expect(chip!.kind, `data-kind for ${entry.status}`).toBe(entry.kind);
+    expect(chip!.state, `data-trust-state for ${entry.status}`).toBe(entry.status);
   }
 });
+
+test("status chips are @kontourai/ui's trust-state chip, markup for markup", async ({ page, context }) => {
+  // The oracle is ui's own <k-trust-state> element: a panel chip that loses
+  // ui's class contract, glyph, label, or attribute order fails here.
+  await loadPanel(page, statusReport());
+  const chips = await claimChips(page);
+  const expected = await uiTrustStateMarkup(context, TRUST_STATES.map((state) => ({ state })));
+  expect(chips.map((chip) => chip.id)).toEqual([...STATUS_RENDERING.map((entry) => entry.status)]);
+  for (const [index, state] of TRUST_STATES.entries()) {
+    const chip = chips.find((entry) => entry.id === state);
+    expect(chip!.html, `panel chip for ${state}`).toBe(expected[index]);
+  }
+});
+
+test("a padded or upper-case status gets the same band on the wrapper as the state on the chip", async ({ page }) => {
+  // ui parses a status trimmed and in any case; the panel's data-kind band
+  // must follow the same parse, never fall back to "neutral" beside a
+  // recognized chip.
+  const report = statusReport() as { claims: Array<{ status: string; fieldOrBehavior: string }> };
+  report.claims = [
+    { ...report.claims.find((claim) => claim.status === "verified")!, status: " VERIFIED ", fieldOrBehavior: "padded" },
+    { ...report.claims.find((claim) => claim.status === "rejected")!, status: "Rejected", fieldOrBehavior: "capitalised" },
+  ];
+  await loadPanel(page, report);
+  const chips = await claimChips(page);
+  expect(chips.map(({ id, kind, state, label }) => ({ id, kind, state, label }))).toEqual([
+    { id: "padded", kind: "positive", state: "verified", label: "Verified" },
+    { id: "capitalised", kind: "negative", state: "rejected", label: "Rejected" },
+  ]);
+});
+
+test("status chips resolve ui's trust-state colours, not the old tone bands", async ({ page }) => {
+  await loadPanel(page, statusReport());
+  const colours = await chipColours(page);
+  expect(colours).toHaveLength(TRUST_STATES.length);
+  // Nine states, nine inks and nine fills: no two statuses share a colour.
+  expect(new Set(colours.map((entry) => entry.color)).size).toBe(TRUST_STATES.length);
+  expect(new Set(colours.map((entry) => entry.background)).size).toBe(TRUST_STATES.length);
+  const line = Object.fromEntries(colours.map((entry) => [entry.state, entry.line]));
+  expect(line).toEqual({ unknown: "dotted", proposed: "dashed", assumed: "dashed", verified: "solid", stale: "dotted", disputed: "double", superseded: "dotted", rejected: "solid", revoked: "dotted" });
+});
+
+test("status chips follow the page's light or dark mode", async ({ page }) => {
+  // The viewer switches modes with prefers-color-scheme; the chips must use
+  // ui's light inks and fills on the light page and its dark ones on the dark.
+  const expected = {
+    light: { color: "rgb(0, 109, 66)", background: "rgb(230, 240, 236)" },
+    dark: { color: "rgb(80, 212, 146)", background: "rgb(26, 50, 51)" },
+  } as const;
+  for (const colorScheme of ["light", "dark"] as const) {
+    await page.emulateMedia({ colorScheme });
+    await loadPanel(page, statusReport());
+    const verified = (await chipColours(page)).find((entry) => entry.state === "verified");
+    expect({ color: verified?.color, background: verified?.background }, `${colorScheme} verified chip`).toEqual(expected[colorScheme]);
+  }
+});
+
+async function chipColours(page: Page): Promise<Array<{ state: string; color: string; background: string; line: string }>> {
+  return page.evaluate(() => {
+    const panel = document.getElementById("viewer-panel") as HTMLElement;
+    return [...(panel.shadowRoot?.querySelectorAll('details.claim summary [part="standing"] .trust-state__chip') ?? [])].map((chip) => {
+      const style = getComputedStyle(chip);
+      return { state: chip.parentElement?.getAttribute("data-trust-state") ?? "", color: style.color, background: style.backgroundColor, line: style.borderTopStyle };
+    });
+  });
+}
 
 test("no non-verified status renders as verified or as the positive band", async ({ page }) => {
   // This is the audit's all-green injection, stated as an assertion: a map
@@ -198,17 +270,21 @@ test("summary chips count each status under its own label", async ({ page }) => 
   await loadPanel(page, statusReport());
   const summary = await page.evaluate(() => {
     const panel = document.getElementById("viewer-panel") as HTMLElement;
-    return [...(panel.shadowRoot?.querySelectorAll(".chips .chip") ?? [])].map((chip) => ({
-      text: chip.textContent?.trim() ?? "",
+    return [...(panel.shadowRoot?.querySelectorAll('.chips [part="standing"]') ?? [])].map((chip) => ({
+      label: chip.querySelector(".trust-state__label")?.textContent?.trim() ?? "",
+      detail: chip.querySelector(".trust-state__detail")?.textContent?.trim() ?? "",
       kind: chip.getAttribute("data-kind") ?? "",
+      state: chip.querySelector(".trust-state")?.getAttribute("data-trust-state") ?? "",
     }));
   });
 
   expect(summary).toHaveLength(STATUS_RENDERING.length);
   for (const entry of STATUS_RENDERING) {
-    const chip = summary.find((item) => item.text === `${entry.label}: 1`);
+    const chip = summary.find((item) => item.label === entry.label);
     expect(chip, `no summary chip for ${entry.status} (${entry.label})`).toBeDefined();
+    expect(chip!.detail).toBe("1 claim");
     expect(chip!.kind).toBe(entry.kind);
+    expect(chip!.state).toBe(entry.status);
   }
 });
 

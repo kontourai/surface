@@ -1,4 +1,6 @@
 import { buildBasisPanelViewModel, type BasisPanelViewModel } from "../basis/view.js";
+import { renderTrustStateHtml, trustStateFor } from "@kontourai/ui/trust-state";
+import { TRUST_STATE_PANEL_CSS } from "./trust-state-css.generated.js";
 
 // <surface-trust-panel> — a dependency-free, read-only Trust Panel custom element.
 //
@@ -216,6 +218,19 @@ interface TrustPanelReport {
     return `Observed ${String(value)}`;
   }
 
+  // A claim status renders as @kontourai/ui's shared trust-state chip, drawn by
+  // ui's renderer (bundled into this module at build time). The documented
+  // `standing` part and `data-kind` band sit on a wrapper around the chip,
+  // whose own root carries ui's `data-trust-state`.
+  function statusChip(status: string, detail?: string): string {
+    // Parse the status as ui does (trimmed, any case), so the band on the
+    // wrapper always agrees with the state on the chip inside it.
+    const state = trustStateFor(status);
+    const kind = (state && STATUS_KIND[state]) ?? "neutral";
+    const label = (state && STATUS_LABELS[state]) ?? status;
+    return `<span class="standing" part="standing" data-kind="${escapeHtml(kind)}">${renderTrustStateHtml(status, { label, detail })}</span>`;
+  }
+
   function facetChip(item: EvidenceFacet, field: string): string {
     return `<span class="ev-flag" data-field="${escapeHtml(field)}" data-kind="${escapeHtml(item.kind)}" data-state="${escapeHtml(item.state)}">${escapeHtml(item.label)}</span>`;
   }
@@ -262,17 +277,8 @@ interface TrustPanelReport {
     .panel-title { margin: 0; font-size: 1.05rem; font-weight: 700; }
     .panel-meta { margin: 0; color: var(--k-text-muted, #657267); font-size: 0.82rem; overflow-wrap: anywhere; }
     .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.8rem 0 0.4rem; }
-    .chip {
-      border: 1px solid var(--k-line, rgba(36, 68, 52, 0.16));
-      border-radius: 999px;
-      padding: 0.15rem 0.6rem;
-      font-size: 0.78rem;
-      font-weight: 600;
-      background: var(--k-panel-raised, #fbf6e7);
-    }
-    .chip[data-kind="positive"] { color: var(--k-positive, #0f8f66); }
-    .chip[data-kind="caution"] { color: var(--k-caution, #a86612); }
-    .chip[data-kind="negative"] { color: var(--k-negative, #c24141); }
+    .standing { display: inline-flex; max-width: 100%; }
+    ${TRUST_STATE_PANEL_CSS}
     .claim {
       border: 1px solid var(--k-line, rgba(36, 68, 52, 0.16));
       border-radius: 12px;
@@ -424,10 +430,7 @@ interface TrustPanelReport {
         counts.set(status, (counts.get(status) ?? 0) + 1);
       }
       const chips = [...counts.entries()]
-        .map(
-          ([status, count]) =>
-            `<span class="chip" part="standing" data-kind="${STATUS_KIND[status] ?? "neutral"}">${escapeHtml(STATUS_LABELS[status] ?? status)}: ${count}</span>`,
-        )
+        .map(([status, count]) => statusChip(status, `${count} ${count === 1 ? "claim" : "claims"}`))
         .join("");
 
       const claimRows = claims.map((claim) => this.#renderClaim(claim, report)).join("");
@@ -457,7 +460,7 @@ interface TrustPanelReport {
 
       return `<details class="claim" part="assessment">
         <summary>
-          <span class="chip" part="standing" data-kind="${STATUS_KIND[status] ?? "neutral"}">${escapeHtml(STATUS_LABELS[status] ?? status)}</span>
+          ${statusChip(status)}
           <span class="claim-field">${escapeHtml(asText(claim.fieldOrBehavior ?? claim.id))}</span>
           <span class="claim-subject">${escapeHtml(asText(claim.subjectType))}: ${escapeHtml(asText(claim.subjectId))}</span>
         </summary>

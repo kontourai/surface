@@ -40,7 +40,8 @@ The root module may re-export `startConsoleServer` and `SurfaceConsoleConfig` / 
 | `src/console/client/index.js` | Generated | Concatenated browser script source marker used by the asset build step. | Regenerate with `npm run build:console-assets`; do not edit directly. |
 | `src/console/styles/parts/` | Split source | Standalone stylesheet split into tokens, header, layout/feed, detail sheet, contextual help, gap display, evidence details, authoring modal, and responsive/reduced-motion sections. | Keep the ordered concatenation until browser module loading or a real bundler becomes worth the extra moving parts. |
 | `src/console/styles/index.css` | Generated | Concatenated stylesheet source marker used by the asset build step. | Regenerate with `npm run build:console-assets`; do not edit directly. |
-| `src/console/assets.generated.ts` | Generated | Build output from source JS/CSS assets. | Regenerate with `npm run build:console-assets`; do not edit directly. |
+| `src/console/assets.generated.ts` | Generated | Build output from source JS/CSS assets, plus `@kontourai/ui`'s bundled trust-state renderer and `trust-state.css`. | Regenerate with `npm run build:console-assets`; do not edit directly. |
+| `src/trust-panel/trust-state-css.generated.ts` | Generated | `@kontourai/ui/trust-state.css` with light-mode fallbacks for the Trust Panel's shadow root. | Regenerate with `npm run build:trust-state-css`; do not edit directly. |
 | `src/console/script.ts`, `src/console/styles.ts` | Tiny wrappers | Preserve existing server imports for `/console.js` and `/console.css`. | Keep as stable import shims. |
 | `src/types.ts` | ~600 lines | Broad portable contract file. | Keep together while schema versioning is active; split only if exported type groups gain independent lifecycle. |
 | `src/validate.ts` | Public entry | Orchestrates trust-bundle validation behind `validateTrustBundle`. | Keep the exported function stable; move implementation-only helpers under `src/validation/`. |
@@ -70,6 +71,7 @@ Every `package.json` script is an active repo workflow, release guard, or contri
 | `build:console-assets` | Build | Concatenates ordered Console JS/CSS source parts into checked generated assets. |
 | `build:mcp-command` | Build | Bundles the official MCP server runtime into the published CLI command while preserving Surface's zero-required-runtime-dependency package contract. |
 | `build:trust-panel-module` | Build | Reads the compiled trust panel JS from dist and generates the inlined string constant used by the MCP UI resource builder. Runs after tsc. |
+| `build:trust-state-css` | Build | Generates the Trust Panel's copy of `@kontourai/ui/trust-state.css`, with ui's light-mode token values as `var()` fallbacks. Runs before tsc. |
 | `check:console-assets` | Guard | Fails when checked generated Console assets are stale. |
 | `typecheck` | Guard | Runs Console asset sync check and trust panel module sync check before TypeScript `--noEmit`. |
 | `test` | Verification | Builds and runs the Node test suite from `dist/tests`. |
@@ -86,6 +88,7 @@ Every `package.json` script is an active repo workflow, release guard, or contri
 | `check:generated-boundaries` | Guard | Fails when generated/runtime artifacts blur source, gitignore, or package boundaries. |
 | `check:package-contents` | Release guard | Verifies the npm tarball includes only intended files. |
 | `check:trust-panel-module` | Guard | Fails when the generated trust panel module string constant is stale relative to the compiled dist output. |
+| `check:trust-state-css` | Guard | Fails when the generated Trust Panel trust-state CSS differs from what the installed `@kontourai/ui` produces. |
 | `surface:report` | Smoke test | Builds and runs the CLI report command. |
 | `surface:summary` | Smoke test | Builds and runs the CLI summary report used by `verify`. |
 | `verify` | Release guard | Runs the full local CI lane. |

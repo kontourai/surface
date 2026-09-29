@@ -47,8 +47,7 @@ function collectClaimDetailContext(claim, readModel) {
 }
 
 function renderDetailHeader(claim, evidence, policy) {
-  el("detailBadge").textContent = statusLabel(claim.status);
-  el("detailBadge").className   = "status-badge badge-" + statusColor(claim.status) + " detail-badge-lg";
+  el("detailBadge").innerHTML = trustChip(claim.status);
   el("detailSurface").textContent = surfaceLabel(claim.facet ?? claim.surface);
   el("detailTitle").textContent   = claim.fieldOrBehavior || claim.claimType || "—";
   // Claim ID exposed only as the subtitle (for detail drill-down), not on the card face.

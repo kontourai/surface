@@ -8,12 +8,14 @@ const BUDGETS = {
   // parser and reviewed-source facts; the adapter itself remains a separate opt-in entry.
   // 8,474 with the reviewed-source choice (not-chosen review and chosen-over rivals).
   "src/basis/view-index.ts": 8_800,
-  // MCP embeds the v2-capable parser/view (measured 110,269 gzip bytes;
-  // 110,916 with the reviewed-source choice).
-  "src/basis/mcp.ts": 111_400,
+  // MCP embeds the v2-capable parser/view and the Trust Panel module (measured
+  // 110,269 gzip bytes; 110,916 with the reviewed-source choice; 111,622 with
+  // @kontourai/ui's trust-state chip in the whitespace-minified panel, #274).
+  "src/basis/mcp.ts": 112_100,
   // The shared Trust Panel embeds the same parser (measured 12,769 gzip bytes;
-  // 13,264 with the reviewed-source choice).
-  "src/trust-panel/surface-trust-panel.ts": 13_600,
+  // 13,264 with the reviewed-source choice; 14,798 with @kontourai/ui's
+  // trust-state renderer and chip CSS with light fallbacks bundled in, #274).
+  "src/trust-panel/surface-trust-panel.ts": 15_200,
   // Display names + claim basis view (measured 3,919 gzip bytes); bundling for
   // platform "browser" also proves the subpath pulls in no Node-only module.
   "src/display.ts": 4_400,

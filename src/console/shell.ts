@@ -120,7 +120,7 @@ export function buildConsoleHtml(rawConfig: SurfaceConsoleRuntimeConfig = {}): s
 
       <!-- (a) Big status + freshness header -->
       <div class="sheet-top">
-        <span class="status-badge detail-badge-lg" id="detailBadge">—</span>
+        <span class="detail-badge" id="detailBadge">—</span>
         <span class="sheet-surface" id="detailSurface"></span>
       </div>
       <p class="detail-freshness" id="detailFreshness" hidden></p>

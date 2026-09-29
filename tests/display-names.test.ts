@@ -74,13 +74,11 @@ const TRUST_PANEL_JS: string = await (async () => {
  * renamed or removed map cannot silently pass.
  */
 function extractLabelMap(source: string, name: string): Record<string, string> {
-  const match = source.match(new RegExp(`const ${name}(?:: Record<string, string>)? = \\{([\\s\\S]*?)\\};`));
+  // Whitespace-tolerant: the shipped module is whitespace-minified.
+  const match = source.match(new RegExp(`const ${name}(?:: Record<string, string>)?\\s*=\\s*\\{([^{}]*)\\}`));
   assert.ok(match, `expected to find inline label map ${name}`);
   const entries: Record<string, string> = {};
-  for (const line of match[1].split("\n")) {
-    const entry = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*):\s*"([^"]*)",?\s*$/);
-    if (entry) entries[entry[1]] = entry[2];
-  }
+  for (const entry of match[1].matchAll(/([A-Za-z_][A-Za-z0-9_]*):\s*"([^"]*)"/g)) entries[entry[1]!] = entry[2]!;
   assert.ok(Object.keys(entries).length > 0, `label map ${name} parsed to zero entries`);
   return entries;
 }
@@ -196,20 +194,21 @@ test("basis tables: non-empty unique labels, one-line glosses, and the agreed vo
  */
 function extractPanelFacetLabels(source: string): { support: Record<string, string>; result: Record<string, string> } {
   const body = (name: string): string => {
-    const match = source.match(new RegExp(`function ${name}\\([^)]*\\)(?::\\s*\\w+)?\\s*\\{([\\s\\S]*?)\\n  \\}`));
+    // Up to the next function declaration, so it also reads the whitespace-minified module.
+    const match = source.match(new RegExp(`function ${name}\\([^)]*\\)(?::\\s*\\w+)?\\s*\\{([\\s\\S]*?)(?=\\bfunction\\s)`));
     assert.ok(match, `expected to find ${name} in the trust panel source`);
     return match[1]!;
   };
   const decode = (literal: string): string => JSON.parse(`"${literal}"`) as string;
   const pairs = (text: string): Record<string, string> => {
     const out: Record<string, string> = {};
-    for (const match of text.matchAll(/state: "([\w-]+)", label: "((?:[^"\\]|\\.)*)"/g)) out[match[1]!] = decode(match[2]!);
+    for (const match of text.matchAll(/state:\s*"([\w-]+)",\s*label:\s*"((?:[^"\\]|\\.)*)"/g)) out[match[1]!] = decode(match[2]!);
     return out;
   };
   const support = pairs(body("supportFacet"));
   const resultBody = body("resultFacet");
   const result = pairs(resultBody);
-  const failed = resultBody.match(/state: blocks \? "failed-blocking" : "failed",\s*label: blocks \? "((?:[^"\\]|\\.)*)" : "((?:[^"\\]|\\.)*)"/);
+  const failed = resultBody.match(/state:\s*blocks\s*\?\s*"failed-blocking"\s*:\s*"failed",\s*label:\s*blocks\s*\?\s*"((?:[^"\\]|\\.)*)"\s*:\s*"((?:[^"\\]|\\.)*)"/);
   assert.ok(failed, "expected the failed / failed-blocking label ternary in resultFacet");
   result["failed-blocking"] = decode(failed[1]!);
   result.failed = decode(failed[2]!);

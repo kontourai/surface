@@ -109,9 +109,18 @@ function renderObservedResult(result) {
     + "</div>";
 }
 
-function statusColor(status) {
-  const m = { verified:"good", disputed:"bad", rejected:"bad", stale:"warn", assumed:"amber", proposed:"amber", unknown:"muted" };
-  return m[status] ?? "muted";
+// A claim status renders as @kontourai/ui's shared trust-state chip, drawn by
+// ui's own renderer (kontourTrustState, bundled ahead of these parts by
+// scripts/build-console-assets.mjs). A product's statusLabels override
+// replaces the visible label; ui keeps the default as hidden text so
+// assistive tech still hears the status. An unrecognized status renders as
+// its own text, never coerced into a state.
+function trustStateOf(status) {
+  return kontourTrustState.trustStateFor(status);
+}
+
+function trustChip(status, className) {
+  return kontourTrustState.renderTrustStateHtml(status, { label: statusLabel(status), className });
 }
 
 // Display labels come from the injected vocab, whose defaults are the

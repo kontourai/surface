@@ -54,7 +54,9 @@ The input is the output of `surface report` or `buildTrustReport` — a derived 
 ## What it renders
 
 - A summary header with the report source and generation time. The heading defaults to "Surface Trust Panel"; set the `heading` attribute to use your own copy.
-- Status chips with plain-language labels (`verified` → "Verified", `stale` → "Needs refresh", `unknown` → "No evidence"). Every status the report can carry has its own label and its own colour band, so a claim that was never checked can never read like one that was verified.
+- Status chips with plain-language labels (`verified` → "Verified", `stale` → "Needs refresh", `unknown` → "No evidence"), drawn with Kontour UI's shared trust-state chip: every status has its own label, glyph, and colour, and a line style (solid, dashed, dotted, or double) that does not rely on colour, so a claim that was never checked can never read like one that was verified. The summary row shows one chip per status with its claim count beside it.
+
+  Each status chip sits in a `standing` part: a wrapper element that carries `data-kind` (`positive`, `caution`, `negative`, or `neutral`) and contains only the chip, whose root is `.trust-state` with `data-trust-state` (the status, for the nine trust statuses). Style or select the status band on the `standing` part, and the specific status on `[data-trust-state]` inside it.
 - One expandable row per claim: subject, asserted field and value, impact, policy, the evidence items behind it, and any transparency gaps, color-coded by severity.
 - Per evidence item, the state a reader needs in order to judge it — not just its type, method and summary:
   - **Support strength** — "Entails the claim", "Cited only", or "Support strength not stated". Evidence that is merely cited is not evidence that establishes the claim.
@@ -68,6 +70,8 @@ The input is the output of `surface report` or `buildTrustReport` — a derived 
 ## Theming
 
 The panel inherits the host page through CSS custom properties with built-in fallbacks: `--k-text`, `--k-text-muted`, `--k-panel`, `--k-panel-raised`, `--k-line`, `--k-positive`, `--k-caution`, `--k-negative`, and `--k-font-ui`. Pages already using Kontour design tokens get a native look with no extra work; any other page can set those properties on the element.
+
+Status chips read Kontour UI's trust-state tokens: `--k-trust-<status>` (ink), `--k-trust-<status>-fill`, and `--k-trust-<status>-line` for each of the nine statuses, plus the chip's spacing and type tokens (`--k-space-1`, `--k-space-2`, `--k-space-5`, `--k-text-xs`, `--k-text-sm`, `--k-font-mono`, `--k-radius-sm`, `--k-border-thin`, `--k-border-thick`, `--k-leading-tight`, `--k-leading-normal`, `--k-tracking-wide`, `--k-line-strong`). Their fallbacks are Kontour UI's light-mode values, so chips stay legible on any page; a page that loads `@kontourai/ui/tokens` gets its own light or dark chips.
 
 ## Boundaries
 

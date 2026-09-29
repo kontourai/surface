@@ -1,6 +1,6 @@
-export function buildStyles() {
+export function buildStyles({ lightTrustTokens = [], darkTrustTokens = [] } = {}) {
   return `:root {
-  color-scheme: light dark;
+  color-scheme: light dark;${lightTrustTokens.map((declaration) => `\n  ${declaration}`).join("")}
   --k-bg: #f3efe3;
   --k-text: #17201b;
   --k-text-muted: #657267;
@@ -17,7 +17,7 @@ export function buildStyles() {
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root {${darkTrustTokens.map((declaration) => `\n    ${declaration}`).join("")}
     --k-bg: #101511;
     --k-text: #edf0e8;
     --k-text-muted: #a3ad9d;
