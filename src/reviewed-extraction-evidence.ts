@@ -10,7 +10,31 @@ export const reviewedExtractionEvidenceProfile = "surface.reviewed-extraction-ev
  */
 export const reviewedExtractionEvidenceReferenceProfile = "surface.reviewed-extraction-evidence/v2";
 export type ReviewedExtractionEvidenceProfile = typeof reviewedExtractionEvidenceProfile | typeof reviewedExtractionEvidenceReferenceProfile;
+
+/**
+ * Feature detection for producers: `true` when this Surface projects proposals
+ * that carry no producer confidence (4.1.0 and later). A producer that cannot
+ * import this name should treat the answer as no. Plain constants, so a bundler
+ * keeps them without resolving Surface's package.json.
+ */
+export const REVIEWED_EXTRACTION_ACCEPTS_UNREPORTED_CONFIDENCE = true;
+/**
+ * Every reviewed-extraction capability as one object. A missing key means the
+ * installed Surface lacks that capability.
+ * - `acceptsUnreportedConfidence`: see `REVIEWED_EXTRACTION_ACCEPTS_UNREPORTED_CONFIDENCE`.
+ * - `excerptVerification`: `reviewedExtractionReviewSignals` reads the import's
+ *   excerpt verification, and the grounding policy can require it.
+ * - `excludedProposals`: `reviewedExtractionReviewSignals` reads the review
+ *   item's excluded proposals, and the grounding policy can refuse excluded rivals.
+ */
+export const REVIEWED_EXTRACTION_CAPABILITIES = Object.freeze({
+  acceptsUnreportedConfidence: true,
+  excerptVerification: true,
+  excludedProposals: true,
+} as const);
+
 const surveyApiVersion = "survey.kontourai.io/v1alpha1";
+const surveyEnvelopeProducer = "survey.kontourai.io/extraction-envelope";
 
 export interface SurveyExtractionEnvelopeImport {
   apiVersion: typeof surveyApiVersion;
@@ -375,6 +399,76 @@ function effectiveStructuralTrust(input: ReviewedExtractionEvidenceInput): Struc
 /** Effective structural trust of a restored reviewed-extraction input (the value its projection used). */
 export function reviewedExtractionStructuralTrust(input: ReviewedExtractionEvidenceInput): StructuralTrust {
   return effectiveStructuralTrust(input);
+}
+
+/** Review facts Survey records on the import and its review item, read from a restored reviewed-extraction input. */
+export interface ReviewedExtractionReviewSignals {
+  /**
+   * `verified` only when the import record's `status.provenance` and the review
+   * item's `excerptVerification` both say `verified`: the import checked each
+   * excerpt against the prepared artifact text. Anything else, including an
+   * absent field, is `unverified`.
+   */
+  excerptVerification: "verified" | "unverified";
+  /**
+   * Proposals the import left out of this item's candidate set (their cited
+   * span did not match their excerpt) whose value differs from the reviewed
+   * candidate: rival values that were unverifiable, not disproven. Each entry
+   * matches the import record's proposal at its index. Nothing currently
+   * resolves a rival, so every listed rival is unresolved.
+   */
+  excludedRivalProposalIndices: number[];
+  /**
+   * Stored excluded-proposal entries that cannot be read or do not match the
+   * import record (`malformed-entries`), or an item whose Survey metadata is
+   * gone while its candidate still carries the Survey binding
+   * (`binding-broken`). Any of them may be a rival. Absent when every stored
+   * entry was read.
+   */
+  excludedProposalsUnreadable?: { reason: "malformed-entries" | "binding-broken"; count?: number };
+}
+
+/**
+ * Reads the excerpt-verification and excluded-proposal facts from a restored
+ * input (see `restoreReviewedExtractionEvidence`). They live in the digest-bound
+ * import record and review item, so no profile field is added and evidence
+ * without them is unchanged. Absence reads as unverified and as no excluded
+ * proposals; it is never read as verified.
+ */
+export function reviewedExtractionReviewSignals(input: ReviewedExtractionEvidenceInput): ReviewedExtractionReviewSignals {
+  const status = input.importRecord.status as Record<string, unknown>;
+  const envelopeMetadata = input.reviewItem?.metadata.producer?.[surveyEnvelopeProducer];
+  const itemVerified = isRecord(envelopeMetadata) && envelopeMetadata.excerptVerification === "verified";
+  const excerptVerification = status.provenance === "verified" && itemVerified ? "verified" : "unverified";
+  return { excerptVerification, ...excludedProposalSignals(input, envelopeMetadata) };
+}
+
+function excludedProposalSignals(input: ReviewedExtractionEvidenceInput, envelopeMetadata: unknown): Pick<ReviewedExtractionReviewSignals, "excludedRivalProposalIndices" | "excludedProposalsUnreadable"> {
+  if (input.reviewItem === undefined) return { excludedRivalProposalIndices: [] };
+  if (!isRecord(envelopeMetadata)) {
+    // Mirrors Survey: a candidate that still carries the envelope binding came
+    // from an import whose item metadata is gone, so what it stored is unknown.
+    const bound = input.reviewItem.spec.candidates.some((candidate) => isRecord(candidate.producer) && candidate.producer[surveyEnvelopeProducer] !== undefined);
+    return bound ? { excludedRivalProposalIndices: [], excludedProposalsUnreadable: { reason: "binding-broken" } } : { excludedRivalProposalIndices: [] };
+  }
+  const stored = envelopeMetadata.excludedProposals;
+  if (stored === undefined) return { excludedRivalProposalIndices: [] };
+  if (!Array.isArray(stored)) return { excludedRivalProposalIndices: [], excludedProposalsUnreadable: { reason: "malformed-entries" } };
+  const proposals = input.importRecord.spec.envelope.result.proposals;
+  const reviewedValue = canonicalJson(proposals[input.proposalIndex]!.candidateValue);
+  const rivals: number[] = [];
+  let unreadable = 0;
+  for (const entry of stored) {
+    const index = isRecord(entry) ? entry.proposalIndex : undefined;
+    const named = typeof index === "number" && Number.isSafeInteger(index) && index >= 0 && index !== input.proposalIndex ? proposals[index] : undefined;
+    // Only the cited proposal is validated at restore, so a named one may be malformed.
+    const proposal = isRecord(named) && isRecord(named.provenance) && Object.hasOwn(named, "candidateValue") ? named : undefined;
+    // An entry counts only when it matches the bound proposal it names; the
+    // rival test uses the import record's value, not the entry's copy.
+    if (!isRecord(entry) || proposal === undefined || !Object.hasOwn(entry, "value") || canonicalJson(entry.value) !== canonicalJson(proposal.candidateValue) || entry.locator !== proposal.provenance.locator || entry.excerpt !== proposal.provenance.excerpt) { unreadable += 1; continue; }
+    if (canonicalJson(proposal.candidateValue) !== reviewedValue && !rivals.includes(index as number)) rivals.push(index as number);
+  }
+  return { excludedRivalProposalIndices: rivals, ...(unreadable > 0 ? { excludedProposalsUnreadable: { reason: "malformed-entries" as const, count: unreadable } } : {}) };
 }
 
 function provenanceGaps(input: ReviewedExtractionEvidenceInput): ReviewedExtractionProvenanceGap[] {

@@ -200,6 +200,55 @@ The gap is per evidence item, not per field. A partial envelope may carry
 policy does not map fields to ranges: a field in the unread part has no claim
 at all, and only this gap shows that coverage was incomplete.
 
+### Excerpt verification and excluded rivals
+
+Survey records two review facts that the evidence already carries, because the
+import record and review item are part of the digest-bound profile input:
+whether the import checked each excerpt against the prepared artifact text
+(`status.provenance` on the import, `excerptVerification` on the item's
+`survey.kontourai.io/extraction-envelope` metadata), and which proposals it
+left out of the item's candidate set because their cited span did not match
+their excerpt (`excludedProposals` on the same metadata).
+`reviewedExtractionReviewSignals(input)` reads them from a restored input. No
+profile field is added, so evidence without these facts projects byte for byte
+as before, and neither profile version changes.
+
+- `excerptVerification` is `verified` only when the import record and the item
+  both say `verified`. Anything else, including an absent field, is
+  `unverified`; absence is never read as verified.
+- `excludedRivalProposalIndices` lists excluded proposals whose value differs
+  from the reviewed candidate: a competing value that was unverifiable, not
+  disproven. An entry counts only when it matches the import record's
+  proposal at its index, and the rival test uses the record's value. Excluded
+  proposals with the reviewed value are not rivals.
+- `excludedProposalsUnreadable` reports entries that are malformed or do not
+  match the record (`malformed-entries`), or an item whose Survey metadata is
+  gone while its candidate still carries the Survey binding
+  (`binding-broken`). Any of them may be a rival.
+
+The policy dimension carries `excerptVerification: "verified"` and
+`excludedRivals` only when they apply, so earlier decisions keep their shape.
+Two opt-in requirements use them; neither changes the default policy.
+`requireVerifiedExcerpts` refuses unverified evidence with
+`excerpt-not-verified`. `refuseExcludedRivals` refuses evidence with any
+excluded rival or unreadable entry with `excluded-rival-unresolved`. Nothing
+currently resolves a rival, so every listed rival is unresolved.
+
+These facts are Survey's statements about its own import, bound by the profile
+digest like the review decision; Surface does not re-run the excerpt check.
+
+## Capability flags
+
+Producers feature-detect with an import instead of reading Surface's
+`package.json`: `REVIEWED_EXTRACTION_ACCEPTS_UNREPORTED_CONFIDENCE` is `true`
+when proposals without a producer confidence are accepted (4.1.0 and later),
+and `REVIEWED_EXTRACTION_CAPABILITIES` holds every capability
+(`acceptsUnreportedConfidence`, `excerptVerification`, `excludedProposals`).
+A name or key that is missing means the capability is absent. Both are plain
+constants exported from the package root, so bundlers keep them. They describe
+the Surface copy the producer imports; a consumer that resolves a different
+copy needs a single shared copy, such as a peer dependency.
+
 ## Source observation facts
 
 `buildReviewedExtractionSourceState(evidence, observation, observedAt)` is the

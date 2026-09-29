@@ -7,6 +7,8 @@ evidence:
     ref: "161"
   - kind: issue
     ref: "262"
+  - kind: issue
+    ref: "289"
   - kind: doc
     ref: docs/guides/reviewed-extraction-evidence.md
   - kind: doc
@@ -102,3 +104,14 @@ reports the collision.
 
 The v2 profile does not change the review shape; the two-candidate transition
 review (#195) is still out of scope.
+
+## Review signals (#289)
+
+Survey's excerpt verification and excluded proposals are read from the import
+record and review item the profile already binds, not added as profile fields.
+That keeps v1 and v2 evidence without them byte-identical, leaves the pinned
+profile digests unchanged, and needs no profile version bump: an older reader
+restores the same evidence and simply does not interpret the facts. A separate
+input field was rejected because it would duplicate, and could contradict, the
+item it came from. Absence reads as unverified and as no excluded proposals;
+the policy requirements that use them are opt-in.

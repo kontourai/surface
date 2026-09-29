@@ -141,13 +141,16 @@ that define it; an older reader fails loudly instead of returning a bundle and
 report that silently dropped the block.
 
 Rollout note: this rejects some bundles that validated before. Two known
-producer shapes add a root key. Fieldwork's reviewed export adds
-`reviewedGrounding`; it still works where the export validates the bundle
-before adding that key, but the exported file is refused if it is fed back
-into `validateTrustBundle` or `surface report`. At least one CLI tool writes a
+producer shapes added a root key. Fieldwork's reviewed export before 0.11.0
+added `reviewedGrounding` and `reviewRound` at the bundle root, so the
+exported file was refused when fed back into `validateTrustBundle` or `surface
+report`. From 0.11.0 the export wraps the bundle instead of extending it —
+`{ apiVersion, kind: "ReviewedExport", bundle, reviewedGrounding, reviewRound }`
+— and the `bundle` member validates on its own (extract it with `jq .bundle
+reviewed.json`). At least one CLI tool writes a
 `critique_resolution_events` key at the root, which is now refused. Producers
-should carry such data outside the bundle, or in the record-level `metadata`
-fields of claims and evidence.
+should carry such data outside the bundle, as Fieldwork's wrapper does, or in
+the record-level `metadata` fields of claims and evidence.
 
 The [Quickstart](../../README.md#quickstart) intentionally ships
 `examples/surface-example-bundle.json` still in this legacy `surface` /
