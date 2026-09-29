@@ -191,6 +191,12 @@ only under `refuseExcludedRivals` or `refuseChosenOverRivals`. Refusing them
 by default would flip existing allowed decisions for bundles Surface cannot
 tell apart from that older shape. Stripping `proposalIndices` to imitate it
 breaks the binding, so excerpt verification also reads as unverified.
+Survey 6 and later write `status.provenance` on every import record, and
+Survey 4.0.0 and 5.0.0 never do (their validators reject the field). An
+import record that carries it therefore is not a Survey 4 import, so on an
+item whose binding is broken its hidden rivals are listed as dropped and
+refused by default. That closes the stripping path for Survey 6+ imports; a
+Survey 5 import whose item binding is broken still reads as the older shape.
 
 **Basis.** The reviewed-source adapter uses the same rule as the policy: a
 v3 item whose decision names another candidate reads `review: "not-chosen"`

@@ -81,7 +81,12 @@ export interface SurveyExtractionEnvelopeImport {
     sourceKind: string;
     claimTargets: Array<Record<string, unknown>>;
   };
-  status: { state: "grounded" | "unresolved"; diagnostics: Array<Record<string, unknown>> };
+  status: {
+    state: "grounded" | "unresolved";
+    diagnostics: Array<Record<string, unknown>>;
+    /** Written by Survey 6 and later on every import record; Survey 4.0.0 and 5.0.0 never write it. */
+    provenance?: "verified" | "unverified";
+  };
 }
 
 export interface SurveyExtractionReviewItem {
@@ -492,6 +497,10 @@ export interface ReviewedExtractionReviewSignals {
    * item, by its `proposalIndices` or as a non-excluded proposal of the claim
    * slot, that no candidate carries. No Survey release writes such an item;
    * candidates were dropped after the fact. Omitted when there are none.
+   *
+   * On an item whose binding is broken, set to the hidden rivals when the
+   * import record carries `status.provenance`: only Survey 6 and later write
+   * it, and they group by claim slot, so the item is not a Survey 4 one.
    */
   droppedProposalIndices?: number[];
 }
@@ -608,7 +617,13 @@ function hiddenProposals(input: ReviewedExtractionEvidenceInput, excluded: Set<n
   // Survey 5 and later group every non-excluded proposal of the slot into the item and list them.
   // A broken binding is already reported (and never read as verified); only an intact one is held to that.
   const binding = surveyEnvelopeBinding(input);
-  if (binding === undefined) return { rivals, dropped: [] };
+  if (binding === undefined) {
+    // Survey 6 and later write `status.provenance` on every import record; 4.0.0 and 5.0.0 never do
+    // (their validators reject it). Such a record is not a Survey 4 import, so the item it reviews was
+    // grouped by claim slot and a rival it does not carry was dropped, however its binding was broken.
+    const grouped = input.reviewItem !== undefined && Object.hasOwn(input.importRecord.status, "provenance");
+    return { rivals, dropped: grouped ? rivals : [] };
+  }
   const dropped = new Set<number>(inSlot);
   for (const index of binding.proposalIndices as unknown[]) if (Number.isSafeInteger(index) && !carried.has(index as number) && !excluded.has(index as number)) dropped.add(index as number);
   return { rivals, dropped: [...dropped].sort((left, right) => left - right) };
