@@ -20,3 +20,8 @@ export function wireString(value: unknown): string | undefined {
 export function reviewerAuthorityOf(basis: ConfidenceBasis | null | undefined): string | undefined {
   return wireString(basis?.reviewerAuthority);
 }
+
+/** `confidenceBasis.evidenceStrength`, or undefined when absent or malformed. */
+export function evidenceStrengthOf(basis: ConfidenceBasis | null | undefined): string | undefined {
+  return wireString(basis?.evidenceStrength);
+}

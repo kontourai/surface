@@ -464,6 +464,27 @@ test("claimBasisView and the report summary agree on every reviewerAuthority val
   }
 });
 
+test("claimBasisView and the report summary agree on every evidenceStrength value (#300)", () => {
+  const reportStrengths = (input: Claim) => summarizeClaims([{ ...input, status: "verified" }]).confidenceBasis.evidenceStrength;
+  // Literal pins next to the derived check.
+  assert.deepEqual(reportStrengths(claim({ confidenceBasis: { evidenceStrength: "strong" } })), { strong: 1 });
+  assert.deepEqual(reportStrengths(claim({ confidenceBasis: { evidenceStrength: "   " as never } })), {});
+  assert.deepEqual(reportStrengths(claim({ confidenceBasis: { evidenceStrength: 5 as never } })), {});
+  const values: unknown[] = [...MALFORMED_WIRE_VALUES, "none", "weak", "moderate", "strong", "vibes", " strong", undefined];
+  for (const value of values) {
+    const context = JSON.stringify(value);
+    const input = claim({ confidenceBasis: { evidenceStrength: value as never } });
+    const view = claimBasisView(input, [evidence()]);
+    const buckets = Object.keys(reportStrengths(input));
+    // evidenceStrength is never a facet; the view shows it only as the
+    // "Producer rating" row, which exists exactly when the report buckets it.
+    assertCodesKnown(view, new Set(["extraction", "entails"]), context);
+    assert.equal(buckets.length > 0, detailValue(view, "Producer rating") !== undefined, `Producer rating row vs report for ${context}`);
+    for (const code of buckets) assert.equal(code, value, `report bucket is the wire value for ${context}`);
+    if (MALFORMED_WIRE_VALUES.includes(value)) assert.deepEqual(buckets, [], `report strength buckets for ${context}`);
+  }
+});
+
 test("a malformed evidence method is treated as absent, never coerced to a code (#300)", () => {
   const absent = claimBasisView(claim(), [evidence({ method: undefined })]);
   assert.deepEqual(labels(absent), ["1 entails the claim"]);

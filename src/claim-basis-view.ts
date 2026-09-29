@@ -48,7 +48,7 @@ import {
 import { isStandingCounterevidence } from "./evidence-support.js";
 import type { Claim, Evidence } from "./types.js";
 import { DERIVATION_METHODS, EVIDENCE_METHODS } from "./validation/constants.js";
-import { reviewerAuthorityOf, wireString } from "./wire-string.js";
+import { evidenceStrengthOf, reviewerAuthorityOf, wireString } from "./wire-string.js";
 
 /** Maximum facets on the basis line, unless caveats alone exceed it. */
 export const CLAIM_BASIS_LINE_MAX_FACETS = 3;
@@ -191,9 +191,9 @@ export function claimBasisView(claim: Claim | null | undefined, evidence: readon
   // content is treated as absent (no facet, no detail row), as
   // `conclusionConfidence` values that are not probabilities are; an
   // unrecognized string is still named. The report summary reads the reviewer
-  // through the same accessor, so the two agree (#300).
+  // and evidence strength through the same accessors, so the two agree (#300).
   const reviewer = reviewerAuthorityOf(claim.confidenceBasis);
-  const producerStrength = wireString(claim.confidenceBasis?.evidenceStrength);
+  const producerStrength = evidenceStrengthOf(claim.confidenceBasis);
   const confidence = claim.conclusionConfidence;
 
   // ── Evidence partitions ────────────────────────────────────────────────
