@@ -3,10 +3,12 @@ import { valueDigest } from "./canonical-digest.js";
 import {
   restoreReviewedExtractionEvidence,
   reviewedExtractionStructuralTrust,
+  reviewedExtractionReviewSignals,
   ReviewedExtractionImportRecordUnresolvedError,
   type ReviewedExtractionEvidenceInput,
   type ReviewedExtractionRestoreOptions,
   type ReviewedExtractionProvenanceGap,
+  type ReviewedExtractionReviewSignals,
 } from "./reviewed-extraction-evidence.js";
 import { restoreReviewedExtractionEvidenceBrowser } from "./reviewed-extraction-evidence-browser.js";
 
@@ -28,6 +30,18 @@ export interface ReviewedGroundingPolicy {
   requireAcceptedReview?: boolean;
   requireValidatedStructure?: boolean;
   requireCurrentSource?: boolean;
+  /**
+   * Opt-in: refuse evidence whose import did not check its excerpts against the
+   * prepared artifact text (`excerpt-not-verified`). Evidence that does not
+   * record the check counts as not verified.
+   */
+  requireVerifiedExcerpts?: boolean;
+  /**
+   * Opt-in: refuse evidence whose import excluded a rival value for the same
+   * field, or stored excluded entries Surface cannot read
+   * (`excluded-rival-unresolved`). See `reviewedExtractionReviewSignals`.
+   */
+  refuseExcludedRivals?: boolean;
 }
 
 export interface ReviewedExtractionSourceState {
@@ -88,6 +102,8 @@ export type ReviewedGroundingPolicyGap =
   | { kind: "structure-not-validated"; claimId: string; evidenceId: string; structuralTrust: string }
   | { kind: "source-not-current"; claimId: string; evidenceId: string; status: "drifted" | "unknown" }
   | { kind: "source-state-incoherent"; claimId: string; evidenceId: string }
+  | { kind: "excerpt-not-verified"; claimId: string; evidenceId: string }
+  | { kind: "excluded-rival-unresolved"; claimId: string; evidenceId: string; rivalProposalIndices: number[]; unreadable?: ReviewedExtractionReviewSignals["excludedProposalsUnreadable"] }
   | { kind: "invalid-reviewed-evidence"; claimId: string; evidenceId: string }
   /** v2 evidence whose import record the caller's `resolveImportRecord` did not supply. */
   | { kind: "import-record-unresolved"; claimId: string; evidenceId: string; importRecordDigest: string }
@@ -109,6 +125,10 @@ export interface ReviewedGroundingDimension {
   exactLocator?: string;
   preparedArtifact: { status: "available" | "missing" | "unavailable"; integrityRef?: string };
   sourceState: ReviewedExtractionSourceState;
+  /** Present only when the import checked the excerpts; absence means not verified. */
+  excerptVerification?: "verified";
+  /** Present only when the import excluded a rival value or stored entries Surface cannot read. */
+  excludedRivals?: { proposalIndices: number[]; unreadable?: ReviewedExtractionReviewSignals["excludedProposalsUnreadable"] };
 }
 
 export interface ReviewedGroundingPolicyDecision {
@@ -215,6 +235,7 @@ function buildDimension(claimId: string, evidence: Evidence, reviewed: ReviewedE
   const proposal = reviewed.importRecord.spec.envelope.result.proposals[reviewed.proposalIndex]!;
   const reviewItemName = reviewed.reviewItem?.metadata.name;
   const reviewDecisionName = reviewed.reviewDecision?.metadata.name;
+  const signals = reviewedExtractionReviewSignals(reviewed);
   return {
     claimId, evidenceId: evidence.id,
     ...(reviewItemName ? { reviewItemName } : {}), ...(reviewDecisionName ? { reviewDecisionName } : {}),
@@ -227,6 +248,10 @@ function buildDimension(claimId: string, evidence: Evidence, reviewed: ReviewedE
       ? { status: "available", ...(evidence.integrityRef ? { integrityRef: evidence.integrityRef } : {}) }
       : { status: reviewed.importRecord.spec.envelope.result.preparedArtifact ? "unavailable" : "missing" },
     sourceState,
+    ...(signals.excerptVerification === "verified" ? { excerptVerification: "verified" as const } : {}),
+    ...(signals.excludedRivalProposalIndices.length > 0 || signals.excludedProposalsUnreadable
+      ? { excludedRivals: { proposalIndices: signals.excludedRivalProposalIndices, ...(signals.excludedProposalsUnreadable ? { unreadable: signals.excludedProposalsUnreadable } : {}) } }
+      : {}),
   };
 }
 
@@ -241,6 +266,8 @@ function evaluateEvidenceGaps(policy: ReviewedGroundingPolicy, evidence: Evidenc
   if (policy.requireValidatedStructure && dimension.structuralTrust !== "validated") gaps.push({ kind: "structure-not-validated", ...base, structuralTrust: dimension.structuralTrust });
   if (!coherentSourceState) gaps.push({ kind: "source-state-incoherent", ...base });
   if (policy.requireCurrentSource && dimension.sourceState.status !== "current") gaps.push({ kind: "source-not-current", ...base, status: dimension.sourceState.status });
+  if (policy.requireVerifiedExcerpts && dimension.excerptVerification !== "verified") gaps.push({ kind: "excerpt-not-verified", ...base });
+  if (policy.refuseExcludedRivals && dimension.excludedRivals) gaps.push({ kind: "excluded-rival-unresolved", ...base, rivalProposalIndices: dimension.excludedRivals.proposalIndices, ...(dimension.excludedRivals.unreadable ? { unreadable: dimension.excludedRivals.unreadable } : {}) });
   const coverage = extractionCoverageGap(reviewed);
   if (coverage) gaps.push({ kind: "extraction-coverage-incomplete", ...base, ...coverage });
   for (const gap of profileGapsFor(evidence)) gaps.push({ kind: "profile-gap", ...base, gap });

@@ -7,6 +7,8 @@ evidence:
     ref: "161"
   - kind: issue
     ref: "262"
+  - kind: issue
+    ref: "289"
   - kind: doc
     ref: docs/guides/reviewed-extraction-evidence.md
   - kind: doc
@@ -102,3 +104,19 @@ reports the collision.
 
 The v2 profile does not change the review shape; the two-candidate transition
 review (#195) is still out of scope.
+
+## Review signals (#289)
+
+Survey's excerpt verification and excluded proposals are read from the import
+record and review item the profile already binds, not added as profile fields.
+Projection is unchanged, so the pinned profile digests hold and no profile
+version bump is needed: an older reader restores the same evidence and simply
+does not interpret the facts. Grounding decisions over bundles without the
+facts are unchanged; decisions over Survey 6 bundles that carry them gain the
+`excerptVerification` and `excludedRivals` dimension fields. The item's facts
+are read only when its Survey binding is intact, and the import record's
+`excerpt-mismatch` diagnostics are checked too, so a stripped item entry
+cannot hide a rival. A separate
+input field was rejected because it would duplicate, and could contradict, the
+item it came from. Absence reads as unverified and as no excluded proposals;
+the policy requirements that use them are opt-in.
