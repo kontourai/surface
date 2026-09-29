@@ -20,6 +20,7 @@ import {
   type TrustBasisRecordedView,
   type TrustBasisView,
 } from "../src/claim-basis-view.js";
+import { summarizeClaims } from "../src/report.js";
 import type { Claim, Evidence } from "../src/types.js";
 
 function claim(overrides: Partial<Claim> = {}): Claim {
@@ -406,4 +407,92 @@ test("./display exports claimBasisView and the label tables; the root keeps the 
   assert.equal(display.DERIVATION_METHOD_LABELS, root.DERIVATION_METHOD_LABELS);
   assert.equal(display.EVIDENCE_STRENGTH_DISPLAY_NAMES, root.EVIDENCE_STRENGTH_DISPLAY_NAMES);
   assert.ok(!("claimBasisView" in root), "basis projections stay out of the root barrel");
+});
+
+// ── malformed wire values: view and report agree (#300) ───────────────────
+
+// Values `validateTrustBundle` would reject but unvalidated input can carry.
+// Each must be treated exactly like the field being absent.
+const MALFORMED_WIRE_VALUES: readonly unknown[] = [null, 5, 0, false, { level: "operator" }, ["operator"], "", "   ", "\t\n"];
+
+function reportReviewers(input: Claim): Record<string, number> {
+  return summarizeClaims([{ ...input, status: "verified" }]).confidenceBasis.reviewerAuthority;
+}
+
+function assertCodesKnown(view: TrustBasisView, known: ReadonlySet<string>, context: string): void {
+  if (view.state !== "recorded") return;
+  for (const facet of view.facets) {
+    assert.equal(typeof facet.code, "string", `non-string code (${context}): ${JSON.stringify(facet)}`);
+    assert.ok(known.has(facet.code), `unknown code ${JSON.stringify(facet.code)} (${context})`);
+  }
+}
+
+test("a malformed reviewerAuthority is absent in both claimBasisView and the report summary (#300)", () => {
+  for (const bad of MALFORMED_WIRE_VALUES) {
+    const context = JSON.stringify(bad);
+    const input = claim({ confidenceBasis: { reviewerAuthority: bad as never } });
+    const view = claimBasisView(input, [evidence()]);
+    assertCodesKnown(view, new Set(["extraction", "entails"]), context);
+    assert.deepEqual(labels(view), ["Extracted from a source", "1 entails the claim"], `line for ${context}`);
+    assert.equal(detailValue(view, "Review"), undefined, `Review row for ${context}`);
+    assert.deepEqual(reportReviewers(input), {}, `report reviewer buckets for ${context}`);
+    // Nothing but a malformed reviewer means no basis at all.
+    assert.equal(claimBasisView(input, []).state, "not-recorded", `state for ${context}`);
+  }
+});
+
+test("claimBasisView and the report summary agree on every reviewerAuthority value (#300)", () => {
+  // Literal pins next to the derived check: known, unrecognized, "none", padded.
+  assert.deepEqual(reportReviewers(claim({ confidenceBasis: { reviewerAuthority: "operator" } })), { operator: 1 });
+  assert.deepEqual(reportReviewers(claim({ confidenceBasis: { reviewerAuthority: "oracle" as never } })), { oracle: 1 });
+  assert.equal(
+    detailValue(claimBasisView(claim({ confidenceBasis: { reviewerAuthority: " operator" as never } }), []), "Review"),
+    "Unrecognized reviewer ( operator)",
+  );
+  const values: unknown[] = [...MALFORMED_WIRE_VALUES, "operator", "domain_expert", "system", "none", "oracle", " operator", undefined];
+  for (const value of values) {
+    const context = JSON.stringify(value);
+    const input = claim({ confidenceBasis: { reviewerAuthority: value as never } });
+    const view = claimBasisView(input, []);
+    const buckets = Object.keys(reportReviewers(input));
+    const facetCodes = view.state === "recorded" ? view.facets.filter((facet) => facet.field === "reviewerAuthority").map((facet) => facet.code) : [];
+    // The report buckets exactly the value the view reviews ("none" is
+    // reviewed in the inspector but never a line facet).
+    assert.equal(buckets.length > 0, detailValue(view, "Review") !== undefined, `Review row vs report for ${context}`);
+    assert.deepEqual(facetCodes, buckets.filter((code) => code !== "none"), `facet code vs report bucket for ${context}`);
+    for (const code of buckets) assert.equal(code, value, `report bucket is the wire value for ${context}`);
+  }
+});
+
+test("a malformed evidence method is treated as absent, never coerced to a code (#300)", () => {
+  const absent = claimBasisView(claim(), [evidence({ method: undefined })]);
+  assert.deepEqual(labels(absent), ["1 entails the claim"]);
+  assert.equal(detailValue(absent, "How"), undefined);
+  for (const bad of MALFORMED_WIRE_VALUES) {
+    const context = JSON.stringify(bad);
+    const view = claimBasisView(claim(), [evidence({ method: bad as never })]);
+    assertCodesKnown(view, new Set(["entails"]), context);
+    assert.deepEqual(view, absent, `view for ${context}`);
+    // Alongside a valid method, the malformed one adds nothing.
+    const mixed = claimBasisView(claim(), [evidence({ method: bad as never }), evidence({ method: "validation" })]);
+    assertCodesKnown(mixed, new Set(["validation", "entails"]), context);
+    assert.equal(detailValue(mixed, "How"), "Checked against expectations (1)", `How row for ${context}`);
+    assert.ok(!detailValue(mixed, "How")!.includes("Unrecognized"), `How row for ${context}`);
+  }
+});
+
+test("a malformed derivation-edge method is 'not stated', counted once (#300)", () => {
+  const absent = claimBasisView(claim({ derivationEdges: [{ inputClaimId: "a" }] }), []);
+  assert.deepEqual(labels(absent), ["Derived from 1 input"]);
+  assert.equal(detailValue(absent, "Derived"), "Method not stated (1 input)");
+  for (const bad of MALFORMED_WIRE_VALUES) {
+    const context = JSON.stringify(bad);
+    const view = claimBasisView(claim({ derivationEdges: [{ inputClaimId: "a", method: bad as never }] }), []);
+    assertCodesKnown(view, new Set(["unstated"]), context);
+    assert.deepEqual(view, absent, `view for ${context}`);
+    const mixed = claimBasisView(claim({ derivationEdges: [{ inputClaimId: "a", method: "sum" }, { inputClaimId: "b", method: bad as never }] }), []);
+    assertCodesKnown(mixed, new Set(["sum"]), context);
+    assert.deepEqual(labels(mixed), ["Calculated (sum)"], `line for ${context}`);
+    assert.equal(detailValue(mixed, "Derived"), "Calculated (sum) (1 input) · Method not stated (1 input)", `Derived row for ${context}`);
+  }
 });
