@@ -77,6 +77,31 @@ identity); otherwise it must equal `result.model`. In a multi-chunk run
 `result.model` names only one chunk's model, so the per-proposal record is the
 one that identifies who produced the value.
 
+### Choice profile (v3)
+
+v1 and v2 accept a review item with exactly one candidate. For an item with
+several, such as Survey's candidate set of conflicting values with a
+`select-proposed` decision, or a recheck of a prior value against a new
+proposal, project with `{ profile: reviewedExtractionEvidenceChoiceProfile }`
+(`surface.reviewed-extraction-evidence/v3`). It has the v2 shape, so the same
+sidecar, `attachImportRecords`, and `resolverFromBundle` steps apply. Project
+one item per candidate if every value should be exported; each cites that
+candidate's proposal.
+
+- Every candidate carrying Survey's envelope binding is checked against the
+  proposal its `proposalIndex` names, by the same rules as the v1 candidate.
+  A candidate without the binding is a prior value: role `current`, at most one.
+- The decision must name one candidate, and when it chooses one of several
+  proposed values its `unselectedCandidateIds` must list the others.
+- Evidence citing the named candidate projects as usual; evidence citing any
+  other gets a `candidate-not-chosen` gap and is only `cited`.
+- `metadata.reviewedExtraction.choice` lists every candidate (role, bound
+  proposal, value digest), the cited and decision candidates, and `chosenOver`.
+  `reviewedExtractionChoice(input)` derives it from a restored input.
+
+v3 refuses a single-candidate item, and v1 and v2 still refuse multi-candidate
+items, so v3 evidence always says the value was one of several.
+
 ## Gaps and trust boundaries
 
 The projection embeds typed gaps in `Evidence.metadata.reviewedExtraction.gaps`
@@ -199,6 +224,84 @@ The gap is per evidence item, not per field. A partial envelope may carry
 `coverage` ranges naming which part of the prepared text was unread, but the
 policy does not map fields to ranges: a field in the unread part has no claim
 at all, and only this gap shows that coverage was incomplete.
+
+### Excerpt verification and excluded rivals
+
+Survey records two review facts that the evidence already carries, because the
+import record and review item are part of the digest-bound profile input:
+whether the import checked each excerpt against the prepared artifact text
+(`status.provenance` on the import, `excerptVerification` on the item's
+`survey.kontourai.io/extraction-envelope` metadata), and which proposals it
+left out of the item's candidate set because their cited span did not match
+their excerpt (`excludedProposals` on the same metadata).
+`reviewedExtractionReviewSignals(input)` reads them from a restored input. No
+profile field is added and projection is unchanged, so neither profile
+version changes and the pinned profile digests hold.
+
+The item's Survey metadata is read only when its binding is intact: Survey's
+own rule (a non-empty `importName`, non-empty `proposalIndices`, every
+candidate carrying the same `importName`), plus `importName` naming the bound
+import record and `proposalIndices` including the cited proposal.
+
+- `excerptVerification` is `verified` only when the import record and a bound
+  item both say `verified`. Anything else, including an absent field or a
+  broken binding, is `unverified`; absence is never read as verified.
+- `excludedRivalProposalIndices` lists excluded proposals in the cited
+  proposal's claim slot whose value differs from the reviewed candidate: a
+  competing value that was unverifiable, not disproven. They come from the
+  item's entries that match the import record's proposal at their index, and
+  from the record's own `excerpt-mismatch` diagnostics, so removing an entry
+  from the item does not hide a rival. The rival test uses the record's value.
+  Excluded proposals with the reviewed value are not rivals.
+- `excludedProposalsUnreadable` reports what cannot be placed: stored entries
+  on an item whose binding is broken, or whose Survey metadata is gone while a
+  candidate still carries the binding (`binding-broken`), and entries or
+  diagnostics that are malformed or do not match the record
+  (`malformed-entries`). Any of them may be a rival.
+
+The policy dimension carries `excerptVerification: "verified"` and
+`excludedRivals` only when they apply. Decisions over bundles without these
+facts keep their shape; decisions over Survey 6 bundles from a verified
+import, or with excluded rivals, gain those two fields.
+Two opt-in requirements use them; neither changes the default policy.
+`requireVerifiedExcerpts` refuses unverified evidence with
+`excerpt-not-verified`. `refuseExcludedRivals` refuses evidence with any
+excluded rival or unreadable entry with `excluded-rival-unresolved`. Nothing
+currently resolves a rival, so every listed rival is unresolved.
+
+Two more signals check the import record for values the item does not show.
+`hiddenRivalProposalIndices` lists non-excluded proposals of the cited claim
+slot with a different value that no candidate carries. `droppedProposalIndices`
+(on an item whose Survey binding is intact) lists proposals Survey's
+grouping puts in the item that no candidate carries, which no Survey release
+writes. On an item whose binding is broken it lists the hidden rivals when the
+import record carries `status.provenance`, which only Survey 6 and later write,
+so the item cannot be a Survey 4 one. The dimension carries both as `hiddenConflict`. The policy refuses
+dropped proposals by default with `hidden-conflict`; hidden rivals alone, as
+Survey 4 and earlier items have, are refused only under `refuseExcludedRivals`
+or `refuseChosenOverRivals`.
+
+For v3 evidence the dimension also carries `choice`, and the opt-in
+`refuseChosenOverRivals` refuses a chosen value that has any rival with
+`chosen-over-rival-unresolved`. A rival that was seen and not chosen is not
+disproven either, so every rival counts. Without it, a chosen value is allowed
+on its own evidence.
+
+These facts are Survey's statements about its own import, bound by the profile
+digest like the review decision; Surface does not re-run the excerpt check.
+
+## Capability flags
+
+Producers feature-detect with an import instead of reading Surface's
+`package.json`: `REVIEWED_EXTRACTION_ACCEPTS_UNREPORTED_CONFIDENCE` is `true`
+when proposals without a producer confidence are accepted (4.1.0 and later),
+and `REVIEWED_EXTRACTION_CAPABILITIES` holds every capability
+(`acceptsUnreportedConfidence`, `excerptVerification`, `excludedProposals`,
+`chosenConflicts`).
+A name or key that is missing means the capability is absent. Both are plain
+constants exported from the package root, so bundlers keep them. They describe
+the Surface copy the producer imports; a consumer that resolves a different
+copy needs a single shared copy, such as a peer dependency.
 
 ## Source observation facts
 

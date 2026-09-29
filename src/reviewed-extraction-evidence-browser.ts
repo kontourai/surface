@@ -6,19 +6,19 @@
  * delivery graph.
  */
 import type { Evidence } from "./types.js";
-import { restoreReviewedExtractionEvidence, reviewedExtractionEvidenceProfile, reviewedExtractionEvidenceReferenceProfile, type ReviewedExtractionRestoreOptions } from "./reviewed-extraction-evidence.js";
+import { restoreReviewedExtractionEvidence, reviewedExtractionEvidenceChoiceProfile, reviewedExtractionEvidenceProfile, reviewedExtractionEvidenceReferenceProfile, type ReviewedExtractionRestoreOptions } from "./reviewed-extraction-evidence.js";
 
 const encoder = new TextEncoder();
 
 export async function restoreReviewedExtractionEvidenceBrowser(evidence: Evidence, options: ReviewedExtractionRestoreOptions = {}): Promise<Evidence> {
   // The synchronous restorer is now runtime-neutral and remains the canonical
   // input/profile/projector equality implementation for both environments.
-  // For v2 evidence it also resolves the import record and checks its digest.
+  // For v2 and v3 evidence it also resolves the import record and checks its digest.
   const restored = restoreReviewedExtractionEvidence(evidence, options);
   if (!evidence || typeof evidence !== "object" || Array.isArray(evidence)) throw new Error("Reviewed extraction evidence is invalid.");
   const metadata = evidence.metadata?.reviewedExtraction as Record<string, unknown> | undefined;
-  if (!metadata || (metadata.profile !== reviewedExtractionEvidenceProfile && metadata.profile !== reviewedExtractionEvidenceReferenceProfile) || typeof metadata.profileDigest !== "string" || !isRecord(metadata.input) || !Array.isArray(metadata.gaps)) throw new Error("Evidence does not carry a complete reviewed extraction evidence profile.");
-  const reference = metadata.profile === reviewedExtractionEvidenceReferenceProfile;
+  if (!metadata || (metadata.profile !== reviewedExtractionEvidenceProfile && metadata.profile !== reviewedExtractionEvidenceReferenceProfile && metadata.profile !== reviewedExtractionEvidenceChoiceProfile) || typeof metadata.profileDigest !== "string" || !isRecord(metadata.input) || !Array.isArray(metadata.gaps)) throw new Error("Evidence does not carry a complete reviewed extraction evidence profile.");
+  const reference = metadata.profile === reviewedExtractionEvidenceReferenceProfile || metadata.profile === reviewedExtractionEvidenceChoiceProfile;
   const input = metadata.input as Record<string, unknown>;
   // These binding fields are sufficient to reject profile substitution before
   // any protected profile detail can be projected into Basis.
@@ -26,7 +26,7 @@ export async function restoreReviewedExtractionEvidenceBrowser(evidence: Evidenc
   const anchors = withoutMetadata(evidence);
   const actual = await digest({ anchors, input, gaps: metadata.gaps });
   if (actual !== metadata.profileDigest) throw new Error("Reviewed extraction evidence profile integrity binding is invalid.");
-  // v2 binds the record by digest; re-check that binding with Web Crypto
+  // v2 and v3 bind the record by digest; re-check that binding with Web Crypto
   // against the record the synchronous restorer resolved.
   if (reference && await digest(restored.importRecord) !== input.importRecordDigest) throw new Error("Resolved import record does not match the bound importRecordDigest.");
   // Reconstruct the portable anchors from the reviewed profile. This is the

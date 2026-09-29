@@ -50,8 +50,15 @@ export interface ReviewedSourceBasisContext {
   answerClaimId: string;
   answerCitationEvidenceId: string;
   assessmentRevision: number;
-  review: "accepted" | "not-accepted" | "not-captured";
+  /** `not-chosen`: the review chose a different candidate of the same item (v3 evidence). */
+  review: "accepted" | "not-accepted" | "not-captured" | "not-chosen";
   reviewedAt: string | null;
+  /**
+   * Present only for v3 evidence: how many candidates the reviewed item had and
+   * the ids of those this evidence's candidate was chosen over (empty unless
+   * `review` is `accepted`).
+   */
+  choice?: { candidateCount: number; chosenOverCandidateIds: string[] };
   currentness: "current" | "drifted" | "unknown";
   checkedAt: string;
   expectedCapture: { capturedAt: string; contentDigest: string } | null;

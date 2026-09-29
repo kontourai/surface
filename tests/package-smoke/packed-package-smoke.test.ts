@@ -84,6 +84,7 @@ test("packed npm artifact installs, imports, and serves modern plus legacy MCP f
           "if (reviewedPolicy.outcome !== 'allowed') throw new Error('reviewed policy rejected a current packed consumer observation');",
           "const root = await import('@kontourai/surface');",
           "if ('composeBasisProjection' in root) throw new Error('basis leaked through root barrel');",
+          "if (root.REVIEWED_EXTRACTION_ACCEPTS_UNREPORTED_CONFIDENCE !== true || root.REVIEWED_EXTRACTION_CAPABILITIES?.excludedProposals !== true || root.REVIEWED_EXTRACTION_CAPABILITIES?.chosenConflicts !== true || root.reviewedExtractionEvidenceChoiceProfile !== 'surface.reviewed-extraction-evidence/v3') throw new Error('reviewed extraction capability flags missing from the packed root');",
           "const basis = await import('@kontourai/surface/basis');",
           "if (typeof basis.composeBasisProjection !== 'function') throw new Error('basis subpath missing');",
           "const basisView = await import('@kontourai/surface/basis/view');",

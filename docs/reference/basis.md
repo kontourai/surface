@@ -75,8 +75,11 @@ version string.
 
 The source adapter accepts authenticated Surface `Evidence`, a validated source
 comparison, and a closed S/E/A/C association. The Basis wire contains only
-accepted/not-accepted review, current/drifted/unknown currentness, timestamps,
-and SHA-256 content digests. It never contains a URL, resource or snapshot ref,
+accepted/not-accepted/not-chosen review, current/drifted/unknown currentness,
+timestamps, SHA-256 content digests, and, for evidence reviewed as one of
+several candidates, `choice` (the candidate count and the candidate ids the
+accepted one was chosen over). A candidate the review did not choose is
+`not-chosen`, never accepted. It never contains a URL, resource or snapshot ref,
 locator, source text, path, owner diagnostic, plugin/run identity, or arbitrary
 metadata. Historical and observed captures stay separate.
 

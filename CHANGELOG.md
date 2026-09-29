@@ -1,5 +1,27 @@
 # Changelog
 
+## [4.4.1](https://github.com/kontourai/surface/compare/v4.4.0...v4.4.1) (2026-09-29)
+
+
+### Fixes
+
+* **basis:** treat a non-string reviewerAuthority as absent in claimBasisView ([#299](https://github.com/kontourai/surface/issues/299)) ([adf71ef](https://github.com/kontourai/surface/commit/adf71efacdeddb8e47b8ae0995f98fd6d1a3241c))
+* **reviewed-extraction:** refuse hidden rivals by default for Survey 6+ imports with a broken item binding ([#302](https://github.com/kontourai/surface/issues/302)) ([9f45f76](https://github.com/kontourai/surface/commit/9f45f76e73bf72e532a7f3af1e5b5745da1ef9b3))
+
+## [4.4.0](https://github.com/kontourai/surface/compare/v4.3.0...v4.4.0) (2026-09-29)
+
+
+### Features
+
+* reviewed-extraction v3 choice profile for multi-candidate review ([#296](https://github.com/kontourai/surface/issues/296)) ([4904121](https://github.com/kontourai/surface/commit/4904121cd8c67ef9093dafb67a14de115defd1ee))
+
+## [4.3.0](https://github.com/kontourai/surface/compare/v4.2.0...v4.3.0) (2026-09-29)
+
+
+### Features
+
+* reviewed-extraction capability flags, excerpt-verification and excluded-rival signals ([#294](https://github.com/kontourai/surface/issues/294)) ([bedd531](https://github.com/kontourai/surface/commit/bedd5314018bb018027f45c1270321feaee2a5dd))
+
 ## [4.2.0](https://github.com/kontourai/surface/compare/v4.1.0...v4.2.0) (2026-09-28)
 
 
