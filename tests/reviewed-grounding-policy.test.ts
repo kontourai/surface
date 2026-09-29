@@ -40,7 +40,7 @@ function current(evidenceId: string): ReviewedExtractionSourceState {
 
 const digest = (value: string) => ({ algorithm: "sha256" as const, value: value.repeat(64).slice(0, 64) });
 
-// These are the public shapes published by Forage 0.6.0 and Lookout 0.3.6.
+// These are the public shapes published by Forage 1.0.0 and Lookout 0.8.1.
 // Surface deliberately keeps their retrieval semantics outside its pure policy.
 const publishedForageCapture: ForageSnapshot = {
   sourceId: "directory-source", url: "https://example.test/directory", status: 200,
@@ -170,13 +170,13 @@ test("builds a content-current state from distinct, owner-resolved captures whil
   assert.equal(decision.outcome, "allowed");
 });
 
-test("accepts published Forage 0.6 and Lookout 0.3.6 304 capture facts without renewing the capture", async () => {
+test("accepts published Forage 1.0 and Lookout 0.8.1 304 capture facts without renewing the capture", async () => {
   const [forageManifest, lookoutManifest] = await Promise.all([
     readFile("node_modules/@kontourai/forage/package.json", "utf8"),
     readFile("node_modules/@kontourai/lookout/package.json", "utf8"),
   ]);
-  assert.equal(JSON.parse(forageManifest).version, "0.6.0");
-  assert.equal(JSON.parse(lookoutManifest).version, "0.3.6");
+  assert.equal(JSON.parse(forageManifest).version, "1.0.0");
+  assert.equal(JSON.parse(lookoutManifest).version, "0.8.1");
   assert.equal(canonicalValueKey(publishedLookout304).ok, true);
   const projected = projectReviewedExtractionEvidence(await fixture());
   const captureRef = publishedLookout304.snapshotRef;

@@ -4,7 +4,16 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import test from "node:test";
+import { createHash } from "node:crypto";
 import { build } from "esbuild";
+import {
+  buildReviewItemsFromExtractionEnvelopeImport,
+  importExtractionEnvelope,
+  toSurfaceReviewedExtractionDecision,
+  toSurfaceReviewedExtractionImport,
+  toSurfaceReviewedExtractionItem,
+} from "@kontourai/survey";
+import { buildReviewDecision } from "@kontourai/survey/review-workbench";
 import * as root from "../src/index.js";
 import * as entry from "../src/reviewed-extraction-evidence.js";
 import {
@@ -220,4 +229,73 @@ test("a rival the import record excluded counts even when the item omits it", as
   unresolved.importRecord.status.diagnostics.push({ kind: "excerpt-mismatch", proposalIndex: 9, locator: "chars:10-14", message: "mismatch" });
   assert.deepEqual(reviewedExtractionReviewSignals(unresolved).excludedProposalsUnreadable, { reason: "malformed-entries", count: 1 });
   assert.equal(evaluate(unresolved, { refuseExcludedRivals: true }).outcome, "refused");
+});
+
+/**
+ * Runs a verified envelope through the installed Survey: proposal 0 ("Alpha")
+ * matches its span, proposal 1 ("Beta") in the same claim slot does not, so
+ * Survey excludes it. Returns Survey's own records, not hand-built shapes.
+ */
+function realSurveyExcludedRival(): ReviewedExtractionEvidenceInput {
+  const sha = (value: string) => createHash("sha256").update(value).digest("hex");
+  const text = "Title: Alpha\nAlso: Gamma";
+  const binding = { format: "traverse-prepared-artifact", version: 1, digest: sha(text), preparationMode: "text", preparationVersion: "1", contentLength: text.length, sourceSnapshotRef: "snapshot:signals" } as const;
+  const artifact = { ...binding, ref: `traverse-prepared-artifact:v1:sha256:${sha(JSON.stringify(binding))}` };
+  const proposal = (value: string, start: number, end: number) => ({
+    fieldPath: "title", candidateValue: value, valueType: "string" as const, confidence: 0.8, extractor: "signals-extractor",
+    provenance: { excerpt: value, locator: `chars:${start}-${end}`, occurrence: { resolverVersion: "exact-occurrence-v1" as const, count: 1, selected: { index: 0, start, end }, selection: "source-order" as const, hintUsed: false, ambiguous: false } },
+  });
+  const imported = importExtractionEnvelope({
+    format: "traverse-extraction-result", version: 1, source: { ref: "source:signals", snapshotRef: "snapshot:signals" },
+    result: {
+      proposals: [proposal("Alpha", 7, 12), proposal("Beta", 19, 23)], provider: "signals-provider",
+      runId: "traverse-extraction-run:00000000-0000-4000-8000-0000000000f8", raw: {}, outcome: { status: "success" },
+      extractedAt: "2026-09-29T00:00:00.000Z", providerCalls: 1, totalTokensUsed: 1,
+      preparedArtifact: artifact, preparedArtifactState: { status: "available", requestedRef: artifact.ref, canonicalRef: artifact.ref },
+    },
+  }, {
+    importName: "signals-import", producerNamespace: "signals", sourceKind: "api-record",
+    artifact: { status: "available", text, actualDigest: sha(text) },
+    claimTarget: () => ({ subjectType: "directory", subjectId: "directory-1", facet: "listing", claimType: "field", fieldOrBehavior: "title", impactLevel: "medium" }),
+  });
+  assert.equal(imported.reviewItems.length, 1);
+  const reviewItem = imported.reviewItems[0]!;
+  const reviewDecision = buildReviewDecision({ item: reviewItem, decision: "accept-proposed", note: "The span supports Alpha.", actorId: "reviewer:signals", reviewedAt: "2026-09-29T00:05:00.000Z" });
+  assert.ok(reviewDecision);
+  const item = toSurfaceReviewedExtractionItem(reviewItem);
+  return {
+    evidenceId: (item.metadata.producer![producerKey] as { evidenceId: string }).evidenceId,
+    claimId: "claim.directory.title", proposalIndex: 0,
+    importRecord: toSurfaceReviewedExtractionImport(imported.record),
+    reviewItem: item, reviewDecision: toSurfaceReviewedExtractionDecision(reviewDecision),
+    collectedBy: "signals-collector", structuralTrust: "validated",
+  };
+}
+
+test("real Survey output carries the signals, in the shapes the hand-built helpers above write", async () => {
+  const real = realSurveyExcludedRival();
+  assert.deepEqual(reviewedExtractionReviewSignals(real), { excerptVerification: "verified", excludedRivalProposalIndices: [1] });
+  const allowed = evaluate(real);
+  assert.equal(allowed.outcome, "allowed");
+  assert.deepEqual(allowed.dimensions[0]!.excludedRivals, { proposalIndices: [1] });
+  assert.equal(allowed.dimensions[0]!.excerptVerification, "verified");
+  const refused = evaluate(real, { requireVerifiedExcerpts: true, refuseExcludedRivals: true });
+  assert.deepEqual(refused.gaps, [{ kind: "excluded-rival-unresolved", claimId: "claim.directory.title", evidenceId: refused.dimensions[0]!.evidenceId, rivalProposalIndices: [1] }]);
+
+  // The mutation tests above build these fields by hand on an older fixture.
+  // Pin them to what Survey writes, so a shape change in Survey fails here.
+  const keys = (value: unknown) => Object.keys(value as object).sort();
+  const handBuilt = withExcluded(verified(await fixture()), "Beta");
+  const realMetadata = itemMetadata(real), handMetadata = itemMetadata(handBuilt);
+  assert.deepEqual(realMetadata.proposalIndices, [0]);
+  assert.equal(realMetadata.excerptVerification, handMetadata.excerptVerification);
+  assert.equal(real.importRecord.status.provenance, handBuilt.importRecord.status.provenance);
+  const realExcluded = realMetadata.excludedProposals as Array<Record<string, unknown>>, handExcluded = handMetadata.excludedProposals as Array<Record<string, unknown>>;
+  assert.equal(realExcluded.length, 1);
+  assert.deepEqual(keys(realExcluded[0]), keys(handExcluded[0]));
+  assert.equal(realExcluded[0]!.reason, handExcluded[0]!.reason);
+  const realDiagnostics = real.importRecord.status.diagnostics, handDiagnostics = handBuilt.importRecord.status.diagnostics;
+  assert.equal(realDiagnostics.length, 1);
+  assert.deepEqual(keys(realDiagnostics[0]), keys(handDiagnostics.at(-1)));
+  assert.equal(realDiagnostics[0]!.kind, handDiagnostics.at(-1)!.kind);
 });
