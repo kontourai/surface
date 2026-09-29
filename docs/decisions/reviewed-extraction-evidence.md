@@ -172,6 +172,33 @@ item must be non-editable, as in v1. Survey's own binding rule wants every
 candidate to carry the binding, so on such an item the review signals read
 excerpt verification as unverified.
 
+**Hidden conflicts.** Dropping the rivals from a chosen conflict and
+projecting the rest as v1 or v2 would otherwise read as an uncontested review.
+The import record still holds the rival values, so the review signals check
+it (all profiles, derived, no profile change): `hiddenRivalProposalIndices`
+lists non-excluded proposals of the cited claim slot with a different value
+that no candidate carries, and, on an item whose Survey binding is intact,
+`droppedProposalIndices` lists slot or `proposalIndices` members that no
+candidate carries. A candidate's `sameValueProposals` counts only where the
+named proposal has the candidate's value. Survey 5, 6, and 7 group every
+non-excluded proposal of a slot into one item and list them in
+`proposalIndices`, so no Survey release writes dropped proposals: the
+grounding policy refuses them by default with `hidden-conflict`. Survey 4
+and earlier wrote one item per proposal with no `proposalIndices`, so a
+legitimate older bundle has hidden rivals whose own items may have been
+reviewed; those are shown on the dimension (`hiddenConflict`) and refused
+only under `refuseExcludedRivals` or `refuseChosenOverRivals`. Refusing them
+by default would flip existing allowed decisions for bundles Surface cannot
+tell apart from that older shape. Stripping `proposalIndices` to imitate it
+breaks the binding, so excerpt verification also reads as unverified.
+
+**Basis.** The reviewed-source adapter uses the same rule as the policy: a
+v3 item whose decision names another candidate reads `review: "not-chosen"`
+with no `reviewedAt` and a `reviewed-source-review-not-chosen` gap. Every v3
+context carries `choice` (`candidateCount`, and on the accepted candidate the
+`chosenOverCandidateIds`); the parser checks that shape, and the Basis field
+budget grows from 12 to 13 for it. An older parser refuses such a context.
+
 Verified end to end against `@kontourai/survey` 7.0.0 from npm: its import,
 `buildReviewDecision` with `select-proposed`, and
 `toSurfaceReviewedExtractionImport` (which passes the record through) project

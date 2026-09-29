@@ -5,7 +5,8 @@ import { BASIS_MAX_STRING_BYTES, hasExactKeys, isBasisAuthority, isBasisInertDis
 export const BASIS_MAX_TOTAL_BYTES = 65_536;
 export { BASIS_MAX_STRING_BYTES } from "./validation.js";
 export const BASIS_MAX_CONTRIBUTIONS = 64;
-export const BASIS_MAX_FIELDS = 12;
+/** 13: the reviewed-source context's twelve fields plus its optional `choice`. */
+export const BASIS_MAX_FIELDS = 13;
 export const BASIS_MAX_DEPTH = 24;
 export const BASIS_MAX_NODES = 1_024;
 type R = Record<string, unknown>; type Parse<T> = { ok: true; value: T } | { ok: false; gap: BasisGap };
@@ -154,7 +155,8 @@ function parseFieldworkContribution(value: unknown, answer: unknown, assessment:
   return { ok: true, value };
 }
 function parseReviewedSourceContext(value: unknown): Parse<Extract<BasisContextProjectionV2, { kind: "reviewed-source" }>> {
-  if (!exact(value, ["kind", "sourceClaimId", "sourceEvidenceId", "answerClaimId", "answerCitationEvidenceId", "assessmentRevision", "review", "reviewedAt", "currentness", "checkedAt", "expectedCapture", "observedCapture"]) || value.kind !== "reviewed-source" || !safeIdentifier(value.sourceClaimId) || !safeIdentifier(value.sourceEvidenceId) || !safeIdentifier(value.answerClaimId) || !safeIdentifier(value.answerCitationEvidenceId) || !Number.isSafeInteger(value.assessmentRevision) || (value.assessmentRevision as number) < 1 || !["accepted", "not-accepted", "not-captured"].includes(String(value.review)) || !(value.reviewedAt === null || safeTimestamp(value.reviewedAt)) || !["current", "drifted", "unknown"].includes(String(value.currentness)) || !safeTimestamp(value.checkedAt) || !capture(value.expectedCapture) || !capture(value.observedCapture)) return fail("unsafe-context", "Reviewed source context is invalid.");
+  const keys = ["kind", "sourceClaimId", "sourceEvidenceId", "answerClaimId", "answerCitationEvidenceId", "assessmentRevision", "review", "reviewedAt", "currentness", "checkedAt", "expectedCapture", "observedCapture"];
+  if (!exact(value, keys, ["choice"]) || (Object.hasOwn(value, "choice") && !reviewedChoice(value.choice, value.review)) || value.kind !== "reviewed-source" || !safeIdentifier(value.sourceClaimId) || !safeIdentifier(value.sourceEvidenceId) || !safeIdentifier(value.answerClaimId) || !safeIdentifier(value.answerCitationEvidenceId) || !Number.isSafeInteger(value.assessmentRevision) || (value.assessmentRevision as number) < 1 || !["accepted", "not-accepted", "not-captured", "not-chosen"].includes(String(value.review)) || (value.review === "not-chosen" && !Object.hasOwn(value, "choice")) || !(value.reviewedAt === null || safeTimestamp(value.reviewedAt)) || !["current", "drifted", "unknown"].includes(String(value.currentness)) || !safeTimestamp(value.checkedAt) || !capture(value.expectedCapture) || !capture(value.observedCapture)) return fail("unsafe-context", "Reviewed source context is invalid.");
   const noCaptures = value.expectedCapture === null && value.observedCapture === null;
   const bothCaptures = value.expectedCapture !== null && value.observedCapture !== null;
   if ((value.currentness === "unknown" && !noCaptures) || (value.currentness !== "unknown" && !bothCaptures)) return fail("unsafe-context", "Reviewed source capture facts are incoherent.");
@@ -163,6 +165,11 @@ function parseReviewedSourceContext(value: unknown): Parse<Extract<BasisContextP
   if (value.currentness === "drifted" && bothCaptures && expectedCapture!.contentDigest === observedCapture!.contentDigest) return fail("unsafe-context", "Drifted reviewed source captures must differ.");
   return { ok: true, value: value as unknown as Extract<BasisContextProjectionV2, { kind: "reviewed-source" }> };
 }
+/** Bounded like the rest of the context: at most 64 candidates, refused above. Rivals only on an accepted candidate. */
+function reviewedChoice(value: unknown, review: unknown): boolean {
+  if (!exact(value, ["candidateCount", "chosenOverCandidateIds"]) || !Number.isSafeInteger(value.candidateCount) || (value.candidateCount as number) < 2 || (value.candidateCount as number) > 64 || !Array.isArray(value.chosenOverCandidateIds) || !value.chosenOverCandidateIds.every(safeIdentifier) || new Set(value.chosenOverCandidateIds).size !== value.chosenOverCandidateIds.length) return false;
+  return value.chosenOverCandidateIds.length === (review === "accepted" ? (value.candidateCount as number) - 1 : 0);
+}
 function capture(value: unknown): boolean { return value === null || (exact(value, ["capturedAt", "contentDigest"]) && safeTimestamp(value.capturedAt) && typeof value.contentDigest === "string" && /^[a-f0-9]{64}$/.test(value.contentDigest)); }
-function validReviewedSourceGaps(gaps: readonly BasisGap[]): boolean { const codes = ["reviewed-source-review-not-accepted", "reviewed-source-review-not-captured", "reviewed-source-currentness-unknown", "reviewed-source-drifted", "reviewed-source-capture-comparison-unavailable", "reviewed-source-claim-not-verified"]; return gaps.every((gap) => codes.includes(gap.code) && gap.message === "Reviewed source context is incomplete or requires attention." && gap.metadata === undefined); }
+function validReviewedSourceGaps(gaps: readonly BasisGap[]): boolean { const codes = ["reviewed-source-review-not-accepted", "reviewed-source-review-not-chosen", "reviewed-source-review-not-captured", "reviewed-source-currentness-unknown", "reviewed-source-drifted", "reviewed-source-capture-comparison-unavailable", "reviewed-source-claim-not-verified"]; return gaps.every((gap) => codes.includes(gap.code) && gap.message === "Reviewed source context is incomplete or requires attention." && gap.metadata === undefined); }
 function sameAnswer(left: ThreadAnswerRef, read: unknown): boolean { const parsed = parseAnswerRead(read); return parsed.ok && parsed.value.state === "available" && parsed.value.value.ref.threadId === left.threadId && parsed.value.value.ref.messageId === left.messageId; }

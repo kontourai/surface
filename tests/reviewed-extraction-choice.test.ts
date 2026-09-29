@@ -9,6 +9,7 @@ import {
   resolverFromBundle,
   restoreReviewedExtractionEvidence,
   reviewedExtractionChoice,
+  reviewedExtractionReviewSignals,
   reviewedExtractionEvidenceChoiceProfile,
   reviewedExtractionEvidenceReferenceProfile,
   ReviewedExtractionImportRecordUnresolvedError,
@@ -22,6 +23,8 @@ import {
 import { canonicalJson, sha256Hex } from "../src/canonical-digest.js";
 import { restoreReviewedExtractionEvidenceBrowser } from "../src/reviewed-extraction-evidence-browser.js";
 import type { Evidence } from "../src/types.js";
+import { buildReviewedSourceBasisContribution, composeBasisProjectionV2, parseBasisProjectionV2, type AnswerAssessmentProjection } from "../src/basis/index.js";
+import { buildBasisPanelViewModel } from "../src/basis/view-index.js";
 
 const v2 = { profile: reviewedExtractionEvidenceReferenceProfile } as const;
 const v3 = { profile: reviewedExtractionEvidenceChoiceProfile } as const;
@@ -252,4 +255,104 @@ test("a recheck of a prior value against one proposal projects with the prior as
   const unboundProposed = await recheck("accept-proposed");
   unboundProposed.reviewItem!.spec.candidates[0]!.role = "proposed";
   assert.throws(() => projectReviewedExtractionEvidence(unboundProposed, v3), /must be the current \(prior\) value/);
+});
+
+/** The downgrade a reviewer found: keep only the chosen candidate and drop the rivals the decision recorded. */
+async function downgraded(mutate: (metadata: Record<string, unknown>, input: ReviewedExtractionEvidenceInput) => void = () => {}): Promise<ReviewedExtractionEvidenceInput> {
+  const input = structuredClone(await citing(1));
+  input.reviewItem!.spec.candidates = input.reviewItem!.spec.candidates.filter((candidate) => candidate.value === "Beta Inc");
+  delete input.reviewDecision!.spec.unselectedCandidateIds;
+  mutate(input.reviewItem!.metadata.producer![producerKey] as Record<string, unknown>, input);
+  return input;
+}
+
+test("a chosen conflict downgraded to v1 or v2 by dropping its rivals is refused as a hidden conflict", async () => {
+  const fixture = await survey();
+  const policy = { ...strict, requiredClaimIds: [fixture.claim.id] };
+  const variants: Array<[string, ReviewedExtractionEvidenceInput]> = [
+    ["dropped candidates", await downgraded()],
+    ["proposalIndices rewritten to the chosen proposal", await downgraded((metadata) => { metadata.proposalIndices = [1]; })],
+    ["rival claimed as a same-value proposal", await downgraded((_metadata, input) => { (input.reviewItem!.spec.candidates[0]!.producer![producerKey] as Record<string, unknown>).sameValueProposals = [{ proposalIndex: 0 }, { proposalIndex: 2 }]; })],
+  ];
+  for (const [label, input] of variants) {
+    for (const options of [{}, { ...v2, includeImportRecord: true }]) {
+      const evidence = projectReviewedExtractionEvidence(input, options).evidence;
+      const resolveImportRecord = resolverFromBundle({ evidence: [evidence] });
+      const restored = restoreReviewedExtractionEvidence(evidence, { resolveImportRecord });
+      const signals = reviewedExtractionReviewSignals(restored);
+      assert.deepEqual([signals.hiddenRivalProposalIndices, signals.droppedProposalIndices], [[0, 2], [0, 2]], label);
+      const decision = evaluateReviewedGroundingPolicy({ policy, evidence: [evidence], claims: [fixture.claim], resolveImportRecord });
+      assert.equal(decision.outcome, "refused", label);
+      assert.deepEqual(decision.gaps, [{ kind: "hidden-conflict", claimId: fixture.claim.id, evidenceId: evidence.id, rivalProposalIndices: [0, 2], droppedProposalIndices: [0, 2] }], label);
+      assert.deepEqual(decision.dimensions[0]!.hiddenConflict, { rivalProposalIndices: [0, 2], droppedProposalIndices: [0, 2] }, label);
+    }
+  }
+});
+
+test("an ungrouped item beside a rival value, as Survey 4 wrote them, shows the rival and is refused only on opt-in", async () => {
+  const fixture = await survey();
+  const input = await downgraded((metadata) => { delete metadata.proposalIndices; });
+  const evidence = projectReviewedExtractionEvidence(input).evidence;
+  const signals = reviewedExtractionReviewSignals(restoreReviewedExtractionEvidence(evidence));
+  assert.deepEqual(signals.hiddenRivalProposalIndices, [0, 2]);
+  assert.equal(signals.droppedProposalIndices, undefined);
+  const policy = { id: "p", action: "a", requiredClaimIds: [fixture.claim.id], requireAcceptedReview: true };
+  const allowed = evaluateReviewedGroundingPolicy({ policy, evidence: [evidence], claims: [fixture.claim] });
+  assert.equal(allowed.outcome, "allowed");
+  assert.deepEqual(allowed.dimensions[0]!.hiddenConflict, { rivalProposalIndices: [0, 2], droppedProposalIndices: [] });
+  for (const optIn of [{ refuseExcludedRivals: true }, { refuseChosenOverRivals: true }]) {
+    const refused = evaluateReviewedGroundingPolicy({ policy: { ...policy, ...optIn }, evidence: [evidence], claims: [fixture.claim] });
+    assert.deepEqual(refused.gaps, [{ kind: "hidden-conflict", claimId: fixture.claim.id, evidenceId: evidence.id, rivalProposalIndices: [0, 2], droppedProposalIndices: [] }]);
+  }
+});
+
+function unknownState(evidence: Evidence) {
+  return { evidenceId: evidence.id, status: "unknown" as const, expectedSnapshotRef: "snapshot:e2e", observedAt: "2026-09-04T00:00:00.000Z" };
+}
+function basisAssessment(evidence: Evidence): AnswerAssessmentProjection {
+  const at = "2026-09-04T00:00:00.000Z";
+  return { version: "surface.answer-assessment/v2", ref: { authority: "@kontourai/surface", schemaVersion: "surface.answer-assessment/v2", kind: "answer-assessment", bundleId: "bundle-1", claimId: "answer-claim" }, found: true, bundle: { id: "bundle-1", schemaVersion: 1, source: "Surface", generatedAt: at }, claim: { id: "answer-claim", subject: { subjectType: "answer", subjectId: "answer-1" }, status: "assessed", freshness: null }, policy: { version: "surface.answer-assessment-policy/v1", id: "policy-1", evaluatedAt: at, outcome: "not-satisfied", satisfied: false, reasons: ["explicit-entailing-evidence-missing"] }, evidence: { cited: [{ id: "citation-1", label: "Cited source", sourceRef: evidence.sourceRef, locator: evidence.sourceLocator ?? null, observedAt: at, supportStrength: "cited", result: "passed", blocksClaim: false }], entails: [], undeclared: [], counterevidence: [] }, derivation: { available: true, directInputs: [{ claimId: evidence.claimId, status: "verified", source: "derivationEdges", edge: { method: "rule-application", supportStrength: "strong", rationale: null } }] }, gaps: [] };
+}
+async function basisFor(evidence: Evidence, resolveImportRecord: ReturnType<typeof resolverFromBundle>) {
+  const answer = { authority: "@kontourai/thread" as const, schemaVersion: "1.2.0" as const, kind: "assistant-message" as const, standing: "observed" as const, threadId: "thread-42", messageId: "message-9" };
+  const contribution = await buildReviewedSourceBasisContribution({ answer, ref: { authority: "@kontourai/fieldwork", schemaVersion: "fieldwork.kontourai.io/v1", kind: "reviewed-web-source", exactRef: `fieldwork-reviewed-source:v1:${"d".repeat(64)}`, evidenceId: evidence.id }, evidence, sourceState: unknownState(evidence), association: { version: "surface.reviewed-source-basis-association/v1", sourceClaimId: evidence.claimId, sourceEvidenceId: evidence.id, answerClaimId: "answer-claim", answerCitationEvidenceId: "citation-1", assessmentRevision: 1 }, assessment: { revision: 1, value: basisAssessment(evidence) }, resolveImportRecord });
+  const at = "2026-09-04T00:00:00.000Z";
+  const projection = composeBasisProjectionV2({ version: "surface.basis-projection/v2", answer: { owner: { authority: "@kontourai/thread" }, state: "available", observedAt: at, value: { ref: answer, fact: "answer-observed", observedAt: at } }, assessment: { owner: { authority: "@kontourai/surface" }, state: "available", observedAt: at, value: basisAssessment(evidence) }, contributions: [{ owner: { authority: "@kontourai/fieldwork" }, state: "available", observedAt: at, value: [contribution] }] });
+  return { contribution, projection };
+}
+
+test("the Basis source adapter never reads a rival as accepted and carries the choice for the chosen value", async () => {
+  const fixture = await survey();
+  const evidence = attachImportRecords([projectReviewedExtractionEvidence(await citing(0, fixture), v3).evidence, projectReviewedExtractionEvidence(await citing(1, fixture), v3).evidence], [fixture.importRecord]);
+  const resolveImportRecord = resolverFromBundle({ evidence });
+  const [alphaId] = fixture.reviewItem.spec.candidates.map((candidate) => candidate.id) as [string];
+
+  const rival = await basisFor(evidence[0]!, resolveImportRecord);
+  assert.equal(rival.contribution.context.kind, "reviewed-source");
+  if (rival.contribution.context.kind !== "reviewed-source") return;
+  assert.deepEqual([rival.contribution.context.review, rival.contribution.context.reviewedAt, rival.contribution.context.choice], ["not-chosen", null, { candidateCount: 2, chosenOverCandidateIds: [] }]);
+  assert.ok(rival.contribution.gaps!.some((gap) => gap.code === "reviewed-source-review-not-chosen"));
+
+  const chosen = await basisFor(evidence[1]!, resolveImportRecord);
+  if (chosen.contribution.context.kind !== "reviewed-source") return assert.fail("expected reviewed-source context");
+  assert.deepEqual([chosen.contribution.context.review, chosen.contribution.context.reviewedAt, chosen.contribution.context.choice], ["accepted", fixture.reviewDecision.spec.reviewedAt, { candidateCount: 2, chosenOverCandidateIds: [alphaId] }]);
+  assert.equal(chosen.contribution.gaps!.some((gap) => gap.code.startsWith("reviewed-source-review")), false);
+
+  for (const { projection } of [rival, chosen]) assert.equal(parseBasisProjectionV2(projection).ok, true);
+  const view = buildBasisPanelViewModel(chosen.projection);
+  if (view.state !== "ready") return assert.fail("expected a ready view");
+  assert.deepEqual(view.contextGroups.find((group) => group.id === "sources")?.items[0]?.facts.slice(0, 2), [{ label: "Review", value: "Accepted" }, { label: "Choice", value: "Chosen over 1 other value" }]);
+
+  // The parser refuses a context that claims acceptance without its rivals, or not-chosen without a choice.
+  const forged = structuredClone(chosen.projection) as unknown as { regions: { sources: Array<{ context: Record<string, unknown> }> } };
+  (forged.regions.sources[0]!.context.choice as { chosenOverCandidateIds: string[] }).chosenOverCandidateIds = [];
+  assert.equal(parseBasisProjectionV2(forged).ok, false);
+  const bare = structuredClone(rival.projection) as unknown as { regions: { sources: Array<{ context: Record<string, unknown> }> } };
+  delete bare.regions.sources[0]!.context.choice;
+  assert.equal(parseBasisProjectionV2(bare).ok, false);
+  // The field budget grew by exactly the optional choice: a fourteenth field is still hostile.
+  const oversized = structuredClone(chosen.projection) as unknown as { regions: { sources: Array<{ context: Record<string, unknown> }> } };
+  oversized.regions.sources[0]!.context.extra = "x";
+  const refused = parseBasisProjectionV2(oversized);
+  assert.equal(refused.ok ? "ok" : refused.gap.code, "hostile-input");
 });

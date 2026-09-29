@@ -269,6 +269,16 @@ Two opt-in requirements use them; neither changes the default policy.
 excluded rival or unreadable entry with `excluded-rival-unresolved`. Nothing
 currently resolves a rival, so every listed rival is unresolved.
 
+Two more signals check the import record for values the item does not show.
+`hiddenRivalProposalIndices` lists non-excluded proposals of the cited claim
+slot with a different value that no candidate carries. `droppedProposalIndices`
+(only on an item whose Survey binding is intact) lists proposals Survey's
+grouping puts in the item that no candidate carries, which no Survey release
+writes. The dimension carries both as `hiddenConflict`. The policy refuses
+dropped proposals by default with `hidden-conflict`; hidden rivals alone, as
+Survey 4 and earlier items have, are refused only under `refuseExcludedRivals`
+or `refuseChosenOverRivals`.
+
 For v3 evidence the dimension also carries `choice`, and the opt-in
 `refuseChosenOverRivals` refuses a chosen value that has any rival with
 `chosen-over-rival-unresolved`. A rival that was seen and not chosen is not

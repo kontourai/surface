@@ -1,5 +1,5 @@
 import type { Evidence } from "../types.js";
-import { restoreReviewedExtractionEvidence, type ReviewedExtractionRestoreOptions } from "../reviewed-extraction-evidence.js";
+import { restoreReviewedExtractionEvidence, reviewedExtractionChoice, type ReviewedExtractionChoice, type ReviewedExtractionRestoreOptions } from "../reviewed-extraction-evidence.js";
 import { restoreReviewedExtractionEvidenceBrowser } from "../reviewed-extraction-evidence-browser.js";
 import { buildReviewedExtractionSourceState, type ReviewedExtractionSourceState } from "../reviewed-grounding-policy.js";
 import type { AnswerAssessmentProjection, BasisContributionV2, BasisGap, FieldworkReviewedSourceRef, ReviewedSourceBasisAssociationV1, ReviewedSourceBasisContext, ThreadAnswerRef } from "./types.js";
@@ -22,11 +22,14 @@ export interface BuildReviewedSourceBasisContributionInput {
 export async function buildReviewedSourceBasisContribution(input: BuildReviewedSourceBasisContributionInput): Promise<BasisContributionV2<FieldworkReviewedSourceRef>> {
   let evidence: Evidence;
   let expectedRef: string;
+  let choice: ReviewedExtractionChoice | undefined;
   const restore: ReviewedExtractionRestoreOptions = { resolveImportRecord: input.resolveImportRecord };
   try {
     evidence = await restoreReviewedExtractionEvidenceBrowser(input.evidence, restore);
-    const source = restoreReviewedExtractionEvidence(evidence, restore).importRecord.spec.envelope.source;
+    const restored = restoreReviewedExtractionEvidence(evidence, restore);
+    const source = restored.importRecord.spec.envelope.source;
     expectedRef = source.snapshotRef ?? source.ref;
+    choice = reviewedExtractionChoice(restored);
   } catch { throw fail("invalid-reviewed-evidence"); }
   const { ref, association, sourceState, assessment } = input;
   if (!exactRef(ref)) throw fail("owner-ref-mismatch");
@@ -45,16 +48,20 @@ export async function buildReviewedSourceBasisContribution(input: BuildReviewedS
   if (!state) throw fail("source-state-incoherent");
   const reviewed = evidence.metadata?.reviewedExtraction as { input?: { reviewDecision?: { spec?: { status?: string; resolution?: string; reviewedAt?: string } }; structuralTrust?: string }; gaps?: unknown[] } | undefined;
   const decision = reviewed?.input?.reviewDecision?.spec;
-  const accepted = decision?.status === "verified" && (decision.resolution === undefined || decision.resolution === "accepted");
-  const review = !decision ? "not-captured" : accepted ? "accepted" : "not-accepted";
+  // On a choice, a decision that names another candidate accepts that one, not this one.
+  const notChosen = choice !== undefined && choice.decisionCandidateId !== choice.citedCandidateId;
+  const accepted = !notChosen && decision?.status === "verified" && (decision.resolution === undefined || decision.resolution === "accepted");
+  const review = !decision ? "not-captured" : notChosen ? "not-chosen" : accepted ? "accepted" : "not-accepted";
   const context: ReviewedSourceBasisContext = {
     kind: "reviewed-source", sourceClaimId: association.sourceClaimId, sourceEvidenceId: evidence.id,
     answerClaimId: association.answerClaimId, answerCitationEvidenceId: citation.id, assessmentRevision: assessment.revision,
-    review, reviewedAt: accepted && validTime(decision.reviewedAt) ? decision.reviewedAt : null,
+    review, reviewedAt: accepted && validTime(decision!.reviewedAt) ? decision!.reviewedAt : null,
+    ...(choice ? { choice: { candidateCount: choice.candidates.length, chosenOverCandidateIds: [...choice.chosenOver] } } : {}),
     currentness: state.currentness, checkedAt: state.checkedAt, expectedCapture: state.expectedCapture, observedCapture: state.observedCapture,
   };
   const gaps: BasisGap[] = [];
   if (review === "not-accepted") gaps.push(gap("reviewed-source-review-not-accepted"));
+  if (review === "not-chosen") gaps.push(gap("reviewed-source-review-not-chosen"));
   if (review === "not-captured") gaps.push(gap("reviewed-source-review-not-captured"));
   if (state.currentness === "unknown") gaps.push(gap(state.comparisonUnavailable ? "reviewed-source-capture-comparison-unavailable" : "reviewed-source-currentness-unknown"));
   if (state.currentness === "drifted") gaps.push(gap("reviewed-source-drifted"));

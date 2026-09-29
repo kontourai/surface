@@ -478,6 +478,22 @@ export interface ReviewedExtractionReviewSignals {
    * resolved. Any of them may be a rival. `count` is omitted when unknown.
    */
   excludedProposalsUnreadable?: { reason: "malformed-entries" | "binding-broken"; count?: number };
+  /**
+   * Proposals in the cited proposal's claim slot, not excluded by the import,
+   * whose value differs from the reviewed one and that no candidate of the item
+   * carries: a conflicting value the reviewer was not shown. Survey 4 and
+   * earlier wrote one item per proposal, so its items legitimately have them.
+   * Omitted when there are none.
+   */
+  hiddenRivalProposalIndices?: number[];
+  /**
+   * Set only on an item whose Survey binding is intact, which means Survey
+   * grouped it by claim slot (Survey 5 and later): proposals that grouping puts in the
+   * item, by its `proposalIndices` or as a non-excluded proposal of the claim
+   * slot, that no candidate carries. No Survey release writes such an item;
+   * candidates were dropped after the fact. Omitted when there are none.
+   */
+  droppedProposalIndices?: number[];
 }
 
 /**
@@ -543,10 +559,59 @@ export function reviewedExtractionReviewSignals(input: ReviewedExtractionEvidenc
     if (slot === citedSlot && canonicalJson(proposal!.candidateValue) !== reviewedValue) addRival(index as number);
   }
 
+  const hidden = hiddenProposals(input, excerptMismatch(diagnostics), citedSlot);
   return {
     excerptVerification, excludedRivalProposalIndices: rivals,
     ...(unreadable.reason ? { excludedProposalsUnreadable: { reason: unreadable.reason, ...(unreadable.countKnown ? { count: unreadable.count } : {}) } } : {}),
+    ...(hidden.rivals.length ? { hiddenRivalProposalIndices: hidden.rivals } : {}),
+    ...(hidden.dropped.length ? { droppedProposalIndices: hidden.dropped } : {}),
   };
+}
+
+function excerptMismatch(diagnostics: unknown[]): Set<number> {
+  const indices = new Set<number>();
+  for (const diagnostic of diagnostics) if (isRecord(diagnostic) && diagnostic.kind === "excerpt-mismatch" && typeof diagnostic.proposalIndex === "number") indices.add(diagnostic.proposalIndex);
+  return indices;
+}
+
+/**
+ * The proposals an item stands for: the cited one, each candidate's bound
+ * proposal, and the same-value proposals a candidate lists, counted only when
+ * the named proposal really has the candidate's value.
+ */
+function carriedProposals(input: ReviewedExtractionEvidenceInput): Set<number> {
+  const proposals = input.importRecord.spec.envelope.result.proposals;
+  const carried = new Set<number>([input.proposalIndex]);
+  for (const candidate of input.reviewItem?.spec.candidates ?? []) {
+    const binding = isRecord(candidate.producer) ? candidate.producer[surveyEnvelopeProducer] : undefined;
+    if (!isRecord(binding)) continue;
+    const lead = readableProposal(proposals, binding.proposalIndex);
+    if (lead !== undefined && canonicalJson(lead.candidateValue) === canonicalJson(candidate.value)) carried.add(binding.proposalIndex as number);
+    for (const same of Array.isArray(binding.sameValueProposals) ? binding.sameValueProposals : []) {
+      const index = isRecord(same) ? same.proposalIndex : undefined;
+      const proposal = readableProposal(proposals, index);
+      if (proposal !== undefined && canonicalJson(proposal.candidateValue) === canonicalJson(candidate.value)) carried.add(index as number);
+    }
+  }
+  return carried;
+}
+
+function hiddenProposals(input: ReviewedExtractionEvidenceInput, excluded: Set<number>, citedSlot: string | undefined): { rivals: number[]; dropped: number[] } {
+  const proposals = input.importRecord.spec.envelope.result.proposals;
+  const reviewedValue = canonicalJson(proposals[input.proposalIndex]!.candidateValue);
+  const carried = carriedProposals(input);
+  const inSlot: number[] = [];
+  proposals.forEach((proposal, index) => {
+    if (!carried.has(index) && !excluded.has(index) && readableProposal(proposals, index) !== undefined && citedSlot !== undefined && claimSlotKey(input, index) === citedSlot) inSlot.push(index);
+  });
+  const rivals = inSlot.filter((index) => canonicalJson(proposals[index]!.candidateValue) !== reviewedValue);
+  // Survey 5 and later group every non-excluded proposal of the slot into the item and list them.
+  // A broken binding is already reported (and never read as verified); only an intact one is held to that.
+  const binding = surveyEnvelopeBinding(input);
+  if (binding === undefined) return { rivals, dropped: [] };
+  const dropped = new Set<number>(inSlot);
+  for (const index of binding.proposalIndices as unknown[]) if (Number.isSafeInteger(index) && !carried.has(index as number) && !excluded.has(index as number)) dropped.add(index as number);
+  return { rivals, dropped: [...dropped].sort((left, right) => left - right) };
 }
 
 function surveyEnvelopeBinding(input: ReviewedExtractionEvidenceInput): Record<string, unknown> | undefined {
