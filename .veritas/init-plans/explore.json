@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "mode": "explore",
-  "target_root": "/Users/brian/dev/github/kontourai/governance-rollout-worktrees/surface",
+  "target_root": ".",
   "project_name": "surface",
   "evidenceCheck": "npm run verify",
   "repo_insights": {
