@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.3.0](https://github.com/kontourai/surface/compare/v4.2.0...v4.3.0) (2026-09-29)
+
+
+### Features
+
+* reviewed-extraction capability flags, excerpt-verification and excluded-rival signals ([#294](https://github.com/kontourai/surface/issues/294)) ([bedd531](https://github.com/kontourai/surface/commit/bedd5314018bb018027f45c1270321feaee2a5dd))
+
 ## [4.2.0](https://github.com/kontourai/surface/compare/v4.1.0...v4.2.0) (2026-09-28)
 
 
