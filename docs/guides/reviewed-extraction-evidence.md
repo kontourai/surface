@@ -77,6 +77,31 @@ identity); otherwise it must equal `result.model`. In a multi-chunk run
 `result.model` names only one chunk's model, so the per-proposal record is the
 one that identifies who produced the value.
 
+### Choice profile (v3)
+
+v1 and v2 accept a review item with exactly one candidate. For an item with
+several, such as Survey's candidate set of conflicting values with a
+`select-proposed` decision, or a recheck of a prior value against a new
+proposal, project with `{ profile: reviewedExtractionEvidenceChoiceProfile }`
+(`surface.reviewed-extraction-evidence/v3`). It has the v2 shape, so the same
+sidecar, `attachImportRecords`, and `resolverFromBundle` steps apply. Project
+one item per candidate if every value should be exported; each cites that
+candidate's proposal.
+
+- Every candidate carrying Survey's envelope binding is checked against the
+  proposal its `proposalIndex` names, by the same rules as the v1 candidate.
+  A candidate without the binding is a prior value: role `current`, at most one.
+- The decision must name one candidate, and when it chooses one of several
+  proposed values its `unselectedCandidateIds` must list the others.
+- Evidence citing the named candidate projects as usual; evidence citing any
+  other gets a `candidate-not-chosen` gap and is only `cited`.
+- `metadata.reviewedExtraction.choice` lists every candidate (role, bound
+  proposal, value digest), the cited and decision candidates, and `chosenOver`.
+  `reviewedExtractionChoice(input)` derives it from a restored input.
+
+v3 refuses a single-candidate item, and v1 and v2 still refuse multi-candidate
+items, so v3 evidence always says the value was one of several.
+
 ## Gaps and trust boundaries
 
 The projection embeds typed gaps in `Evidence.metadata.reviewedExtraction.gaps`
@@ -244,6 +269,22 @@ Two opt-in requirements use them; neither changes the default policy.
 excluded rival or unreadable entry with `excluded-rival-unresolved`. Nothing
 currently resolves a rival, so every listed rival is unresolved.
 
+Two more signals check the import record for values the item does not show.
+`hiddenRivalProposalIndices` lists non-excluded proposals of the cited claim
+slot with a different value that no candidate carries. `droppedProposalIndices`
+(only on an item whose Survey binding is intact) lists proposals Survey's
+grouping puts in the item that no candidate carries, which no Survey release
+writes. The dimension carries both as `hiddenConflict`. The policy refuses
+dropped proposals by default with `hidden-conflict`; hidden rivals alone, as
+Survey 4 and earlier items have, are refused only under `refuseExcludedRivals`
+or `refuseChosenOverRivals`.
+
+For v3 evidence the dimension also carries `choice`, and the opt-in
+`refuseChosenOverRivals` refuses a chosen value that has any rival with
+`chosen-over-rival-unresolved`. A rival that was seen and not chosen is not
+disproven either, so every rival counts. Without it, a chosen value is allowed
+on its own evidence.
+
 These facts are Survey's statements about its own import, bound by the profile
 digest like the review decision; Surface does not re-run the excerpt check.
 
@@ -253,7 +294,8 @@ Producers feature-detect with an import instead of reading Surface's
 `package.json`: `REVIEWED_EXTRACTION_ACCEPTS_UNREPORTED_CONFIDENCE` is `true`
 when proposals without a producer confidence are accepted (4.1.0 and later),
 and `REVIEWED_EXTRACTION_CAPABILITIES` holds every capability
-(`acceptsUnreportedConfidence`, `excerptVerification`, `excludedProposals`).
+(`acceptsUnreportedConfidence`, `excerptVerification`, `excludedProposals`,
+`chosenConflicts`).
 A name or key that is missing means the capability is absent. Both are plain
 constants exported from the package root, so bundlers keep them. They describe
 the Surface copy the producer imports; a consumer that resolves a different

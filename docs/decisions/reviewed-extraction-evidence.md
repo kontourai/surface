@@ -9,6 +9,10 @@ evidence:
     ref: "262"
   - kind: issue
     ref: "289"
+  - kind: issue
+    ref: "195"
+  - kind: doc
+    ref: tests/reviewed-extraction-choice.test.ts
   - kind: doc
     ref: docs/guides/reviewed-extraction-evidence.md
   - kind: doc
@@ -102,8 +106,106 @@ then refused, and the refusal names the offending evidence id, so this fails
 closed. It is equivalent to deleting the carrier, and `mergeBundlesDetailed`
 reports the collision.
 
-The v2 profile does not change the review shape; the two-candidate transition
-review (#195) is still out of scope.
+The v2 profile does not change the review shape; a review item with more
+than one candidate needs the v3 profile below.
+
+## Choice profile (v3, #195)
+
+Survey 7 groups conflicting proposals for one claim into one review item with
+a candidate per distinct value, and its `select-proposed` decision names the
+chosen candidate and lists the others in `unselectedCandidateIds`. v1 and v2
+restore by re-running a validation that accepts exactly one candidate, so a
+reader of the current release would refuse such evidence; widening them is not
+additive. `surface.reviewed-extraction-evidence/v3` is a new opt-in profile
+(`reviewedExtractionEvidenceChoiceProfile`); v1 and v2 are unchanged, and a
+test pins their bytes and profile digests from 4.3.0.
+
+v3 is the v2 reference shape (cited proposal, `importRecordDigest`, optional
+`importRecord` sidecar), so it is self-verifying the same way through
+`attachImportRecords`, `findUncarriedImportRecordDigests`, and
+`resolverFromBundle`, and fails closed without the record. It accepts only
+items with two or more candidates, so v3 evidence always records a choice and
+a single-candidate review stays v1 or v2.
+
+**Binding.** Each candidate is bound through Survey's own per-candidate
+envelope binding (`producer["survey.kontourai.io/extraction-envelope"]`, with
+`importName` naming the bound import and `proposalIndex`). A bound candidate
+must have role `proposed`, name a distinct proposal, and meet every v1
+candidate rule against that proposal (value, confidence, source, locator,
+extraction, model). A separate candidate-to-proposal input map was rejected:
+it would duplicate, and could contradict, the item it describes, as with the
+review signals above. The cited proposal must be one candidate's.
+
+**Decision.** The decision must name one candidate (`candidateId` is optional
+in v1 and v2). When that candidate is one of several proposed values,
+`unselectedCandidateIds` must list exactly the other proposed candidates in
+item order, which is Survey's own rule; otherwise it must be empty.
+Value-neutral decisions on a conflict (reject all, could not confirm) name no
+candidate and are refused; they choose nothing to ground.
+
+**Projection.** Evidence citing the named candidate projects as before
+(`entails` when accepted, validated, and gap-free). Evidence citing another
+candidate gets a `candidate-not-chosen` gap and is `cited`, so one item per
+candidate can be exported and only the chosen one supports the claim. Every
+v3 item carries a derived `choice` block: every candidate with its role, bound
+proposal, and value digest; the cited and decision candidates; and
+`chosenOver`, the rivals the cited candidate was chosen over. It is derived
+from the digest-bound input, and restore's re-projection compares it, so it
+cannot be edited. A reader sees the rivals without restoring, and the profile
+name alone says the value was one of several.
+
+**Grounding.** A chosen value is allowed on its own evidence, like any other;
+the rival's evidence is refused. `requireAcceptedReview` treats a decision
+that names a different candidate as not accepting the cited one. The dimension
+carries the `choice`. The opt-in `refuseChosenOverRivals` refuses a chosen
+value with any rival (`chosen-over-rival-unresolved`), in the style of
+`refuseExcludedRivals`: a rival that was seen and not chosen is not disproven,
+and nothing currently resolves one, so every rival counts.
+
+**Prior versus proposed.** The recheck shape fits the same rules: a candidate
+without the envelope binding is a prior value, allowed only with role
+`current` and at most once. It has no proposal, so it is never cited; it
+appears in `choice` with no `proposalIndex`, and a keep-current decision
+leaves the proposal's evidence `cited` with `candidate-not-chosen`. Accepted
+gaps: the proposed candidate must carry Survey's envelope binding, and the
+item must be non-editable, as in v1. Survey's own binding rule wants every
+candidate to carry the binding, so on such an item the review signals read
+excerpt verification as unverified.
+
+**Hidden conflicts.** Dropping the rivals from a chosen conflict and
+projecting the rest as v1 or v2 would otherwise read as an uncontested review.
+The import record still holds the rival values, so the review signals check
+it (all profiles, derived, no profile change): `hiddenRivalProposalIndices`
+lists non-excluded proposals of the cited claim slot with a different value
+that no candidate carries, and, on an item whose Survey binding is intact,
+`droppedProposalIndices` lists slot or `proposalIndices` members that no
+candidate carries. A candidate's `sameValueProposals` counts only where the
+named proposal has the candidate's value. Survey 5, 6, and 7 group every
+non-excluded proposal of a slot into one item and list them in
+`proposalIndices`, so no Survey release writes dropped proposals: the
+grounding policy refuses them by default with `hidden-conflict`. Survey 4
+and earlier wrote one item per proposal with no `proposalIndices`, so a
+legitimate older bundle has hidden rivals whose own items may have been
+reviewed; those are shown on the dimension (`hiddenConflict`) and refused
+only under `refuseExcludedRivals` or `refuseChosenOverRivals`. Refusing them
+by default would flip existing allowed decisions for bundles Surface cannot
+tell apart from that older shape. Stripping `proposalIndices` to imitate it
+breaks the binding, so excerpt verification also reads as unverified.
+
+**Basis.** The reviewed-source adapter uses the same rule as the policy: a
+v3 item whose decision names another candidate reads `review: "not-chosen"`
+with no `reviewedAt` and a `reviewed-source-review-not-chosen` gap. Every v3
+context carries `choice` (`candidateCount`, and on the accepted candidate the
+`chosenOverCandidateIds`); the parser checks that shape, and the Basis field
+budget grows from 12 to 13 for it. An older parser refuses such a context.
+
+Verified end to end against `@kontourai/survey` 7.0.0 from npm: its import,
+`buildReviewDecision` with `select-proposed`, and
+`toSurfaceReviewedExtractionImport` (which passes the record through) project
+under v3, restore from the bundle alone, and ground the claim
+`buildSurveyTrustBundle` exports, whose `metadata.survey.candidates` lists the
+same candidates with the chosen one `selected`. The fixture in
+`tests/fixtures/reviewed-extraction-choice.survey7.json` is that output.
 
 ## Review signals (#289)
 

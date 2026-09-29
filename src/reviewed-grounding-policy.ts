@@ -4,7 +4,9 @@ import {
   restoreReviewedExtractionEvidence,
   reviewedExtractionStructuralTrust,
   reviewedExtractionReviewSignals,
+  reviewedExtractionChoice,
   ReviewedExtractionImportRecordUnresolvedError,
+  type ReviewedExtractionChoice,
   type ReviewedExtractionEvidenceInput,
   type ReviewedExtractionRestoreOptions,
   type ReviewedExtractionProvenanceGap,
@@ -42,6 +44,13 @@ export interface ReviewedGroundingPolicy {
    * (`excluded-rival-unresolved`). See `reviewedExtractionReviewSignals`.
    */
   refuseExcludedRivals?: boolean;
+  /**
+   * Opt-in: refuse evidence whose value a reviewer chose over rival candidates
+   * (`chosen-over-rival-unresolved`). A rival that was seen and not chosen is
+   * not disproven, and nothing currently resolves one, so every rival counts.
+   * Without it, a chosen value is allowed on its own evidence, as any other.
+   */
+  refuseChosenOverRivals?: boolean;
 }
 
 export interface ReviewedExtractionSourceState {
@@ -104,6 +113,14 @@ export type ReviewedGroundingPolicyGap =
   | { kind: "source-state-incoherent"; claimId: string; evidenceId: string }
   | { kind: "excerpt-not-verified"; claimId: string; evidenceId: string }
   | { kind: "excluded-rival-unresolved"; claimId: string; evidenceId: string; rivalProposalIndices: number[]; unreadable?: ReviewedExtractionReviewSignals["excludedProposalsUnreadable"] }
+  | { kind: "chosen-over-rival-unresolved"; claimId: string; evidenceId: string; rivalCandidateIds: string[] }
+  /**
+   * A conflicting value in the cited claim slot that the reviewed item does not
+   * show. Always emitted when candidates were dropped from a Survey-grouped
+   * item (`droppedProposalIndices`); for an ungrouped (Survey 4 and earlier)
+   * item, only under `refuseExcludedRivals` or `refuseChosenOverRivals`.
+   */
+  | { kind: "hidden-conflict"; claimId: string; evidenceId: string; rivalProposalIndices: number[]; droppedProposalIndices: number[] }
   | { kind: "invalid-reviewed-evidence"; claimId: string; evidenceId: string }
   /** v2 evidence whose import record the caller's `resolveImportRecord` did not supply. */
   | { kind: "import-record-unresolved"; claimId: string; evidenceId: string; importRecordDigest: string }
@@ -129,6 +146,10 @@ export interface ReviewedGroundingDimension {
   excerptVerification?: "verified";
   /** Present only when the import excluded a rival value or stored entries Surface cannot read. */
   excludedRivals?: { proposalIndices: number[]; unreadable?: ReviewedExtractionReviewSignals["excludedProposalsUnreadable"] };
+  /** Present only when the import record holds a value for the claim slot that the item does not show (see `reviewedExtractionReviewSignals`). */
+  hiddenConflict?: { rivalProposalIndices: number[]; droppedProposalIndices: number[] };
+  /** v3 evidence only: the item's candidates and the rivals the cited one was chosen over (see `reviewedExtractionChoice`). */
+  choice?: ReviewedExtractionChoice;
 }
 
 export interface ReviewedGroundingPolicyDecision {
@@ -236,6 +257,7 @@ function buildDimension(claimId: string, evidence: Evidence, reviewed: ReviewedE
   const reviewItemName = reviewed.reviewItem?.metadata.name;
   const reviewDecisionName = reviewed.reviewDecision?.metadata.name;
   const signals = reviewedExtractionReviewSignals(reviewed);
+  const choice = reviewedExtractionChoice(reviewed);
   return {
     claimId, evidenceId: evidence.id,
     ...(reviewItemName ? { reviewItemName } : {}), ...(reviewDecisionName ? { reviewDecisionName } : {}),
@@ -252,13 +274,19 @@ function buildDimension(claimId: string, evidence: Evidence, reviewed: ReviewedE
     ...(signals.excludedRivalProposalIndices.length > 0 || signals.excludedProposalsUnreadable
       ? { excludedRivals: { proposalIndices: signals.excludedRivalProposalIndices, ...(signals.excludedProposalsUnreadable ? { unreadable: signals.excludedProposalsUnreadable } : {}) } }
       : {}),
+    ...(signals.hiddenRivalProposalIndices || signals.droppedProposalIndices
+      ? { hiddenConflict: { rivalProposalIndices: signals.hiddenRivalProposalIndices ?? [], droppedProposalIndices: signals.droppedProposalIndices ?? [] } }
+      : {}),
+    ...(choice ? { choice } : {}),
   };
 }
 
 function evaluateEvidenceGaps(policy: ReviewedGroundingPolicy, evidence: Evidence, reviewed: ReviewedExtractionEvidenceInput, dimension: ReviewedGroundingDimension, artifactAvailable: boolean, coherentSourceState: boolean): ReviewedGroundingPolicyGap[] {
   const gaps: ReviewedGroundingPolicyGap[] = [];
   const base = { claimId: dimension.claimId, evidenceId: evidence.id };
-  const accepted = reviewed.reviewDecision?.spec.status === "verified" && (reviewed.reviewDecision.spec.resolution === undefined || reviewed.reviewDecision.spec.resolution === "accepted");
+  // On a choice, the decision accepts the cited value only when it names the cited candidate.
+  const accepted = reviewed.reviewDecision?.spec.status === "verified" && (reviewed.reviewDecision.spec.resolution === undefined || reviewed.reviewDecision.spec.resolution === "accepted")
+    && (dimension.choice === undefined || dimension.choice.decisionCandidateId === dimension.choice.citedCandidateId);
   if (evidence.supportStrength !== "entails" || evidence.passing !== true || evidence.blocking !== false) gaps.push({ kind: "evidence-not-entailing", ...base });
   if (policy.requireExactLocator && !evidence.sourceLocator) gaps.push({ kind: "missing-exact-locator", ...base });
   if (policy.requirePreparedArtifact && (!artifactAvailable || !evidence.integrityRef)) gaps.push({ kind: "missing-prepared-artifact", ...base });
@@ -267,6 +295,9 @@ function evaluateEvidenceGaps(policy: ReviewedGroundingPolicy, evidence: Evidenc
   if (!coherentSourceState) gaps.push({ kind: "source-state-incoherent", ...base });
   if (policy.requireCurrentSource && dimension.sourceState.status !== "current") gaps.push({ kind: "source-not-current", ...base, status: dimension.sourceState.status });
   if (policy.requireVerifiedExcerpts && dimension.excerptVerification !== "verified") gaps.push({ kind: "excerpt-not-verified", ...base });
+  const hidden = dimension.hiddenConflict;
+  if (hidden && (hidden.droppedProposalIndices.length > 0 || (hidden.rivalProposalIndices.length > 0 && (policy.refuseExcludedRivals || policy.refuseChosenOverRivals)))) gaps.push({ kind: "hidden-conflict", ...base, ...hidden });
+  if (policy.refuseChosenOverRivals && dimension.choice && dimension.choice.chosenOver.length > 0) gaps.push({ kind: "chosen-over-rival-unresolved", ...base, rivalCandidateIds: dimension.choice.chosenOver });
   if (policy.refuseExcludedRivals && dimension.excludedRivals) gaps.push({ kind: "excluded-rival-unresolved", ...base, rivalProposalIndices: dimension.excludedRivals.proposalIndices, ...(dimension.excludedRivals.unreadable ? { unreadable: dimension.excludedRivals.unreadable } : {}) });
   const coverage = extractionCoverageGap(reviewed);
   if (coverage) gaps.push({ kind: "extraction-coverage-incomplete", ...base, ...coverage });

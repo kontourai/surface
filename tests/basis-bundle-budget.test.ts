@@ -6,11 +6,14 @@ import { build } from "esbuild";
 const BUDGETS = {
   // Measured at Basis v2: 7,036 -> 7,962 gzip bytes for the parallel closed
   // parser and reviewed-source facts; the adapter itself remains a separate opt-in entry.
-  "src/basis/view-index.ts": 8_300,
-  // MCP embeds the v2-capable parser/view (measured 110,269 gzip bytes).
-  "src/basis/mcp.ts": 110_700,
-  // The shared Trust Panel embeds the same parser (measured 12,769 gzip bytes).
-  "src/trust-panel/surface-trust-panel.ts": 13_100,
+  // 8,474 with the reviewed-source choice (not-chosen review and chosen-over rivals).
+  "src/basis/view-index.ts": 8_800,
+  // MCP embeds the v2-capable parser/view (measured 110,269 gzip bytes;
+  // 110,916 with the reviewed-source choice).
+  "src/basis/mcp.ts": 111_400,
+  // The shared Trust Panel embeds the same parser (measured 12,769 gzip bytes;
+  // 13,264 with the reviewed-source choice).
+  "src/trust-panel/surface-trust-panel.ts": 13_600,
   // Display names + claim basis view (measured 3,919 gzip bytes); bundling for
   // platform "browser" also proves the subpath pulls in no Node-only module.
   "src/display.ts": 4_400,

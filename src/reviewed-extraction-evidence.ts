@@ -9,7 +9,15 @@ export const reviewedExtractionEvidenceProfile = "surface.reviewed-extraction-ev
  * needs the record from `resolveImportRecord`.
  */
 export const reviewedExtractionEvidenceReferenceProfile = "surface.reviewed-extraction-evidence/v2";
-export type ReviewedExtractionEvidenceProfile = typeof reviewedExtractionEvidenceProfile | typeof reviewedExtractionEvidenceReferenceProfile;
+/**
+ * Choice profile: the v2 reference shape for a review item with two or more
+ * candidates, where the review decision names one of them. Every candidate
+ * that stands for a proposal is bound to it, and the evidence records the
+ * candidates the chosen one was chosen over (`choice`). v1 and v2 accept only
+ * single-candidate items.
+ */
+export const reviewedExtractionEvidenceChoiceProfile = "surface.reviewed-extraction-evidence/v3";
+export type ReviewedExtractionEvidenceProfile = typeof reviewedExtractionEvidenceProfile | typeof reviewedExtractionEvidenceReferenceProfile | typeof reviewedExtractionEvidenceChoiceProfile;
 
 /**
  * Feature detection for producers: `true` when this Surface projects proposals
@@ -26,11 +34,15 @@ export const REVIEWED_EXTRACTION_ACCEPTS_UNREPORTED_CONFIDENCE = true;
  *   excerpt verification, and the grounding policy can require it.
  * - `excludedProposals`: `reviewedExtractionReviewSignals` reads the review
  *   item's excluded proposals, and the grounding policy can refuse excluded rivals.
+ * - `chosenConflicts`: the v3 profile (`reviewedExtractionEvidenceChoiceProfile`)
+ *   projects a review item with several candidates and a decision that names
+ *   one, and the grounding policy can refuse the rivals it was chosen over.
  */
 export const REVIEWED_EXTRACTION_CAPABILITIES = Object.freeze({
   acceptsUnreportedConfidence: true,
   excerptVerification: true,
   excludedProposals: true,
+  chosenConflicts: true,
 } as const);
 
 const surveyApiVersion = "survey.kontourai.io/v1alpha1";
@@ -79,7 +91,7 @@ export interface SurveyExtractionReviewItem {
   spec: {
     target: string;
     candidates: Array<{
-      id: string; value: unknown; confidence?: number;
+      id: string; /** Survey's candidate role; v3 requires `proposed` on a candidate bound to a proposal and `current` on one that is not. */ role?: string; value: unknown; confidence?: number;
       source: { sourceRef: string; sourceId?: string; observedAt?: string; checksum?: string; locatorScheme?: string; [key: string]: unknown };
       locator?: { scheme: string; locator?: string; excerpt?: string };
       extraction: { target: string; extractor?: string; model?: string; confidence?: number; [key: string]: unknown };
@@ -105,6 +117,8 @@ export interface SurveyExtractionReviewDecision {
     actor?: { id: string; displayName?: string }; reviewedAt?: string; rationale?: string;
     evidenceIds?: string[]; withinComfortZone?: boolean; comfortZoneNote?: string;
     authorizing?: Record<string, unknown>; projection?: Record<string, unknown>; editedValue?: unknown;
+    /** The proposed candidates a Survey `select-proposed` decision passed over, in item order. */
+    unselectedCandidateIds?: string[];
   };
   status?: { appliedToClaimIds?: string[] };
 }
@@ -135,7 +149,31 @@ export type ReviewedExtractionProvenanceGap =
   | { kind: "unsupported-inference"; typeOrigin: string }
   | { kind: "dropped-provenance"; field: string }
   | { kind: "structural-trust"; status: "unvalidated" | "invalid" }
-  | { kind: "review-not-accepted"; disposition: string };
+  | { kind: "review-not-accepted"; disposition: string }
+  /** v3 only: the review decision names a different candidate from the one this evidence cites. */
+  | { kind: "candidate-not-chosen"; decisionCandidateId: string };
+
+/**
+ * v3 only: the candidates of the reviewed item and which one the decision
+ * named, derived from the bound review item and decision. A reader sees from
+ * it that the value was one of several.
+ */
+export interface ReviewedExtractionChoice {
+  /** The candidate that stands for the cited proposal. */
+  citedCandidateId: string;
+  /** The candidate the review decision names. */
+  decisionCandidateId: string;
+  /**
+   * Every candidate of the item, in item order. `proposalIndex` is the proposal
+   * the candidate is bound to; a `current` candidate (a prior value) has none.
+   */
+  candidates: Array<{ candidateId: string; role: "proposed" | "current"; proposalIndex?: number; valueDigest: string }>;
+  /**
+   * The candidates the cited one was chosen over: every other candidate when
+   * the decision accepted the cited candidate, otherwise empty.
+   */
+  chosenOver: string[];
+}
 
 export interface ReviewedExtractionEvidenceProjection {
   evidence: Evidence;
@@ -152,10 +190,10 @@ export type ReviewedExtractionEvidenceReferenceInput = Omit<ReviewedExtractionEv
 };
 
 export interface ReviewedExtractionProjectionOptions {
-  /** Defaults to v1, which embeds the whole import record. */
+  /** Defaults to v1, which embeds the whole import record. v3 is required for, and only accepts, an item with several candidates. */
   profile?: ReviewedExtractionEvidenceProfile;
   /**
-   * v2 only: also carry the import record as the `importRecord` sidecar, outside
+   * v2 and v3 only: also carry the import record as the `importRecord` sidecar, outside
    * the digested profile input. Set it on one evidence item per import record
    * in a bundle so the bundle verifies on its own (`resolverFromBundle`).
    */
@@ -165,14 +203,14 @@ export interface ReviewedExtractionProjectionOptions {
 export interface ReviewedExtractionRestoreOptions {
   /**
    * Returns the import record whose `reviewedExtractionImportRecordDigest` is
-   * `importRecordDigest`, or undefined when it is not available. Only v2
-   * evidence consults it; restore verifies the returned record against the
+   * `importRecordDigest`, or undefined when it is not available. Only v2 and v3
+   * evidence consult it; restore verifies the returned record against the
    * digest, so the resolver needs no trust of its own.
    */
   resolveImportRecord?: (importRecordDigest: string) => SurveyExtractionEnvelopeImport | undefined;
 }
 
-/** v2 evidence could not be restored because no import record was resolved for its digest. */
+/** v2 or v3 evidence could not be restored because no import record was resolved for its digest. */
 export class ReviewedExtractionImportRecordUnresolvedError extends Error {
   readonly code = "import-record-unresolved" as const;
   constructor(readonly importRecordDigest: string) {
@@ -181,7 +219,7 @@ export class ReviewedExtractionImportRecordUnresolvedError extends Error {
   }
 }
 
-/** Canonical-JSON SHA-256 of an import record, as v2 evidence binds it. */
+/** Canonical-JSON SHA-256 of an import record, as v2 and v3 evidence bind it. */
 export function reviewedExtractionImportRecordDigest(importRecord: SurveyExtractionEnvelopeImport): string {
   assertJsonValue(importRecord, "Reviewed extraction import record");
   return digest(importRecord);
@@ -192,17 +230,27 @@ interface ProfileMetadata {
   profileDigest: string;
   input: ReviewedExtractionEvidenceInput | ReviewedExtractionEvidenceReferenceInput;
   gaps: ReviewedExtractionProvenanceGap[];
-  /** v2 only: the import record, carried once per bundle; outside the profile digest, checked against `input.importRecordDigest`. */
+  /** v3 only: derived from the bound input, so restore's re-projection checks it. */
+  choice?: ReviewedExtractionChoice;
+  /** v2 and v3: the import record, carried once per bundle; outside the profile digest, checked against `input.importRecordDigest`. */
   importRecord?: SurveyExtractionEnvelopeImport;
+}
+
+function isReferenceProfile(profile: unknown): profile is typeof reviewedExtractionEvidenceReferenceProfile | typeof reviewedExtractionEvidenceChoiceProfile {
+  return profile === reviewedExtractionEvidenceReferenceProfile || profile === reviewedExtractionEvidenceChoiceProfile;
+}
+function isKnownProfile(profile: unknown): profile is ReviewedExtractionEvidenceProfile {
+  return profile === reviewedExtractionEvidenceProfile || isReferenceProfile(profile);
 }
 
 export function projectReviewedExtractionEvidence(input: ReviewedExtractionEvidenceInput, options: ReviewedExtractionProjectionOptions = {}): ReviewedExtractionEvidenceProjection {
   const profile = options.profile ?? reviewedExtractionEvidenceProfile;
-  if (profile !== reviewedExtractionEvidenceProfile && profile !== reviewedExtractionEvidenceReferenceProfile) throw new Error("Reviewed extraction evidence profile is unsupported.");
-  validateInput(input);
+  if (!isKnownProfile(profile)) throw new Error("Reviewed extraction evidence profile is unsupported.");
+  validateInput(input, profile);
   const proposal = input.importRecord.spec.envelope.result.proposals[input.proposalIndex]!;
   const artifact = input.importRecord.spec.envelope.result.preparedArtifact;
-  const gaps = provenanceGaps(input);
+  const choice = profile === reviewedExtractionEvidenceChoiceProfile ? reviewedExtractionChoice(input) : undefined;
+  const gaps = provenanceGaps(input, choice);
   const acceptedAndSafe = decisionAccepted(input.reviewDecision) && effectiveStructuralTrust(input) === "validated" && gaps.length === 0;
   const anchors = {
     id: input.evidenceId, claimId: input.claimId, evidenceType: "source_excerpt" as const, method: "extraction" as const,
@@ -216,29 +264,29 @@ export function projectReviewedExtractionEvidence(input: ReviewedExtractionEvide
   const clonedInput = clone(input);
   const profileInput = profile === reviewedExtractionEvidenceProfile ? clonedInput : referenceInput(clonedInput);
   const profileDigest = digest({ anchors, input: profileInput, gaps });
-  if (options.includeImportRecord && profile !== reviewedExtractionEvidenceReferenceProfile) throw new Error("Only the v2 profile carries an import record sidecar.");
+  if (options.includeImportRecord && !isReferenceProfile(profile)) throw new Error("Only the v2 profile and the v3 profile carry an import record sidecar.");
   const sidecar = options.includeImportRecord ? { importRecord: clone(input.importRecord) } : {};
-  const evidence: Evidence = { ...anchors, metadata: { reviewedExtraction: { profile, profileDigest, input: profileInput, gaps, ...sidecar } satisfies ProfileMetadata } };
+  const evidence: Evidence = { ...anchors, metadata: { reviewedExtraction: { profile, profileDigest, input: profileInput, gaps, ...(choice ? { choice } : {}), ...sidecar } satisfies ProfileMetadata } };
   return { evidence, gaps, compatibility: { hachureEvidenceSchema: "sufficient", upstreamSchemaChangeNeeded: false, profile } };
 }
 
 /**
- * Recovers the full input. v1 evidence is self-contained. v2 evidence needs
+ * Recovers the full input. v1 evidence is self-contained. v2 and v3 evidence need
  * `options.resolveImportRecord`; without a record it throws
  * `ReviewedExtractionImportRecordUnresolvedError`, and a record whose digest
  * differs from the bound `importRecordDigest` is refused.
  */
 export function restoreReviewedExtractionEvidence(evidence: Evidence, options: ReviewedExtractionRestoreOptions = {}): ReviewedExtractionEvidenceInput {
   const metadata = evidence.metadata?.reviewedExtraction;
-  if (!isRecord(metadata) || (metadata.profile !== reviewedExtractionEvidenceProfile && metadata.profile !== reviewedExtractionEvidenceReferenceProfile) || typeof metadata.profileDigest !== "string" || !isRecord(metadata.input) || !Array.isArray(metadata.gaps)) throw new Error("Evidence does not carry a complete reviewed extraction evidence profile.");
-  const profile = metadata.profile as ReviewedExtractionEvidenceProfile;
+  if (!isRecord(metadata) || !isKnownProfile(metadata.profile) || typeof metadata.profileDigest !== "string" || !isRecord(metadata.input) || !Array.isArray(metadata.gaps)) throw new Error("Evidence does not carry a complete reviewed extraction evidence profile.");
+  const profile = metadata.profile;
   const profileInput = metadata.input;
-  const reference = profile === reviewedExtractionEvidenceReferenceProfile;
+  const reference = isReferenceProfile(profile);
   // The sidecar is not part of the bound profile; it is only a carrier for the
   // record the digest names. Its own record, when present, must match that digest.
   const hasSidecar = reference && Object.hasOwn(metadata, "importRecord");
-  const input = reference ? resolveReferenceInput(profileInput, hasSidecar ? withSidecar(metadata.importRecord, profileInput.importRecordDigest, options) : options) : profileInput as unknown as ReviewedExtractionEvidenceInput;
-  validateInput(input);
+  const input = reference ? resolveReferenceInput(profileInput, hasSidecar ? withSidecar(metadata.importRecord, profileInput.importRecordDigest, options) : options, profile) : profileInput as unknown as ReviewedExtractionEvidenceInput;
+  validateInput(input, profile);
   const expected = projectReviewedExtractionEvidence(input, { profile, includeImportRecord: hasSidecar });
   const actualDigest = digest({ anchors: withoutMetadata(evidence), input: profileInput, gaps: metadata.gaps });
   if (actualDigest !== metadata.profileDigest || metadata.profileDigest !== (expected.evidence.metadata!.reviewedExtraction as ProfileMetadata).profileDigest) throw new Error("Reviewed extraction evidence profile integrity binding is invalid.");
@@ -248,7 +296,7 @@ export function restoreReviewedExtractionEvidence(evidence: Evidence, options: R
 
 /**
  * Builds a `resolveImportRecord` from the `importRecord` sidecars of a bundle's
- * v2 evidence, so a reader holding only the bundle can verify it. A sidecar
+ * v2 and v3 evidence, so a reader holding only the bundle can verify it. A sidecar
  * whose record does not hash to its item's `importRecordDigest` poisons that
  * digest: every lookup of it throws instead of falling back to another copy.
  * A digest with no sidecar in the bundle resolves to undefined (unresolved).
@@ -272,7 +320,7 @@ export function resolverFromBundle(bundle: { evidence: readonly Evidence[] }): N
 
 /**
  * For each distinct `importRecordDigest` that `records` supplies and no item
- * already carries, puts one `importRecord` sidecar on the first v2 item citing
+ * already carries, puts one `importRecord` sidecar on the first v2 or v3 item citing
  * it, so the bundle meets `resolverFromBundle`'s precondition. An existing
  * matching carrier stays where it is, even on a later item. Idempotent: items that
  * already carry the right record are left alone, and other items are returned
@@ -302,7 +350,7 @@ export function attachImportRecords(evidence: readonly Evidence[], records: Iter
 }
 
 /**
- * Checks carrier completeness and consistency: returns the v2
+ * Checks carrier completeness and consistency: returns the v2 and v3
  * `importRecordDigest`s that `resolverFromBundle` cannot supply, either because
  * no item carries a matching sidecar or because any carrier of that digest
  * does not match it (which makes the resolver refuse the digest). Empty means
@@ -321,7 +369,7 @@ export function findUncarriedImportRecordDigests(bundle: { evidence: readonly Ev
 
 function referenceDigest(evidence: Evidence): string | undefined {
   const metadata = evidence.metadata?.reviewedExtraction;
-  if (!isRecord(metadata) || metadata.profile !== reviewedExtractionEvidenceReferenceProfile || !isRecord(metadata.input)) return undefined;
+  if (!isRecord(metadata) || !isReferenceProfile(metadata.profile) || !isRecord(metadata.input)) return undefined;
   return typeof metadata.input.importRecordDigest === "string" ? metadata.input.importRecordDigest : undefined;
 }
 
@@ -348,8 +396,8 @@ function referenceInput(input: ReviewedExtractionEvidenceInput): ReviewedExtract
   return { ...rest, importRecordDigest: digest(importRecord), proposal: importRecord.spec.envelope.result.proposals[input.proposalIndex]! };
 }
 
-/** Rebuilds the v1 input from a v2 profile input and the resolved record, after checking the record against the bound digest. */
-function resolveReferenceInput(profileInput: Record<string, unknown>, options: ReviewedExtractionRestoreOptions): ReviewedExtractionEvidenceInput {
+/** Rebuilds the v1 input from a v2 or v3 profile input and the resolved record, after checking the record against the bound digest. */
+function resolveReferenceInput(profileInput: Record<string, unknown>, options: ReviewedExtractionRestoreOptions, profile: ReviewedExtractionEvidenceProfile): ReviewedExtractionEvidenceInput {
   const { importRecordDigest, proposal, ...rest } = profileInput;
   prefixedDigest(importRecordDigest, "importRecordDigest");
   if (!isRecord(proposal)) throw new Error("proposal must be an object.");
@@ -359,7 +407,7 @@ function resolveReferenceInput(profileInput: Record<string, unknown>, options: R
   assertJsonValue(importRecord, "Resolved import record");
   if (digest(importRecord) !== importRecordDigest) throw new Error("Resolved import record does not match the bound importRecordDigest.");
   const input = { ...rest, importRecord: clone(importRecord) } as unknown as ReviewedExtractionEvidenceInput;
-  validateInput(input);
+  validateInput(input, profile);
   if (canonicalJson(input.importRecord.spec.envelope.result.proposals[input.proposalIndex]) !== canonicalJson(proposal)) throw new Error("Embedded proposal does not match the resolved import record.");
   return input;
 }
@@ -430,6 +478,22 @@ export interface ReviewedExtractionReviewSignals {
    * resolved. Any of them may be a rival. `count` is omitted when unknown.
    */
   excludedProposalsUnreadable?: { reason: "malformed-entries" | "binding-broken"; count?: number };
+  /**
+   * Proposals in the cited proposal's claim slot, not excluded by the import,
+   * whose value differs from the reviewed one and that no candidate of the item
+   * carries: a conflicting value the reviewer was not shown. Survey 4 and
+   * earlier wrote one item per proposal, so its items legitimately have them.
+   * Omitted when there are none.
+   */
+  hiddenRivalProposalIndices?: number[];
+  /**
+   * Set only on an item whose Survey binding is intact, which means Survey
+   * grouped it by claim slot (Survey 5 and later): proposals that grouping puts in the
+   * item, by its `proposalIndices` or as a non-excluded proposal of the claim
+   * slot, that no candidate carries. No Survey release writes such an item;
+   * candidates were dropped after the fact. Omitted when there are none.
+   */
+  droppedProposalIndices?: number[];
 }
 
 /**
@@ -495,10 +559,59 @@ export function reviewedExtractionReviewSignals(input: ReviewedExtractionEvidenc
     if (slot === citedSlot && canonicalJson(proposal!.candidateValue) !== reviewedValue) addRival(index as number);
   }
 
+  const hidden = hiddenProposals(input, excerptMismatch(diagnostics), citedSlot);
   return {
     excerptVerification, excludedRivalProposalIndices: rivals,
     ...(unreadable.reason ? { excludedProposalsUnreadable: { reason: unreadable.reason, ...(unreadable.countKnown ? { count: unreadable.count } : {}) } } : {}),
+    ...(hidden.rivals.length ? { hiddenRivalProposalIndices: hidden.rivals } : {}),
+    ...(hidden.dropped.length ? { droppedProposalIndices: hidden.dropped } : {}),
   };
+}
+
+function excerptMismatch(diagnostics: unknown[]): Set<number> {
+  const indices = new Set<number>();
+  for (const diagnostic of diagnostics) if (isRecord(diagnostic) && diagnostic.kind === "excerpt-mismatch" && typeof diagnostic.proposalIndex === "number") indices.add(diagnostic.proposalIndex);
+  return indices;
+}
+
+/**
+ * The proposals an item stands for: the cited one, each candidate's bound
+ * proposal, and the same-value proposals a candidate lists, counted only when
+ * the named proposal really has the candidate's value.
+ */
+function carriedProposals(input: ReviewedExtractionEvidenceInput): Set<number> {
+  const proposals = input.importRecord.spec.envelope.result.proposals;
+  const carried = new Set<number>([input.proposalIndex]);
+  for (const candidate of input.reviewItem?.spec.candidates ?? []) {
+    const binding = isRecord(candidate.producer) ? candidate.producer[surveyEnvelopeProducer] : undefined;
+    if (!isRecord(binding)) continue;
+    const lead = readableProposal(proposals, binding.proposalIndex);
+    if (lead !== undefined && canonicalJson(lead.candidateValue) === canonicalJson(candidate.value)) carried.add(binding.proposalIndex as number);
+    for (const same of Array.isArray(binding.sameValueProposals) ? binding.sameValueProposals : []) {
+      const index = isRecord(same) ? same.proposalIndex : undefined;
+      const proposal = readableProposal(proposals, index);
+      if (proposal !== undefined && canonicalJson(proposal.candidateValue) === canonicalJson(candidate.value)) carried.add(index as number);
+    }
+  }
+  return carried;
+}
+
+function hiddenProposals(input: ReviewedExtractionEvidenceInput, excluded: Set<number>, citedSlot: string | undefined): { rivals: number[]; dropped: number[] } {
+  const proposals = input.importRecord.spec.envelope.result.proposals;
+  const reviewedValue = canonicalJson(proposals[input.proposalIndex]!.candidateValue);
+  const carried = carriedProposals(input);
+  const inSlot: number[] = [];
+  proposals.forEach((proposal, index) => {
+    if (!carried.has(index) && !excluded.has(index) && readableProposal(proposals, index) !== undefined && citedSlot !== undefined && claimSlotKey(input, index) === citedSlot) inSlot.push(index);
+  });
+  const rivals = inSlot.filter((index) => canonicalJson(proposals[index]!.candidateValue) !== reviewedValue);
+  // Survey 5 and later group every non-excluded proposal of the slot into the item and list them.
+  // A broken binding is already reported (and never read as verified); only an intact one is held to that.
+  const binding = surveyEnvelopeBinding(input);
+  if (binding === undefined) return { rivals, dropped: [] };
+  const dropped = new Set<number>(inSlot);
+  for (const index of binding.proposalIndices as unknown[]) if (Number.isSafeInteger(index) && !carried.has(index as number) && !excluded.has(index as number)) dropped.add(index as number);
+  return { rivals, dropped: [...dropped].sort((left, right) => left - right) };
 }
 
 function surveyEnvelopeBinding(input: ReviewedExtractionEvidenceInput): Record<string, unknown> | undefined {
@@ -530,7 +643,35 @@ function claimSlotKey(input: ReviewedExtractionEvidenceInput, index: number): st
   return canonicalJson({ subjectType: target.subjectType, subjectId: target.subjectId, facet: target.facet, claimType: target.claimType, fieldOrBehavior: target.fieldOrBehavior, claimId: target.claimId ?? null, pathIndices: proposal.pathIndices ?? null });
 }
 
-function provenanceGaps(input: ReviewedExtractionEvidenceInput): ReviewedExtractionProvenanceGap[] {
+/**
+ * The choice a restored input records, or undefined for a single-candidate
+ * item (v1 and v2 accept only those; v3 only items with several candidates).
+ * Candidates are bound by Survey's own per-candidate envelope binding
+ * (`proposalIndex`); a `current` candidate carries a prior value and none.
+ * Call it on an input that `restoreReviewedExtractionEvidence` returned.
+ */
+export function reviewedExtractionChoice(input: ReviewedExtractionEvidenceInput): ReviewedExtractionChoice | undefined {
+  const item = input.reviewItem;
+  const decision = input.reviewDecision;
+  if (item === undefined || decision === undefined || item.spec.candidates.length < 2) return undefined;
+  const candidates = item.spec.candidates.map((candidate) => {
+    const index = candidateProposalIndex(candidate);
+    return { candidateId: candidate.id, role: index === undefined ? "current" as const : "proposed" as const, ...(index === undefined ? {} : { proposalIndex: index }), valueDigest: digest(candidate.value) };
+  });
+  const cited = candidates.find((candidate) => candidate.proposalIndex === input.proposalIndex);
+  const decisionCandidateId = decision.spec.candidateId;
+  if (cited === undefined || decisionCandidateId === undefined) throw new Error("Reviewed extraction choice is not bound to its candidates.");
+  const chosen = decisionAccepted(decision) && decisionCandidateId === cited.candidateId;
+  return { citedCandidateId: cited.candidateId, decisionCandidateId, candidates, chosenOver: chosen ? candidates.filter((candidate) => candidate !== cited).map((candidate) => candidate.candidateId) : [] };
+}
+
+/** Survey's per-candidate envelope binding: the proposal a candidate stands for, or undefined when it carries none. */
+function candidateProposalIndex(candidate: unknown): number | undefined {
+  const producer = isRecord(candidate) && isRecord(candidate.producer) ? candidate.producer[surveyEnvelopeProducer] : undefined;
+  return isRecord(producer) && Object.hasOwn(producer, "proposalIndex") ? producer.proposalIndex as number : undefined;
+}
+
+function provenanceGaps(input: ReviewedExtractionEvidenceInput, choice?: ReviewedExtractionChoice): ReviewedExtractionProvenanceGap[] {
   const result = input.importRecord.spec.envelope.result;
   const state = result.preparedArtifactState;
   const gaps: ReviewedExtractionProvenanceGap[] = [];
@@ -543,10 +684,11 @@ function provenanceGaps(input: ReviewedExtractionEvidenceInput): ReviewedExtract
   const structuralTrust = effectiveStructuralTrust(input);
   if (structuralTrust !== "validated") gaps.push({ kind: "structural-trust", status: structuralTrust });
   if (!decisionAccepted(input.reviewDecision)) gaps.push({ kind: "review-not-accepted", disposition: input.reviewDecision?.spec.resolution ?? input.reviewDecision?.spec.status ?? "not-reviewed" });
+  if (choice && choice.decisionCandidateId !== choice.citedCandidateId) gaps.push({ kind: "candidate-not-chosen", decisionCandidateId: choice.decisionCandidateId });
   return gaps;
 }
 
-function validateInput(value: unknown): asserts value is ReviewedExtractionEvidenceInput {
+function validateInput(value: unknown, profile: ReviewedExtractionEvidenceProfile): asserts value is ReviewedExtractionEvidenceInput {
   assertJsonValue(value, "Reviewed extraction evidence input");
   if (!isRecord(value)) throw new Error("Reviewed extraction evidence input must be an object.");
   nonEmpty(value.evidenceId, "evidenceId"); nonEmpty(value.claimId, "claimId"); stableIdentity(value.collectedBy, "collectedBy");
@@ -558,10 +700,7 @@ function validateInput(value: unknown): asserts value is ReviewedExtractionEvide
   const spec = record(imported.spec, "importRecord.spec"); const envelope = record(spec.envelope, "importRecord.spec.envelope"); if (envelope.format !== "traverse-extraction-result" || envelope.version !== 1) throw new Error("Extraction envelope format is unsupported.");
   const source = record(envelope.source, "envelope.source"); safeReference(source.ref, "source.ref"); if (source.snapshotRef !== undefined) safeReference(source.snapshotRef, "source.snapshotRef");
   const result = record(envelope.result, "envelope.result"); stableIdentity(result.provider, "result.provider"); if (result.model !== undefined) stableIdentity(result.model, "result.model"); stableIdentity(result.runId, "result.runId"); dateTime(result.extractedAt, "result.extractedAt"); if (result.taskDigest !== undefined) prefixedDigest(result.taskDigest, "result.taskDigest"); if (result.exampleDigests !== undefined) { const examples=array(result.exampleDigests,"result.exampleDigests"); examples.forEach((entry,index)=>prefixedDigest(entry,`result.exampleDigests[${index}]`)); }
-  const proposals = array(result.proposals, "result.proposals"); const index = value.proposalIndex as number; if (index >= proposals.length) throw new Error("proposalIndex does not identify a proposal."); const proposal = record(proposals[index], "proposal"); nonEmpty(proposal.fieldPath, "proposal.fieldPath"); stableIdentity(proposal.extractor, "proposal.extractor"); if (proposal.confidence !== undefined && (typeof proposal.confidence !== "number" || !Number.isFinite(proposal.confidence) || proposal.confidence < 0 || proposal.confidence > 1)) throw new Error("proposal.confidence is invalid.");
-  // In a multi-chunk run `result.model` names one chunk's model; a proposal's own `producedBy.model` is the model for its value.
-  const proposalModel = proposal.producedBy === undefined ? result.model : record(proposal.producedBy, "proposal.producedBy").model; if (proposal.producedBy !== undefined) stableIdentity(proposalModel, "proposal.producedBy.model");
-  const provenance = record(proposal.provenance, "proposal.provenance"); string(provenance.excerpt, "proposal.provenance.excerpt"); const span = locator(provenance.locator, provenance.excerpt as string); const occurrence = record(provenance.occurrence, "proposal.provenance.occurrence"); exactKeys(occurrence,["resolverVersion","count","selected","selection","hintUsed","ambiguous"],"occurrence"); if (occurrence.resolverVersion !== "exact-occurrence-v1") throw new Error("occurrence resolver is unsupported."); if(!Number.isSafeInteger(occurrence.count)||(occurrence.count as number)<1) throw new Error("occurrence count is invalid."); if(!["source-order","occurrence-hint"].includes(String(occurrence.selection))) throw new Error("occurrence selection is invalid."); if(typeof occurrence.hintUsed!=="boolean"||occurrence.hintUsed!==(occurrence.selection==="occurrence-hint")) throw new Error("occurrence hintUsed is inconsistent."); if(typeof occurrence.ambiguous!=="boolean"||occurrence.ambiguous!==((occurrence.count as number)>1)) throw new Error("occurrence ambiguous is inconsistent."); const selected = record(occurrence.selected, "occurrence.selected"); exactKeys(selected,["index","start","end"],"occurrence.selected"); if(!Number.isSafeInteger(selected.index)||(selected.index as number)<0||(selected.index as number)>=(occurrence.count as number)) throw new Error("occurrence selected index is invalid."); if (selected.start !== span.start || selected.end !== span.end) throw new Error("occurrence selection does not match locator.");
+  const proposals = array(result.proposals, "result.proposals"); const index = value.proposalIndex as number; if (index >= proposals.length) throw new Error("proposalIndex does not identify a proposal."); const { proposal, proposalModel, provenance } = validateProposal(proposals[index], result);
   const artifact = result.preparedArtifact === undefined ? undefined : record(result.preparedArtifact, "preparedArtifact"); if (artifact) validateArtifact(artifact, source.snapshotRef);
   if (result.preparedArtifactState !== undefined) validateArtifactState(record(result.preparedArtifactState, "preparedArtifactState"), artifact);
   const importStatus=record(imported.status,"importRecord.status"); if(!["grounded","unresolved"].includes(String(importStatus.state))||!Array.isArray(importStatus.diagnostics)) throw new Error("importRecord status is invalid."); const artifactState=isRecord(result.preparedArtifactState)?result.preparedArtifactState.status:undefined; if(importStatus.state==="grounded" && artifactState!==undefined && artifactState!=="available") throw new Error("grounded importRecord cannot carry an unresolved artifact state."); if(importStatus.state==="unresolved" && importStatus.diagnostics.length===0) throw new Error("unresolved importRecord requires diagnostics.");
@@ -573,15 +712,10 @@ function validateInput(value: unknown): asserts value is ReviewedExtractionEvide
     const itemSpec = record(reviewItem.spec, "reviewItem.spec");
     if (itemSpec.target !== proposal.fieldPath || itemSpec.editable !== false) throw new Error("reviewItem does not match the non-editable extraction proposal.");
     const candidates = array(itemSpec.candidates, "reviewItem.spec.candidates");
-    if (candidates.length !== 1) throw new Error("extraction reviewItem must contain exactly one candidate.");
-    const c = record(candidates[0], "reviewItem candidate");
-    if (canonicalJson(c.value) !== canonicalJson(proposal.candidateValue) || c.confidence !== proposal.confidence) throw new Error("candidate value or confidence does not match proposal.");
-    const cSource = record(c.source, "candidate.source");
-    if (cSource.sourceRef !== source.ref || cSource.sourceId !== (source.snapshotRef ?? source.ref) || cSource.observedAt !== result.extractedAt || (artifact && cSource.checksum !== artifact.digest)) throw new Error("candidate source does not match import source.");
-    const cLocator = record(c.locator, "candidate.locator");
-    if (cLocator.locator !== provenance.locator || cLocator.excerpt !== provenance.excerpt) throw new Error("candidate locator does not match proposal.");
-    const cExtraction = record(c.extraction, "candidate.extraction");
-    if (cExtraction.target !== proposal.fieldPath || cExtraction.extractor !== proposal.extractor || cExtraction.model !== proposalModel) throw new Error("candidate extraction does not match proposal.");
+    const choice = profile === reviewedExtractionEvidenceChoiceProfile;
+    if (!choice && candidates.length !== 1) throw new Error("extraction reviewItem must contain exactly one candidate.");
+    if (choice) validateChoiceCandidates(candidates, index, itemSpec.target, imported, proposals, result, source, artifact);
+    else assertCandidateMatchesProposal(record(candidates[0], "reviewItem candidate"), proposal, provenance, proposalModel, source, result, artifact);
     const decision = record(value.reviewDecision, "reviewDecision");
     if (decision.apiVersion !== surveyApiVersion || decision.kind !== "ReviewDecision") throw new Error("reviewDecision identity is unsupported.");
     const decisionSpec = record(decision.spec, "reviewDecision.spec");
@@ -594,9 +728,81 @@ function validateInput(value: unknown): asserts value is ReviewedExtractionEvide
     if (decisionSpec.actor !== undefined) stableIdentity(record(decisionSpec.actor, "reviewDecision.spec.actor").id, "reviewDecision.spec.actor.id");
     if (decisionSpec.reviewedAt !== undefined) dateTime(decisionSpec.reviewedAt, "reviewDecision.spec.reviewedAt");
     if (decisionSpec.candidateId !== undefined && !candidates.some((entry) => isRecord(entry) && entry.id === decisionSpec.candidateId)) throw new Error("reviewDecision candidate is absent from reviewItem.");
-  } else if (importStatus.state !== "unresolved") {
-    throw new Error("grounded importRecord requires review resources.");
+    if (choice) validateChoiceDecision(decisionSpec, candidates);
+  } else if (importStatus.state !== "unresolved" || profile === reviewedExtractionEvidenceChoiceProfile) {
+    throw new Error(importStatus.state !== "unresolved" ? "grounded importRecord requires review resources." : "The v3 profile requires review resources.");
   }
+}
+
+/** A proposal's own fields, as the cited proposal has always been checked. */
+function validateProposal(value: unknown, result: Record<string, unknown>): { proposal: Record<string, unknown>; proposalModel: unknown; provenance: Record<string, unknown> } {
+  const proposal = record(value, "proposal"); nonEmpty(proposal.fieldPath, "proposal.fieldPath"); stableIdentity(proposal.extractor, "proposal.extractor"); if (proposal.confidence !== undefined && (typeof proposal.confidence !== "number" || !Number.isFinite(proposal.confidence) || proposal.confidence < 0 || proposal.confidence > 1)) throw new Error("proposal.confidence is invalid.");
+  // In a multi-chunk run `result.model` names one chunk's model; a proposal's own `producedBy.model` is the model for its value.
+  const proposalModel = proposal.producedBy === undefined ? result.model : record(proposal.producedBy, "proposal.producedBy").model; if (proposal.producedBy !== undefined) stableIdentity(proposalModel, "proposal.producedBy.model");
+  const provenance = record(proposal.provenance, "proposal.provenance"); string(provenance.excerpt, "proposal.provenance.excerpt"); const span = locator(provenance.locator, provenance.excerpt as string); const occurrence = record(provenance.occurrence, "proposal.provenance.occurrence"); exactKeys(occurrence,["resolverVersion","count","selected","selection","hintUsed","ambiguous"],"occurrence"); if (occurrence.resolverVersion !== "exact-occurrence-v1") throw new Error("occurrence resolver is unsupported."); if(!Number.isSafeInteger(occurrence.count)||(occurrence.count as number)<1) throw new Error("occurrence count is invalid."); if(!["source-order","occurrence-hint"].includes(String(occurrence.selection))) throw new Error("occurrence selection is invalid."); if(typeof occurrence.hintUsed!=="boolean"||occurrence.hintUsed!==(occurrence.selection==="occurrence-hint")) throw new Error("occurrence hintUsed is inconsistent."); if(typeof occurrence.ambiguous!=="boolean"||occurrence.ambiguous!==((occurrence.count as number)>1)) throw new Error("occurrence ambiguous is inconsistent."); const selected = record(occurrence.selected, "occurrence.selected"); exactKeys(selected,["index","start","end"],"occurrence.selected"); if(!Number.isSafeInteger(selected.index)||(selected.index as number)<0||(selected.index as number)>=(occurrence.count as number)) throw new Error("occurrence selected index is invalid."); if (selected.start !== span.start || selected.end !== span.end) throw new Error("occurrence selection does not match locator.");
+  return { proposal, proposalModel, provenance };
+}
+
+/** The binding rules every reviewed candidate meets against the proposal it stands for. */
+function assertCandidateMatchesProposal(c: Record<string, unknown>, proposal: Record<string, unknown>, provenance: Record<string, unknown>, proposalModel: unknown, source: Record<string, unknown>, result: Record<string, unknown>, artifact: Record<string, unknown> | undefined): void {
+  if (canonicalJson(c.value) !== canonicalJson(proposal.candidateValue) || c.confidence !== proposal.confidence) throw new Error("candidate value or confidence does not match proposal.");
+  const cSource = record(c.source, "candidate.source");
+  if (cSource.sourceRef !== source.ref || cSource.sourceId !== (source.snapshotRef ?? source.ref) || cSource.observedAt !== result.extractedAt || (artifact && cSource.checksum !== artifact.digest)) throw new Error("candidate source does not match import source.");
+  const cLocator = record(c.locator, "candidate.locator");
+  if (cLocator.locator !== provenance.locator || cLocator.excerpt !== provenance.excerpt) throw new Error("candidate locator does not match proposal.");
+  const cExtraction = record(c.extraction, "candidate.extraction");
+  if (cExtraction.target !== proposal.fieldPath || cExtraction.extractor !== proposal.extractor || cExtraction.model !== proposalModel) throw new Error("candidate extraction does not match proposal.");
+}
+
+/**
+ * v3: two or more candidates with unique ids. A candidate carrying Survey's
+ * envelope binding is `proposed` and bound to the proposal it names, which
+ * must be a distinct proposal of this import for the item's target, and it
+ * meets every v1 binding rule against that proposal. A candidate without the
+ * binding is a prior value: role `current`, at most one. The cited proposal
+ * must be one candidate's.
+ */
+function validateChoiceCandidates(candidates: unknown[], citedIndex: number, target: unknown, imported: Record<string, unknown>, proposals: unknown[], result: Record<string, unknown>, source: Record<string, unknown>, artifact: Record<string, unknown> | undefined): void {
+  if (candidates.length < 2) throw new Error("The v3 profile records a choice between candidates; a single-candidate reviewItem uses v1 or v2.");
+  const ids = new Set<string>(); const bound = new Set<number>(); let current = 0;
+  const importName = (imported.metadata as Record<string, unknown>).name;
+  for (const entry of candidates) {
+    const c = record(entry, "reviewItem candidate"); nonEmpty(c.id, "reviewItem candidate id");
+    if (ids.has(c.id)) throw new Error("reviewItem candidate ids must be unique.");
+    ids.add(c.id);
+    const binding = isRecord(c.producer) ? c.producer[surveyEnvelopeProducer] : undefined;
+    if (binding === undefined) {
+      if (c.role !== "current") throw new Error("A candidate without an envelope binding must be the current (prior) value.");
+      if (++current > 1) throw new Error("reviewItem can carry at most one current candidate.");
+      continue;
+    }
+    const b = record(binding, "candidate envelope binding");
+    if (c.role !== "proposed") throw new Error("A candidate bound to a proposal must have role proposed.");
+    if (b.importName !== importName) throw new Error("candidate envelope binding does not name the import record.");
+    const index = b.proposalIndex;
+    if (!Number.isSafeInteger(index) || (index as number) < 0 || (index as number) >= proposals.length) throw new Error("candidate proposalIndex does not identify a proposal.");
+    if (bound.has(index as number)) throw new Error("Two candidates are bound to the same proposal.");
+    bound.add(index as number);
+    const { proposal, proposalModel, provenance } = validateProposal(proposals[index as number], result);
+    if (proposal.fieldPath !== target) throw new Error("reviewItem does not match the non-editable extraction proposal.");
+    assertCandidateMatchesProposal(c, proposal, provenance, proposalModel, source, result, artifact);
+  }
+  if (!bound.has(citedIndex)) throw new Error("The cited proposal is not one of the reviewItem's candidates.");
+}
+
+/**
+ * v3: the decision names exactly one candidate. When that candidate is one of
+ * several proposed values, the decision records the other proposed candidates
+ * as passed over, in item order, as Survey's `select-proposed` does; any
+ * other decision records none.
+ */
+function validateChoiceDecision(spec: Record<string, unknown>, candidates: unknown[]): void {
+  if (typeof spec.candidateId !== "string") throw new Error("A v3 reviewDecision must name the chosen candidate.");
+  const named = candidates.find((entry) => (entry as Record<string, unknown>).id === spec.candidateId) as Record<string, unknown>;
+  const proposed = candidates.filter((entry) => (entry as Record<string, unknown>).role === "proposed").map((entry) => (entry as Record<string, unknown>).id);
+  const expected = named.role === "proposed" && proposed.length > 1 ? proposed.filter((id) => id !== spec.candidateId) : [];
+  if (spec.unselectedCandidateIds !== undefined) strings(spec.unselectedCandidateIds, "reviewDecision.spec.unselectedCandidateIds");
+  if (canonicalJson(spec.unselectedCandidateIds ?? []) !== canonicalJson(expected)) throw new Error("reviewDecision must record exactly the proposed candidates it passed over.");
 }
 
 function validateArtifact(artifact: Record<string, unknown>, snapshotRef: unknown): void { if (artifact.format !== "traverse-prepared-artifact" || artifact.version !== 1) throw new Error("preparedArtifact identity is unsupported."); rawDigest(artifact.digest, "preparedArtifact.digest"); safeReference(artifact.ref, "preparedArtifact.ref"); nonEmpty(artifact.preparationMode, "preparedArtifact.preparationMode"); nonEmpty(artifact.preparationVersion, "preparedArtifact.preparationVersion"); if (!Number.isSafeInteger(artifact.contentLength) || (artifact.contentLength as number) < 0) throw new Error("preparedArtifact.contentLength is invalid."); if (artifact.sourceSnapshotRef !== undefined && artifact.sourceSnapshotRef !== snapshotRef) throw new Error("preparedArtifact source snapshot does not match source."); const binding = JSON.stringify({ format: artifact.format, version: artifact.version, digest: artifact.digest, preparationMode: artifact.preparationMode, preparationVersion: artifact.preparationVersion, contentLength: artifact.contentLength, sourceSnapshotRef: artifact.sourceSnapshotRef ?? null }); const expected = `traverse-prepared-artifact:v1:sha256:${sha256Hex(binding)}`; if (artifact.ref !== expected) throw new Error("preparedArtifact ref does not match its identity binding."); }
