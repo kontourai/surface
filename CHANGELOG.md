@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.4.0](https://github.com/kontourai/surface/compare/v4.3.0...v4.4.0) (2026-09-29)
+
+
+### Features
+
+* reviewed-extraction v3 choice profile for multi-candidate review ([#296](https://github.com/kontourai/surface/issues/296)) ([4904121](https://github.com/kontourai/surface/commit/4904121cd8c67ef9093dafb67a14de115defd1ee))
+
 ## [4.3.0](https://github.com/kontourai/surface/compare/v4.2.0...v4.3.0) (2026-09-29)
 
 
