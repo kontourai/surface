@@ -198,6 +198,23 @@ test("status chips are @kontourai/ui's trust-state chip, markup for markup", asy
   }
 });
 
+test("a padded or upper-case status gets the same band on the wrapper as the state on the chip", async ({ page }) => {
+  // ui parses a status trimmed and in any case; the panel's data-kind band
+  // must follow the same parse, never fall back to "neutral" beside a
+  // recognized chip.
+  const report = statusReport() as { claims: Array<{ status: string; fieldOrBehavior: string }> };
+  report.claims = [
+    { ...report.claims.find((claim) => claim.status === "verified")!, status: " VERIFIED ", fieldOrBehavior: "padded" },
+    { ...report.claims.find((claim) => claim.status === "rejected")!, status: "Rejected", fieldOrBehavior: "capitalised" },
+  ];
+  await loadPanel(page, report);
+  const chips = await claimChips(page);
+  expect(chips.map(({ id, kind, state, label }) => ({ id, kind, state, label }))).toEqual([
+    { id: "padded", kind: "positive", state: "verified", label: "Verified" },
+    { id: "capitalised", kind: "negative", state: "rejected", label: "Rejected" },
+  ]);
+});
+
 test("status chips resolve ui's trust-state colours, not the old tone bands", async ({ page }) => {
   await loadPanel(page, statusReport());
   const colours = await chipColours(page);

@@ -1,5 +1,5 @@
 import { buildBasisPanelViewModel, type BasisPanelViewModel } from "../basis/view.js";
-import { renderTrustStateHtml } from "@kontourai/ui/trust-state";
+import { renderTrustStateHtml, trustStateFor } from "@kontourai/ui/trust-state";
 import { TRUST_STATE_PANEL_CSS } from "./trust-state-css.generated.js";
 
 // <surface-trust-panel> — a dependency-free, read-only Trust Panel custom element.
@@ -223,8 +223,12 @@ interface TrustPanelReport {
   // `standing` part and `data-kind` band sit on a wrapper around the chip,
   // whose own root carries ui's `data-trust-state`.
   function statusChip(status: string, detail?: string): string {
-    const kind = STATUS_KIND[status] ?? "neutral";
-    return `<span class="standing" part="standing" data-kind="${escapeHtml(kind)}">${renderTrustStateHtml(status, { label: STATUS_LABELS[status] ?? status, detail })}</span>`;
+    // Parse the status as ui does (trimmed, any case), so the band on the
+    // wrapper always agrees with the state on the chip inside it.
+    const state = trustStateFor(status);
+    const kind = (state && STATUS_KIND[state]) ?? "neutral";
+    const label = (state && STATUS_LABELS[state]) ?? status;
+    return `<span class="standing" part="standing" data-kind="${escapeHtml(kind)}">${renderTrustStateHtml(status, { label, detail })}</span>`;
   }
 
   function facetChip(item: EvidenceFacet, field: string): string {
