@@ -16,6 +16,7 @@ import type { SnapshotEventProbe } from "./trust-snapshot.js";
 import { statusFunctionVersion } from "./status.js";
 import { isUnsupportedStatus, TRUST_STATUS_ORDER } from "./status-taxonomy.js";
 import { waiverValidityFunctionVersion } from "./waiver.js";
+import { evidenceStrengthOf, reviewerAuthorityOf } from "./wire-string.js";
 
 const TRANSPARENCY_GAP_TYPES: TransparencyGapType[] = [
   "contradiction",
@@ -193,8 +194,12 @@ export function summarizeClaims(
     byFacet[facet] = (byFacet[facet] ?? 0) + 1;
     const basis = claim.confidenceBasis;
     if (basis?.sourceQuality) sourceQuality[basis.sourceQuality] = (sourceQuality[basis.sourceQuality] ?? 0) + 1;
-    if (basis?.reviewerAuthority) reviewerAuthority[basis.reviewerAuthority] = (reviewerAuthority[basis.reviewerAuthority] ?? 0) + 1;
-    if (basis?.evidenceStrength) evidenceStrength[basis.evidenceStrength] = (evidenceStrength[basis.evidenceStrength] ?? 0) + 1;
+    // Same accessors as claimBasisView, so a malformed reviewer or evidence
+    // strength is absent in both (#300).
+    const reviewer = reviewerAuthorityOf(basis);
+    if (reviewer !== undefined) reviewerAuthority[reviewer] = (reviewerAuthority[reviewer] ?? 0) + 1;
+    const strength = evidenceStrengthOf(basis);
+    if (strength !== undefined) evidenceStrength[strength] = (evidenceStrength[strength] ?? 0) + 1;
     if (typeof basis?.extractionConfidence === "number") extractionConfidences.push(basis.extractionConfidence);
     if ((basis?.corroborationCount ?? 0) > 0) corroboratedClaims += 1;
     if ((basis?.freshnessRemainingDays ?? 1) <= 0) freshnessAtRisk.push(claim.id);

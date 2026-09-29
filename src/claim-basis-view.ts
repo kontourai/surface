@@ -48,6 +48,7 @@ import {
 import { isStandingCounterevidence } from "./evidence-support.js";
 import type { Claim, Evidence } from "./types.js";
 import { DERIVATION_METHODS, EVIDENCE_METHODS } from "./validation/constants.js";
+import { evidenceStrengthOf, reviewerAuthorityOf, wireString } from "./wire-string.js";
 
 /** Maximum facets on the basis line, unless caveats alone exceed it. */
 export const CLAIM_BASIS_LINE_MAX_FACETS = 3;
@@ -137,10 +138,6 @@ function knownLabel(labels: Record<string, string>, value: string, kind: string)
   return Object.hasOwn(labels, value) ? labels[value]! : `Unrecognized ${kind} (${value})`;
 }
 
-/** A non-empty string wire value, else undefined. */
-function wireString(value: unknown): string | undefined {
-  return typeof value === "string" && value !== "" ? value : undefined;
-}
 
 /** A finite probability in [0, 1], else undefined. */
 function probability(value: unknown): number | undefined {
@@ -188,12 +185,15 @@ export function claimBasisView(claim: Claim | null | undefined, evidence: readon
 
   const items = evidence.filter((item) => item.claimId === claim.id);
   const edges = claim.derivationEdges ?? [];
-  // `confidenceBasis` is validated only as an object, so its enums can arrive
-  // as any JSON value. A value that is not a non-empty string is treated as
-  // absent (no facet, no detail row), as `conclusionConfidence` values that
-  // are not probabilities are; an unrecognized string is still named.
-  const reviewer = wireString(claim.confidenceBasis?.reviewerAuthority);
-  const producerStrength = wireString(claim.confidenceBasis?.evidenceStrength);
+  // `confidenceBasis` is validated only as an object, and this view also runs
+  // on unvalidated input, so its enums (and evidence / edge `method`) can
+  // arrive as any JSON value. A value that is not a string with non-whitespace
+  // content is treated as absent (no facet, no detail row), as
+  // `conclusionConfidence` values that are not probabilities are; an
+  // unrecognized string is still named. The report summary reads the reviewer
+  // and evidence strength through the same accessors, so the two agree (#300).
+  const reviewer = reviewerAuthorityOf(claim.confidenceBasis);
+  const producerStrength = evidenceStrengthOf(claim.confidenceBasis);
   const confidence = claim.conclusionConfidence;
 
   // ── Evidence partitions ────────────────────────────────────────────────
@@ -211,11 +211,11 @@ export function claimBasisView(claim: Claim | null | undefined, evidence: readon
   // item never reads as both contradicting and supporting the claim.
   const support = countBy(items.map(evidenceSupportState));
   const lineSupport = countBy(items.filter((item) => item.passing !== false).map(evidenceSupportState));
-  const evidenceMethods = countBy(items.map((item) => String(item.method ?? "")).filter((value) => value !== ""));
+  const evidenceMethods = countBy(items.map((item) => wireString(item.method)).filter((value) => value !== undefined));
   const orderedEvidenceMethods = enumOrdered(evidenceMethods, EVIDENCE_METHODS);
 
   // ── Derivation partitions ──────────────────────────────────────────────
-  const derivationMethods = countBy(edges.map((edge) => String(edge.method ?? "")).filter((value) => value !== ""));
+  const derivationMethods = countBy(edges.map((edge) => wireString(edge.method)).filter((value) => value !== undefined));
   const modelInputs = derivationMethods.get("model") ?? 0;
   const nonModelDerivation = new Map([...derivationMethods].filter(([method]) => method !== "model"));
   const orderedDerivationMethods = enumOrdered(nonModelDerivation, DERIVATION_METHODS);
@@ -285,7 +285,7 @@ export function claimBasisView(claim: Claim | null | undefined, evidence: readon
       const label = knownLabel(DERIVATION_METHOD_LABELS, method, "method");
       return `${label} (${plural(derivationMethods.get(method)!, "input", "inputs")})`;
     });
-    const unstatedEdges = edges.filter((edge) => !edge.method).length;
+    const unstatedEdges = edges.filter((edge) => wireString(edge.method) === undefined).length;
     if (unstatedEdges > 0) parts.push(`Method not stated (${plural(unstatedEdges, "input", "inputs")})`);
     detail.push({ label: "Derived", value: parts.join(" · ") });
   }
