@@ -99,7 +99,10 @@ put `field`, `code` and `caveat` on data attributes.
    trust panel's evidence rows, even though status derivation treats it as
    entailing (the gloss says so).
 8. **Unrecognized wire values** are shown as `Unrecognized method (value)` /
-   `Unrecognized reviewer (value)`, never as the bare string.
+   `Unrecognized reviewer (value)`, never as the bare string. A
+   `confidenceBasis.reviewerAuthority` or `evidenceStrength` that is not a
+   non-empty string (`null`, a number, an object, `""`) is treated as absent:
+   no facet and no detail row. Every facet `code` is a string.
 9. **Producer-supplied values stay in the inspector.**
    `confidenceBasis.evidenceStrength` appears only as a `Producer rating`
    detail row ("Strong support (producer-rated)"), and `conclusionConfidence`

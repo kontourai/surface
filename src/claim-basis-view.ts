@@ -137,6 +137,11 @@ function knownLabel(labels: Record<string, string>, value: string, kind: string)
   return Object.hasOwn(labels, value) ? labels[value]! : `Unrecognized ${kind} (${value})`;
 }
 
+/** A non-empty string wire value, else undefined. */
+function wireString(value: unknown): string | undefined {
+  return typeof value === "string" && value !== "" ? value : undefined;
+}
+
 /** A finite probability in [0, 1], else undefined. */
 function probability(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1 ? value : undefined;
@@ -183,8 +188,12 @@ export function claimBasisView(claim: Claim | null | undefined, evidence: readon
 
   const items = evidence.filter((item) => item.claimId === claim.id);
   const edges = claim.derivationEdges ?? [];
-  const reviewer = claim.confidenceBasis?.reviewerAuthority;
-  const producerStrength = claim.confidenceBasis?.evidenceStrength;
+  // `confidenceBasis` is validated only as an object, so its enums can arrive
+  // as any JSON value. A value that is not a non-empty string is treated as
+  // absent (no facet, no detail row), as `conclusionConfidence` values that
+  // are not probabilities are; an unrecognized string is still named.
+  const reviewer = wireString(claim.confidenceBasis?.reviewerAuthority);
+  const producerStrength = wireString(claim.confidenceBasis?.evidenceStrength);
   const confidence = claim.conclusionConfidence;
 
   // ── Evidence partitions ────────────────────────────────────────────────
@@ -287,7 +296,7 @@ export function claimBasisView(claim: Claim | null | undefined, evidence: readon
     detail.push({
       label: "Producer rating",
       value: Object.hasOwn(EVIDENCE_STRENGTH_LABELS, producerStrength)
-        ? EVIDENCE_STRENGTH_LABELS[producerStrength]
+        ? EVIDENCE_STRENGTH_LABELS[producerStrength as keyof typeof EVIDENCE_STRENGTH_LABELS]
         : `Unrecognized rating (${producerStrength}) (producer-rated)`,
     });
   }
