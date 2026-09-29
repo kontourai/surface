@@ -109,9 +109,14 @@ review (#195) is still out of scope.
 
 Survey's excerpt verification and excluded proposals are read from the import
 record and review item the profile already binds, not added as profile fields.
-That keeps v1 and v2 evidence without them byte-identical, leaves the pinned
-profile digests unchanged, and needs no profile version bump: an older reader
-restores the same evidence and simply does not interpret the facts. A separate
+Projection is unchanged, so the pinned profile digests hold and no profile
+version bump is needed: an older reader restores the same evidence and simply
+does not interpret the facts. Grounding decisions over bundles without the
+facts are unchanged; decisions over Survey 6 bundles that carry them gain the
+`excerptVerification` and `excludedRivals` dimension fields. The item's facts
+are read only when its Survey binding is intact, and the import record's
+`excerpt-mismatch` diagnostics are checked too, so a stripped item entry
+cannot hide a rival. A separate
 input field was rejected because it would duplicate, and could contradict, the
 item it came from. Absence reads as unverified and as no excluded proposals;
 the policy requirements that use them are opt-in.

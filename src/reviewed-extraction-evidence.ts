@@ -405,25 +405,29 @@ export function reviewedExtractionStructuralTrust(input: ReviewedExtractionEvide
 export interface ReviewedExtractionReviewSignals {
   /**
    * `verified` only when the import record's `status.provenance` and the review
-   * item's `excerptVerification` both say `verified`: the import checked each
-   * excerpt against the prepared artifact text. Anything else, including an
-   * absent field, is `unverified`.
+   * item's `excerptVerification` both say `verified` and the item's Survey
+   * binding is intact (see `reviewedExtractionReviewSignals`): the import
+   * checked each excerpt against the prepared artifact text. Anything else,
+   * including an absent field or a broken binding, is `unverified`.
    */
   excerptVerification: "verified" | "unverified";
   /**
-   * Proposals the import left out of this item's candidate set (their cited
-   * span did not match their excerpt) whose value differs from the reviewed
-   * candidate: rival values that were unverifiable, not disproven. Each entry
-   * matches the import record's proposal at its index. Nothing currently
-   * resolves a rival, so every listed rival is unresolved.
+   * Proposals the import left out of this item's claim slot (their cited span
+   * did not match their excerpt) whose value differs from the reviewed
+   * candidate: rival values that were unverifiable, not disproven. Read from
+   * the item's `excludedProposals` entries that match the import record, and
+   * from the record's own `excerpt-mismatch` diagnostics, so dropping an entry
+   * from the item does not hide a rival. Nothing currently resolves a rival,
+   * so every listed rival is unresolved.
    */
   excludedRivalProposalIndices: number[];
   /**
-   * Stored excluded-proposal entries that cannot be read or do not match the
-   * import record (`malformed-entries`), or an item whose Survey metadata is
-   * gone while its candidate still carries the Survey binding
-   * (`binding-broken`). Any of them may be a rival. Absent when every stored
-   * entry was read.
+   * Excluded proposals Surface cannot place. `binding-broken`: the item stores
+   * excluded entries (or its Survey metadata is gone) but its Survey binding
+   * is not intact, so none of them is read. `malformed-entries`: stored
+   * entries that cannot be read or do not match the import record, or
+   * `excerpt-mismatch` diagnostics whose proposal or claim slot cannot be
+   * resolved. Any of them may be a rival. `count` is omitted when unknown.
    */
   excludedProposalsUnreadable?: { reason: "malformed-entries" | "binding-broken"; count?: number };
 }
@@ -431,44 +435,99 @@ export interface ReviewedExtractionReviewSignals {
 /**
  * Reads the excerpt-verification and excluded-proposal facts from a restored
  * input (see `restoreReviewedExtractionEvidence`). They live in the digest-bound
- * import record and review item, so no profile field is added and evidence
- * without them is unchanged. Absence reads as unverified and as no excluded
- * proposals; it is never read as verified.
+ * import record and review item, so no profile field is added. Absence reads
+ * as unverified and as no excluded proposals; it is never read as verified.
+ *
+ * The item's Survey metadata is read only when its binding is intact. That is
+ * Survey's own rule (a non-empty `importName`, non-empty `proposalIndices`, and
+ * every candidate carrying the same `importName`) plus two checks against the
+ * bound record: `importName` names this import record, and `proposalIndices`
+ * includes the cited proposal.
  */
 export function reviewedExtractionReviewSignals(input: ReviewedExtractionEvidenceInput): ReviewedExtractionReviewSignals {
   const status = input.importRecord.status as Record<string, unknown>;
-  const envelopeMetadata = input.reviewItem?.metadata.producer?.[surveyEnvelopeProducer];
-  const itemVerified = isRecord(envelopeMetadata) && envelopeMetadata.excerptVerification === "verified";
-  const excerptVerification = status.provenance === "verified" && itemVerified ? "verified" : "unverified";
-  return { excerptVerification, ...excludedProposalSignals(input, envelopeMetadata) };
-}
-
-function excludedProposalSignals(input: ReviewedExtractionEvidenceInput, envelopeMetadata: unknown): Pick<ReviewedExtractionReviewSignals, "excludedRivalProposalIndices" | "excludedProposalsUnreadable"> {
-  if (input.reviewItem === undefined) return { excludedRivalProposalIndices: [] };
-  if (!isRecord(envelopeMetadata)) {
-    // Mirrors Survey: a candidate that still carries the envelope binding came
-    // from an import whose item metadata is gone, so what it stored is unknown.
-    const bound = input.reviewItem.spec.candidates.some((candidate) => isRecord(candidate.producer) && candidate.producer[surveyEnvelopeProducer] !== undefined);
-    return bound ? { excludedRivalProposalIndices: [], excludedProposalsUnreadable: { reason: "binding-broken" } } : { excludedRivalProposalIndices: [] };
-  }
-  const stored = envelopeMetadata.excludedProposals;
-  if (stored === undefined) return { excludedRivalProposalIndices: [] };
-  if (!Array.isArray(stored)) return { excludedRivalProposalIndices: [], excludedProposalsUnreadable: { reason: "malformed-entries" } };
+  const binding = surveyEnvelopeBinding(input);
+  const excerptVerification = status.provenance === "verified" && binding?.excerptVerification === "verified" ? "verified" : "unverified";
+  const rivals: number[] = [];
+  const unreadable = { reason: undefined as "malformed-entries" | "binding-broken" | undefined, count: 0, countKnown: true };
+  const markUnreadable = (reason: "malformed-entries" | "binding-broken", count: number | undefined) => {
+    if (unreadable.reason !== "binding-broken") unreadable.reason = reason;
+    if (count === undefined) unreadable.countKnown = false; else unreadable.count += count;
+  };
   const proposals = input.importRecord.spec.envelope.result.proposals;
   const reviewedValue = canonicalJson(proposals[input.proposalIndex]!.candidateValue);
-  const rivals: number[] = [];
-  let unreadable = 0;
-  for (const entry of stored) {
-    const index = isRecord(entry) ? entry.proposalIndex : undefined;
-    const named = typeof index === "number" && Number.isSafeInteger(index) && index >= 0 && index !== input.proposalIndex ? proposals[index] : undefined;
-    // Only the cited proposal is validated at restore, so a named one may be malformed.
-    const proposal = isRecord(named) && isRecord(named.provenance) && Object.hasOwn(named, "candidateValue") ? named : undefined;
-    // An entry counts only when it matches the bound proposal it names; the
-    // rival test uses the import record's value, not the entry's copy.
-    if (!isRecord(entry) || proposal === undefined || !Object.hasOwn(entry, "value") || canonicalJson(entry.value) !== canonicalJson(proposal.candidateValue) || entry.locator !== proposal.provenance.locator || entry.excerpt !== proposal.provenance.excerpt) { unreadable += 1; continue; }
-    if (canonicalJson(proposal.candidateValue) !== reviewedValue && !rivals.includes(index as number)) rivals.push(index as number);
+  const addRival = (index: number) => { if (!rivals.includes(index)) rivals.push(index); };
+
+  const item = input.reviewItem;
+  const metadata = item && isRecord(item.metadata.producer) ? item.metadata.producer[surveyEnvelopeProducer] : undefined;
+  if (item !== undefined && !isRecord(metadata)) {
+    // As in Survey: a candidate that still carries the envelope binding came
+    // from an import whose item metadata is gone, so what it stored is unknown.
+    if (item.spec.candidates.some((candidate) => isRecord(candidate.producer) && candidate.producer[surveyEnvelopeProducer] !== undefined)) markUnreadable("binding-broken", undefined);
+  } else if (isRecord(metadata) && metadata.excludedProposals !== undefined) {
+    const stored = metadata.excludedProposals;
+    if (binding === undefined) {
+      if (!(Array.isArray(stored) && stored.length === 0)) markUnreadable("binding-broken", Array.isArray(stored) ? stored.length : undefined);
+    } else if (!Array.isArray(stored)) {
+      markUnreadable("malformed-entries", undefined);
+    } else {
+      for (const entry of stored) {
+        const index = isRecord(entry) ? entry.proposalIndex : undefined;
+        const proposal = typeof index === "number" && index !== input.proposalIndex ? readableProposal(proposals, index) : undefined;
+        // An entry counts only when it matches the bound proposal it names; the
+        // rival test uses the import record's value, not the entry's copy.
+        if (!isRecord(entry) || proposal === undefined || !Object.hasOwn(entry, "value") || canonicalJson(entry.value) !== canonicalJson(proposal.candidateValue) || entry.locator !== proposal.provenance.locator || entry.excerpt !== proposal.provenance.excerpt) { markUnreadable("malformed-entries", 1); continue; }
+        if (canonicalJson(proposal.candidateValue) !== reviewedValue) addRival(index as number);
+      }
+    }
   }
-  return { excludedRivalProposalIndices: rivals, ...(unreadable > 0 ? { excludedProposalsUnreadable: { reason: "malformed-entries" as const, count: unreadable } } : {}) };
+
+  // The record's diagnostics are the import's own list of excluded proposals.
+  // A same-slot one with a different value is a rival even if the item omits it.
+  const diagnostics = Array.isArray(status.diagnostics) ? status.diagnostics : [];
+  const citedSlot = claimSlotKey(input, input.proposalIndex);
+  for (const diagnostic of diagnostics) {
+    if (!isRecord(diagnostic) || diagnostic.kind !== "excerpt-mismatch") continue;
+    const index = diagnostic.proposalIndex;
+    const proposal = typeof index === "number" && index !== input.proposalIndex ? readableProposal(proposals, index) : undefined;
+    const slot = proposal === undefined ? undefined : claimSlotKey(input, index as number);
+    if (slot === undefined || citedSlot === undefined) { markUnreadable("malformed-entries", 1); continue; }
+    if (slot === citedSlot && canonicalJson(proposal!.candidateValue) !== reviewedValue) addRival(index as number);
+  }
+
+  return {
+    excerptVerification, excludedRivalProposalIndices: rivals,
+    ...(unreadable.reason ? { excludedProposalsUnreadable: { reason: unreadable.reason, ...(unreadable.countKnown ? { count: unreadable.count } : {}) } } : {}),
+  };
+}
+
+function surveyEnvelopeBinding(input: ReviewedExtractionEvidenceInput): Record<string, unknown> | undefined {
+  const item = input.reviewItem;
+  if (item === undefined || !isRecord(item.metadata.producer)) return undefined;
+  const metadata = item.metadata.producer[surveyEnvelopeProducer];
+  if (!isRecord(metadata)) return undefined;
+  const importName = metadata.importName;
+  if (typeof importName !== "string" || importName.length === 0 || importName !== input.importRecord.metadata.name) return undefined;
+  if (!Array.isArray(metadata.proposalIndices) || metadata.proposalIndices.length === 0 || !metadata.proposalIndices.includes(input.proposalIndex)) return undefined;
+  const candidates = item.spec.candidates;
+  const bound = candidates.length > 0 && candidates.every((candidate) => isRecord(candidate.producer) && isRecord(candidate.producer[surveyEnvelopeProducer]) && (candidate.producer[surveyEnvelopeProducer] as Record<string, unknown>).importName === importName);
+  return bound ? metadata : undefined;
+}
+
+type ReadableProposal = ExtractionProposal & { provenance: Record<string, unknown> };
+/** Only the cited proposal is validated at restore, so another one may be malformed. */
+function readableProposal(proposals: readonly unknown[], index: unknown): ReadableProposal | undefined {
+  if (typeof index !== "number" || !Number.isSafeInteger(index) || index < 0) return undefined;
+  const named = proposals[index];
+  return isRecord(named) && isRecord(named.provenance) && Object.hasOwn(named, "candidateValue") ? named as ReadableProposal : undefined;
+}
+
+/** Survey's claim slot: the claim a proposal would project to, at its `pathIndices`. */
+function claimSlotKey(input: ReviewedExtractionEvidenceInput, index: number): string | undefined {
+  const target = input.importRecord.spec.claimTargets[index];
+  const proposal = input.importRecord.spec.envelope.result.proposals[index];
+  if (!isRecord(target) || !isRecord(proposal)) return undefined;
+  return canonicalJson({ subjectType: target.subjectType, subjectId: target.subjectId, facet: target.facet, claimType: target.claimType, fieldOrBehavior: target.fieldOrBehavior, claimId: target.claimId ?? null, pathIndices: proposal.pathIndices ?? null });
 }
 
 function provenanceGaps(input: ReviewedExtractionEvidenceInput): ReviewedExtractionProvenanceGap[] {

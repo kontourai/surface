@@ -29,18 +29,28 @@ function itemMetadata(input: ReviewedExtractionEvidenceInput): Record<string, un
   return input.reviewItem!.metadata.producer![producerKey] as Record<string, unknown>;
 }
 
+/** Adds the `proposalIndices` Survey 5 and later write, which the golden fixture (an earlier Survey shape) lacks. */
+function bound(input: ReviewedExtractionEvidenceInput): ReviewedExtractionEvidenceInput {
+  itemMetadata(input).proposalIndices = [input.proposalIndex];
+  return input;
+}
+
 /** Marks the import and its item verified, as Survey does for an import that checked excerpts against the prepared artifact. */
 function verified(input: ReviewedExtractionEvidenceInput): ReviewedExtractionEvidenceInput {
+  bound(input);
   (input.importRecord.status as Record<string, unknown>).provenance = "verified";
   itemMetadata(input).excerptVerification = "verified";
   return input;
 }
 
 /**
- * Adds a second proposal for the same field and records it on the item as
- * excluded, in the entry shape Survey's `buildReviewItem` writes.
+ * Adds a second proposal for the same claim slot and records it as excluded:
+ * an `excerpt-mismatch` diagnostic on the import and an entry on the item, in
+ * the shapes Survey's import and `buildReviewItem` write.
  */
 function withExcluded(input: ReviewedExtractionEvidenceInput, value: unknown): ReviewedExtractionEvidenceInput {
+  bound(input);
+  input.importRecord.status.diagnostics.push({ kind: "excerpt-mismatch", proposalIndex: 1, locator: "chars:10-14", message: "The prepared text at chars:10-14 is not the excerpt." });
   const proposals = input.importRecord.spec.envelope.result.proposals;
   const rival = { ...structuredClone(proposals[0]!), candidateValue: value, provenance: { ...structuredClone(proposals[0]!.provenance), locator: "chars:10-14", excerpt: "Beta" } };
   proposals.push(rival);
@@ -94,7 +104,7 @@ test("excerpt verification needs both the import record and the review item to s
   assert.equal(decision.outcome, "allowed");
   assert.equal(decision.dimensions[0]!.excerptVerification, "verified");
 
-  const itemOnly = await fixture(); itemMetadata(itemOnly).excerptVerification = "verified";
+  const itemOnly = bound(await fixture()); itemMetadata(itemOnly).excerptVerification = "verified";
   const recordOnly = await fixture(); (recordOnly.importRecord.status as Record<string, unknown>).provenance = "verified";
   const bogus = verified(await fixture()); itemMetadata(bogus).excerptVerification = true;
   for (const input of [await fixture(), itemOnly, recordOnly, bogus]) {
@@ -135,10 +145,10 @@ test("excluded entries that cannot be read or bound to the import record count a
     assert.equal(refused.outcome, "refused");
     assert.equal(refused.gaps[0]!.kind, "excluded-rival-unresolved");
   }
-  const notArray = await fixture(); itemMetadata(notArray).excludedProposals = { proposalIndex: 1 };
+  const notArray = bound(await fixture()); itemMetadata(notArray).excludedProposals = { proposalIndex: 1 };
   assert.deepEqual(reviewedExtractionReviewSignals(notArray).excludedProposalsUnreadable, { reason: "malformed-entries" });
 
-  const bindingBroken = await fixture(); delete bindingBroken.reviewItem!.metadata.producer;
+  const bindingBroken = bound(await fixture()); delete bindingBroken.reviewItem!.metadata.producer;
   assert.deepEqual(reviewedExtractionReviewSignals(bindingBroken).excludedProposalsUnreadable, { reason: "binding-broken" });
   assert.equal(evaluate(bindingBroken, { refuseExcludedRivals: true }).outcome, "refused");
   assert.equal(evaluate(bindingBroken).outcome, "allowed");
@@ -156,4 +166,57 @@ test("the signals are digest-bound and read the same from reference-profile evid
   delete (reviewItem.metadata.producer![producerKey] as Record<string, unknown>).excludedProposals;
   const decision = evaluateReviewedGroundingPolicy({ policy: basePolicy, evidence: [tampered], claims });
   assert.deepEqual(decision.gaps.map((gap) => gap.kind), ["invalid-reviewed-evidence"]);
+});
+
+test("the cited proposal cannot be listed as its own excluded proposal", async () => {
+  // This entry matches proposal 0 exactly, so only the self-reference guard rejects it.
+  const input = bound(await fixture());
+  const cited = input.importRecord.spec.envelope.result.proposals[0]!;
+  itemMetadata(input).excludedProposals = [{ proposalIndex: 0, value: cited.candidateValue, locator: cited.provenance.locator, excerpt: cited.provenance.excerpt, reason: "excerpt-mismatch" }];
+  assert.deepEqual(reviewedExtractionReviewSignals(input).excludedProposalsUnreadable, { reason: "malformed-entries", count: 1 });
+  assert.equal(evaluate(input, { refuseExcludedRivals: true }).outcome, "refused");
+});
+
+test("a broken Survey binding is never read as verified and its stored entries are not trusted", async () => {
+  const breaks: Array<[string, (input: ReviewedExtractionEvidenceInput) => void]> = [
+    ["item importName missing", (input) => { delete itemMetadata(input).importName; }],
+    ["item importName names another import", (input) => { itemMetadata(input).importName = "another-import"; for (const candidate of input.reviewItem!.spec.candidates) (candidate.producer![producerKey] as Record<string, unknown>).importName = "another-import"; }],
+    ["proposalIndices missing", (input) => { delete itemMetadata(input).proposalIndices; }],
+    ["proposalIndices omit the cited proposal", (input) => { itemMetadata(input).proposalIndices = [3]; }],
+    ["candidate importName mismatched", (input) => { (input.reviewItem!.spec.candidates[0]!.producer![producerKey] as Record<string, unknown>).importName = "another-import"; }],
+    ["candidate producer removed", (input) => { delete input.reviewItem!.spec.candidates[0]!.producer; }],
+  ];
+  for (const [name, breakBinding] of breaks) {
+    const input = withExcluded(verified(await fixture()), "Beta");
+    breakBinding(input);
+    const signals = reviewedExtractionReviewSignals(input);
+    assert.equal(signals.excerptVerification, "unverified", name);
+    assert.deepEqual(signals.excludedProposalsUnreadable, { reason: "binding-broken", count: 1 }, name);
+    const decision = evaluate(input, { requireVerifiedExcerpts: true, refuseExcludedRivals: true });
+    assert.deepEqual(decision.gaps.map((gap) => gap.kind), ["excerpt-not-verified", "excluded-rival-unresolved"], name);
+  }
+});
+
+test("a rival the import record excluded counts even when the item omits it", async () => {
+  const stripped = withExcluded(verified(await fixture()), "Beta"); delete itemMetadata(stripped).excludedProposals;
+  assert.deepEqual(reviewedExtractionReviewSignals(stripped), { excerptVerification: "verified", excludedRivalProposalIndices: [1] });
+  const refused = evaluate(stripped, { refuseExcludedRivals: true });
+  assert.deepEqual(refused.gaps, [{ kind: "excluded-rival-unresolved", claimId: "claim.directory.title", evidenceId: refused.dimensions[0]!.evidenceId, rivalProposalIndices: [1] }]);
+
+  // Same value, or another claim slot: not a rival for this item.
+  const sameValue = withExcluded(verified(await fixture()), "Alpha"); delete itemMetadata(sameValue).excludedProposals;
+  const otherSlot = withExcluded(verified(await fixture()), "Beta"); delete itemMetadata(otherSlot).excludedProposals;
+  (otherSlot.importRecord.spec.claimTargets[1] as Record<string, unknown>).fieldOrBehavior = "subtitle";
+  const otherPath = withExcluded(verified(await fixture()), "Beta"); delete itemMetadata(otherPath).excludedProposals;
+  otherPath.importRecord.spec.envelope.result.proposals[1]!.pathIndices = [2];
+  for (const input of [sameValue, otherSlot, otherPath]) {
+    assert.deepEqual(reviewedExtractionReviewSignals(input), { excerptVerification: "verified", excludedRivalProposalIndices: [] });
+    assert.equal(evaluate(input, { refuseExcludedRivals: true }).outcome, "allowed");
+  }
+
+  // A diagnostic whose proposal cannot be resolved cannot be placed, so it may be a rival.
+  const unresolved = verified(await fixture());
+  unresolved.importRecord.status.diagnostics.push({ kind: "excerpt-mismatch", proposalIndex: 9, locator: "chars:10-14", message: "mismatch" });
+  assert.deepEqual(reviewedExtractionReviewSignals(unresolved).excludedProposalsUnreadable, { reason: "malformed-entries", count: 1 });
+  assert.equal(evaluate(unresolved, { refuseExcludedRivals: true }).outcome, "refused");
 });
