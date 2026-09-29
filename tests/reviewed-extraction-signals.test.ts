@@ -66,7 +66,7 @@ function evaluate(input: ReviewedExtractionEvidenceInput, policy: Partial<Review
 test("capability flags are exported from the reviewed-extraction module and the package root", () => {
   for (const module of [root, entry] as Record<string, unknown>[]) {
     assert.equal(module.REVIEWED_EXTRACTION_ACCEPTS_UNREPORTED_CONFIDENCE, true);
-    assert.deepEqual(module.REVIEWED_EXTRACTION_CAPABILITIES, { acceptsUnreportedConfidence: true, excerptVerification: true, excludedProposals: true });
+    assert.deepEqual(module.REVIEWED_EXTRACTION_CAPABILITIES, { acceptsUnreportedConfidence: true, excerptVerification: true, excludedProposals: true, chosenConflicts: true });
     assert.ok(Object.isFrozen(module.REVIEWED_EXTRACTION_CAPABILITIES));
   }
 });
@@ -83,6 +83,7 @@ test("capability flags survive bundling without the package on disk", async () =
     assert.equal(bundled.flag, true);
     assert.equal(bundled.capabilities?.excerptVerification, true);
     assert.equal(bundled.capabilities?.excludedProposals, true);
+    assert.equal(bundled.capabilities?.chosenConflicts, true);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
