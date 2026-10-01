@@ -83,6 +83,29 @@ test("commit validity without a current integrity ref derives stale with a block
   assert.match(validityGap(bundle)?.message ?? "", /currentIntegrityRef/);
 });
 
+test("validating for version 2 keeps the commit-rule refusal that version relied on", () => {
+  const bundle = verifiedBundle(policy({ kind: "commit" }));
+
+  // The default (version 3) accepts the bundle: it derives `stale`.
+  assert.doesNotThrow(() => validateTrustBundle(bundle));
+  // A caller that will derive under "2" would get `verified`, so it is refused, as before version 3.
+  assert.throws(() => validateTrustBundle(bundle, { statusFunctionVersion: "2" }), /requires currentIntegrityRef because policy policy\.validity uses commit validity/);
+  // With the reference present the same call accepts it.
+  assert.doesNotThrow(() => validateTrustBundle(verifiedBundle(policy({ kind: "commit" }), { currentIntegrityRef: "commit:abc123" }), { statusFunctionVersion: "2" }));
+  // The refusal replays at the ledger's own event time, not the wall clock: an
+  // intrinsic window that had already lapsed by then is not `verified`, so it is accepted.
+  assert.throws(
+    () => validateTrustBundle(verifiedBundle(policy({ kind: "commit" }), { expiresAt: "2026-08-01T12:00:01.000Z" }), { statusFunctionVersion: "2" }),
+    /currentIntegrityRef/,
+  );
+  assert.doesNotThrow(
+    () => validateTrustBundle(verifiedBundle(policy({ kind: "commit" }), { expiresAt: "2026-08-01T11:59:59.000Z" }), { statusFunctionVersion: "2" }),
+  );
+  assert.throws(() => validateTrustBundle(bundle, { statusFunctionVersion: "1" as "2" }), /unsupported statusFunctionVersion/);
+  // Passing validateTrustBundle straight to `.map` hands it an index, not options.
+  assert.equal([bundle].map(validateTrustBundle as (input: unknown) => unknown).length, 1);
+});
+
 test("duration validity without a duration is rejected at validation, and derives stale for direct snapshot callers", () => {
   const bundle = verifiedBundle(policy({ kind: "duration" }));
 

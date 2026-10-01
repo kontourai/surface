@@ -11,6 +11,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { buildClaimDetail, buildClaimDetails } from "../src/console/claim-detail-projection.js";
 import { buildSurfaceConsoleProjection } from "../src/console/projection.js";
+import { buildTrustReport, type TrustBundle } from "../src/index.js";
 
 test("guidance: unknown claim with no evidence explains it was never evaluated; no command suggested", () => {
   const detail = buildClaimDetail(
@@ -170,4 +171,85 @@ test("buildClaimDetails keys the projection by claim id and is embedded in the c
     {},
   );
   assert.deepEqual(Object.keys(map), ["a"], "claims without an id are skipped");
+});
+
+// ── guidance and policy facts follow the derived gaps (status function "3") ──
+
+function derivedDetail(input: { policies: unknown[]; evidence: Record<string, unknown>[]; verificationPolicyId?: string }) {
+  const at = "2026-05-01T00:00:00.000Z";
+  const report = buildTrustReport({
+    schemaVersion: 5,
+    source: "console-detail",
+    claims: [{
+      id: "claim.api", subjectType: "service", subjectId: "svc", facet: "api", claimType: "api", fieldOrBehavior: "rate limit",
+      value: true, createdAt: at, updatedAt: at,
+      ...(input.verificationPolicyId ? { verificationPolicyId: input.verificationPolicyId } : {}),
+    }],
+    evidence: input.evidence.map((item) => ({
+      claimId: "claim.api", evidenceType: "test_output", method: "validation", sourceRef: "ci", excerptOrSummary: "tests",
+      observedAt: at, collectedBy: "ci", ...item,
+    })),
+    policies: input.policies,
+    events: [{ id: "event.verified", claimId: "claim.api", status: "verified", actor: "ci", method: "validation", evidenceIds: input.evidence.map((item) => item.id), createdAt: at }],
+  } as unknown as TrustBundle, { now: new Date("2026-05-02T00:00:00.000Z") });
+  const claim = report.claims[0]!;
+  const evidence = report.evidence;
+  const detail = buildClaimDetail(
+    {
+      ...claim,
+      evidenceIds: evidence.map((item) => item.id),
+      evidenceTypes: [...new Set(evidence.map((item) => item.evidenceType))],
+      evidenceMethods: [...new Set(evidence.map((item) => item.method))],
+    },
+    report as unknown as Record<string, unknown>,
+  );
+  return { status: claim.status, detail };
+}
+
+const apiPolicy = {
+  id: "policy.api", claimType: "api", requiredEvidence: ["test_output"], acceptanceCriteria: ["tests pass"], reviewAuthority: "ci",
+  validityRule: { kind: "manual" }, stalenessTriggers: [], conflictRules: [], impactLevel: "high",
+};
+
+test("guidance: a proposed claim with evidence and a verified event names the real reason, not a first collection run", () => {
+  const resultLess = derivedDetail({ policies: [apiPolicy], evidence: [{ id: "evidence.check" }], verificationPolicyId: "policy.api" });
+  assert.equal(resultLess.status, "proposed");
+  assert.match(resultLess.detail.guidance ?? "", /reports no passing result/);
+  assert.deepEqual(resultLess.detail.gaps.map((gap) => gap.title), ["Check has no passing result"]);
+  // The policy panel is no longer silent just because the evidence type is present.
+  assert.deepEqual(resultLess.detail.policyGap?.unqualifiedEvidence, ["test_output"]);
+  assert.deepEqual(resultLess.detail.policyGap?.missingEvidence, []);
+
+  const noPolicy = derivedDetail({ policies: [], evidence: [{ id: "evidence.check", passing: true }] });
+  assert.equal(noPolicy.status, "proposed");
+  assert.match(noPolicy.detail.guidance ?? "", /No verification policy resolves/);
+  assert.deepEqual(noPolicy.detail.gaps.map((gap) => gap.title), ["No verification policy"]);
+
+  const requiresNothing = derivedDetail({ policies: [{ ...apiPolicy, requiredEvidence: [] }], evidence: [{ id: "evidence.check", passing: true }], verificationPolicyId: "policy.api" });
+  assert.equal(requiresNothing.status, "proposed");
+  assert.match(requiresNothing.detail.guidance ?? "", /requires no evidence type and no method/);
+  assert.deepEqual(requiresNothing.detail.gaps.map((gap) => gap.title), ["Policy requires nothing"]);
+
+  const dangling = derivedDetail({ policies: [apiPolicy], evidence: [{ id: "evidence.check", passing: true }], verificationPolicyId: "policy.missing" });
+  assert.equal(dangling.status, "proposed");
+  assert.match(dangling.detail.guidance ?? "", /names a verification policy that is not in the bundle/);
+
+  for (const { detail } of [resultLess, noPolicy, requiresNothing, dangling]) {
+    assert.doesNotMatch(detail.guidance ?? "", /Awaiting first evidence collection run/);
+  }
+});
+
+test("guidance: a proposed claim with no evidence and no derived reason still awaits its first collection run", () => {
+  const detail = buildClaimDetail({ id: "c", status: "proposed", evidenceIds: [] }, {});
+  assert.equal(detail.guidance, "Awaiting first evidence collection run.");
+  // With evidence but no gap that names a cause, the guidance points at the gaps rather than at collection.
+  const withEvidence = buildClaimDetail({ id: "c", status: "proposed", evidenceIds: ["e1"] }, {});
+  assert.match(withEvidence.guidance ?? "", /does not yet meet this claim's verification policy/);
+});
+
+test("policy facts: a satisfied check produces no policy gap", () => {
+  const passing = derivedDetail({ policies: [apiPolicy], evidence: [{ id: "evidence.check", passing: true }], verificationPolicyId: "policy.api" });
+  assert.equal(passing.status, "verified");
+  assert.equal(passing.detail.policyGap, null);
+  assert.equal(passing.detail.guidance, null);
 });

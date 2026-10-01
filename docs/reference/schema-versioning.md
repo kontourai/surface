@@ -224,6 +224,9 @@ any claim):
 | `duration` rule with `durationDays` missing, negative or not finite; unparseable verification time | `verified` (or `stale`, by `now`, for a negative window) | `stale` |
 | `ttlSeconds` negative or not finite; unparseable `expiresAt` | `verified` (or `stale`, by `now`, for a negative window) | `stale` |
 | A blocking failure and an unmet requirement together | `proposed` | `disputed` |
+| No event and no evidence, under a policy that requires nothing (any claim without a `proposed` / `assumed` baseline) | `proposed` | `unknown` |
+| A dispute-resolution event whose `AuthorityTrace` window (`revokedAt`, `validFrom`, `validUntil`) is spelled differently from the event time: no milliseconds, or another UTC offset | compared as strings, so the trace can read active when it is revoked or expired, or the reverse | compared as instants |
+| An event whose `createdAt` cannot be parsed | order left to a NaN comparison | sorts as the oldest event |
 | Evaluation with an invalid `now` (any claim) | freshness checks pass | refused (`RangeError`) |
 
 Two rules Hachure lists as new in `"3"` were already Surface's behaviour under
@@ -235,9 +238,19 @@ status derives `stale`, and the derivation ceiling uses the ordering `revoked` <
 `validateTrustBundle` already refuses several of these shapes (a dangling
 `verificationPolicyId`, a `duration` rule without a finite `durationDays`, an
 unknown validity kind, an unparseable timestamp), so they reach derivation only
-from typed or in-memory input. It no longer refuses a `commit` rule without
-`currentIntegrityRef`: that claim now derives `stale` instead of `verified`, so
-the refusal has nothing left to guard.
+from typed or in-memory input.
+
+By default `validateTrustBundle` no longer refuses a verified claim under a
+`commit` rule without `currentIntegrityRef`: that claim now derives `stale`
+instead of `verified`, so the refusal has nothing left to guard. Under `"2"` it
+still derives `verified`, so a caller that derives under `"2"` must validate
+for it too: `validateTrustBundle(input, { statusFunctionVersion: "2" })` keeps
+the refusal exactly as it was before this release.
+
+The authority-window row has no Hachure 0.16.0 conformance vector; Surface
+checks it against the `hachure` package's bundled implementation instead. As
+in that implementation, a window bound that is present but cannot be parsed
+does not exclude the trace.
 
 To keep a claim `verified` under `"3"`:
 
@@ -245,12 +258,43 @@ To keep a claim `verified` under `"3"`:
 - set `passing: true` on check evidence that passed;
 - set `currentIntegrityRef` on claims governed by a `commit` rule.
 
+#### Producers of claims verified by a policy that requires nothing
+
+Some producers record a review, critique or sign-off as a claim with a
+`verified` event, governed by a policy whose `requiredEvidence` is empty, often
+with no evidence at all. Under `"3"` these claims derive `proposed` (or
+`unknown` when there is no event either), and setting `passing: true` does not
+help, because there is no check evidence to set it on. To keep them `verified`:
+
+1. Emit the attestation as evidence on the claim: `evidenceType:
+   "human_attestation"` (or `"attestation"`), `method: "attestation"`, with the
+   reviewer in `collectedBy` and the review record in `sourceRef`.
+2. Require it: put that evidence type in the policy's `requiredEvidence` (and
+   the method in `requiredMethods` if it matters).
+3. Link the evidence from the verified event's `evidenceIds`.
+
+Bundles already written do not change. A consumer that must read them as they
+were derived can re-derive under `"2"`, the version recorded on the report or
+inquiry record made from them.
+
+#### Selecting version 2
+
 Version `"2"` stays selectable so a record resolved under it can be re-derived:
 pass `statusFunctionVersion: "2"` to `buildTrustReport`, `deriveTrustSnapshot`,
-`deriveClaimStatus`, `deriveTrustStatus`, `resolveInquiry` or
-`evaluateDerivationRule`. The report, inquiry record and checkpoint record the
-version used, and a checkpoint is only reused by a derivation under the same
-version. Any other value is refused.
+`deriveClaimStatus`, `deriveTrustStatus`, `resolveInquiry`,
+`evaluateDerivationRule` or `validateTrustBundle`. The report, inquiry record
+and checkpoint record the version used, and a checkpoint is only reused by a
+derivation under the same version. Any other value is refused.
+
+Version `"2"` is selectable through the library API only. The `surface` CLI
+(`report`, `console` and the other commands), the console read model and the
+MCP tools always derive under the current version, `"3"`, and have no flag for
+it.
+
+`explainClaim` now reports each evidence item's own `passing` value when the
+item has no `execution` record: `true`, `false`, or `null` when it reports no
+result. It previously reported `true` for any such item that was not marked
+disputed.
 
 ## Migration expectation
 

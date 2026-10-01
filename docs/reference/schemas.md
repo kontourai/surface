@@ -106,7 +106,8 @@ an unknown rule kind, and an unparseable timestamp. The status rule and the
 gap remain necessary for typed or in-memory inputs that reach
 `deriveTrustSnapshot` without prior validation. `validateTrustBundle` accepts a
 `commit` rule on a claim without `currentIntegrityRef`; that claim derives
-`stale`.
+`stale`. Called with `{ statusFunctionVersion: "2" }` it refuses the claim when
+`"2"` would derive `verified`, as it did before version `"3"`.
 
 `verificationPolicyId` remains optional for authored claims. When no policy
 resolves, Surface does not invent a validity window or a validity-rule gap.
@@ -118,8 +119,10 @@ The snapshot also adds a blocking gap, under either version: the existing
 otherwise a `policy_violation` (`<claim>.gap.no-verification-policy`,
 `metadata.source: "policy.unresolved"`). A claim whose `verificationPolicyId`
 names a policy absent from the bundle resolves no policy under `"3"` (there is
-no fallback to a claim-type policy) and gets a blocking `policy_violation`
-(`<claim>.gap.unresolved-verification-policy`). A resolved policy that names no
+no fallback to a claim-type policy) and gets one blocking `policy_violation`
+(`<claim>.gap.unresolved-verification-policy`) in place of the
+no-verification-policy gap; under `"2"` it gets that gap in addition to
+whatever the fallback policy produces. A resolved policy that names no
 required evidence type and no required method is treated as no policy under
 `"3"`; the claim gets a blocking `policy_violation`
 (`<claim>.gap.verification-policy-requires-nothing`,

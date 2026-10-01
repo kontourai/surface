@@ -44,16 +44,14 @@ export function deriveTrustStatus(input: {
   if (v3) assertValidNow(now);
   // v3 effective policy: a policy that requires nothing is no policy to the fold.
   const policy = effectivePolicy(input.policy, version);
-  const claimEvents = input.events
-    .filter((event) => event.claimId === input.claim.id)
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  const claimEvents = claimEventsMostRecentFirst(input.claim, input.events, version);
   const latestEvent = claimEvents[0];
 
   // ADR 0003 §8: check for an authority-gated dispute-resolution event.
   // The most-recent resolution event whose actor has an active AuthorityTrace
   // covering the subject supersedes the normal fold — unless newer blocking
   // evidence re-opens the dispute.
-  const resolutionEvent = findLatestResolutionEvent(claimEvents, input.authorityTrace ?? []);
+  const resolutionEvent = findLatestResolutionEvent(claimEvents, input.authorityTrace ?? [], version);
   if (resolutionEvent !== undefined) {
     const hasNewerBlockingFailure = input.evidence.some(
       (ev) =>
@@ -150,6 +148,30 @@ export function deriveTrustStatus(input: {
   return hasRequiredEvidence ? "proposed" : "unknown";
 }
 
+/**
+ * The claim's events, most recent first by `createdAt`. Under "3" an
+ * unparseable `createdAt` sorts as epoch 0 (oldest), so the order is defined;
+ * under "2" such an event compares as NaN and the order is whatever the sort
+ * makes of it.
+ */
+function claimEventsMostRecentFirst(
+  claim: Claim,
+  events: VerificationEvent[],
+  version: StatusFunctionVersion,
+): VerificationEvent[] {
+  const claimEvents = events.filter((event) => event.claimId === claim.id);
+  if (version === "2") {
+    return claimEvents.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  }
+  return claimEvents.sort((a, b) => (parseInstant(b.createdAt) ?? 0) - (parseInstant(a.createdAt) ?? 0));
+}
+
+/** Epoch ms, or undefined when the value is not a parseable instant. */
+function parseInstant(value: unknown): number | undefined {
+  const time = Date.parse(value as string);
+  return Number.isNaN(time) ? undefined : time;
+}
+
 /** v3: every freshness comparison needs `now`; a NaN comparison would read as "not stale". */
 function assertValidNow(now: Date): void {
   if (!(now instanceof Date) || !Number.isFinite(now.getTime())) {
@@ -198,16 +220,17 @@ export function verifiedBranchEvent(
   claim: Claim,
   events: VerificationEvent[],
   authorityTrace: AuthorityTrace[] = [],
+  /** Defaults to the current version. */
+  statusFunctionVersion?: StatusFunctionVersion,
 ): VerificationEvent | undefined {
-  const claimEvents = events
-    .filter((event) => event.claimId === claim.id)
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  const version = resolveStatusFunctionVersion(statusFunctionVersion);
+  const claimEvents = claimEventsMostRecentFirst(claim, events, version);
   const latestEvent = claimEvents[0];
   if (
     latestEvent === undefined ||
     latestEvent.status !== "verified" ||
     latestEvent.type === "invalidation" ||
-    findLatestResolutionEvent(claimEvents, authorityTrace) !== undefined
+    findLatestResolutionEvent(claimEvents, authorityTrace, version) !== undefined
   ) {
     return undefined;
   }
@@ -234,7 +257,7 @@ export function applyVerifiedStaleness(input: {
 }): TrustStatus {
   const version = resolveStatusFunctionVersion(input.statusFunctionVersion);
   if (version !== "2") assertValidNow(input.now);
-  const governing = verifiedBranchEvent(input.claim, input.events, input.authorityTrace);
+  const governing = verifiedBranchEvent(input.claim, input.events, input.authorityTrace, version);
   if (governing === undefined) return input.untimedStatus;
   return isVerifiedEventStale(governing, input.claim, input.evidence, effectivePolicy(input.policy, version), input.now, version)
     ? "stale"
@@ -256,7 +279,7 @@ export function reapplyVerifiedFreshness(input: {
   const version = resolveStatusFunctionVersion(input.statusFunctionVersion);
   if (version !== "2") assertValidNow(input.now);
   if (input.priorStatus !== "verified" && input.priorStatus !== "stale") return input.priorStatus;
-  const governing = verifiedBranchEvent(input.claim, input.events, input.authorityTrace);
+  const governing = verifiedBranchEvent(input.claim, input.events, input.authorityTrace, version);
   if (governing === undefined) return input.priorStatus;
   return isVerifiedEventStale(governing, input.claim, input.evidence, effectivePolicy(input.policy, version), input.now, version)
     ? "stale"
@@ -404,10 +427,11 @@ export function claimIntrinsicExpiry(
 function findLatestResolutionEvent(
   claimEventsMostRecentFirst: VerificationEvent[],
   authorityTrace: AuthorityTrace[],
+  version: StatusFunctionVersion,
 ): VerificationEvent | undefined {
   for (const event of claimEventsMostRecentFirst) {
     if (event.resolvesDispute !== true) continue;
-    if (isResolutionAuthorized(event, authorityTrace)) return event;
+    if (isResolutionAuthorized(event, authorityTrace, version)) return event;
   }
   return undefined;
 }
@@ -415,8 +439,25 @@ function findLatestResolutionEvent(
 function isResolutionAuthorized(
   event: VerificationEvent,
   authorityTrace: AuthorityTrace[],
+  version: StatusFunctionVersion,
 ): boolean {
   if (authorityTrace.length === 0) return false;
+  if (version !== "2") {
+    // "3": the trace window is compared as instants, so two spellings of the
+    // same instant (`...00Z` / `...00.000Z`, or another UTC offset) agree. A
+    // bound that is present but unparseable never excludes the trace; that is
+    // the specification's reference behaviour, kept so results match it.
+    const at = parseInstant(event.createdAt) as number;
+    return authorityTrace.some((trace) => {
+      if (trace.actorRef !== event.actor) return false;
+      if (trace.revokedAt !== undefined && (parseInstant(trace.revokedAt) as number) <= at) return false;
+      if (trace.validFrom !== undefined && (parseInstant(trace.validFrom) as number) > at) return false;
+      if (trace.validUntil !== undefined && (parseInstant(trace.validUntil) as number) < at) return false;
+      if (event.authorityRef !== undefined && trace.authorityRef !== event.authorityRef) return false;
+      return true;
+    });
+  }
+  // "2" compares the ISO strings, which misorders instants spelled differently.
   return authorityTrace.some((trace) => {
     // Actor must match
     if (trace.actorRef !== event.actor) return false;

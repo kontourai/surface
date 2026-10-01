@@ -19,7 +19,12 @@ export interface ClaimEvidenceItem {
     isError: boolean;
     exitCode: number | null;
   } | null;
-  passing: boolean;
+  /**
+   * The check result. With an `execution` record it is that execution's
+   * outcome; otherwise it is the evidence's own `passing` value, and `null`
+   * when the evidence reports no result.
+   */
+  passing: boolean | null;
   summary: string;
 }
 
@@ -116,7 +121,12 @@ function projectEvidence(evidence: Evidence): ClaimEvidenceItem {
           exitCode,
         }
       : null,
-    passing: execution ? !isError : String(compatible.status ?? "") !== "disputed",
+    passing: execution
+      ? !isError
+      : typeof evidence.passing === "boolean"
+        ? evidence.passing
+        // Legacy read models mark a failed item with `status: "disputed"`.
+        : String(compatible.status ?? "") === "disputed" ? false : null,
     summary: String(evidence.excerptOrSummary ?? compatible.summary ?? compatible.label ?? ""),
   };
 }

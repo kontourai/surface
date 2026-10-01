@@ -218,7 +218,8 @@ test("explains a found claim with evidence, policy, derivation, gaps, and change
       evidenceType: "test_output",
       label: "legacy:source",
       execution: null,
-      passing: true,
+      // No execution record and no `passing` value: the evidence reports no result.
+      passing: null,
       summary: "legacy evidence summary",
     },
   ]);

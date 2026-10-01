@@ -61,6 +61,11 @@ export interface SurfaceConsoleClaimDetailPolicyGap {
   hasMethods: string[];
   missingEvidence: string[];
   missingMethods: string[];
+  /**
+   * Required check evidence types that are present but report no passing
+   * result, so they do not satisfy the requirement (status function "3").
+   */
+  unqualifiedEvidence: string[];
 }
 
 export interface SurfaceConsoleIntegrityConfigRef {
@@ -146,18 +151,47 @@ export function buildClaimDetail(
   const evidenceCount = evidenceIds.length;
 
   return {
-    guidance: statusGuidance(stringValue(claim.status), evidenceCount),
+    guidance: statusGuidance(stringValue(claim.status), evidenceCount, transparencyGaps),
     suggestedCommand: suggestCommand(claim, readModel),
     gaps: buildGaps(transparencyGaps, claimGaps),
-    policyGap: policyGapAnalysis(claim, policy),
+    policyGap: policyGapAnalysis(claim, policy, transparencyGaps),
     integrityScope: collectIntegrityDetails(claim, evidence),
   };
 }
 
 // ── guidance ────────────────────────────────────────────────────────────────
 
-function statusGuidance(status: string, evidenceCount: number): string | null {
+/** `metadata.source` of a derived transparency gap, or "". */
+function gapSource(gap: Record<string, unknown>): string {
+  return isRecord(gap.metadata) ? stringValue(gap.metadata.source) : "";
+}
+
+/**
+ * Why a claim is `proposed`, read from the transparency gaps the derivation
+ * already computed. A `proposed` claim is not always waiting for evidence: it
+ * can have evidence and a verified event and still be held back by its policy.
+ */
+function proposedGuidance(evidenceCount: number, transparencyGaps: Record<string, unknown>[]): string {
+  const sources = new Set(transparencyGaps.map(gapSource));
+  if (sources.has("policy.unresolvedReference")) {
+    return "This claim names a verification policy that is not in the bundle, so nothing defines what verified requires. Add the policy or correct the claim's verificationPolicyId.";
+  }
+  if (sources.has("policy.requiresNothing")) {
+    return "This claim's verification policy requires no evidence type and no method, so it cannot establish verified. Name what the policy requires.";
+  }
+  if (sources.has("policy.unresolved")) {
+    return "No verification policy resolves for this claim, so nothing defines what verified requires. Attach a policy that names its required evidence.";
+  }
+  if (sources.has("policy.checkResultMissing")) {
+    return "A required check is recorded but reports no passing result, so it does not satisfy the policy. Re-run the check so its evidence records a passing result.";
+  }
+  if (evidenceCount === 0) return "Awaiting first evidence collection run.";
+  return "Evidence is recorded but does not yet meet this claim's verification policy. See the transparency gaps for what is unmet.";
+}
+
+function statusGuidance(status: string, evidenceCount: number, transparencyGaps: Record<string, unknown>[]): string | null {
   if (status === "verified") return null;
+  if (status === "proposed") return proposedGuidance(evidenceCount, transparencyGaps);
   if (status === "unknown") {
     return evidenceCount === 0
       ? "This claim has never been evaluated — no evidence has been collected yet."
@@ -165,7 +199,6 @@ function statusGuidance(status: string, evidenceCount: number): string | null {
   }
   const messages: Record<string, string> = {
     assumed: "This claim depends on an explicit assumption. Review the assumption before relying on downstream conclusions.",
-    proposed: "Awaiting first evidence collection run.",
     stale: "Evidence is outdated — collected against a different version of the code. Stale claims are refreshed one run at a time.",
     disputed: "Surface derived a different status than the producer declared. Resolve the transparency gaps above.",
     rejected: "Verification failed. Check the transparency gaps above for specific remediation steps.",
@@ -217,7 +250,7 @@ function buildGaps(
 
   return merged.map(({ record, typeKey }) => {
     const message = stringValue(record.message);
-    const classified = classifyGap(typeKey, message);
+    const classified = classifyGap(typeKey, message, gapSource(record));
     const gap: SurfaceConsoleClaimDetailGap = {
       kind: classified.kind,
       kindLabel: GAP_KIND_LABEL[classified.kind] ?? classified.kind,
@@ -233,7 +266,7 @@ function buildGaps(
   });
 }
 
-function classifyGap(gapType: string, message: string): { kind: string; title: string; hint: string | null } {
+function classifyGap(gapType: string, message: string, source = ""): { kind: string; title: string; hint: string | null } {
   if (gapType === "provenance_gap") {
     if (message.includes("Missing required evidence")) {
       return {
@@ -249,6 +282,27 @@ function classifyGap(gapType: string, message: string): { kind: string; title: s
     };
   }
   if (gapType === "policy_violation") {
+    if (source === "policy.requiresNothing") {
+      return {
+        kind: "policy",
+        title: "Policy requires nothing",
+        hint: "The verification policy names no required evidence type and no required method, so it cannot tell a verified claim from an unverified one. Add a requirement to the policy.",
+      };
+    }
+    if (source === "policy.unresolved" || source === "policy.unresolvedReference") {
+      return {
+        kind: "policy",
+        title: "No verification policy",
+        hint: "Nothing defines what verified requires for this claim. Attach a verification policy that is present in the bundle and names its required evidence.",
+      };
+    }
+    if (source === "policy.checkResultMissing") {
+      return {
+        kind: "quality",
+        title: "Check has no passing result",
+        hint: "The required check evidence is present but does not report a passing result, so it does not satisfy the policy. Re-run the check and record its result.",
+      };
+    }
     if (message.includes("Missing required verification method")) {
       return {
         kind: "config",
@@ -295,6 +349,7 @@ function classifyGap(gapType: string, message: string): { kind: string; title: s
 function policyGapAnalysis(
   claim: DetailClaimLike,
   policy: Record<string, unknown> | undefined,
+  transparencyGaps: Record<string, unknown>[],
 ): SurfaceConsoleClaimDetailPolicyGap | null {
   if (!policy) return null;
   const requiredEvidence = stringArray(policy.requiredEvidence);
@@ -303,8 +358,16 @@ function policyGapAnalysis(
   const hasMethods = stringArray(claim.evidenceMethods);
   const missingEvidence = requiredEvidence.filter((item) => !hasEvidence.includes(item));
   const missingMethods = requiredMethods.filter((item) => !hasMethods.includes(item));
-  if (!missingEvidence.length && !missingMethods.length) return null;
-  return { requiredEvidence, requiredMethods, hasEvidence, hasMethods, missingEvidence, missingMethods };
+  // Presence alone does not satisfy a requirement: a required check that is
+  // present without a passing result is reported by the derivation as a gap.
+  const unqualifiedEvidence = [...new Set(
+    transparencyGaps
+      .filter((gap) => gapSource(gap) === "policy.checkResultMissing" && isRecord(gap.metadata))
+      .map((gap) => stringValue((gap.metadata as Record<string, unknown>).evidenceType))
+      .filter((type) => type.length > 0),
+  )];
+  if (!missingEvidence.length && !missingMethods.length && !unqualifiedEvidence.length) return null;
+  return { requiredEvidence, requiredMethods, hasEvidence, hasMethods, missingEvidence, missingMethods, unqualifiedEvidence };
 }
 
 // ── integrity scope ────────────────────────────────────────────────────────────────

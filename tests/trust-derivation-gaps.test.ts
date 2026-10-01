@@ -12,6 +12,7 @@ import {
   buildTrustAnalyticsProjection,
   buildTrustReport,
   checkpointFromReport,
+  explainClaim,
   validateTrustBundle,
   type Evidence,
   type TrustBundle,
@@ -174,13 +175,29 @@ test("a verificationPolicyId naming an absent policy resolves no policy, derives
   // No fallback to the claim-type policy that is present in the bundle.
   assert.equal(report.claims[0]!.status, "proposed");
   assert.equal(report.evidenceRequirementsByClaimId["claim.api"], undefined);
-  const gap = gapsFor(report).find((item) => item.id === "claim.api.gap.unresolved-verification-policy");
-  assert.equal(gap?.blocking, true);
-  assert.equal(gap?.type, "policy_violation");
+  // One cause, one blocking gap: not also a no-verification-policy gap.
+  assert.deepEqual(gapsFor(report).map((item) => [item.id, item.type, item.blocking]), [
+    ["claim.api.gap.unresolved-verification-policy", "policy_violation", true],
+  ]);
 
   // Version "2" falls back to the claim-type policy, which the evidence satisfies.
   const v2 = buildTrustReport(input, { now, statusFunctionVersion: "2" });
   assert.equal(v2.claims[0]!.status, "verified");
   assert.deepEqual(v2.evidenceRequirementsByClaimId["claim.api"]?.requiredEvidenceTypes, ["test_output"]);
   assert.ok(gapsFor(v2).some((item) => item.id === "claim.api.gap.unresolved-verification-policy" && item.blocking));
+});
+
+test("explainClaim reports each check's own result, so it agrees with the gap beside it", () => {
+  const report = buildTrustReport(bundle([
+    evidence("evidence.result-less"),
+    evidence("evidence.failed", { passing: false, blocking: false }),
+  ]), { now });
+  const explanation = explainClaim(report, "claim.api");
+  assert.equal(explanation.status, "proposed");
+  // Neither item passed; reporting `true` here would contradict the check-result gap.
+  assert.deepEqual(explanation.evidence.map((item) => item.passing), [null, false]);
+  assert.ok(explanation.why.transparencyGaps.some((gap) => gap.id === "claim.api.gap.check-result-missing-test_output"));
+
+  const passing = explainClaim(buildTrustReport(bundle([evidence("evidence.pass", { passing: true })]), { now }), "claim.api");
+  assert.deepEqual(passing.evidence.map((item) => item.passing), [true]);
 });

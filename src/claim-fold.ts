@@ -79,6 +79,8 @@ export function foldClaim(input: ClaimFoldInput): ClaimFoldResult {
   // the same evaluation into both the status decision and gap derivation so they
   // cannot drift (issue #1). Standalone status callers recompute on demand.
   const evaluation = policy ? evaluateClaimEvidence({ entailingEvidence, policy, statusFunctionVersion }) : undefined;
+  const danglingPolicyReference = Boolean(input.claim.verificationPolicyId) &&
+    !input.policies.some((candidate) => candidate.id === input.claim.verificationPolicyId);
   const checkpointMark = input.checkpointMark;
   const tailEvents = !input.checkpointUsable || checkpointMark === undefined
     ? input.events
@@ -118,7 +120,7 @@ export function foldClaim(input: ClaimFoldInput): ClaimFoldResult {
     };
     ownStatus = deriveTrustStatus(statusInput);
     // Only the verified-event branch reads `now`; elsewhere the untimed status is the status.
-    untimedOwnStatus = verifiedBranchEvent(input.claim, input.events, input.authorityTrace) === undefined
+    untimedOwnStatus = verifiedBranchEvent(input.claim, input.events, input.authorityTrace, statusFunctionVersion) === undefined
       ? ownStatus
       : deriveTrustStatus({ ...statusInput, ignoreVerifiedStaleness: true });
     eventsFolded = input.events.length;
@@ -146,13 +148,17 @@ export function foldClaim(input: ClaimFoldInput): ClaimFoldResult {
           now: input.now,
           statusFunctionVersion,
         })
-        : [input.evidence.length === 0 ? noPolicyEvidenceGap(input.claim, input.now) : noPolicyGap(input.claim, input.now)]),
+        // Under "3" a dangling `verificationPolicyId` is why no policy resolved;
+        // the unresolved-reference gap below reports that cause once.
+        : input.evidence.length === 0
+          ? [noPolicyEvidenceGap(input.claim, input.now)]
+          : danglingPolicyReference && statusFunctionVersion !== "2"
+            ? []
+            : [noPolicyGap(input.claim, input.now)]),
       ...(statusFunctionVersion !== "2" && policy && !policyRequiresSomething(policy)
         ? [policyRequiresNothingGap(input.claim, policy, input.now)]
         : []),
-      ...(input.claim.verificationPolicyId && !input.policies.some((candidate) => candidate.id === input.claim.verificationPolicyId)
-        ? [danglingPolicyReferenceGap(input.claim, input.now)]
-        : []),
+      ...(danglingPolicyReference ? [danglingPolicyReferenceGap(input.claim, input.now)] : []),
     ],
     eventsFolded,
     eventsTotal: input.events.length,
