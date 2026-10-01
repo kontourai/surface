@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { buildDerivationDrilldown, buildTrustReport, validateTrustBundle } from "../src/index.js";
 import { runCli } from "../src/cli.js";
-import type { Claim, Evidence, TrustBundle, TrustReport, VerificationEvent } from "../src/index.js";
+import type { Claim, Evidence, TrustBundle, TrustReport, VerificationEvent, VerificationPolicy } from "../src/index.js";
 
 const baseClaim: Omit<Claim, "id" | "value" | "fieldOrBehavior"> = {
   subjectType: "repo-governance.repo",
@@ -39,8 +39,21 @@ function evidence(id: string, claimId: string): Evidence {
     excerptOrSummary: `${claimId} passed`,
     observedAt: "2026-06-01T00:00:00.000Z",
     collectedBy: "ci",
+    passing: true,
   };
 }
+
+const testOutputPolicy: VerificationPolicy = {
+  id: "policy-software-evidence",
+  claimType: "software-evidence",
+  requiredEvidence: ["test_output"],
+  acceptanceCriteria: [],
+  reviewAuthority: "ci",
+  validityRule: { kind: "manual" },
+  stalenessTriggers: [],
+  conflictRules: [],
+  impactLevel: "medium",
+};
 
 function verifiedEvent(id: string, claimId: string, evidenceIds: string[] = []): VerificationEvent {
   return {
@@ -178,11 +191,12 @@ test("drilldown walks two-hop derivations mixing derivedFrom and derivationEdges
         derivationEdges: [{ inputClaimId: "middle", method: "max", role: "quality-gate" }],
       },
     ],
-    evidence: [evidence("evd-leaf", "leaf")],
+    evidence: [evidence("evd-leaf", "leaf"), evidence("evd-middle", "middle"), evidence("evd-top", "top")],
+    policies: [testOutputPolicy],
     events: [
       verifiedEvent("event-leaf", "leaf", ["evd-leaf"]),
-      verifiedEvent("event-middle", "middle"),
-      verifiedEvent("event-top", "top"),
+      verifiedEvent("event-middle", "middle", ["evd-middle"]),
+      verifiedEvent("event-top", "top", ["evd-top"]),
     ],
   }));
 

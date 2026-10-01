@@ -52,7 +52,19 @@
       "passing": true
     }
   ],
-  "policies": [],
+  "policies": [
+    {
+      "id": "policy.ci.test-suite",
+      "claimType": "test-suite",
+      "requiredEvidence": ["test_output"],
+      "acceptanceCriteria": ["The unit test run reports a passing result."],
+      "reviewAuthority": "ci-producer",
+      "validityRule": { "kind": "manual" },
+      "stalenessTriggers": [],
+      "conflictRules": [],
+      "impactLevel": "high"
+    }
+  ],
   "events": [
     {
       "id": "ev.event.ci.unit-tests",

@@ -4,14 +4,16 @@ Surface schemas are product contracts. They should change more slowly than imple
 
 ## Current version
 
-Surface **writes** TrustBundles as schema version 5 or 7 according to their
+Surface **writes** TrustBundles as schema version 5, 7 or 8 according to their
 content, and writes TrustReports as version 5. On **read**, it accepts
-`schemaVersion: 2` through `7` (see
+`schemaVersion: 2` through `8` (see
 [v3 to v5 migration](#v3-to-v5-migration) for the one-release read-tolerance
 shim that covers 2-4). Each version is a strict superset of the one before
 it except for the deliberate v5 `surface` to `facet` wire rename documented
 below. The v6 and v7 fields are additive and optional, so adapters can adopt
-them on their own cadence.
+them on their own cadence. Version 8 adds one optional field and, for bundles
+that declare it, two validation rules; see
+[v7 to v8 migration](#v7-to-v8-migration).
 
 Version 7 adds `runtime_observation` evidence and the optional
 `execution.environment` field (`test`, `staging`, or `production`). A policy
@@ -23,9 +25,9 @@ version 5 so Hachure 0.14 and older receivers do not reject it. An explicitly
 versioned `TrustBundleBuilder` fails when its declaration is too old for its
 content.
 
-Hachure 0.15's `trust-report.schema.json` still permits only top-level versions
-5 and 6, even though its embedded evidence and policy references accept the v7
-vocabulary. `buildTrustReport` therefore continues declaring version 5 while
+Hachure's `trust-report.schema.json` (unchanged in 0.16) still permits only
+top-level versions 5 and 6, even though its embedded claim, evidence and policy
+references accept the v7 and v8 vocabulary. `buildTrustReport` therefore continues declaring version 5 while
 carrying those widened pass-through records. This is an upstream schema
 limitation, not a different evidence interpretation.
 
@@ -105,7 +107,7 @@ in-progress marker for the `expiresAt`/`ttlSeconds` validity-window fields
 before this rename shipped.
 
 The current Hachure schemas widen the readable TrustBundle contract to
-`[5, 6, 7]`; Surface-generated TrustReports remain version 5, and generated
+`[5, 6, 7, 8]`; Surface-generated TrustReports remain version 5, and generated
 TrustBundles follow the content-sensitive rule above.
 
 To adopt v5 as a producer:
@@ -158,6 +160,97 @@ The [Quickstart](../../README.md#quickstart) intentionally ships
 report` doubles as a live demonstration of this exact read-tolerance
 behavior — you will see the deprecation warning on stderr the first time you
 run it.
+
+## v7 to v8 migration
+
+Version 8 arrives with Hachure 0.16. It changes one record: a claim's optional
+`conclusionConfidence`.
+
+- **New field.** `conclusionConfidence.calibration` names the calibration table
+  a calibrator applied to produce `value`: `tableRef` and `tableVersion`
+  (required, non-empty strings), and optional `method`, `sampleSize` (an
+  integer of at least 1) and `boundMethod`. No other key is allowed. The object
+  is validated whenever it is present, at any schema version.
+- **Rules for bundles that declare `schemaVersion: 8`.**
+  - `value` requires `calibration`. A raw or self-reported score never goes in
+    `value`.
+  - `interval.low` and `interval.high` lie in `[0, 1]`.
+  - `interval.low <= interval.high`, and when `value` is present,
+    `interval.low <= value <= interval.high`. JSON Schema cannot express these
+    two; `validateTrustBundle` checks them in code, as Hachure's own validator
+    does.
+  - `validateTrustBundle` also applies the rest of the claim schema's
+    `conclusionConfidence` shape to a version 8 bundle (`value` in `[0, 1]`, no
+    unknown keys, `comfortZone.within` required). For versions 2-7 it keeps
+    checking only that `conclusionConfidence` is an object, as before.
+- **Earlier versions are unchanged.** A version 5-7 bundle may still carry
+  `value` without `calibration`.
+
+Emitters (`TrustBundleBuilder`, `mergeBundles`, the verification responder)
+declare version 8 only when a claim carries `conclusionConfidence.calibration`.
+Content without it stays at 5 or 7, so declaring 8 never makes existing
+uncalibrated confidence invalid. An explicitly versioned `TrustBundleBuilder`
+below 8 throws when its content carries `calibration`. Merging a bundle that
+carries `calibration` with one that carries an uncalibrated `value` produces a
+version 8 bundle that `validateTrustBundle` refuses; calibrate or drop the
+uncalibrated value first.
+
+To adopt v8 as a producer: add `calibration` beside every
+`conclusionConfidence.value` you emit, keep interval bounds inside `[0, 1]` and
+around `value`, and declare `"schemaVersion": 8` (or let the builder infer it).
+
+Version 8 is a schema change only. `conclusionConfidence` is carried, not
+derived: the status function never reads it.
+
+### Status function version 3
+
+Hachure 0.16 also moves the status function from version `"2"` to `"3"`. This
+is independent of `schemaVersion`: it applies to every bundle Surface derives,
+whatever version the bundle declares. The governing rule is that omission fails
+closed — leaving out an input the policy depends on can only weaken a derived
+status. A bundle derives a different status under `"3"` exactly when one of
+these applies to a claim whose latest event is `verified` (or, where noted, to
+any claim):
+
+| Bundle shape | `"2"` | `"3"` |
+|---|---|---|
+| No policy resolves for the claim (also for an authority-gated resolution to `verified`) | `verified` | `proposed` |
+| `verificationPolicyId` names a policy that is not in the bundle | policy resolved by `claimType` | no policy: `proposed` |
+| The resolved policy has empty `requiredEvidence` and no `requiredMethods` | `verified` | `proposed` |
+| Required check evidence (`test_output`, `calculation_trace`, `runtime_observation`) has `passing` absent, or `passing: false` with `blocking: false` | `verified` | `proposed` |
+| Corroboration is met only by counting check evidence without `passing: true` | `verified` | `proposed` |
+| `commit` validity rule and no `claim.currentIntegrityRef` | `verified` | `stale` |
+| `validityRule.kind` missing or unknown | `verified` | `stale` |
+| `duration` rule with `durationDays` missing, negative or not finite; unparseable verification time | `verified` (or `stale`, by `now`, for a negative window) | `stale` |
+| `ttlSeconds` negative or not finite; unparseable `expiresAt` | `verified` (or `stale`, by `now`, for a negative window) | `stale` |
+| A blocking failure and an unmet requirement together | `proposed` | `disputed` |
+| Evaluation with an invalid `now` (any claim) | freshness checks pass | refused (`RangeError`) |
+
+Two rules Hachure lists as new in `"3"` were already Surface's behaviour under
+`"2"` and so change nothing here: an `invalidation` event with a non-terminal
+status derives `stale`, and the derivation ceiling uses the ordering `revoked` <
+`rejected` < `disputed` < `superseded` < `stale` < `unknown` < `assumed` <
+`proposed` < `verified` with a missing input counted as `unknown`.
+
+`validateTrustBundle` already refuses several of these shapes (a dangling
+`verificationPolicyId`, a `duration` rule without a finite `durationDays`, an
+unknown validity kind, an unparseable timestamp), so they reach derivation only
+from typed or in-memory input. It no longer refuses a `commit` rule without
+`currentIntegrityRef`: that claim now derives `stale` instead of `verified`, so
+the refusal has nothing left to guard.
+
+To keep a claim `verified` under `"3"`:
+
+- attach a policy that names at least one required evidence type or method;
+- set `passing: true` on check evidence that passed;
+- set `currentIntegrityRef` on claims governed by a `commit` rule.
+
+Version `"2"` stays selectable so a record resolved under it can be re-derived:
+pass `statusFunctionVersion: "2"` to `buildTrustReport`, `deriveTrustSnapshot`,
+`deriveClaimStatus`, `deriveTrustStatus`, `resolveInquiry` or
+`evaluateDerivationRule`. The report, inquiry record and checkpoint record the
+version used, and a checkpoint is only reused by a derivation under the same
+version. Any other value is refused.
 
 ## Migration expectation
 

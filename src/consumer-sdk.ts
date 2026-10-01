@@ -71,6 +71,7 @@ export class TrustBundleBuilder {
 
   get schemaVersion(): SchemaVersion {
     return this.explicitSchemaVersion ?? requiredBundleSchemaVersion({
+      claims: this.claims,
       evidence: this.evidence,
       policies: this.policies,
     });
@@ -128,7 +129,7 @@ export class TrustBundleBuilder {
   }
 
   build(): TrustBundle {
-    const content = { evidence: this.evidence, policies: this.policies };
+    const content = { claims: this.claims, evidence: this.evidence, policies: this.policies };
     if (this.explicitSchemaVersion !== undefined) {
       assertBundleSchemaVersionSufficient(this.explicitSchemaVersion, content);
     }

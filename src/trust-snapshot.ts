@@ -20,7 +20,7 @@ import { applyDerivation } from "./derivation.js";
 import { buildIdentityIndex } from "./identity.js";
 import { canonicalJson, sha256Hex } from "./canonical-digest.js";
 import { resolvePolicyForClaim } from "./policy-resolver.js";
-import { statusFunctionVersion } from "./status.js";
+import { resolveStatusFunctionVersion, type StatusFunctionVersion } from "./status-function-version.js";
 import { deriveWaiverValidity, type WaiverValidity } from "./waiver.js";
 
 export interface TrustSnapshotDerivation {
@@ -59,6 +59,12 @@ export interface DeriveTrustSnapshotOptions {
    */
   since?: DerivationCheckpoint;
   /**
+   * Which status function version to evaluate. Defaults to the current
+   * version; "2" re-derives a bundle as it derived before version "3". A
+   * checkpoint produced under another version is not used.
+   */
+  statusFunctionVersion?: StatusFunctionVersion;
+  /**
    * Instrumentation hook (testing/observability). Invoked once per claim with
    * how many of that claim's events were actually folded for the event-driven
    * status fold (the whole ledger for a full derivation; only the tail — often
@@ -79,6 +85,11 @@ export interface SnapshotEventProbe {
 
 export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnapshotOptions = {}): TrustSnapshotDerivation {
   const now = options.now ?? new Date();
+  const statusFunctionVersion = resolveStatusFunctionVersion(options.statusFunctionVersion);
+  if (statusFunctionVersion !== "2" && !Number.isFinite(now.getTime())) {
+    // Status function "3": no freshness comparison is possible with an invalid `now`.
+    throw new RangeError(`invalid now: ${String(now)}`);
+  }
   // Null-prototype map: a claim id of `__proto__`, `toString`, or `constructor`
   // must become an ordinary own key, never resolve through the prototype chain
   // (mirrors `waiverValidityByClaimId` below; #127).
@@ -132,7 +143,7 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
       ? (claim.id in perClaimMark ? perClaimMark[claim.id] : undefined)
       : undefined;
     const claimMark = typeof claimMarkIso === "string" ? Date.parse(claimMarkIso) : undefined;
-    const inputDigest = claimInputDigest(claim, evidence, claimEvents, resolvePolicyForClaim(claim, input.policies), authorityTraceDigest);
+    const inputDigest = claimInputDigest(claim, evidence, claimEvents, resolvePolicyForClaim(claim, input.policies, { statusFunctionVersion }), authorityTraceDigest);
     inputDigestByClaimId[claim.id] = inputDigest;
     const claimSeenByCheckpoint = checkpointUsable && perClaimMark
       ? Object.hasOwn(perClaimMark, claim.id) &&
@@ -154,6 +165,7 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
       checkpointUsable,
       checkpointSeenClaim: claimSeenByCheckpoint,
       checkpointMark: claimMark,
+      statusFunctionVersion,
     });
 
     options.instrument?.({

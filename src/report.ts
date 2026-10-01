@@ -13,7 +13,7 @@ import type {
 import { CURRENT_SCHEMA_VERSION } from "./types.js";
 import { deriveTrustSnapshot } from "./trust-snapshot.js";
 import type { SnapshotEventProbe } from "./trust-snapshot.js";
-import { statusFunctionVersion } from "./status.js";
+import { resolveStatusFunctionVersion, type StatusFunctionVersion } from "./status-function-version.js";
 import { isUnsupportedStatus, TRUST_STATUS_ORDER } from "./status-taxonomy.js";
 import { waiverValidityFunctionVersion } from "./waiver.js";
 import { evidenceStrengthOf, reviewerAuthorityOf } from "./wire-string.js";
@@ -43,6 +43,12 @@ export interface BuildTrustReportOptions {
    */
   since?: DerivationCheckpoint;
   /**
+   * Which status function version to evaluate; recorded as the report's
+   * `statusFunctionVersion`. Defaults to the current version. "2" re-derives a
+   * bundle as it derived before version "3".
+   */
+  statusFunctionVersion?: StatusFunctionVersion;
+  /**
    * Instrumentation hook (testing/observability): invoked once per claim with
    * how many of that claim's events were actually folded. Lets callers prove a
    * checkpointed derivation consumed only the event tail (often zero events).
@@ -63,7 +69,8 @@ const checkpointInputsByReport = new WeakMap<TrustReport, {
 
 export function buildTrustReport(input: TrustBundle, options: BuildTrustReportOptions = {}): TrustReport {
   const now = options.now ?? new Date();
-  const snapshot = deriveTrustSnapshot(input, { now, since: options.since, instrument: options.instrument });
+  const statusFunctionVersion = resolveStatusFunctionVersion(options.statusFunctionVersion);
+  const snapshot = deriveTrustSnapshot(input, { now, since: options.since, instrument: options.instrument, statusFunctionVersion });
 
   const report: TrustReport = {
     // Hachure 0.15 widens the embedded Evidence/VerificationPolicy schemas for

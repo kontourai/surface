@@ -33,10 +33,23 @@
     "confidenceBasis": { "type": "object" },
     "conclusionConfidence": {
       "type": "object",
-      "$comment": "Optional calibrated confidence ON the conclusion (distinct from confidenceBasis, which carries raw signals): a probability the conclusion is correct, plus a producer-populated comfort-zone signal. Carried, not produced; the status function never consults it. `method` and `comfortZone.reason` are free-form producer-owned vocabulary, never enumerated here.",
+      "$comment": "Optional calibrated confidence ON the conclusion (distinct from confidenceBasis, which carries raw signals): a probability the conclusion is correct, plus a producer-populated comfort-zone signal. `value` is written only by a calibrator applying the versioned calibration table named in `calibration` (ai-evaluation.md §Calibrated conclusion confidence); a raw or self-reported score never goes in `value`. From schemaVersion 8 the trust-bundle schema requires `calibration` whenever `value` is present and constrains `interval` bounds to [0, 1]; `interval` MUST also satisfy low <= high and low <= value <= high, which JSON Schema cannot express and `hachure validate` checks in code (validateConclusionConfidence) for schemaVersion 8 bundles. Carried, not produced; the status function never consults it. `method` and `comfortZone.reason` are free-form producer-owned vocabulary, never enumerated here.",
       "properties": {
         "value": { "type": "number", "minimum": 0, "maximum": 1 },
         "method": { "type": "string" },
+        "calibration": {
+          "type": "object",
+          "description": "The calibration table the calibrator applied to produce `value` (added at schemaVersion 8).",
+          "properties": {
+            "tableRef": { "type": "string", "minLength": 1 },
+            "tableVersion": { "type": "string", "minLength": 1 },
+            "method": { "type": "string" },
+            "sampleSize": { "type": "integer", "minimum": 1 },
+            "boundMethod": { "type": "string" }
+          },
+          "required": ["tableRef", "tableVersion"],
+          "additionalProperties": false
+        },
         "interval": {
           "type": "object",
           "properties": {

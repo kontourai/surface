@@ -86,42 +86,45 @@ Schema: `schemas/verification-policy.schema.json`
 
 ### Validity-rule evaluation
 
-`statusFunctionVersion` remains `"2"`: the versioned status function keeps its
-published result for every valid input. Trust Snapshot derivation separately
-emits a blocking `policy_violation` transparency gap when a declared validity
-rule cannot be evaluated, so a `verified` v2 status never silently presents an
+`statusFunctionVersion` is `"3"` (Hachure 0.16); `"2"` stays selectable. See
+[Status function version 3](schema-versioning.md#status-function-version-3) for
+every difference. Under `"3"` a verified claim whose validity rule cannot be
+evaluated derives `stale`. Trust Snapshot derivation also emits a blocking
+`policy_violation` transparency gap
+(`<claim>.gap.unevaluable-validity-rule`) naming the rule, under either version;
+under `"2"` that gap is what keeps a still-`verified` status from presenting an
 unevaluable rule as healthy.
 
-- A `commit` rule that would otherwise derive `verified` requires the resolved
-  claim to carry `currentIntegrityRef`.
-- A `duration` rule requires a finite `durationDays` value and a
-  parseable verified-event timestamp.
-- A rule kind not understood by this Surface version is reported as
-  unevaluable by direct snapshot callers; `validateTrustBundle` rejects it.
+- A `commit` rule requires the resolved claim to carry `currentIntegrityRef`.
+- A `duration` rule requires a finite, non-negative `durationDays` value and a
+  parseable verified-event timestamp. (Under `"2"` a negative duration is a
+  valid window that has already ended.)
+- A rule kind not understood by this Surface version is unevaluable.
 
-`validateTrustBundle` rejects invalid duration configuration and a missing
-commit reference when v2 would otherwise derive `verified`. The transparency
-gap remains necessary for typed or in-memory inputs that reach
-`deriveTrustSnapshot` without prior validation.
-
-Commit-input validation replays the claim at its latest ledger event rather
-than consulting the host clock, so accepting the same bundle is
-time-independent. A negative duration remains a valid v2 policy input and
-therefore derives stale immediately.
+`validateTrustBundle` rejects a `duration` rule without a finite `durationDays`,
+an unknown rule kind, and an unparseable timestamp. The status rule and the
+gap remain necessary for typed or in-memory inputs that reach
+`deriveTrustSnapshot` without prior validation. `validateTrustBundle` accepts a
+`commit` rule on a claim without `currentIntegrityRef`; that claim derives
+`stale`.
 
 `verificationPolicyId` remains optional for authored claims. When no policy
-resolves, Surface does not invent a validity window or a validity-rule gap;
-producers that need freshness guarantees must attach a policy explicitly.
+resolves, Surface does not invent a validity window or a validity-rule gap.
 
-A claim with no resolved policy cannot present as healthy. Status function v2
-may still derive `verified` for it, so the snapshot adds a blocking gap: the
-existing `provenance_gap` (`<claim>.gap.provenance-gap`) when the claim has no
-evidence, otherwise a `policy_violation` (`<claim>.gap.no-verification-policy`,
+A claim with no resolved policy cannot present as healthy. Under `"3"` it
+derives at most `proposed`, because nothing defines what `verified` requires.
+The snapshot also adds a blocking gap, under either version: the existing
+`provenance_gap` (`<claim>.gap.provenance-gap`) when the claim has no evidence,
+otherwise a `policy_violation` (`<claim>.gap.no-verification-policy`,
 `metadata.source: "policy.unresolved"`). A claim whose `verificationPolicyId`
-names a policy absent from the bundle also gets a blocking `policy_violation`
-(`<claim>.gap.unresolved-verification-policy`), even when claim-type resolution
-finds another policy. Consumers that gate on blocking gaps (answer assessment,
-Basis) refuse these claims.
+names a policy absent from the bundle resolves no policy under `"3"` (there is
+no fallback to a claim-type policy) and gets a blocking `policy_violation`
+(`<claim>.gap.unresolved-verification-policy`). A resolved policy that names no
+required evidence type and no required method is treated as no policy under
+`"3"`; the claim gets a blocking `policy_violation`
+(`<claim>.gap.verification-policy-requires-nothing`,
+`metadata.source: "policy.requiresNothing"`). Consumers that gate on blocking
+gaps (answer assessment, Basis) refuse these claims.
 
 ### Check results
 
@@ -131,9 +134,13 @@ its result through `passing`. Every item with `passing: false` produces a
 the item says `blocking: false`, whatever its `supportStrength`: a `cited`
 failure still does not count as support or as counterevidence for status, but it
 is no longer invisible. When a policy requires one of these types and no
-entailing item of that type reports `passing: true`, any result-less item
-(`passing` unset) produces a blocking `policy_violation` gap
-(`<claim>.gap.check-result-missing-<type>`). Status is unchanged by these gaps.
+entailing item of that type reports `passing: true`, the requirement is unmet
+under status function `"3"` and the claim derives `proposed` (or `disputed` when
+a failure is blocking). The snapshot reports it with a blocking
+`policy_violation` gap (`<claim>.gap.check-result-missing-<type>`) naming the
+result-less items (`passing` unset), or the failed items when every one of them
+reported a failure. Under `"2"` status follows type presence, and the gap is
+emitted only for result-less items.
 
 ## Verification Event
 

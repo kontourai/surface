@@ -71,6 +71,7 @@ const TEST_OUTPUT_EVIDENCE: Evidence = {
   excerptOrSummary: "All tests passed.",
   observedAt: "2026-06-01T00:05:00.000Z",
   collectedBy: "ci",
+  passing: true,
 };
 
 const SHORT_DURATION_POLICY: VerificationPolicy = {
@@ -271,6 +272,7 @@ const TESTS_EVIDENCE: Evidence = {
   excerptOrSummary: "All tests passed.",
   observedAt: "2026-06-01T00:05:00.000Z",
   collectedBy: "ci",
+  passing: true,
 };
 
 const COVERAGE_EVIDENCE: Evidence = {
@@ -282,6 +284,7 @@ const COVERAGE_EVIDENCE: Evidence = {
   excerptOrSummary: "Coverage 95%.",
   observedAt: "2026-06-01T00:05:00.000Z",
   collectedBy: "ci",
+  passing: true,
 };
 
 const SOFTWARE_POLICY: VerificationPolicy = {
@@ -736,6 +739,7 @@ const SEC_SCAN_EVIDENCE: import("../src/index.js").Evidence = {
   excerptOrSummary: "No vulnerabilities found.",
   observedAt: "2026-06-01T00:05:00.000Z",
   collectedBy: "ci",
+  passing: true,
 };
 
 // Rule A: tests + coverage (leaf rule)
@@ -1059,6 +1063,20 @@ test("resolveInquiry with ruleRef: resolutionPath includes transitiveRuleIds", (
 // ---------------------------------------------------------------------------
 
 // Shared fixtures for authority tests
+
+// The `oversight` claims below are verified by attestation; a claim with no
+// resolved policy derives at most `proposed`.
+const OVERSIGHT_POLICY: VerificationPolicy = {
+  id: 'policy-oversight',
+  claimType: 'oversight',
+  requiredEvidence: ['attestation'],
+  acceptanceCriteria: ['attested by the accountable role'],
+  reviewAuthority: 'dpo',
+  validityRule: { kind: 'manual' },
+  stalenessTriggers: [],
+  conflictRules: [],
+  impactLevel: 'high',
+};
 const AUTH_CLAIM: import('../src/index.js').Claim = {
   id: 'claim-auth',
   subjectType: 'ai-system',
@@ -1138,7 +1156,7 @@ test('requiresActiveAuthority: met when actor has active trace', () => {
     claims: [AUTH_CLAIM],
     evidence: [AUTH_EVIDENCE],
     events: [AUTH_CLAIM_EVENT],
-    policies: [SOFTWARE_POLICY],
+    policies: [SOFTWARE_POLICY, OVERSIGHT_POLICY],
     authorityTrace: [ACTIVE_TRACE],
   });
   const result = evaluateDerivationRule(AUTH_RULE, bundle, { now: NOW_IN_WINDOW });
@@ -1151,7 +1169,7 @@ test('requiresActiveAuthority: not met when actor has expired trace', () => {
     claims: [AUTH_CLAIM],
     evidence: [AUTH_EVIDENCE],
     events: [AUTH_CLAIM_EVENT],
-    policies: [SOFTWARE_POLICY],
+    policies: [SOFTWARE_POLICY, OVERSIGHT_POLICY],
     authorityTrace: [EXPIRED_TRACE],
   });
   const result = evaluateDerivationRule(AUTH_RULE, bundle, { now: NOW_IN_WINDOW });
@@ -1164,7 +1182,7 @@ test('requiresActiveAuthority: not met when actor trace is revoked', () => {
     claims: [AUTH_CLAIM],
     evidence: [AUTH_EVIDENCE],
     events: [AUTH_CLAIM_EVENT],
-    policies: [SOFTWARE_POLICY],
+    policies: [SOFTWARE_POLICY, OVERSIGHT_POLICY],
     authorityTrace: [REVOKED_TRACE],
   });
   const result = evaluateDerivationRule(AUTH_RULE, bundle, { now: NOW_IN_WINDOW });
@@ -1177,7 +1195,7 @@ test('requiresActiveAuthority: not met when actor has no trace in bundle', () =>
     claims: [AUTH_CLAIM],
     evidence: [AUTH_EVIDENCE],
     events: [AUTH_CLAIM_EVENT],
-    policies: [SOFTWARE_POLICY],
+    policies: [SOFTWARE_POLICY, OVERSIGHT_POLICY],
     authorityTrace: [],  // empty traces
   });
   const result = evaluateDerivationRule(AUTH_RULE, bundle, { now: NOW_IN_WINDOW });
@@ -1190,7 +1208,7 @@ test('requiresActiveAuthority: not met when no status-bearing events exist', () 
     claims: [AUTH_CLAIM],
     evidence: [AUTH_EVIDENCE],
     events: [],  // no events — cannot identify actor
-    policies: [SOFTWARE_POLICY],
+    policies: [SOFTWARE_POLICY, OVERSIGHT_POLICY],
     authorityTrace: [ACTIVE_TRACE],
   });
   const result = evaluateDerivationRule(AUTH_RULE, bundle, { now: NOW_IN_WINDOW });
@@ -1216,7 +1234,7 @@ test('requiresActiveAuthority: combined with acceptedStatuses and fresherThan', 
     claims: [AUTH_CLAIM],
     evidence: [AUTH_EVIDENCE],
     events: [AUTH_CLAIM_EVENT],
-    policies: [SOFTWARE_POLICY],
+    policies: [SOFTWARE_POLICY, OVERSIGHT_POLICY],
     authorityTrace: [ACTIVE_TRACE],
   });
   // Within freshness window (verifiedAt = 2026-01-01, now = 2026-06-01 = 151 days)
@@ -1311,7 +1329,7 @@ test('corroboration: met when 2 distinct actors provide entailing evidence', () 
     claims: [CORROBORATION_CLAIM],
     evidence: [CORR_EV_ACTOR_A, CORR_EV_ACTOR_B],
     events: [CORR_VERIFIED_EVENT],
-    policies: [SOFTWARE_POLICY],
+    policies: [SOFTWARE_POLICY, OVERSIGHT_POLICY],
   });
   const result = evaluateDerivationRule(CORR_RULE, bundle, { now: NOW_IN_WINDOW });
   assert.equal(result.satisfied, true);
@@ -1324,7 +1342,7 @@ test('corroboration: NOT met with 2 evidence items from same actor', () => {
     claims: [CORROBORATION_CLAIM],
     evidence: [CORR_EV_ACTOR_A, CORR_EV_ACTOR_A_DUP],
     events: [CORR_VERIFIED_EVENT],
-    policies: [SOFTWARE_POLICY],
+    policies: [SOFTWARE_POLICY, OVERSIGHT_POLICY],
   });
   const result = evaluateDerivationRule(CORR_RULE, bundle, { now: NOW_IN_WINDOW });
   assert.equal(result.satisfied, false);
@@ -1345,7 +1363,7 @@ test('corroboration: minActors:1 met with a single entailing evidence item', () 
     claims: [CORROBORATION_CLAIM],
     evidence: [CORR_EV_ACTOR_A],
     events: [CORR_VERIFIED_EVENT],
-    policies: [SOFTWARE_POLICY],
+    policies: [SOFTWARE_POLICY, OVERSIGHT_POLICY],
   });
   const result = evaluateDerivationRule(rule, bundle, { now: NOW_IN_WINDOW });
   assert.equal(result.satisfied, true);
@@ -1361,7 +1379,7 @@ test('corroboration: non-entailing (cited) evidence does not count toward minAct
     claims: [CORROBORATION_CLAIM],
     evidence: [CORR_EV_ACTOR_A, citedEvidence],
     events: [CORR_VERIFIED_EVENT],
-    policies: [SOFTWARE_POLICY],
+    policies: [SOFTWARE_POLICY, OVERSIGHT_POLICY],
   });
   // Only 1 entailing actor (ACTOR_A), ACTOR_B is cited-only — minActors:2 fails
   const result = evaluateDerivationRule(CORR_RULE, bundle, { now: NOW_IN_WINDOW });
@@ -1374,7 +1392,7 @@ test('corroboration: combined with acceptedStatuses — both must be satisfied',
     claims: [CORROBORATION_CLAIM],
     evidence: [CORR_EV_ACTOR_A, CORR_EV_ACTOR_B],
     events: [],  // no verified event → status will not be verified
-    policies: [SOFTWARE_POLICY],
+    policies: [SOFTWARE_POLICY, OVERSIGHT_POLICY],
   });
   const result = evaluateDerivationRule(CORR_RULE, bundle, { now: NOW_IN_WINDOW });
   assert.equal(result.satisfied, false);
@@ -1399,7 +1417,7 @@ test('corroboration + requiresActiveAuthority: both predicates evaluated togethe
     claims: [CORROBORATION_CLAIM],
     evidence: [CORR_EV_ACTOR_A, CORR_EV_ACTOR_B],
     events: [CORR_VERIFIED_EVENT],
-    policies: [SOFTWARE_POLICY],
+    policies: [SOFTWARE_POLICY, OVERSIGHT_POLICY],
     authorityTrace: [
       {
         ...ACTIVE_TRACE,

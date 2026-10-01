@@ -26,9 +26,11 @@ test("weak direct, transitive, and mixed edges preserve verified status and expo
     { id: "middle", subjectType: "x", subjectId: "middle", claimType: "x", fieldOrBehavior: "middle", value: true, createdAt: at, updatedAt: at, derivationEdges: [{ inputClaimId: "leaf", supportStrength: "weak" as const }] },
     { id: "conclusion", subjectType: "x", subjectId: "conclusion", claimType: "x", fieldOrBehavior: "conclusion", value: true, createdAt: at, updatedAt: at, derivationEdges: [{ inputClaimId: "middle", supportStrength: "strong" as const }, { inputClaimId: "other", supportStrength: "weak" as const }] },
   ];
-  const events = baseClaims.map((claim) => ({ id: `verified-${claim.id}`, claimId: claim.id, status: "verified" as const, actor: "owner", method: "review" as const, evidenceIds: [], createdAt: at }));
-  const report = buildTrustReport({ schemaVersion: 5, source: "fixture:weak-transitive", claims: baseClaims, evidence: [], policies: [], events }, { now: new Date("2026-01-02T00:00:00.000Z") });
-  assert.equal(report.statusFunctionVersion, "2");
+  const events = baseClaims.map((claim) => ({ id: `verified-${claim.id}`, claimId: claim.id, status: "verified" as const, actor: "owner", method: "review" as const, evidenceIds: [`attested-${claim.id}`], createdAt: at }));
+  const evidence = baseClaims.map((claim) => ({ id: `attested-${claim.id}`, claimId: claim.id, evidenceType: "human_attestation" as const, method: "attestation" as const, sourceRef: "owner", excerptOrSummary: "attested", observedAt: at, collectedBy: "owner" }));
+  const policies = [{ id: "policy-x", claimType: "x", requiredEvidence: ["human_attestation" as const], acceptanceCriteria: [], reviewAuthority: "owner", validityRule: { kind: "manual" as const }, stalenessTriggers: [], conflictRules: [], impactLevel: "medium" as const }];
+  const report = buildTrustReport({ schemaVersion: 5, source: "fixture:weak-transitive", claims: baseClaims, evidence, policies, events }, { now: new Date("2026-01-02T00:00:00.000Z") });
+  assert.equal(report.statusFunctionVersion, "3");
   assert.equal(report.claims.find((claim) => claim.id === "middle")?.status, "verified");
   assert.equal(report.claims.find((claim) => claim.id === "conclusion")?.status, "verified");
   const gap = report.transparencyGaps.find((candidate) => candidate.claimId === "conclusion" && candidate.metadata?.source === "derivation.weak");

@@ -22,6 +22,11 @@ npx surface console \
 | `review-producer.bundle.json` | `review-producer` | shared repo identity; verified human sign-off |
 | `security-producer.bundle.json` | `security-producer` | shared repo identity; verified dependency audit; build artifact digest (`sha256:9999…`) |
 
+Each producer ships the verification policy its notable claim is verified
+against. A claim derives `verified` only when a policy that names required
+evidence resolves for it; the shared identity and artifact-digest claims carry
+no policy or evidence and derive `unknown`.
+
 - **Dedup + attribution.** `claim.shared.repo-identity` is byte-identical across all
   three producers, so it dedups to a single card that still attributes all three
   producers.

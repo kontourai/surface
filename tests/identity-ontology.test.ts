@@ -81,6 +81,7 @@ function makeVerifiedClaim(
     excerptOrSummary: "pass",
     observedAt: "2026-06-01T00:05:00.000Z",
     collectedBy: "ci",
+    passing: true,
   };
   const event: VerificationEvent = {
     id: `evt-${id}`,
@@ -364,6 +365,7 @@ test("resolveInquiry: disputed mapping claim caps answer to disputed", () => {
     excerptOrSummary: "pass",
     observedAt: "2026-06-01T00:05:00.000Z",
     collectedBy: "ci",
+    passing: true,
   };
 
   const link: IdentityLink = {
@@ -423,6 +425,7 @@ test("resolveInquiry: verified mapping claim does not cap verified answer", () =
     excerptOrSummary: "pass",
     observedAt: "2026-06-01T00:05:00.000Z",
     collectedBy: "ci",
+    passing: true,
   };
   const mappingEvent: VerificationEvent = {
     id: "evt-mapping-ok",

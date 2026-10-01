@@ -567,6 +567,17 @@ test("non-blocking evidence failures create non-blocking transparency gaps while
       collectedBy: "tester",
       passing: false,
       blocking: false,
+    }, {
+      // The requirement is met by a passing check; the failed one alone would not meet it.
+      id: "evidence-pass",
+      claimId: "claim-soft-fail",
+      evidenceType: "test_output",
+      method: "validation",
+      sourceRef: "npm test",
+      excerptOrSummary: "required check passed",
+      observedAt: "2026-04-25T00:00:00.000Z",
+      collectedBy: "tester",
+      passing: true,
     }],
     policies: [{
       id: "policy-evidence",

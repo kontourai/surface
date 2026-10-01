@@ -34,6 +34,8 @@ builder.addEvidence({
   excerptOrSummary: "release checks passed",
   observedAt: "2026-05-01T00:00:00.000Z",
   collectedBy: "ci",
+  // Check evidence satisfies a policy requirement only with `passing: true`.
+  passing: true,
 }).linkTo(claimId);
 
 builder.addPolicy({
@@ -84,8 +86,9 @@ const report = buildTrustReport(input);
 `build()` calls `validateTrustBundle` before returning, so malformed timestamps, broken references, unsupported enum values, and missing required fields fail before the product stores or publishes the input.
 
 When `schemaVersion` is omitted, `TrustBundleBuilder` infers it from the final
-content: pure-v5 vocabulary emits version 5, while runtime-observation
-vocabulary emits version 7. If a caller sets an explicit version below what the
+content: pure-v5 vocabulary emits version 5, runtime-observation vocabulary
+emits version 7, and a claim whose `conclusionConfidence` names its
+`calibration` table emits version 8. If a caller sets an explicit version below what the
 content requires, `build()` throws instead of emitting an under-versioned
 bundle.
 

@@ -39,7 +39,19 @@
       "collectedBy": "review-producer"
     }
   ],
-  "policies": [],
+  "policies": [
+    {
+      "id": "policy.review.human-review",
+      "claimType": "human-review",
+      "requiredEvidence": ["human_attestation"],
+      "acceptanceCriteria": ["A named reviewer attests to the sign-off."],
+      "reviewAuthority": "review-producer",
+      "validityRule": { "kind": "manual" },
+      "stalenessTriggers": [],
+      "conflictRules": [],
+      "impactLevel": "high"
+    }
+  ],
   "events": [
     {
       "id": "ev.event.review.human-signoff",

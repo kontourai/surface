@@ -141,9 +141,10 @@ export function mergeBundlesDetailed(bundles: TrustBundle[]): MergeResult {
   // the omission is the contract, not an accidental gap. (`source`, by contrast,
   // IS synthesized above as `merged:<a>+<b>`.)
   // The declaration is content-sensitive: retain v5 compatibility for pure-v5
-  // unions, but declare v7 when verbatim-unioned evidence or policies use the
-  // runtime-observation vocabulary.
-  const schemaVersion = requiredBundleSchemaVersion({ evidence, policies });
+  // unions, declare v7 when verbatim-unioned evidence or policies use the
+  // runtime-observation vocabulary, and v8 when a claim names its calibration
+  // table.
+  const schemaVersion = requiredBundleSchemaVersion({ claims, evidence, policies });
   const bundle: TrustBundle = {
     schemaVersion,
     source,

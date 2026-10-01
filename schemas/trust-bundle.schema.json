@@ -5,8 +5,35 @@
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "source", "claims", "evidence", "policies", "events"],
+  "allOf": [
+    {
+      "$comment": "schemaVersion 8: a claim's conclusionConfidence.value must name the calibration table that produced it, and interval bounds lie in [0, 1] (ai-evaluation.md). Earlier versions carry both as a SHOULD and validate as before.",
+      "if": { "properties": { "schemaVersion": { "minimum": 8 } } },
+      "then": {
+        "properties": {
+          "claims": {
+            "items": {
+              "properties": {
+                "conclusionConfidence": {
+                  "dependentRequired": { "value": ["calibration"] },
+                  "properties": {
+                    "interval": {
+                      "properties": {
+                        "low": { "minimum": 0, "maximum": 1 },
+                        "high": { "minimum": 0, "maximum": 1 }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
   "properties": {
-    "schemaVersion": { "enum": [5, 6, 7] },
+    "schemaVersion": { "enum": [5, 6, 7, 8] },
     "source": { "type": "string" },
     "producerId": {
       "type": "string",
