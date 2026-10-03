@@ -1,5 +1,22 @@
 # Changelog
 
+## [5.0.0](https://github.com/kontourai/surface/compare/v4.4.1...v5.0.0) (2026-10-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* **status:** derived statuses change for existing bundles. A claim whose latest event is `verified` now derives `proposed` when no policy resolves, when its verificationPolicyId names a policy that is not in the bundle, when the resolved policy names no required evidence type or method, or when a required check (test_output, calculation_trace, runtime_observation) does not report `passing: true`; and derives `stale` when its validity rule cannot be evaluated (for example a commit rule without currentIntegrityRef). A blocking failure with an unmet requirement derives `disputed` instead of `proposed`. A claim with no event and no evidence under a policy that requires nothing derives `unknown` instead of `proposed`. Authority-trace windows are compared as instants. Pass statusFunctionVersion: "2" to re-derive under the previous rules. validateTrustBundle no longer rejects a commit rule on a claim without currentIntegrityRef unless called with { statusFunctionVersion: "2" }. ClaimEvidenceEvaluation gains required statusFunctionVersion and qualifyingEvidence fields; ClaimEvidenceItem.passing is boolean | null. See docs/reference/schema-versioning.md, "v7 to v8 migration".
+
+### Features
+
+* render claim statuses with @kontourai/ui's shared trust-state chip ([#293](https://github.com/kontourai/surface/issues/293)) ([d205e49](https://github.com/kontourai/surface/commit/d205e49e4a7930a22259e03b711306a9991a4b4c)), closes [#274](https://github.com/kontourai/surface/issues/274)
+* **status:** adopt Hachure 0.16.0 — status function v3 and schemaVersion 8 ([#310](https://github.com/kontourai/surface/issues/310)) ([703ab8c](https://github.com/kontourai/surface/commit/703ab8c4339399c8815e5d44b9b9adcdae9d167c))
+
+
+### Fixes
+
+* **basis:** treat malformed reviewer and method values as absent in view and report ([#303](https://github.com/kontourai/surface/issues/303)) ([3082715](https://github.com/kontourai/surface/commit/308271553b8b307c02b70031565cdc49abdc952a)), closes [#300](https://github.com/kontourai/surface/issues/300)
+
 ## [4.4.1](https://github.com/kontourai/surface/compare/v4.4.0...v4.4.1) (2026-09-29)
 
 
