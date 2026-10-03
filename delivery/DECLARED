@@ -66,6 +66,12 @@
     "declared_at": "2026-09-04T05:19:12Z"
   },
   {
+    "scope": "author:briananderson1222 branch-prefix:chore/attestation-identity",
+    "reason": "Replaces the personal mailbox recorded as actor.identityEvidence.gitEmail in the two committed Veritas attestations with the GitHub noreply form, and adds this entry. Record-only change: no source, behaviour, schema or shipped-package change, and no command-backed agent-delivery claims, so no trust bundle exists to reconcile. The field is not an input to any hash or signature: the attestation id digest and contentHash are derived from kind, attestedAt and the three protected-standards hashes only, the schema requires the key but accepts any string or null, and nothing reads the value at verification time. Verification in lieu of a bundle: `veritas readiness` at the pinned 1.5.2 gives line-identical verdicts before and after the edit, full `npm run verify` is green locally, and this PR's own CI. Git history keeps the old value; rewriting history is out of scope by owner decision. Scope is paired with author: per the ADR 0022 2026-07-03 addendum, since branch-prefix alone resolves against a pusher-controlled ref.",
+    "approved_by": "briananderson1222 (owner approval in session, 2026-10-01: 'Mark declared')",
+    "declared_at": "2026-10-01T02:18:00Z"
+  },
+  {
     "scope": "author:briananderson1222 branch-prefix:feat/hachure-0-16",
     "reason": "Adopts Hachure 0.16.0: accepts schemaVersion 8 with the calibrated conclusionConfidence rules, and moves the status function to version 3 with version 2 kept selectable. Agent-delivered in an owner-attended session outside a bundled workflow, so no trust bundle exists to reconcile. Verification in lieu of a bundle: npm run verify on Node 22 and Node 24 in this PR's own CI, plus the Hachure 0.16.0 conformance vectors, which the test suite runs under both status function versions honouring each vector's statusFunctionVersions filter. This changes derived statuses for existing bundles and is disclosed as a breaking change in the PR. Scope is paired with author: per the ADR 0022 2026-07-03 addendum, since branch-prefix alone resolves against a pusher-controlled ref.",
     "approved_by": "briananderson1222 (owner approval in session, 2026-10-01)",
