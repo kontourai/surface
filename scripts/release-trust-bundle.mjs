@@ -6,7 +6,8 @@
  *
  * Claims produced:
  *   (a) test-suite-passes        — npm test passes; pass/fail counts in evidence
- *   (b) spec-conformance-passes  — all hachure spec vectors pass per-vector
+ *   (b) spec-conformance-passes  — every hachure spec vector that applies to this
+ *                                  implementation's statusFunctionVersion passes
  *   (c) status-function-version  — impl statusFunctionVersion === spec package version
  *   (d) package-identity         — package.json version; git tag + commit as integrityRef
  *
@@ -111,10 +112,18 @@ let allVectorsPassed = true;
 
 for (const fileName of vectorFiles) {
   const raw = JSON.parse(await readFile(path.join(conformanceDir, fileName), "utf8"));
+  // A vector with a `statusFunctionVersions` array applies only to the versions
+  // it lists; a vector without one applies to every version.
+  if (Array.isArray(raw.statusFunctionVersions) && !raw.statusFunctionVersions.includes(statusFunctionVersion)) {
+    console.log(`  - ${fileName} (applies to statusFunctionVersions ${raw.statusFunctionVersions.join(", ")}; skipped)`);
+    continue;
+  }
   try {
-    const bundle = validateTrustBundle(raw.input);
+    // Derive from the vector's input as published. validateTrustBundle is a
+    // stricter read contract and refuses some vectors the status function
+    // defines a result for (see tests/spec-conformance.test.ts).
     const vectorNow = new Date(raw.now);
-    const report = buildTrustReport(bundle, { now: vectorNow });
+    const report = buildTrustReport(raw.input, { now: vectorNow, statusFunctionVersion });
     const expected = raw.expect.statusByClaimId;
 
     const mismatches = [];

@@ -59,6 +59,18 @@ const input = new TrustBundleBuilder({ source: "my-producer:local" })
     fieldOrBehavior: "rate limit is enforced",
     value: "100 requests/minute",
     currentIntegrityRef: "commit:abc123",
+    verificationPolicyId: "policy.api.tests",
+  })
+  .addPolicy({
+    id: "policy.api.tests",
+    claimType: "software-evidence",
+    requiredEvidence: ["test_output"],
+    acceptanceCriteria: ["rate-limit tests pass"],
+    reviewAuthority: "ci",
+    validityRule: { kind: "commit" },
+    stalenessTriggers: ["new commit"],
+    conflictRules: [],
+    impactLevel: "medium",
   })
   .addEvidence({
     id: "evidence.api.rate-limit.test",
@@ -68,6 +80,7 @@ const input = new TrustBundleBuilder({ source: "my-producer:local" })
     sourceRef: "ci:1847",
     excerptOrSummary: "Rate-limit tests passed.",
     integrityRef: "commit:abc123",
+    passing: true,
   })
   .addEvent({
     id: "event.api.rate-limit.verified",
@@ -79,6 +92,8 @@ const input = new TrustBundleBuilder({ source: "my-producer:local" })
   })
   .build();
 ```
+
+A claim derives `verified` only when a policy that names required evidence resolves for it and that evidence is present; a check (`test_output`, `calculation_trace`, `runtime_observation`) counts only when it reports `passing: true`. Without the policy, or without the passing result, this claim derives `proposed`.
 
 The important part is the shape, not this exact domain. Claims, evidence, policies, and events should be concrete enough that a reviewer can see why a status was derived. Note: the `surface` field on each claim (e.g. `"api"`) is a producer-defined namespace for grouping related claims — it is not the same as the Surface product name.
 

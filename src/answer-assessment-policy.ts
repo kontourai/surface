@@ -2,6 +2,7 @@ import { valueDigest } from "./canonical-digest.js";
 import { evaluateClaimEvidence } from "./claim-evaluation.js";
 import { restoreReviewedExtractionEvidence, type ReviewedExtractionRestoreOptions } from "./reviewed-extraction-evidence.js";
 import { resolvePolicyForClaim } from "./policy-resolver.js";
+import { isSupportedStatusFunctionVersion, statusFunctionVersion as currentStatusFunctionVersion } from "./status-function-version.js";
 import type { Evidence, SurfaceExtension, TrustReport, VerificationPolicy } from "./types.js";
 import type { SurfacePolicyOutcome } from "./basis/types.js";
 
@@ -18,7 +19,12 @@ export function evaluateAnswerAssessmentPolicy(
 ): SurfacePolicyOutcome | null {
   const claim = report.claims.find((candidate) => candidate.id === claimId);
   if (!claim) return null;
-  const policy = resolvePolicyForClaim(claim, report.policies);
+  // Evaluate requirements under the rules that derived the report's statuses.
+  // A report from a version this package cannot evaluate uses the current rules.
+  const statusFunctionVersion = isSupportedStatusFunctionVersion(report.statusFunctionVersion)
+    ? report.statusFunctionVersion
+    : currentStatusFunctionVersion;
+  const policy = resolvePolicyForClaim(claim, report.policies, { statusFunctionVersion });
   if (!policy) return null;
 
   const evidence = report.evidence.filter((candidate) => candidate.claimId === claimId);
@@ -26,7 +32,7 @@ export function evaluateAnswerAssessmentPolicy(
   // legacy undeclared evidence semantics elsewhere; this owner assessment
   // deliberately cannot promote that legacy default into answer support.
   const entailing = evidence.filter((candidate) => candidate.supportStrength === "entails" && candidate.passing !== false);
-  const evaluation = evaluateClaimEvidence({ entailingEvidence: entailing, policy });
+  const evaluation = evaluateClaimEvidence({ entailingEvidence: entailing, policy, statusFunctionVersion });
   const blockingGap = report.transparencyGaps.some(
     (gap) => gap.claimId === claimId && gap.blocking !== false,
   );

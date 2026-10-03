@@ -1,7 +1,16 @@
 import type { AuthorityTrace, Claim, Evidence, TrustStatus, VerificationEvent, VerificationPolicy } from "./types.js";
-import { type ClaimEvidenceEvaluation, evaluateClaimEvidence } from "./claim-evaluation.js";
+import { type ClaimEvidenceEvaluation, evaluateClaimEvidence, policyRequiresSomething } from "./claim-evaluation.js";
 import { evidenceEntailsClaim, partitionEvidenceBySupport } from "./evidence-support.js";
 import { resolvePolicyForClaim } from "./policy-resolver.js";
+import { resolveStatusFunctionVersion, type StatusFunctionVersion } from "./status-function-version.js";
+
+export {
+  isSupportedStatusFunctionVersion,
+  resolveStatusFunctionVersion,
+  statusFunctionVersion,
+  supportedStatusFunctionVersions,
+  type StatusFunctionVersion,
+} from "./status-function-version.js";
 
 const TERMINAL_EVENT_STATUSES = new Set<TrustStatus>(["rejected", "disputed", "superseded", "stale", "revoked"]);
 
@@ -26,18 +35,23 @@ export function deriveTrustStatus(input: {
    * re-applies time to it exactly. Used to store checkpoint statuses.
    */
   ignoreVerifiedStaleness?: boolean;
+  /** Which status function version to evaluate. Defaults to the current version. */
+  statusFunctionVersion?: StatusFunctionVersion;
 }): TrustStatus {
+  const version = resolveStatusFunctionVersion(input.statusFunctionVersion);
+  const v3 = version !== "2";
   const now = input.now ?? new Date();
-  const claimEvents = input.events
-    .filter((event) => event.claimId === input.claim.id)
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  if (v3) assertValidNow(now);
+  // v3 effective policy: a policy that requires nothing is no policy to the fold.
+  const policy = effectivePolicy(input.policy, version);
+  const claimEvents = claimEventsMostRecentFirst(input.claim, input.events, version);
   const latestEvent = claimEvents[0];
 
   // ADR 0003 §8: check for an authority-gated dispute-resolution event.
   // The most-recent resolution event whose actor has an active AuthorityTrace
   // covering the subject supersedes the normal fold — unless newer blocking
   // evidence re-opens the dispute.
-  const resolutionEvent = findLatestResolutionEvent(claimEvents, input.authorityTrace ?? []);
+  const resolutionEvent = findLatestResolutionEvent(claimEvents, input.authorityTrace ?? [], version);
   if (resolutionEvent !== undefined) {
     const hasNewerBlockingFailure = input.evidence.some(
       (ev) =>
@@ -48,6 +62,11 @@ export function deriveTrustStatus(input: {
     if (hasNewerBlockingFailure) {
       return "disputed";
     }
+    // v3: without a policy nothing defines what `verified` requires, so a
+    // resolution cannot establish it.
+    if (v3 && resolutionEvent.status === "verified" && !policy) {
+      return "proposed";
+    }
     return resolutionEvent.status;
   }
 
@@ -55,7 +74,8 @@ export function deriveTrustStatus(input: {
   // terminal: it asserts the claim is no longer good. A "revoked" status
   // derives "stale" (event-driven staleness). An invalidation event whose
   // status is not itself a terminal "no-longer-good" status still collapses to
-  // "stale". Other terminal statuses pass through unchanged.
+  // "stale". Other terminal statuses pass through unchanged. This is the v3
+  // rule; this implementation already applied it under "2".
   if (latestEvent && latestEvent.type === "invalidation") {
     return TERMINAL_EVENT_STATUSES.has(latestEvent.status) && latestEvent.status !== "revoked"
       ? latestEvent.status
@@ -70,25 +90,44 @@ export function deriveTrustStatus(input: {
   }
 
   if (latestEvent?.status === "verified") {
-    if (!input.ignoreVerifiedStaleness && isVerifiedEventStale(latestEvent, input.claim, input.evidence, input.policy, now)) {
+    // 4a. Staleness.
+    if (!input.ignoreVerifiedStaleness && isVerifiedEventStale(latestEvent, input.claim, input.evidence, policy, now, version)) {
       return "stale";
     }
 
-    if (input.policy) {
+    const hasBlockingFailure = input.evidence.some((evidence) => evidence.passing === false && evidence.blocking !== false);
+    const requirementUnmet = (resolved: VerificationPolicy): boolean => {
+      if (input.evaluation !== undefined && input.evaluation.statusFunctionVersion !== version) {
+        throw new RangeError(
+          `claim evidence evaluation was computed for statusFunctionVersion ${input.evaluation.statusFunctionVersion}, not ${version}`,
+        );
+      }
       const evaluation = input.evaluation ?? evaluateClaimEvidence({
         entailingEvidence: input.evidence.filter(evidenceEntailsClaim),
-        policy: input.policy,
+        policy: resolved,
+        statusFunctionVersion: version,
       });
-      if (evaluation.requirementUnmet) {
-        return "proposed";
-      }
+      return evaluation.requirementUnmet;
+    };
+
+    if (v3) {
+      // 4b. A blocking failure is evaluated before the requirements, so a failed
+      // check that also leaves a requirement unmet derives `disputed`.
+      if (hasBlockingFailure) return "disputed";
+      // 4c. No effective policy: nothing defines what `verified` requires.
+      if (!policy) return "proposed";
+      if (requirementUnmet(policy)) return "proposed";
+      // 4d.
+      return "verified";
     }
 
-    const hasBlockingFailure = input.evidence.some((evidence) => evidence.passing === false && evidence.blocking !== false);
+    // Version "2": requirements first, skipped when no policy resolved.
+    if (policy && requirementUnmet(policy)) {
+      return "proposed";
+    }
     if (hasBlockingFailure) {
       return "disputed";
     }
-
     return "verified";
   }
 
@@ -100,13 +139,56 @@ export function deriveTrustStatus(input: {
     return "assumed";
   }
 
-  if (!input.policy) {
+  if (!policy) {
     return input.evidence.length > 0 ? "proposed" : "unknown";
   }
 
   const evidenceTypes = new Set(input.evidence.map((evidence) => evidence.evidenceType));
-  const hasRequiredEvidence = input.policy.requiredEvidence.every((type) => evidenceTypes.has(type));
+  const hasRequiredEvidence = policy.requiredEvidence.every((type) => evidenceTypes.has(type));
   return hasRequiredEvidence ? "proposed" : "unknown";
+}
+
+/**
+ * The claim's events, most recent first by `createdAt`. Under "3" an
+ * unparseable `createdAt` sorts as epoch 0 (oldest), so the order is defined;
+ * under "2" such an event compares as NaN and the order is whatever the sort
+ * makes of it.
+ */
+function claimEventsMostRecentFirst(
+  claim: Claim,
+  events: VerificationEvent[],
+  version: StatusFunctionVersion,
+): VerificationEvent[] {
+  const claimEvents = events.filter((event) => event.claimId === claim.id);
+  if (version === "2") {
+    return claimEvents.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  }
+  return claimEvents.sort((a, b) => (parseInstant(b.createdAt) ?? 0) - (parseInstant(a.createdAt) ?? 0));
+}
+
+/** Epoch ms, or undefined when the value is not a parseable instant. */
+function parseInstant(value: unknown): number | undefined {
+  const time = Date.parse(value as string);
+  return Number.isNaN(time) ? undefined : time;
+}
+
+/** v3: every freshness comparison needs `now`; a NaN comparison would read as "not stale". */
+function assertValidNow(now: Date): void {
+  if (!(now instanceof Date) || !Number.isFinite(now.getTime())) {
+    throw new RangeError(`invalid now: ${String(now)}`);
+  }
+}
+
+/**
+ * The policy the fold evaluates. Under "3" a resolved policy that requires no
+ * evidence type and no method is treated as if no policy had been resolved.
+ */
+function effectivePolicy(
+  policy: VerificationPolicy | undefined,
+  version: StatusFunctionVersion,
+): VerificationPolicy | undefined {
+  if (version === "2" || policy === undefined) return policy;
+  return policyRequiresSomething(policy) ? policy : undefined;
 }
 
 /**
@@ -138,16 +220,17 @@ export function verifiedBranchEvent(
   claim: Claim,
   events: VerificationEvent[],
   authorityTrace: AuthorityTrace[] = [],
+  /** Defaults to the current version. */
+  statusFunctionVersion?: StatusFunctionVersion,
 ): VerificationEvent | undefined {
-  const claimEvents = events
-    .filter((event) => event.claimId === claim.id)
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  const version = resolveStatusFunctionVersion(statusFunctionVersion);
+  const claimEvents = claimEventsMostRecentFirst(claim, events, version);
   const latestEvent = claimEvents[0];
   if (
     latestEvent === undefined ||
     latestEvent.status !== "verified" ||
     latestEvent.type === "invalidation" ||
-    findLatestResolutionEvent(claimEvents, authorityTrace) !== undefined
+    findLatestResolutionEvent(claimEvents, authorityTrace, version) !== undefined
   ) {
     return undefined;
   }
@@ -169,10 +252,16 @@ export function applyVerifiedStaleness(input: {
   policy?: VerificationPolicy;
   now: Date;
   authorityTrace?: AuthorityTrace[];
+  /** Must be the version the untimed status was derived with. Defaults to the current version. */
+  statusFunctionVersion?: StatusFunctionVersion;
 }): TrustStatus {
-  const governing = verifiedBranchEvent(input.claim, input.events, input.authorityTrace);
+  const version = resolveStatusFunctionVersion(input.statusFunctionVersion);
+  if (version !== "2") assertValidNow(input.now);
+  const governing = verifiedBranchEvent(input.claim, input.events, input.authorityTrace, version);
   if (governing === undefined) return input.untimedStatus;
-  return isVerifiedEventStale(governing, input.claim, input.evidence, input.policy, input.now) ? "stale" : input.untimedStatus;
+  return isVerifiedEventStale(governing, input.claim, input.evidence, effectivePolicy(input.policy, version), input.now, version)
+    ? "stale"
+    : input.untimedStatus;
 }
 
 export function reapplyVerifiedFreshness(input: {
@@ -184,20 +273,34 @@ export function reapplyVerifiedFreshness(input: {
   now: Date;
   /** Needed to recognise an authorized dispute resolution, which takes precedence over time. */
   authorityTrace?: AuthorityTrace[];
+  /** Must be the version the prior status was derived with. Defaults to the current version. */
+  statusFunctionVersion?: StatusFunctionVersion;
 }): TrustStatus {
+  const version = resolveStatusFunctionVersion(input.statusFunctionVersion);
+  if (version !== "2") assertValidNow(input.now);
   if (input.priorStatus !== "verified" && input.priorStatus !== "stale") return input.priorStatus;
-  const governing = verifiedBranchEvent(input.claim, input.events, input.authorityTrace);
+  const governing = verifiedBranchEvent(input.claim, input.events, input.authorityTrace, version);
   if (governing === undefined) return input.priorStatus;
-  return isVerifiedEventStale(governing, input.claim, input.evidence, input.policy, input.now) ? "stale" : "verified";
+  return isVerifiedEventStale(governing, input.claim, input.evidence, effectivePolicy(input.policy, version), input.now, version)
+    ? "stale"
+    : "verified";
 }
 
+/**
+ * Step 4a. `policy` is the effective policy and `evidence` the entailing
+ * evidence. Under "3" every input the check needs must be present and
+ * evaluable; an unevaluable window or rule is stale.
+ */
 function isVerifiedEventStale(
   event: VerificationEvent,
   claim: Claim,
   evidence: Evidence[],
   policy: VerificationPolicy | undefined,
   now: Date,
+  version: StatusFunctionVersion,
 ): boolean {
+  if (version !== "2") return isVerifiedEventStaleV3(event, claim, evidence, policy, now);
+
   // Claim-intrinsic validity window (Hachure schema 4) overrides policy timing
   // when present. expiresAt is canonical; ttlSeconds is the relative fallback,
   // resolved against the governing event's verifiedAt (fallback createdAt).
@@ -235,6 +338,54 @@ function isVerifiedEventStale(
 
   const expiresAt = verifiedTime + policy.validityRule.durationDays * 24 * 60 * 60 * 1000;
   return expiresAt < now.getTime();
+}
+
+function isVerifiedEventStaleV3(
+  event: VerificationEvent,
+  claim: Claim,
+  evidence: Evidence[],
+  policy: VerificationPolicy | undefined,
+  now: Date,
+): boolean {
+  const nowMs = now.getTime();
+  const verifiedTime = Date.parse(event.verifiedAt ?? event.createdAt);
+
+  // Claim-intrinsic validity window; `expiresAt` wins over `ttlSeconds`.
+  if (claim.expiresAt !== undefined) {
+    const expiry = Date.parse(claim.expiresAt);
+    return !Number.isFinite(expiry) || nowMs > expiry;
+  }
+  if (claim.ttlSeconds !== undefined) {
+    const ttl: unknown = claim.ttlSeconds;
+    if (!Number.isFinite(verifiedTime) || typeof ttl !== "number" || !Number.isFinite(ttl) || ttl < 0) return true;
+    return nowMs > verifiedTime + ttl * 1000;
+  }
+
+  // No effective policy: not stale here; the requirement step caps the result at `proposed`.
+  if (!policy) return false;
+
+  const rule = policy.validityRule as { kind?: unknown; durationDays?: unknown } | undefined;
+  switch (rule?.kind) {
+    case "commit": {
+      // Without a current integrity reference there is nothing to compare the
+      // verified evidence against.
+      if (claim.currentIntegrityRef === undefined) return true;
+      const linkedIds = event.evidenceIds ?? [];
+      return !evidence.some((item) => linkedIds.includes(item.id) && item.integrityRef === claim.currentIntegrityRef);
+    }
+    case "duration": {
+      const days = rule.durationDays;
+      if (typeof days !== "number" || !Number.isFinite(days) || days < 0) return true;
+      if (!Number.isFinite(verifiedTime)) return true;
+      return nowMs > verifiedTime + days * 86_400_000;
+    }
+    case "historical":
+    case "manual":
+      return false;
+    default:
+      // Absent or unknown kind: the rule cannot be evaluated.
+      return true;
+  }
 }
 
 /**
@@ -276,10 +427,11 @@ export function claimIntrinsicExpiry(
 function findLatestResolutionEvent(
   claimEventsMostRecentFirst: VerificationEvent[],
   authorityTrace: AuthorityTrace[],
+  version: StatusFunctionVersion,
 ): VerificationEvent | undefined {
   for (const event of claimEventsMostRecentFirst) {
     if (event.resolvesDispute !== true) continue;
-    if (isResolutionAuthorized(event, authorityTrace)) return event;
+    if (isResolutionAuthorized(event, authorityTrace, version)) return event;
   }
   return undefined;
 }
@@ -287,8 +439,25 @@ function findLatestResolutionEvent(
 function isResolutionAuthorized(
   event: VerificationEvent,
   authorityTrace: AuthorityTrace[],
+  version: StatusFunctionVersion,
 ): boolean {
   if (authorityTrace.length === 0) return false;
+  if (version !== "2") {
+    // "3": the trace window is compared as instants, so two spellings of the
+    // same instant (`...00Z` / `...00.000Z`, or another UTC offset) agree. A
+    // bound that is present but unparseable never excludes the trace; that is
+    // the specification's reference behaviour, kept so results match it.
+    const at = parseInstant(event.createdAt) as number;
+    return authorityTrace.some((trace) => {
+      if (trace.actorRef !== event.actor) return false;
+      if (trace.revokedAt !== undefined && (parseInstant(trace.revokedAt) as number) <= at) return false;
+      if (trace.validFrom !== undefined && (parseInstant(trace.validFrom) as number) > at) return false;
+      if (trace.validUntil !== undefined && (parseInstant(trace.validUntil) as number) < at) return false;
+      if (event.authorityRef !== undefined && trace.authorityRef !== event.authorityRef) return false;
+      return true;
+    });
+  }
+  // "2" compares the ISO strings, which misorders instants spelled differently.
   return authorityTrace.some((trace) => {
     // Actor must match
     if (trace.actorRef !== event.actor) return false;
@@ -362,13 +531,6 @@ export function checkAuthorityActive(
 // ---------------------------------------------------------------------------
 
 /**
- * The version of the status derivation algorithm implemented here.
- * Increment when the algorithm changes so that stored InquiryRecords can be
- * re-evaluated if needed.
- */
-export const statusFunctionVersion = "2";
-
-/**
  * The result shape returned by deriveClaimStatus.
  */
 export interface ClaimStatusResult {
@@ -382,6 +544,9 @@ export interface ClaimStatusResult {
  *   status = f(claim, events, policy, now)
  * as specified in ADR 0003 §7.
  *
+ * This is the claim's own status: the derivation ceiling needs the whole
+ * bundle and is applied by `deriveTrustSnapshot` / `buildTrustReport`.
+ *
  * Unlike deriveTrustStatus (which takes a pre-resolved single policy),
  * deriveClaimStatus accepts the full policies array and resolves the policy
  * internally — making it self-contained and usable outside the snapshot pipeline.
@@ -393,9 +558,12 @@ export function deriveClaimStatus(args: {
   policies: VerificationPolicy[];
   now?: Date;
   authorityTrace?: AuthorityTrace[];
+  /** Which status function version to evaluate. Defaults to the current version. */
+  statusFunctionVersion?: StatusFunctionVersion;
 }): ClaimStatusResult {
+  const version = resolveStatusFunctionVersion(args.statusFunctionVersion);
   const now = args.now ?? new Date();
-  const policy = resolvePolicyForClaim(args.claim, args.policies);
+  const policy = resolvePolicyForClaim(args.claim, args.policies, { statusFunctionVersion: version });
   const { entailingEvidence } = partitionEvidenceBySupport(args.evidence);
   const status = deriveTrustStatus({
     claim: args.claim,
@@ -404,6 +572,7 @@ export function deriveClaimStatus(args: {
     events: args.events,
     now,
     authorityTrace: args.authorityTrace,
+    statusFunctionVersion: version,
   });
   return { status, policyId: policy?.id };
 }

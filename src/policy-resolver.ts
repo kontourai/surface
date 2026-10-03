@@ -1,4 +1,5 @@
 import type { Claim, VerificationPolicy } from "./types.js";
+import { resolveStatusFunctionVersion, type StatusFunctionVersion } from "./status-function-version.js";
 
 /**
  * Resolves the verification policy for a claim, walking the claim-type family
@@ -6,6 +7,9 @@ import type { Claim, VerificationPolicy } from "./types.js";
  *
  * Resolution order:
  *  1. If the claim sets verificationPolicyId, the policy with that id wins.
+ *     Under status function "3" an id that names no policy resolves to no
+ *     policy, with no fallback to steps 2-3: the claim named a policy that is
+ *     not present. Under "2" resolution falls back to the claim type.
  *  2. Else, find a policy whose claimType matches the claim's claimType.
  *  3. Else, climb the parentType chain (built from policies that declare
  *     parentType) and pick the most specific policy whose claimType matches a
@@ -20,10 +24,13 @@ import type { Claim, VerificationPolicy } from "./types.js";
 export function resolvePolicyForClaim(
   claim: Claim,
   policies: readonly VerificationPolicy[],
+  options: { statusFunctionVersion?: StatusFunctionVersion } = {},
 ): VerificationPolicy | undefined {
+  const version = resolveStatusFunctionVersion(options.statusFunctionVersion);
   if (claim.verificationPolicyId) {
     const direct = policies.find((policy) => policy.id === claim.verificationPolicyId);
     if (direct) return direct;
+    if (version !== "2") return undefined;
   }
 
   const policiesByClaimType = new Map<string, VerificationPolicy>();

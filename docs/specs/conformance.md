@@ -36,7 +36,7 @@ Current cases cover the core derivation contract:
 |---|---|---|
 | `verified-commit-evidence` | Policy-required evidence plus a verification event at the current integrity ref | `verified`, no gaps |
 | `unknown-no-evidence` | A claim with a policy but no evidence or events | `unknown`, with `provenance_gap` and `policy_violation` |
-| `stale-expired-window` | A duration validity rule whose verification aged out | `stale`, with `freshness_breach` |
+| `stale-expired-window` | A duration validity rule whose verification aged out, on a check that reports no result | `stale`, with `freshness_breach` and two `policy_violation` gaps (the result-less check, and the required method only it carries) |
 | `revoked-authority-resolution` | An authorized reviewer's dispute-resolution event revokes a prior verification | `revoked`, with `provenance_gap` |
 | `invalid-missing-subject` | A claim missing `subjectId` | Validation rejection naming the missing field |
 
@@ -69,3 +69,11 @@ changes originate in Hachure and arrive here through an explicit compatibility
 update. Surface-only integration or projection changes land with local cases and
 a note in [Schema Versioning](../reference/schema-versioning.md). A local test
 must not be presented as changing the upstream portable contract.
+
+Suite version 2 is the compatibility update for Hachure 0.16 (status function
+`"3"`): the `verified-commit-evidence` input now sets `passing: true` on its
+test output, because a check without a passing result no longer satisfies a
+requirement, and `stale-expired-window` expects the additional gap described
+above. Spec vectors are run under every status function version they apply to
+(a vector's optional `statusFunctionVersions` array), from the vector's input
+as published.

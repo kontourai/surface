@@ -4,7 +4,7 @@ import test from "node:test";
 import { buildTrustReport, evaluateAnswerAssessmentPolicy, ordinaryVerificationPolicy, projectReviewedExtractionEvidence, type ReviewedExtractionEvidenceInput } from "../src/index.js";
 import type { TrustBundle } from "../src/types.js";
 
-function bundle(input: { policy?: boolean; supportStrength?: "entails" | "cited" }): TrustBundle {
+function referenceBundle(input: { policy?: boolean; supportStrength?: "entails" | "cited" }): TrustBundle {
   return {
     schemaVersion: 5,
     source: "fixture:authorized-bundle",
@@ -14,6 +14,27 @@ function bundle(input: { policy?: boolean; supportStrength?: "entails" | "cited"
     events: [{ id: "verified", claimId: "claim", status: "verified", actor: "owner", method: "review", evidenceIds: ["evidence"], createdAt: "2026-01-01T00:00:00.000Z" }],
   };
 }
+
+// The reference policy names no required evidence type or method. Status
+// function "3" treats such a policy as no policy, so a product profile has to
+// name a requirement before a claim under it can derive `verified`.
+const profile = { ...ordinaryVerificationPolicy, requiredEvidence: ["test_output" as const] };
+
+function bundle(input: { policy?: boolean; supportStrength?: "entails" | "cited" }): TrustBundle {
+  const base = referenceBundle(input);
+  return { ...base, policies: base.policies.map(() => profile) };
+}
+
+test("the reference policy requires nothing, so it cannot establish verified under status function 3", () => {
+  const input = referenceBundle({ supportStrength: "entails" });
+  const report = buildTrustReport(input, { now: new Date("2026-01-02T00:00:00.000Z") });
+  assert.equal(report.claims[0]!.status, "proposed");
+  assert.deepEqual(evaluateAnswerAssessmentPolicy(report, "claim")?.reasons, ["claim-not-verified", "blocking-gap"]);
+
+  const v2 = buildTrustReport(input, { now: new Date("2026-01-02T00:00:00.000Z"), statusFunctionVersion: "2" });
+  assert.equal(v2.claims[0]!.status, "verified");
+  assert.equal(evaluateAnswerAssessmentPolicy(v2, "claim")?.satisfied, true);
+});
 
 test("owner assessment requires resolved policy and explicit entailing evidence", () => {
   const explicit = buildTrustReport(bundle({ supportStrength: "entails" }), { now: new Date("2026-01-02T00:00:00.000Z") });

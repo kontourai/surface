@@ -209,7 +209,7 @@ export function createVerificationResponder(
     };
 
     const bundle: VerificationBundle = {
-      schemaVersion: requiredBundleSchemaVersion({ evidence: allEvidence, policies: [] }),
+      schemaVersion: requiredBundleSchemaVersion({ claims: allClaims, evidence: allEvidence, policies: [] }),
       source,
       claims: allClaims,
       evidence: allEvidence,

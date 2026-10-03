@@ -23,7 +23,7 @@ import type {
 } from "./types.js";
 import type { CanonicalClaimTarget } from "./canonical.js";
 import { canonicalClaimKey } from "./canonical.js";
-import { checkAuthorityActive, deriveClaimStatus, statusFunctionVersion } from "./status.js";
+import { checkAuthorityActive, deriveClaimStatus, resolveStatusFunctionVersion, type StatusFunctionVersion } from "./status.js";
 import { weakerStatus } from "./derivation.js";
 import {
   isObject,
@@ -48,8 +48,10 @@ import { TRUST_STATUSES } from "./validation/constants.js";
 export function resolveInquiry(
   bundle: TrustBundle,
   inquiry: Inquiry,
-  options: { now?: Date; rules?: DerivationRule[] } = {},
+  /** `statusFunctionVersion` defaults to the current version and is recorded on the returned record. */
+  options: { now?: Date; rules?: DerivationRule[]; statusFunctionVersion?: StatusFunctionVersion } = {},
 ): InquiryRecord {
+  const statusFunctionVersion = resolveStatusFunctionVersion(options.statusFunctionVersion);
   const now = options.now ?? new Date();
   const resolvedAt = now.toISOString();
   const rules = options.rules ?? [];
@@ -62,7 +64,7 @@ export function resolveInquiry(
       outcome: "unsupported",
       resolutionPath: { claimIds: [] },
       inputSnapshot: [],
-      statusFunctionVersion: statusFunctionVersion,
+      statusFunctionVersion,
       resolvedAt,
     };
   }
@@ -80,6 +82,7 @@ export function resolveInquiry(
         events: bundle.events,
         policies: bundle.policies,
         now,
+        statusFunctionVersion,
       });
       return {
         id: inquiry.id,
@@ -88,7 +91,7 @@ export function resolveInquiry(
         resolutionPath: { claimIds: [claim.id] },
         answer: { value: claim.value, status },
         inputSnapshot: [{ claimId: claim.id, status }],
-        statusFunctionVersion: statusFunctionVersion,
+        statusFunctionVersion,
         resolvedAt,
       };
     }
@@ -99,7 +102,7 @@ export function resolveInquiry(
     const ruleKey = canonicalClaimKey(rule.target);
     if (ruleKey !== inquiryKey) continue;
 
-    const result = evaluateDerivationRule(rule, bundle, { now, rules });
+    const result = evaluateDerivationRule(rule, bundle, { now, rules, statusFunctionVersion });
     const inputSnapshot: Array<{ claimId: string; status: TrustStatus }> = result.inputs.map(
       (item) => ({ claimId: item.claimId, status: item.status }),
     );
@@ -115,7 +118,7 @@ export function resolveInquiry(
       },
       answer: { value: result.satisfied, status: result.satisfied ? "verified" : "proposed" },
       inputSnapshot,
-      statusFunctionVersion: statusFunctionVersion,
+      statusFunctionVersion,
       resolvedAt,
     };
   }
@@ -124,7 +127,7 @@ export function resolveInquiry(
   // Consult identityLinks with relation "equivalent" or "converts" to find a
   // co-referent claim that can answer the inquiry.
   if (Array.isArray(bundle.identityLinks)) {
-    const mappingResult = resolveViaIdentityLinks(bundle, inquiry.target, inquiryKey, now);
+    const mappingResult = resolveViaIdentityLinks(bundle, inquiry.target, inquiryKey, now, statusFunctionVersion);
     if (mappingResult !== null) {
       return {
         id: inquiry.id,
@@ -136,7 +139,7 @@ export function resolveInquiry(
         },
         answer: { value: mappingResult.value, status: mappingResult.status },
         inputSnapshot: [{ claimId: mappingResult.claimId, status: mappingResult.rawStatus }],
-        statusFunctionVersion: statusFunctionVersion,
+        statusFunctionVersion,
         resolvedAt,
       };
     }
@@ -149,7 +152,7 @@ export function resolveInquiry(
     outcome: "unsupported",
     resolutionPath: { claimIds: [] },
     inputSnapshot: [],
-    statusFunctionVersion: statusFunctionVersion,
+    statusFunctionVersion,
     resolvedAt,
   };
 }
@@ -179,6 +182,7 @@ function resolveViaIdentityLinks(
   target: CanonicalClaimTarget,
   inquiryKey: string,
   now: Date,
+  statusFunctionVersion: StatusFunctionVersion,
 ): MappingResolution | null {
   const links = bundle.identityLinks ?? [];
 
@@ -221,6 +225,7 @@ function resolveViaIdentityLinks(
           events: bundle.events,
           policies: bundle.policies,
           now,
+          statusFunctionVersion,
         });
 
         // Compute the answer value (apply conversion if needed).
@@ -246,6 +251,7 @@ function resolveViaIdentityLinks(
               events: bundle.events,
               policies: bundle.policies,
               now,
+              statusFunctionVersion,
             });
             answerStatus = weakerStatus(rawStatus, mappingStatus);
           }
@@ -289,7 +295,7 @@ export interface DerivationRuleResult {
 export function evaluateDerivationRule(
   rule: DerivationRule,
   bundle: TrustBundle,
-  options: { now?: Date; rules?: DerivationRule[] } = {},
+  options: { now?: Date; rules?: DerivationRule[]; statusFunctionVersion?: StatusFunctionVersion } = {},
 ): DerivationRuleResult {
   return evaluateDerivationRuleInternal(rule, bundle, options, new Set<string>());
 }
@@ -302,9 +308,10 @@ export function evaluateDerivationRule(
 function evaluateDerivationRuleInternal(
   rule: DerivationRule,
   bundle: TrustBundle,
-  options: { now?: Date; rules?: DerivationRule[] },
+  options: { now?: Date; rules?: DerivationRule[]; statusFunctionVersion?: StatusFunctionVersion },
   visitedRuleIds: Set<string>,
 ): DerivationRuleResult {
+  const statusFunctionVersion = resolveStatusFunctionVersion(options.statusFunctionVersion);
   const now = options.now ?? new Date();
   const rules = options.rules ?? [];
   const inputs: Array<{ claimId: string; status: TrustStatus; requirementMet: boolean }> = [];
@@ -378,6 +385,7 @@ function evaluateDerivationRuleInternal(
       events: bundle.events,
       policies: bundle.policies,
       now,
+      statusFunctionVersion,
     });
 
     const statusOk = claimReq.acceptedStatuses.includes(status);

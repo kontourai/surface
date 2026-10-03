@@ -64,25 +64,54 @@ function policy(validityRule: VerificationPolicy["validityRule"]): VerificationP
   };
 }
 
-function validityGap(bundle: TrustBundle) {
-  return deriveTrustSnapshot(bundle, { now }).transparencyGaps.find((gap) => gap.id === "claim.validity.gap.unevaluable-validity-rule");
+function validityGap(bundle: TrustBundle, statusFunctionVersion?: "2" | "3") {
+  return deriveTrustSnapshot(bundle, { now, statusFunctionVersion }).transparencyGaps.find((gap) => gap.id === "claim.validity.gap.unevaluable-validity-rule");
 }
 
-test("commit validity without a current integrity ref is a blocking, inspectable gap", () => {
+test("commit validity without a current integrity ref derives stale with a blocking, inspectable gap", () => {
   const bundle = verifiedBundle(policy({ kind: "commit" }));
   const snapshot = deriveTrustSnapshot(bundle, { now });
 
-  assert.throws(() => validateTrustBundle(bundle), /currentIntegrityRef/);
-  assert.equal(snapshot.claims[0].status, "verified");
+  // Status function "3" derives `stale` for this input, so validation no
+  // longer needs to refuse it to keep it from reading as verified.
+  assert.doesNotThrow(() => validateTrustBundle(bundle));
+  assert.equal(snapshot.claims[0].status, "stale");
+  assert.equal(deriveTrustSnapshot(bundle, { now, statusFunctionVersion: "2" }).claims[0].status, "verified");
+  assert.equal(validityGap(bundle, "2")?.blocking, true);
   assert.equal(validityGap(bundle)?.type, "policy_violation");
   assert.equal(validityGap(bundle)?.blocking, true);
   assert.match(validityGap(bundle)?.message ?? "", /currentIntegrityRef/);
 });
 
-test("duration validity without a duration is rejected at validation and visible to direct snapshot callers", () => {
+test("validating for version 2 keeps the commit-rule refusal that version relied on", () => {
+  const bundle = verifiedBundle(policy({ kind: "commit" }));
+
+  // The default (version 3) accepts the bundle: it derives `stale`.
+  assert.doesNotThrow(() => validateTrustBundle(bundle));
+  // A caller that will derive under "2" would get `verified`, so it is refused, as before version 3.
+  assert.throws(() => validateTrustBundle(bundle, { statusFunctionVersion: "2" }), /requires currentIntegrityRef because policy policy\.validity uses commit validity/);
+  // With the reference present the same call accepts it.
+  assert.doesNotThrow(() => validateTrustBundle(verifiedBundle(policy({ kind: "commit" }), { currentIntegrityRef: "commit:abc123" }), { statusFunctionVersion: "2" }));
+  // The refusal replays at the ledger's own event time, not the wall clock: an
+  // intrinsic window that had already lapsed by then is not `verified`, so it is accepted.
+  assert.throws(
+    () => validateTrustBundle(verifiedBundle(policy({ kind: "commit" }), { expiresAt: "2026-08-01T12:00:01.000Z" }), { statusFunctionVersion: "2" }),
+    /currentIntegrityRef/,
+  );
+  assert.doesNotThrow(
+    () => validateTrustBundle(verifiedBundle(policy({ kind: "commit" }), { expiresAt: "2026-08-01T11:59:59.000Z" }), { statusFunctionVersion: "2" }),
+  );
+  assert.throws(() => validateTrustBundle(bundle, { statusFunctionVersion: "1" as "2" }), /unsupported statusFunctionVersion/);
+  // Passing validateTrustBundle straight to `.map` hands it an index, not options.
+  assert.equal([bundle].map(validateTrustBundle as (input: unknown) => unknown).length, 1);
+});
+
+test("duration validity without a duration is rejected at validation, and derives stale for direct snapshot callers", () => {
   const bundle = verifiedBundle(policy({ kind: "duration" }));
 
   assert.throws(() => validateTrustBundle(bundle), /durationDays/);
+  assert.equal(deriveTrustSnapshot(bundle, { now }).claims[0].status, "stale");
+  assert.equal(deriveTrustSnapshot(bundle, { now, statusFunctionVersion: "2" }).claims[0].status, "verified");
   assert.equal(validityGap(bundle)?.type, "policy_violation");
   assert.match(validityGap(bundle)?.message ?? "", /durationDays/);
 });
@@ -92,14 +121,22 @@ test("invalid duration validity input is rejected at validation and remains non-
 
   assert.throws(() => validateTrustBundle(bundle), /durationDays/);
   assert.equal(validityGap(bundle)?.blocking, true);
+  assert.equal(deriveTrustSnapshot(bundle, { now }).claims[0].status, "stale");
 });
 
-test("a negative duration remains valid and deterministically stale under status function v2", () => {
+test("a negative duration is accepted and stale: unevaluable under v3, an expired window under v2", () => {
   const bundle = verifiedBundle(policy({ kind: "duration", durationDays: -1 }));
 
   assert.doesNotThrow(() => validateTrustBundle(bundle));
   assert.equal(deriveTrustSnapshot(bundle, { now }).claims[0].status, "stale");
-  assert.equal(validityGap(bundle), undefined);
+  assert.match(validityGap(bundle)?.message ?? "", /durationDays/);
+  // Under "3" the window is unevaluable whatever `now` is; under "2" it is a
+  // window that ended a day before the verification.
+  const beforeVerification = new Date("2026-07-01T00:00:00.000Z");
+  assert.equal(deriveTrustSnapshot(bundle, { now: beforeVerification }).claims[0].status, "stale");
+  assert.equal(deriveTrustSnapshot(bundle, { now: beforeVerification, statusFunctionVersion: "2" }).claims[0].status, "verified");
+  assert.equal(deriveTrustSnapshot(bundle, { now, statusFunctionVersion: "2" }).claims[0].status, "stale");
+  assert.equal(validityGap(bundle, "2"), undefined);
 });
 
 test("an invalid duration verification timestamp is rejected at validation and remains non-silent for direct snapshot callers", () => {
@@ -109,6 +146,7 @@ test("an invalid duration verification timestamp is rejected at validation and r
   assert.throws(() => validateTrustBundle(bundle), /verifiedAt/);
   assert.equal(validityGap(bundle)?.blocking, true);
   assert.match(validityGap(bundle)?.message ?? "", /timestamp/);
+  assert.equal(deriveTrustSnapshot(bundle, { now }).claims[0].status, "stale");
 });
 
 test("an unknown validity rule is a blocking gap when an unvalidated in-memory bundle reaches the snapshot", () => {
@@ -118,6 +156,8 @@ test("an unknown validity rule is a blocking gap when an unvalidated in-memory b
   assert.throws(() => validateTrustBundle(bundle), /unsupported value/);
   assert.equal(validityGap(bundle)?.type, "policy_violation");
   assert.match(validityGap(bundle)?.message ?? "", /not understood/);
+  assert.equal(deriveTrustSnapshot(bundle, { now }).claims[0].status, "stale");
+  assert.equal(deriveTrustSnapshot(bundle, { now, statusFunctionVersion: "2" }).claims[0].status, "verified");
 });
 
 test("a proposed duration claim without a verified event has no unevaluable-validity gap", () => {
@@ -129,29 +169,36 @@ test("a proposed duration claim without a verified event has no unevaluable-vali
   assert.equal(validityGap(bundle), undefined);
 });
 
-test("commit validation evaluates the ledger at its event anchor, not the wall clock", () => {
+test("a claim-intrinsic window overrides an unevaluable commit rule", () => {
+  // `expiresAt` wins over the policy validity rule, so the missing
+  // currentIntegrityRef is never consulted: the claim is verified until expiry.
   const bundle = verifiedBundle(policy({ kind: "commit" }), {
-    expiresAt: "2026-08-01T12:00:01.000Z",
-  });
-
-  assert.throws(() => validateTrustBundle(bundle), /currentIntegrityRef/);
-});
-
-test("commit validation keeps an intrinsically expired ledger non-verified", () => {
-  const bundle = verifiedBundle(policy({ kind: "commit" }), {
-    expiresAt: "2026-08-01T11:59:59.000Z",
+    expiresAt: "2026-08-09T12:00:00.000Z",
   });
 
   assert.doesNotThrow(() => validateTrustBundle(bundle));
+  assert.equal(deriveTrustSnapshot(bundle, { now }).claims[0].status, "verified");
+  assert.equal(deriveTrustSnapshot(bundle, { now: new Date("2026-08-10T00:00:00.000Z") }).claims[0].status, "stale");
 });
 
-test("a policy remains optional: no policy does not invent a validity-rule gap", () => {
+test("an unparseable intrinsic window derives stale under v3 for direct snapshot callers", () => {
+  const expires = verifiedBundle(policy({ kind: "manual" }), { expiresAt: "not-a-date" });
+  assert.throws(() => validateTrustBundle(expires), /expiresAt/);
+  assert.equal(deriveTrustSnapshot(expires, { now }).claims[0].status, "stale");
+  assert.equal(deriveTrustSnapshot(expires, { now, statusFunctionVersion: "2" }).claims[0].status, "verified");
+
+  const ttl = verifiedBundle(policy({ kind: "manual" }), { ttlSeconds: -5 });
+  assert.equal(deriveTrustSnapshot(ttl, { now: new Date("2026-07-01T00:00:00.000Z") }).claims[0].status, "stale");
+});
+
+test("no policy does not invent a validity-rule gap, and derives proposed", () => {
   const bundle = verifiedBundle(policy({ kind: "manual" }));
   bundle.claims[0].verificationPolicyId = undefined;
   bundle.policies = [];
 
   assert.doesNotThrow(() => validateTrustBundle(bundle));
   const snapshot = deriveTrustSnapshot(bundle, { now });
-  assert.equal(snapshot.claims[0].status, "verified");
+  assert.equal(snapshot.claims[0].status, "proposed");
+  assert.equal(deriveTrustSnapshot(bundle, { now, statusFunctionVersion: "2" }).claims[0].status, "verified");
   assert.equal(snapshot.transparencyGaps.some((gap) => gap.id === "claim.validity.gap.unevaluable-validity-rule"), false);
 });

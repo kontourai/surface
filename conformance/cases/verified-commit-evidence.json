@@ -27,7 +27,8 @@
       "excerptOrSummary": "Rate-limit tests passed.",
       "observedAt": "2026-04-25T00:05:00.000Z",
       "collectedBy": "ci",
-      "integrityRef": "commit:abc123"
+      "integrityRef": "commit:abc123",
+      "passing": true
     }
   ],
   "policies": [

@@ -48,7 +48,7 @@ test("complete: all required types/methods present, no corroboration gap → req
   const requiredMethods: EvidenceMethod[] = ["validation"];
   const evalResult = evaluateClaimEvidence({
     entailingEvidence: [
-      evidence({ evidenceType: "test_output", method: "validation" }),
+      evidence({ evidenceType: "test_output", method: "validation", passing: true }),
       evidence({ evidenceType: "source_excerpt", method: "extraction" }),
     ],
     policy: policy({ requiredEvidence, requiredMethods }),
@@ -62,7 +62,7 @@ test("complete: all required types/methods present, no corroboration gap → req
 
 test("partial: a required evidence type is missing → requirementUnmet with that type reported", () => {
   const evalResult = evaluateClaimEvidence({
-    entailingEvidence: [evidence({ evidenceType: "test_output", method: "validation" })],
+    entailingEvidence: [evidence({ evidenceType: "test_output", method: "validation", passing: true })],
     policy: policy({ requiredEvidence: ["test_output", "human_attestation"] }),
   });
 
@@ -73,7 +73,7 @@ test("partial: a required evidence type is missing → requirementUnmet with tha
 
 test("partial: a required method is missing → requirementUnmet with that method reported", () => {
   const evalResult = evaluateClaimEvidence({
-    entailingEvidence: [evidence({ evidenceType: "test_output", method: "validation" })],
+    entailingEvidence: [evidence({ evidenceType: "test_output", method: "validation", passing: true })],
     policy: policy({ requiredEvidence: ["test_output"], requiredMethods: ["corroboration"] }),
   });
 
@@ -84,7 +84,7 @@ test("partial: a required method is missing → requirementUnmet with that metho
 
 test("partial: corroboration required but only one entailing record → corroborationMissing", () => {
   const evalResult = evaluateClaimEvidence({
-    entailingEvidence: [evidence({ evidenceType: "test_output", method: "validation" })],
+    entailingEvidence: [evidence({ evidenceType: "test_output", method: "validation", passing: true })],
     policy: policy({ requiredEvidence: ["test_output"], requiresCorroboration: true }),
   });
 
@@ -96,8 +96,8 @@ test("partial: corroboration required but only one entailing record → corrobor
 test("corroboration satisfied by two entailing records → requirement met", () => {
   const evalResult = evaluateClaimEvidence({
     entailingEvidence: [
-      evidence({ id: "a", evidenceType: "test_output", method: "validation" }),
-      evidence({ id: "b", evidenceType: "test_output", method: "corroboration" }),
+      evidence({ id: "a", evidenceType: "test_output", method: "validation", passing: true }),
+      evidence({ id: "b", evidenceType: "test_output", method: "corroboration", passing: true }),
     ],
     policy: policy({ requiredEvidence: ["test_output"], requiresCorroboration: true }),
   });

@@ -9,13 +9,17 @@ import type {
   VerificationEvent,
   VerificationPolicy,
 } from "./types.js";
-import { type ClaimEvidenceEvaluation, evaluateClaimEvidence, evidenceRequirementFromPolicy } from "./claim-evaluation.js";
+import {
+  CHECK_EVIDENCE_TYPES,
+  type ClaimEvidenceEvaluation,
+  evaluateClaimEvidence,
+  evidenceRequirementFromPolicy,
+  policyRequiresSomething,
+} from "./claim-evaluation.js";
 import { partitionEvidenceBySupport } from "./evidence-support.js";
 import { resolvePolicyForClaim } from "./policy-resolver.js";
 import { applyVerifiedStaleness, claimIntrinsicExpiry, deriveTrustStatus, verifiedBranchEvent } from "./status.js";
-
-/** Evidence types that report a check result through `passing`. */
-const CHECK_EVIDENCE_TYPES: ReadonlySet<string> = new Set(["test_output", "calculation_trace", "runtime_observation"]);
+import { resolveStatusFunctionVersion, type StatusFunctionVersion } from "./status-function-version.js";
 
 const TRANSPARENCY_GAP_TYPES: TransparencyGapType[] = [
   "contradiction",
@@ -42,6 +46,8 @@ export interface ClaimFoldInput {
   checkpointUsable: boolean;
   checkpointSeenClaim: boolean;
   checkpointMark?: number;
+  /** Which status function version to evaluate. Defaults to the current version. */
+  statusFunctionVersion?: StatusFunctionVersion;
 }
 
 export interface ClaimFoldResult {
@@ -67,11 +73,14 @@ export interface ClaimFoldResult {
 
 export function foldClaim(input: ClaimFoldInput): ClaimFoldResult {
   const { entailingEvidence } = partitionEvidenceBySupport(input.evidence);
-  const policy = resolvePolicyForClaim(input.claim, input.policies);
+  const statusFunctionVersion = resolveStatusFunctionVersion(input.statusFunctionVersion);
+  const policy = resolvePolicyForClaim(input.claim, input.policies, { statusFunctionVersion });
   // Compute the shared evidence/policy satisfaction facts ONCE here, then thread
   // the same evaluation into both the status decision and gap derivation so they
   // cannot drift (issue #1). Standalone status callers recompute on demand.
-  const evaluation = policy ? evaluateClaimEvidence({ entailingEvidence, policy }) : undefined;
+  const evaluation = policy ? evaluateClaimEvidence({ entailingEvidence, policy, statusFunctionVersion }) : undefined;
+  const danglingPolicyReference = Boolean(input.claim.verificationPolicyId) &&
+    !input.policies.some((candidate) => candidate.id === input.claim.verificationPolicyId);
   const checkpointMark = input.checkpointMark;
   const tailEvents = !input.checkpointUsable || checkpointMark === undefined
     ? input.events
@@ -95,6 +104,7 @@ export function foldClaim(input: ClaimFoldInput): ClaimFoldResult {
       policy,
       now: input.now,
       authorityTrace: input.authorityTrace,
+      statusFunctionVersion,
     });
     eventsFolded = 0;
   } else {
@@ -106,10 +116,11 @@ export function foldClaim(input: ClaimFoldInput): ClaimFoldResult {
       now: input.now,
       authorityTrace: input.authorityTrace,
       evaluation,
+      statusFunctionVersion,
     };
     ownStatus = deriveTrustStatus(statusInput);
     // Only the verified-event branch reads `now`; elsewhere the untimed status is the status.
-    untimedOwnStatus = verifiedBranchEvent(input.claim, input.events, input.authorityTrace) === undefined
+    untimedOwnStatus = verifiedBranchEvent(input.claim, input.events, input.authorityTrace, statusFunctionVersion) === undefined
       ? ownStatus
       : deriveTrustStatus({ ...statusInput, ignoreVerifiedStaleness: true });
     eventsFolded = input.events.length;
@@ -135,11 +146,19 @@ export function foldClaim(input: ClaimFoldInput): ClaimFoldResult {
           evaluation,
           status: ownStatus,
           now: input.now,
+          statusFunctionVersion,
         })
-        : [input.evidence.length === 0 ? noPolicyEvidenceGap(input.claim, input.now) : noPolicyGap(input.claim, input.now)]),
-      ...(input.claim.verificationPolicyId && !input.policies.some((candidate) => candidate.id === input.claim.verificationPolicyId)
-        ? [danglingPolicyReferenceGap(input.claim, input.now)]
+        // Under "3" a dangling `verificationPolicyId` is why no policy resolved;
+        // the unresolved-reference gap below reports that cause once.
+        : input.evidence.length === 0
+          ? [noPolicyEvidenceGap(input.claim, input.now)]
+          : danglingPolicyReference && statusFunctionVersion !== "2"
+            ? []
+            : [noPolicyGap(input.claim, input.now)]),
+      ...(statusFunctionVersion !== "2" && policy && !policyRequiresSomething(policy)
+        ? [policyRequiresNothingGap(input.claim, policy, input.now)]
         : []),
+      ...(danglingPolicyReference ? [danglingPolicyReferenceGap(input.claim, input.now)] : []),
     ],
     eventsFolded,
     eventsTotal: input.events.length,
@@ -182,8 +201,8 @@ function noPolicyEvidenceGap(claim: Claim, now: Date): TransparencyGap {
 
 /**
  * A claim with evidence but no resolved verification policy cannot present as
- * healthy: status function v2 may still derive `verified`, so this blocking gap
- * is what gap-gated consumers refuse on.
+ * healthy. Status function "3" derives at most `proposed` for it; "2" may still
+ * derive `verified`, so this blocking gap is what gap-gated consumers refuse on.
  */
 function noPolicyGap(claim: Claim, now: Date): TransparencyGap {
   return {
@@ -200,9 +219,30 @@ function noPolicyGap(claim: Claim, now: Date): TransparencyGap {
 }
 
 /**
+ * Status function "3" treats a policy that names no required evidence type and
+ * no required method as no policy, so the claim derives at most `proposed`.
+ * This gap states why.
+ */
+function policyRequiresNothingGap(claim: Claim, policy: VerificationPolicy, now: Date): TransparencyGap {
+  return {
+    id: `${claim.id}.gap.verification-policy-requires-nothing`,
+    claimId: claim.id,
+    type: "policy_violation",
+    severity: claim.impactLevel ?? policy.impactLevel,
+    ...materialityFromClaim(claim),
+    message: `Verification policy ${policy.id} requires no evidence type and no method, so it cannot establish verified.`,
+    policyId: policy.id,
+    blocking: true,
+    createdAt: now.toISOString(),
+    metadata: { source: "policy.requiresNothing" },
+  };
+}
+
+/**
  * A claim that names a `verificationPolicyId` absent from the bundle's policies.
- * Resolution falls back to the claim type (or no policy), which is not the
- * policy the producer asked for.
+ * Under status function "3" no policy resolves; under "2" resolution falls back
+ * to the claim type (or no policy), which is not the policy the producer asked
+ * for.
  */
 function danglingPolicyReferenceGap(claim: Claim, now: Date): TransparencyGap {
   return {
@@ -227,13 +267,23 @@ function deriveTransparencyGaps(input: {
   evaluation: ClaimEvidenceEvaluation;
   status: TrustStatus;
   now: Date;
+  statusFunctionVersion: StatusFunctionVersion;
 }): TransparencyGap[] {
   const transparencyGaps: TransparencyGap[] = [];
   const createdAt = input.now.toISOString();
   // Shared satisfaction facts — computed once in `foldClaim` and threaded in, so
   // the gaps emitted here always agree with the status decision (issue #1).
-  const missingEvidence = input.evaluation.missingEvidenceTypes;
-  const missingMethods = input.evaluation.missingMethods;
+  // A required type can be unmet because no entailing evidence of that type
+  // exists, or (status function "3") because the check evidence present reports
+  // no passing result. Only the first is "missing"; the second is reported by
+  // the check-result gap below.
+  const presentTypes = new Set(input.entailingEvidence.map((item) => item.evidenceType));
+  const missingEvidence = input.evaluation.missingEvidenceTypes.filter((type) => !presentTypes.has(type));
+  // Likewise a required method can be unmet because no entailing evidence
+  // carries it, or ("3") because only check evidence without a passing result does.
+  const presentMethods = new Set(input.entailingEvidence.map((item) => item.method));
+  const missingMethods = input.evaluation.missingMethods.filter((method) => !presentMethods.has(method));
+  const unqualifiedMethods = input.evaluation.missingMethods.filter((method) => presentMethods.has(method));
   const citedEvidenceIds = input.evidence
     .filter((item) => !input.entailingEvidence.some((entailing) => entailing.id === item.id))
     .map((item) => item.id);
@@ -252,14 +302,19 @@ function deriveTransparencyGaps(input: {
     });
   }
 
-  if (missingMethods.length > 0) {
+  if (missingMethods.length > 0 || unqualifiedMethods.length > 0) {
     transparencyGaps.push({
       id: `${input.claim.id}.gap.policy-violation`,
       claimId: input.claim.id,
       type: "policy_violation",
       severity: input.claim.impactLevel ?? input.policy.impactLevel,
       ...materialityFromClaim(input.claim),
-      message: `Missing required verification method: ${missingMethods.join(", ")}.`,
+      message: [
+        ...(missingMethods.length > 0 ? [`Missing required verification method: ${missingMethods.join(", ")}.`] : []),
+        ...(unqualifiedMethods.length > 0
+          ? [`Required verification method carried only by check evidence without a passing result: ${unqualifiedMethods.join(", ")}.`]
+          : []),
+      ].join(" "),
       evidenceIds: input.evidence.map((item) => item.id),
       policyId: input.policy.id,
       blocking: true,
@@ -331,25 +386,29 @@ function deriveTransparencyGaps(input: {
   const unevaluableValidityGap = deriveUnevaluableValidityGap(input);
   if (unevaluableValidityGap) transparencyGaps.push(unevaluableValidityGap);
 
-  // Check-type evidence should satisfy a policy requirement only by reporting a
-  // result. Status still follows status function v2 (type presence); this gap
-  // keeps a result-less check from reading as satisfied support. A reported
-  // failure is not flagged here: it already has its own gap below, blocking or
-  // not as the producer marked it.
+  // Check-type evidence satisfies a policy requirement only by reporting a
+  // passing result. Under status function "3" that is the status rule
+  // (qualifying evidence); under "2" status follows type presence and this gap
+  // keeps a result-less check from reading as satisfied support. Under "2" a
+  // reported failure is not flagged here: it has its own gap below, blocking or
+  // not as the producer marked it. Under "3" the requirement is unmet even when
+  // every check of the type failed without blocking, so that case is flagged too.
   for (const evidenceType of input.policy.requiredEvidence) {
     if (!CHECK_EVIDENCE_TYPES.has(evidenceType) || missingEvidence.includes(evidenceType)) continue;
     const checks = input.entailingEvidence.filter((item) => item.evidenceType === evidenceType);
     if (checks.some((item) => item.passing === true)) continue;
     const resultLess = checks.filter((item) => typeof item.passing !== "boolean");
-    if (resultLess.length === 0) continue;
+    if (resultLess.length === 0 && input.statusFunctionVersion === "2") continue;
     transparencyGaps.push({
       id: `${input.claim.id}.gap.check-result-missing-${evidenceType}`,
       claimId: input.claim.id,
       type: "policy_violation",
       severity: input.claim.impactLevel ?? input.policy.impactLevel,
       ...materialityFromClaim(input.claim),
-      message: `Required ${evidenceType} evidence reports no result (passing is not set).`,
-      evidenceIds: resultLess.map((item) => item.id),
+      message: resultLess.length > 0
+        ? `Required ${evidenceType} evidence reports no result (passing is not set).`
+        : `Required ${evidenceType} evidence reports no passing result.`,
+      evidenceIds: (resultLess.length > 0 ? resultLess : checks).map((item) => item.id),
       policyId: input.policy.id,
       blocking: true,
       createdAt,
@@ -382,9 +441,10 @@ function deriveTransparencyGaps(input: {
 }
 
 /**
- * Status function v2 deliberately leaves unevaluable validity rules outside
- * its output contract. This unversioned snapshot projection makes those rules
- * inspectable and blocking without changing a conforming status result.
+ * Status function "3" derives `stale` for a verified claim whose validity rule
+ * cannot be evaluated; "2" leaves such rules outside its output contract. This
+ * snapshot projection names the unevaluable rule and blocks on it under either
+ * version, without changing the status result.
  */
 function deriveUnevaluableValidityGap(input: {
   claim: Claim;
@@ -392,6 +452,7 @@ function deriveUnevaluableValidityGap(input: {
   events: VerificationEvent[];
   policy: VerificationPolicy;
   now: Date;
+  statusFunctionVersion: StatusFunctionVersion;
 }): TransparencyGap | undefined {
   const rule = input.policy.validityRule as { kind?: unknown; durationDays?: unknown };
   let message: string | undefined;
@@ -403,7 +464,9 @@ function deriveUnevaluableValidityGap(input: {
   } else if (rule.kind === "duration") {
     if (
       typeof rule.durationDays !== "number" ||
-      !Number.isFinite(rule.durationDays)
+      !Number.isFinite(rule.durationDays) ||
+      // A negative window is a valid (immediately stale) "2" input and unevaluable under "3".
+      (input.statusFunctionVersion !== "2" && rule.durationDays < 0)
     ) {
       message = "Duration validity cannot be evaluated because durationDays is missing or invalid.";
     } else {

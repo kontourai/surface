@@ -93,11 +93,15 @@ test("derived claim inherits stale freshness from inputs", () => {
         derivedFrom: ["input-stale"],
       },
     ],
+    evidence: [
+      { id: "evidence-input-stale", claimId: "input-stale", evidenceType: "human_attestation", method: "attestation", sourceRef: "owner", excerptOrSummary: "attested", observedAt: "2026-04-01T00:00:00.000Z", collectedBy: "owner" },
+      { id: "evidence-derived", claimId: "derived", evidenceType: "human_attestation", method: "attestation", sourceRef: "owner", excerptOrSummary: "attested", observedAt: "2026-04-25T01:00:00.000Z", collectedBy: "owner" },
+    ],
     policies: [
       {
         id: "policy-stale",
         claimType: "software-evidence",
-        requiredEvidence: [],
+        requiredEvidence: ["human_attestation"],
         acceptanceCriteria: [],
         reviewAuthority: "owner",
         validityRule: { kind: "duration", durationDays: 1 },

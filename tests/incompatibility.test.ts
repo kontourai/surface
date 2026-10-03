@@ -66,9 +66,12 @@ test("incompatibleStatuses fires a contradiction across same-subject claim pair"
       { ...baseClaim, id: "claim-a", fieldOrBehavior: "shipped", value: true },
       { ...baseClaim, id: "claim-b", fieldOrBehavior: "shipped", value: true },
     ],
+    // claim-a must earn `verified`: a policy that requires something, and evidence that meets it.
+    evidence: [{ id: "evidence-claim-a", claimId: "claim-a", evidenceType: "human_attestation", method: "attestation", sourceRef: "owner", excerptOrSummary: "attested", observedAt: "2026-04-25T01:00:00.000Z", collectedBy: "owner" }],
     policies: [
       {
         ...basePolicy,
+        requiredEvidence: ["human_attestation"],
         id: "policy-release",
         claimType: "release-status",
         incompatibleStatuses: [

@@ -96,8 +96,23 @@ builder.addClaim({
   fieldOrBehavior: "rate limit is enforced",
   value: "100 requests/minute",
   currentIntegrityRef: "commit:abc123",
+  verificationPolicyId: "policy.api.tests",
   createdAt: "2026-07-20T00:00:00.000Z",
   updatedAt: "2026-07-20T00:00:00.000Z",
+});
+
+// A claim derives `verified` only against a policy that names what it
+// requires, and a check counts toward it only when it reports `passing: true`.
+builder.addPolicy({
+  id: "policy.api.tests",
+  claimType: "software-evidence",
+  requiredEvidence: ["test_output"],
+  acceptanceCriteria: ["rate-limit tests pass"],
+  reviewAuthority: "ci",
+  validityRule: { kind: "manual" },
+  stalenessTriggers: [],
+  conflictRules: [],
+  impactLevel: "medium",
 });
 
 // addEvidence() returns an EvidenceLink, not the builder — call .linkTo()
@@ -110,6 +125,7 @@ builder.addEvidence({
   excerptOrSummary: "Rate-limit tests passed.",
   observedAt: "2026-07-20T00:00:00.000Z",
   collectedBy: "ci",
+  passing: true,
 }).linkTo("claim.api.rate-limit");
 
 builder.addEvent({

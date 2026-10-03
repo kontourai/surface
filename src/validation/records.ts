@@ -118,6 +118,82 @@ function validateValidationStrategy(value: unknown, label: string): void {
   if (value.metadata !== undefined) requireObject(value.metadata, `${label} validationStrategy.metadata`);
 }
 
+const CONCLUSION_CONFIDENCE_KEYS = new Set(["value", "method", "calibration", "interval", "comfortZone"]);
+const CALIBRATION_KEYS = new Set(["tableRef", "tableVersion", "method", "sampleSize", "boundMethod"]);
+
+/**
+ * `conclusionConfidence` as the Hachure schemas state it. The `calibration`
+ * object (added at schemaVersion 8) is checked whenever it is present. For a
+ * schemaVersion 8 bundle the rest is checked too: the claim schema's shape,
+ * the trust-bundle schema's version-gated rules (`value` requires
+ * `calibration`; interval bounds lie in [0, 1]), and the two ordering rules
+ * JSON Schema cannot express (low <= high, low <= value <= high). Earlier
+ * versions keep the object-only check in `validateClaim`.
+ */
+export function validateConclusionConfidence(claim: Record<string, unknown>, schemaVersion: number): void {
+  const confidence = claim.conclusionConfidence;
+  if (confidence === undefined) return;
+  const label = `claim ${String(claim.id ?? "")} conclusionConfidence`;
+  requireObject(confidence, label);
+
+  const calibration = confidence.calibration;
+  if (calibration !== undefined) {
+    requireObject(calibration, `${label}.calibration`);
+    rejectUnknownKeys(calibration, CALIBRATION_KEYS, `${label}.calibration`);
+    for (const field of ["tableRef", "tableVersion"]) {
+      if (typeof calibration[field] !== "string" || calibration[field].length === 0) {
+        throw new Error(`${label}.calibration.${field} must be a non-empty string`);
+      }
+    }
+    for (const field of ["method", "boundMethod"]) {
+      if (calibration[field] !== undefined && typeof calibration[field] !== "string") {
+        throw new Error(`${label}.calibration.${field} must be a string`);
+      }
+    }
+    if (calibration.sampleSize !== undefined && (!Number.isInteger(calibration.sampleSize) || (calibration.sampleSize as number) < 1)) {
+      throw new Error(`${label}.calibration.sampleSize must be an integer >= 1`);
+    }
+  }
+
+  if (schemaVersion < 8) return;
+
+  rejectUnknownKeys(confidence, CONCLUSION_CONFIDENCE_KEYS, label);
+  const unitInterval = (value: unknown): value is number =>
+    typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1;
+  const value = confidence.value;
+  if (value !== undefined) {
+    if (!unitInterval(value)) throw new Error(`${label}.value must be a number in [0, 1]`);
+    if (calibration === undefined) {
+      throw new Error(`${label}.value requires calibration at schemaVersion 8`);
+    }
+  }
+  if (confidence.method !== undefined && typeof confidence.method !== "string") {
+    throw new Error(`${label}.method must be a string`);
+  }
+  const interval = confidence.interval;
+  if (interval !== undefined) {
+    requireObject(interval, `${label}.interval`);
+    rejectUnknownKeys(interval, new Set(["low", "high"]), `${label}.interval`);
+    const { low, high } = interval;
+    if (!unitInterval(low)) throw new Error(`${label}.interval.low must be a number in [0, 1]`);
+    if (!unitInterval(high)) throw new Error(`${label}.interval.high must be a number in [0, 1]`);
+    if (low > high) throw new Error(`${label}.interval low (${low}) must be <= high (${high})`);
+    if (typeof value === "number") {
+      if (value < low) throw new Error(`${label}.value (${value}) must be >= interval.low (${low})`);
+      if (value > high) throw new Error(`${label}.value (${value}) must be <= interval.high (${high})`);
+    }
+  }
+  const comfortZone = confidence.comfortZone;
+  if (comfortZone !== undefined) {
+    requireObject(comfortZone, `${label}.comfortZone`);
+    rejectUnknownKeys(comfortZone, new Set(["within", "reason"]), `${label}.comfortZone`);
+    if (typeof comfortZone.within !== "boolean") throw new Error(`${label}.comfortZone.within must be a boolean`);
+    if (comfortZone.reason !== undefined && typeof comfortZone.reason !== "string") {
+      throw new Error(`${label}.comfortZone.reason must be a string`);
+    }
+  }
+}
+
 export function validateClaim(claim: unknown): void {
   requireObject(claim, "claim");
   rejectUnknownKeys(claim, CLAIM_KEYS, `claim ${String(claim.id ?? "")}`);
@@ -147,8 +223,9 @@ export function validateClaim(claim: unknown): void {
   if (claim.currentIntegrityAnchor !== undefined) validateIntegrityAnchor(claim.currentIntegrityAnchor, `claim ${claim.id} currentIntegrityAnchor`);
   if (claim.verificationPolicyId !== undefined) requireString(claim, "verificationPolicyId");
   if (claim.confidenceBasis !== undefined) requireObject(claim.confidenceBasis, "claim.confidenceBasis");
-  // Calibrated conclusion confidence is carried, not derived; the vendored JSON
-  // schema validates its shape, so the runtime check only asserts it is an object.
+  // Calibrated conclusion confidence is carried, not derived. This check only
+  // asserts it is an object; `validateConclusionConfidence` applies the
+  // schemaVersion-dependent rules where the bundle's version is known.
   if (claim.conclusionConfidence !== undefined) requireObject(claim.conclusionConfidence, "claim.conclusionConfidence");
   if (claim.subjectAliases !== undefined) {
     const aliases = requireArray(claim, "subjectAliases");

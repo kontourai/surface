@@ -1,6 +1,6 @@
 {
   "suite": "kontour-surface-conformance",
-  "version": 1,
+  "version": 2,
   "description": "Deterministic conformance cases for the Kontour Surface trust derivation. An alternate implementation of the Open Trust Format conforms when it accepts the valid inputs, rejects the invalid ones, and derives the same claim statuses and transparency gap types.",
   "cases": [
     {
@@ -9,7 +9,7 @@
       "expect": {
         "valid": true,
         "statusByClaimId": { "claim.api.rate-limit": "verified" },
-        "transparencyGapTypesByClaimId": { "claim.api.rate-limit": ["policy_violation"] }
+        "transparencyGapTypesByClaimId": { "claim.api.rate-limit": [] }
       }
     },
     {
@@ -27,7 +27,7 @@
       "expect": {
         "valid": true,
         "statusByClaimId": { "claim.api.rate-limit": "stale" },
-        "transparencyGapTypesByClaimId": { "claim.api.rate-limit": ["freshness_breach", "policy_violation"] }
+        "transparencyGapTypesByClaimId": { "claim.api.rate-limit": ["freshness_breach", "policy_violation", "policy_violation"] }
       }
     },
     {

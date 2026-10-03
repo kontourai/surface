@@ -222,6 +222,7 @@ test("TrustBundleBuilder emits a common verified claim bundle in one step", () =
         excerptOrSummary: "Tests passed.",
         observedAt: "2026-05-01T00:01:00.000Z",
         collectedBy: "ci",
+        passing: true,
       },
       policy: {
         id: "policy.release.tests",

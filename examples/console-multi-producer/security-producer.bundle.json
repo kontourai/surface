@@ -52,7 +52,19 @@
       "passing": true
     }
   ],
-  "policies": [],
+  "policies": [
+    {
+      "id": "policy.security.dependency-audit",
+      "claimType": "dependency-audit",
+      "requiredEvidence": ["test_output"],
+      "acceptanceCriteria": ["The dependency audit reports a passing result."],
+      "reviewAuthority": "security-producer",
+      "validityRule": { "kind": "manual" },
+      "stalenessTriggers": [],
+      "conflictRules": [],
+      "impactLevel": "high"
+    }
+  ],
   "events": [
     {
       "id": "ev.event.security.dependency-audit",

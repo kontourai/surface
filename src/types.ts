@@ -65,6 +65,18 @@ export interface ConclusionConfidence {
   value?: number;
   /** How the value was calibrated (provenance label, e.g. "ensemble-disagreement"). Free-form. */
   method?: string;
+  /**
+   * The calibration table the calibrator applied to produce `value` (Hachure
+   * schemaVersion 8). A schemaVersion 8 bundle must carry it whenever `value`
+   * is present.
+   */
+  calibration?: {
+    tableRef: string;
+    tableVersion: string;
+    method?: string;
+    sampleSize?: number;
+    boundMethod?: string;
+  };
   /** Optional calibrated interval around `value`. */
   interval?: { low: number; high: number };
   /** Structured comfort-zone signal; the producer (e.g. Survey) populates this. */
@@ -164,15 +176,16 @@ export interface IdentityLink {
   mappingClaimId?: string;
 }
 
-export type SchemaVersion = 2 | 3 | 4 | 5 | 6 | 7;
+export type SchemaVersion = 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 /**
  * The conservative schemaVersion for Surface-generated output. Bundle emitters
- * upgrade this to 7 when their content uses runtime-observation vocabulary;
- * pure-v5 bundles remain 5 for compatibility with older receivers. TrustReport
- * output remains 5 because Hachure 0.15's trust-report schema still permits
- * only 5 or 6 at the top level. Reading tolerates 2-4 (see validate.ts's legacy
- * facet/surface shim), 6, and 7.
+ * upgrade this to 7 when their content uses runtime-observation vocabulary and
+ * to 8 when a claim carries `conclusionConfidence.calibration`; pure-v5 bundles
+ * remain 5 for compatibility with older receivers. TrustReport output remains
+ * 5 because Hachure's trust-report schema still permits only 5 or 6 at the top
+ * level. Reading tolerates 2-4 (see validate.ts's legacy facet/surface shim),
+ * 6, 7, and 8.
  */
 export const CURRENT_SCHEMA_VERSION: SchemaVersion = 5;
 export type DerivationMethod =

@@ -191,8 +191,14 @@ test("integration: cascade holds against two real buildTrustReport derivations",
       { ...baseClaim, id: "input", fieldOrBehavior: "check-passes", value: true },
       { ...baseClaim, id: "derived", fieldOrBehavior: "release-ready", value: true, derivedFrom: ["input"] },
     ],
-    evidence: [],
-    policies: [],
+    evidence: [
+      { id: "evidence-input", claimId: "input", evidenceType: "human_attestation", method: "attestation", sourceRef: "owner", excerptOrSummary: "attested", observedAt: "2026-04-25T01:00:00.000Z", collectedBy: "owner" },
+      { id: "evidence-derived", claimId: "derived", evidenceType: "human_attestation", method: "attestation", sourceRef: "owner", excerptOrSummary: "attested", observedAt: "2026-04-25T01:00:00.000Z", collectedBy: "owner" },
+    ],
+    policies: [{
+      id: "policy-attested", claimType: "software-evidence", requiredEvidence: ["human_attestation"], acceptanceCriteria: [],
+      reviewAuthority: "owner", validityRule: { kind: "manual" }, stalenessTriggers: [], conflictRules: [], impactLevel: "medium",
+    }],
     events: [
       { id: "ev-1", claimId: "input", status: inputEventStatus, actor: "owner", method: "attestation", evidenceIds: [], createdAt: "2026-04-25T01:00:00.000Z" },
       // The derived claim earns its own verified own-status; the ceiling from its

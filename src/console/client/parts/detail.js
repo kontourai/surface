@@ -206,6 +206,10 @@ function renderDetailPolicyGap(gap) {
         ? `<div class="gap-row gap-missing"><span class="gap-label">Missing evidence</span>
             <span class="gap-value">${gap.missingEvidence.map(e => `<code title="${esc(e)}">${esc(evidenceTypeLabel(e))}</code>`).join(" ")}</span></div>`
         : "",
+      gap.unqualifiedEvidence?.length
+        ? `<div class="gap-row gap-missing"><span class="gap-label">No passing result</span>
+            <span class="gap-value">${gap.unqualifiedEvidence.map(e => `<code title="${esc(e)}">${esc(evidenceTypeLabel(e))}</code>`).join(" ")}</span></div>`
+        : "",
       gap.missingMethods.length
         ? `<div class="gap-row gap-missing"><span class="gap-label">Missing method</span>
             <span class="gap-value">${gap.missingMethods.map(m => `<code title="${esc(m)}">${esc(methodLabel(m))}</code>`).join(" ")}</span></div>`
@@ -214,7 +218,9 @@ function renderDetailPolicyGap(gap) {
           <span class="gap-value">${renderRequirementValues([{ values: gap.requiredEvidence, axis: "evidenceType" }, { values: gap.requiredMethods, axis: "method" }], "No requirements declared")}</span></div>`,
       `<div class="gap-row gap-has"><span class="gap-label">Evidence collected</span>
           <span class="gap-value">${renderRequirementValues([{ values: gap.hasEvidence, axis: "evidenceType" }, { values: gap.hasMethods, axis: "method" }], "No matching evidence collected")}</span></div>`,
-      gap.missingMethods.length
+      !gap.missingMethods.length && !gap.missingEvidence.length && gap.unqualifiedEvidence?.length
+        ? `<div class="gap-resolution"><strong>How to fix:</strong> re-run the <code>${esc(gap.unqualifiedEvidence[0])}</code> check so its evidence records a passing result. A check that reports no result, or a failure, does not satisfy the policy.</div>`
+        : gap.missingMethods.length
         ? `<div class="gap-resolution"><strong>How to fix:</strong> collect evidence with method <code>${esc(gap.missingMethods[0])}</code>. If evidence was collected but listed under a different method, update the producer/adapter mapping so it emits the policy's required method.</div>`
         : `<div class="gap-resolution"><strong>How to fix:</strong> enable the producer check that emits <code>${esc(gap.missingEvidence[0] ?? "evidence")}</code> for this claim, then rerun evidence collection.</div>`,
     ].filter(Boolean).join("");
