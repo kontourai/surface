@@ -160,13 +160,31 @@ test("evidence detail shows could not run, collector kind, and a backed source o
   try {
     await page.goto(consoleServer.url);
     await expect(page.locator("#claimFeed .claim-card")).toHaveCount(2);
+    // A card with no facet renders no empty facet label.
+    await expect(page.locator("#claimFeed .card-surface")).toHaveCount(0);
+    // The chip for claims without a facet is named for that, and selects them.
+    const noFacetChip = page.locator("#surfaceChips [data-surface='unknown']");
+    await expect(noFacetChip).toContainText("No facet");
+    await expect(noFacetChip).not.toContainText("Unknown");
+    await noFacetChip.click();
+    await expect(page.locator("#claimFeed .claim-card")).toHaveCount(2);
+    await expect(page.locator("#claimFeed")).not.toContainText("No claims match");
     await page.locator("#claimFeed .claim-card", { hasText: "co2Tonnes2025" }).click();
     const checked = page.locator("#detailWhatWasChecked");
     await expect(checked).toContainText("Could not run: Source unreachable — HTTP 503 after 3 retries");
     await expect(checked).toContainText("Collected by a model");
     await expect(checked).not.toContainText("failed");
-    // Each evidence summary appears once, and the collector label is not doubled.
+    // Each evidence summary appears once, inside the block of its own item,
+    // and the collector label is not doubled.
     expect((await checked.innerText()).split("Fuel spend for 2025 extracted from 412 invoices.").length - 1).toBe(1);
+    const blocks = checked.locator(".observed-result");
+    await expect(blocks).toHaveCount(2);
+    await expect(blocks.nth(0)).toContainText("Fuel spend for 2025 extracted from 412 invoices.");
+    await expect(blocks.nth(0)).toContainText("Collected by a model");
+    await expect(blocks.nth(0)).not.toContainText("Telematics");
+    await expect(blocks.nth(1)).toContainText("Telematics endpoint returned 503.");
+    await expect(blocks.nth(1)).toContainText("Collected by a program");
+    await expect(blocks.nth(1)).toContainText("Could not run: Source unreachable");
     await expect(checked).not.toContainText(/Collected by\s+Collected by/i);
     // An attempt that could not run is not a failed verification.
     await expect(page.locator("#detailSheet")).not.toContainText("Verification failed");
@@ -174,6 +192,26 @@ test("evidence detail shows could not run, collector kind, and a backed source o
 
     await page.locator("#claimFeed .claim-card", { hasText: "totalDue" }).click();
     await expect(checked.locator('[data-source-of-record="backed"]')).toContainText("From the system of record · billing.example/ledger");
+    expect(consoleErrors).toEqual([]);
+  } finally {
+    await consoleServer.stop();
+  }
+});
+
+test("the no-facet chip selects only the claims without a facet in a mixed bundle", async ({ page }) => {
+  const consoleErrors = collectConsoleErrors(page);
+  const bundle = JSON.parse(await readFile(resolve("examples/basis-annotations-bundle.json"), "utf8")) as { claims: Array<Record<string, unknown>> };
+  bundle.claims[0]!.facet = "billing.totals";
+  const consoleServer = await startBundleSurfaceConsole(bundle);
+  try {
+    await page.goto(consoleServer.url);
+    await expect(page.locator("#claimFeed .claim-card")).toHaveCount(2);
+    await page.locator("#surfaceChips [data-surface='unknown']").click();
+    await expect(page.locator("#claimFeed .claim-card")).toHaveCount(1);
+    await expect(page.locator("#claimFeed .claim-card")).toContainText("co2Tonnes2025");
+    await page.locator("#surfaceChips [data-surface='billing.totals']").click();
+    await expect(page.locator("#claimFeed .claim-card")).toHaveCount(1);
+    await expect(page.locator("#claimFeed .claim-card")).toContainText("totalDue");
     expect(consoleErrors).toEqual([]);
   } finally {
     await consoleServer.stop();

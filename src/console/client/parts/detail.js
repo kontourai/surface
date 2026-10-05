@@ -241,23 +241,24 @@ function renderDetailWhatWasChecked(claim, evidence) {
 
   const parts = [];
 
-  // Evidence summary (excerpt or summary from first evidence item)
-  const summaryText = evidence[0]?.excerptOrSummary ?? null;
-  if (summaryText) {
-    parts.push(`<p class="checked-summary">${esc(summaryText)}</p>`);
-  }
-
-  // Observed result rows (structured metadata when available)
+  // Observed result blocks, one per evidence item that records one (structured
+  // metadata, a result, or how it was collected). Each block carries its own
+  // summary, so an item's lines stay together.
   // Item 6: cap at 5 visible by default when there are more than 8 total.
   const EVIDENCE_SHOW_LIMIT = 5;
   const EVIDENCE_COLLAPSE_THRESHOLD = 8;
   const basisById = currentData?.readModel?.evidenceBasisById ?? {};
   const observedResults = evidence
     .map(item => observedResultForEvidence(item, Object.hasOwn(basisById, item.id) ? basisById[item.id] : undefined))
-    .filter(Boolean)
-    // The summary line above already shows this text; do not repeat it in a result.
-    .map(result => (summaryText && result.summary === summaryText ? { ...result, summary: null } : result))
-    .filter(result => Object.values(result).some(value => value != null && value !== ""));
+    .filter(Boolean);
+
+  // Evidence summary (excerpt or summary from the first evidence item), shown
+  // on its own only when that item has no block that already shows it.
+  const summaryText = evidence[0]?.excerptOrSummary ?? null;
+  const firstBlock = evidence[0] ? observedResultForEvidence(evidence[0], Object.hasOwn(basisById, evidence[0].id) ? basisById[evidence[0].id] : undefined) : null;
+  if (summaryText && firstBlock?.summary !== summaryText) {
+    parts.push(`<p class="checked-summary">${esc(summaryText)}</p>`);
+  }
   if (observedResults.length) {
     const showExpander = observedResults.length > EVIDENCE_COLLAPSE_THRESHOLD;
     const visibleResults = showExpander ? observedResults.slice(0, EVIDENCE_SHOW_LIMIT) : observedResults;
