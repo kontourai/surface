@@ -8,6 +8,7 @@ export * from "./conflict-derivation.js";
 export * from "./report.js";
 export * from "./validate.js";
 export * from "./provenance-annotations.js";
+export { compareTimestamps, parseTimestamp, type TimestampInstant } from "./timestamp.js";
 export * from "./adapter.js";
 export * from "./identity.js";
 export * from "./claim-subject-matching.js";

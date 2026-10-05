@@ -368,6 +368,68 @@ version and are never status inputs.
 does not make a bundle invalid. [`examples/basis-annotations-bundle.json`](../../examples/basis-annotations-bundle.json)
 adapts Hachure's worked example of both versions' fields.
 
+## Status function version 4
+
+Hachure 0.18 defines status function version `"4"` and makes it Hachure's
+default. Surface supports it, selectable with `statusFunctionVersion: "4"` on
+the same functions as `"2"` (see [Selecting version 2](#selecting-version-2)).
+**Surface's default stays `"3"`**: moving it changes derived statuses for
+existing bundles, so it is a separate, major-release decision. `"3"` and `"2"`
+derive exactly as before.
+
+Version `"4"` defines what a time is and compares times exactly:
+
+- **Timestamps.** Every time the fold reads must be an RFC 3339 `date-time`:
+  offset required (`Z` or `±hh:mm`), lower-case `t` / `z` accepted, a date that
+  exists in the calendar, any number of fractional digits, and second `60` only
+  at `23:59:60` UTC (read as the next instant). A date with no time, a time with
+  no offset, hour `24`, a space separator and prose are not timestamps.
+  `parseTimestamp(value)` and `compareTimestamps(a, b)` are exported; an instant
+  is `{ epochMilliseconds, subMillisecond }`, never a floating-point number.
+- **Exact comparison.** Instants compare to every fractional digit:
+  `00:00:00.0009Z` is later than `00:00:00.0001Z`, and `00:00:00.5Z` equals
+  `00:00:00.500000Z`.
+- **Step 1 fails closed on unevaluable times.** A `resolvesDispute` event whose
+  `createdAt` is absent or not a timestamp is not a resolution (it stays an
+  ordinary event). A trace whose `revokedAt`, `validFrom` or `validUntil` is
+  present but not a timestamp is not active; one evaluable active trace is
+  enough, and an unevaluable one does not veto it. A blocking failure whose
+  `observedAt` is absent or not a timestamp counts as newer than the
+  resolution.
+- **Ordering.** An event whose `createdAt` is not a timestamp sorts before every
+  event with a timestamp, so it is the latest event only when no event has one.
+- **Exact validity windows.** `ttlSeconds × 1000` and `durationDays × 86 400 000`
+  are exact decimal products of the number's shortest round-trip form, and "now
+  is later than the window's end" is evaluated without rounding. `durationDays:
+  0.7` is exactly 60 480 000 ms. An `expiresAt` or verification time that is not
+  a timestamp derives `stale`.
+- **`now`.** Surface takes `now` only as a `Date` (whole milliseconds). Under
+  `"3"` and `"4"` any other value, including a string that is a valid
+  timestamp, is refused with a `RangeError`, so no string `now` is ever read
+  loosely.
+
+A status can strengthen under `"4"` as well as weaken: refusing an unevaluable
+resolution to `rejected` lets a later `verified` event stand. Hachure's
+"Migrating from version 3" table in `status-function.md` lists every bundle
+shape that derives differently. A schema-valid bundle whose times are all RFC
+3339 with an offset, at most three fractional digits and no leap second, and
+whose `now` is not within a millisecond of a validity window's end, derives the
+same under `"3"` and `"4"`.
+
+The conformance vectors run through `buildTrustReport` under every version they
+apply to, without validation (several carry non-`date-time` strings on
+purpose). Three unversioned vectors added in Hachure 0.18
+(`sf-authority-window-instants`, `sf-unparseable-event-time`, and part of
+`sf-authority-window-before-v4`) are not met by Surface's `"2"`, which compares
+authority-trace bounds as ISO strings and orders an unparseable event time as
+`NaN`. Surface keeps `"2"` unchanged so records resolved under it re-derive as
+they were; the differing claims are pinned in `tests/spec-conformance.test.ts`.
+
+A report claim's `freshness.expiresAt`, the order used to pick the governing
+verified event for transparency gaps, and the inquiry `fresherThan` /
+`requiresActiveAuthority` predicates are not part of the status function and
+still read times with `Date.parse`.
+
 ## Migration expectation
 
 Every schema change should include:

@@ -3,6 +3,7 @@ import { type ClaimEvidenceEvaluation, evaluateClaimEvidence, policyRequiresSome
 import { evidenceEntailsClaim, partitionEvidenceBySupport } from "./evidence-support.js";
 import { resolvePolicyForClaim } from "./policy-resolver.js";
 import { resolveStatusFunctionVersion, type StatusFunctionVersion } from "./status-function-version.js";
+import { compareTimestamps, instantFromDate, laterThanWindowEnd, parseTimestamp, type TimestampInstant } from "./timestamp.js";
 
 export {
   isSupportedStatusFunctionVersion,
@@ -53,12 +54,14 @@ export function deriveTrustStatus(input: {
   // evidence re-opens the dispute.
   const resolutionEvent = findLatestResolutionEvent(claimEvents, input.authorityTrace ?? [], version);
   if (resolutionEvent !== undefined) {
-    const hasNewerBlockingFailure = input.evidence.some(
-      (ev) =>
-        ev.passing === false &&
-        ev.blocking !== false &&
-        Date.parse(ev.observedAt) > Date.parse(resolutionEvent.createdAt),
-    );
+    const hasNewerBlockingFailure = version === "4"
+      ? hasNewerBlockingFailureV4(input.evidence, resolutionEvent)
+      : input.evidence.some(
+        (ev) =>
+          ev.passing === false &&
+          ev.blocking !== false &&
+          Date.parse(ev.observedAt) > Date.parse(resolutionEvent.createdAt),
+      );
     if (hasNewerBlockingFailure) {
       return "disputed";
     }
@@ -149,10 +152,12 @@ export function deriveTrustStatus(input: {
 }
 
 /**
- * The claim's events, most recent first by `createdAt`. Under "3" an
- * unparseable `createdAt` sorts as epoch 0 (oldest), so the order is defined;
- * under "2" such an event compares as NaN and the order is whatever the sort
- * makes of it.
+ * The claim's events, most recent first by `createdAt`. Under "4" times are
+ * exact instants and an event whose `createdAt` is not a timestamp sorts
+ * before (older than) every event whose time is one. Under "3" an unparseable
+ * `createdAt` sorts as epoch 0, so the order is defined; under "2" such an
+ * event compares as NaN and the order is whatever the sort makes of it. Equal
+ * times keep their order in `events` (the sort is stable).
  */
 function claimEventsMostRecentFirst(
   claim: Claim,
@@ -163,7 +168,34 @@ function claimEventsMostRecentFirst(
   if (version === "2") {
     return claimEvents.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
   }
+  if (version === "4") return sortEventsMostRecentFirstV4(claimEvents);
   return claimEvents.sort((a, b) => (parseInstant(b.createdAt) ?? 0) - (parseInstant(a.createdAt) ?? 0));
+}
+
+/** Version "4" event order: exact instants; an unevaluable `createdAt` is the oldest. */
+export function sortEventsMostRecentFirstV4<T extends { createdAt: string }>(events: T[]): T[] {
+  const at = new Map(events.map((event) => [event, parseTimestamp(event.createdAt)]));
+  return events.sort((a, b) => {
+    const ta = at.get(a);
+    const tb = at.get(b);
+    if (ta === undefined || tb === undefined) return Number(ta === undefined) - Number(tb === undefined);
+    return compareTimestamps(tb, ta);
+  });
+}
+
+/**
+ * Version "4" Step 1: an entailing blocking failure is newer than the
+ * resolution when its `observedAt` is later, or when `observedAt` is not a
+ * timestamp: a failure that cannot be shown to predate the resolution is not
+ * set aside by it. The resolution's own time is always a timestamp here.
+ */
+function hasNewerBlockingFailureV4(evidence: Evidence[], resolutionEvent: VerificationEvent): boolean {
+  const resolutionAt = parseTimestamp(resolutionEvent.createdAt) as TimestampInstant;
+  return evidence.some((item) => {
+    if (item.passing !== false || item.blocking === false) return false;
+    const observedAt = parseTimestamp(item.observedAt);
+    return observedAt === undefined || compareTimestamps(observedAt, resolutionAt) > 0;
+  });
 }
 
 /** Epoch ms, or undefined when the value is not a parseable instant. */
@@ -299,6 +331,7 @@ function isVerifiedEventStale(
   now: Date,
   version: StatusFunctionVersion,
 ): boolean {
+  if (version === "4") return isVerifiedEventStaleV4(event, claim, evidence, policy, now);
   if (version !== "2") return isVerifiedEventStaleV3(event, claim, evidence, policy, now);
 
   // Claim-intrinsic validity window (Hachure schema 4) overrides policy timing
@@ -389,6 +422,53 @@ function isVerifiedEventStaleV3(
 }
 
 /**
+ * Version "4" Step 4a: the version "3" rule with every time read as a
+ * timestamp and every comparison exact. A validity window is the exact decimal
+ * product of `ttlSeconds` (or `durationDays`) and its unit, never a
+ * floating-point sum.
+ */
+function isVerifiedEventStaleV4(
+  event: VerificationEvent,
+  claim: Claim,
+  evidence: Evidence[],
+  policy: VerificationPolicy | undefined,
+  now: Date,
+): boolean {
+  const nowInstant = instantFromDate(now) as TimestampInstant;
+  const verifiedTime = parseTimestamp(event.verifiedAt ?? event.createdAt);
+  const evaluable = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n) && n >= 0;
+
+  if (claim.expiresAt !== undefined) {
+    const expiry = parseTimestamp(claim.expiresAt);
+    return expiry === undefined || compareTimestamps(nowInstant, expiry) > 0;
+  }
+  if (claim.ttlSeconds !== undefined) {
+    if (verifiedTime === undefined || !evaluable(claim.ttlSeconds)) return true;
+    return laterThanWindowEnd(nowInstant, verifiedTime, claim.ttlSeconds, 1000);
+  }
+
+  if (!policy) return false;
+
+  const rule = policy.validityRule as { kind?: unknown; durationDays?: unknown } | undefined;
+  switch (rule?.kind) {
+    case "commit": {
+      if (claim.currentIntegrityRef === undefined) return true;
+      const linkedIds = event.evidenceIds ?? [];
+      return !evidence.some((item) => linkedIds.includes(item.id) && item.integrityRef === claim.currentIntegrityRef);
+    }
+    case "duration": {
+      if (!evaluable(rule.durationDays) || verifiedTime === undefined) return true;
+      return laterThanWindowEnd(nowInstant, verifiedTime, rule.durationDays, 86_400_000);
+    }
+    case "historical":
+    case "manual":
+      return false;
+    default:
+      return true;
+  }
+}
+
+/**
  * Resolve the claim-intrinsic validity window to an absolute expiry epoch (ms),
  * or undefined when the claim declares no intrinsic window (Hachure schema 4).
  *
@@ -436,12 +516,36 @@ function findLatestResolutionEvent(
   return undefined;
 }
 
+/**
+ * Version "4" Step 1: a resolution needs a `createdAt` that is a timestamp,
+ * and an actor with a trace active at that instant. Each trace bound that is
+ * present must be a timestamp and must hold; a trace that is not active
+ * neither authorises the resolution nor vetoes it.
+ */
+function isResolutionAuthorizedV4(event: VerificationEvent, authorityTrace: AuthorityTrace[]): boolean {
+  const at = parseTimestamp(event.createdAt);
+  if (at === undefined) return false;
+  const holds = (bound: string | undefined, test: (order: number) => boolean): boolean => {
+    if (bound === undefined) return true;
+    const time = parseTimestamp(bound);
+    return time !== undefined && test(compareTimestamps(time, at));
+  };
+  return authorityTrace.some((trace) =>
+    trace.actorRef === event.actor &&
+    (event.authorityRef === undefined || trace.authorityRef === event.authorityRef) &&
+    holds(trace.revokedAt, (order) => order > 0) &&
+    holds(trace.validFrom, (order) => order <= 0) &&
+    holds(trace.validUntil, (order) => order >= 0)
+  );
+}
+
 function isResolutionAuthorized(
   event: VerificationEvent,
   authorityTrace: AuthorityTrace[],
   version: StatusFunctionVersion,
 ): boolean {
   if (authorityTrace.length === 0) return false;
+  if (version === "4") return isResolutionAuthorizedV4(event, authorityTrace);
   if (version !== "2") {
     // "3": the trace window is compared as instants, so two spellings of the
     // same instant (`...00Z` / `...00.000Z`, or another UTC offset) agree. A

@@ -18,6 +18,7 @@ import {
 } from "./claim-evaluation.js";
 import { partitionEvidenceBySupport } from "./evidence-support.js";
 import { resolvePolicyForClaim } from "./policy-resolver.js";
+import { parseTimestamp } from "./timestamp.js";
 import { applyVerifiedStaleness, claimIntrinsicExpiry, deriveTrustStatus, verifiedBranchEvent } from "./status.js";
 import { resolveStatusFunctionVersion, type StatusFunctionVersion } from "./status-function-version.js";
 
@@ -472,7 +473,10 @@ function deriveUnevaluableValidityGap(input: {
     } else {
       const verifiedEvent = governingVerifiedEvent(input.claim.id, input.events);
       const verifiedAt = verifiedEvent?.verifiedAt ?? verifiedEvent?.createdAt;
-      if (verifiedEvent !== undefined && (verifiedAt === undefined || !Number.isFinite(Date.parse(verifiedAt)))) {
+      // Version "4" reads the time as an RFC 3339 timestamp, as Step 4a does.
+      const evaluable = (value: string): boolean =>
+        input.statusFunctionVersion === "4" ? parseTimestamp(value) !== undefined : Number.isFinite(Date.parse(value));
+      if (verifiedEvent !== undefined && (verifiedAt === undefined || !evaluable(verifiedAt))) {
         message = "Duration validity cannot be evaluated because the verification timestamp is invalid.";
       }
     }
