@@ -252,7 +252,12 @@ function renderDetailWhatWasChecked(claim, evidence) {
   const EVIDENCE_SHOW_LIMIT = 5;
   const EVIDENCE_COLLAPSE_THRESHOLD = 8;
   const basisById = currentData?.readModel?.evidenceBasisById ?? {};
-  const observedResults = evidence.map(item => observedResultForEvidence(item, Object.hasOwn(basisById, item.id) ? basisById[item.id] : undefined)).filter(Boolean);
+  const observedResults = evidence
+    .map(item => observedResultForEvidence(item, Object.hasOwn(basisById, item.id) ? basisById[item.id] : undefined))
+    .filter(Boolean)
+    // The summary line above already shows this text; do not repeat it in a result.
+    .map(result => (summaryText && result.summary === summaryText ? { ...result, summary: null } : result))
+    .filter(result => Object.values(result).some(value => value != null && value !== ""));
   if (observedResults.length) {
     const showExpander = observedResults.length > EVIDENCE_COLLAPSE_THRESHOLD;
     const visibleResults = showExpander ? observedResults.slice(0, EVIDENCE_SHOW_LIMIT) : observedResults;

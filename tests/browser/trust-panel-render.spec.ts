@@ -413,14 +413,52 @@ for (const colorScheme of ["light", "dark"] as const) {
     await evidenceRows(page);
     const attempt = page.locator("surface-trust-panel li.evidence[data-result='could-not-run']");
     await expect(attempt).toBeVisible();
-    const colours = await attempt.evaluate((item) => {
-      const reason = item.querySelector(".ev-reason") as HTMLElement;
-      const chip = item.querySelector('.ev-flag[data-field="result"]') as HTMLElement;
-      const panel = item.closest(".panel") as HTMLElement;
-      return { reason: getComputedStyle(reason).color, chip: getComputedStyle(chip).color, panel: getComputedStyle(panel).backgroundColor };
+    // WCAG contrast of each new text element against the background it is
+    // actually painted on: the nearest ancestor background, composited
+    // through any translucent layers, crossing the shadow boundary.
+    const ratios = await attempt.evaluate((item) => {
+      const rgba = (value: string): number[] => {
+        const parts = value.match(/[\d.]+/g)?.map(Number) ?? [0, 0, 0, 0];
+        return [parts[0]!, parts[1]!, parts[2]!, parts[3] ?? 1];
+      };
+      const parentOf = (node: Element): Element | null =>
+        node.parentElement ?? ((node.getRootNode() as ShadowRoot).host ?? null);
+      const backgroundOf = (element: Element): number[] => {
+        const layers: number[][] = [];
+        for (let node: Element | null = element; node; node = parentOf(node)) {
+          const layer = rgba(getComputedStyle(node).backgroundColor);
+          if (layer[3]! > 0) layers.push(layer);
+          if (layer[3] === 1) break;
+        }
+        let [r, g, b] = [255, 255, 255];
+        for (const [lr, lg, lb, la] of layers.reverse()) {
+          r = lr! * la! + r * (1 - la!);
+          g = lg! * la! + g * (1 - la!);
+          b = lb! * la! + b * (1 - la!);
+        }
+        return [r, g, b];
+      };
+      const luminance = ([r, g, b]: number[]): number => {
+        const channel = (v: number) => {
+          const c = v / 255;
+          return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+        };
+        return 0.2126 * channel(r!) + 0.7152 * channel(g!) + 0.0722 * channel(b!);
+      };
+      const ratio = (element: Element): number => {
+        const fg = luminance(rgba(getComputedStyle(element).color));
+        const bg = luminance(backgroundOf(element));
+        return (Math.max(fg, bg) + 0.05) / (Math.min(fg, bg) + 0.05);
+      };
+      return {
+        chip: ratio(item.querySelector('.ev-flag[data-field="result"]')!),
+        reason: ratio(item.querySelector(".ev-reason")!),
+      };
     });
-    expect(colours.reason).not.toBe(colours.panel);
-    expect(colours.chip).toBe(colours.reason);
+    expect(ratios.chip, `${colorScheme} "Could not run" chip contrast`).toBeGreaterThanOrEqual(4.5);
+    expect(ratios.reason, `${colorScheme} could-not-run reason contrast`).toBeGreaterThanOrEqual(4.5);
+    testInfo.annotations.push({ type: "contrast", description: `${colorScheme}: chip ${ratios.chip.toFixed(2)}, reason ${ratios.reason.toFixed(2)}` });
+    console.log(`contrast ${colorScheme}: chip ${ratios.chip.toFixed(2)}, reason ${ratios.reason.toFixed(2)}`);
     await page.locator("surface-trust-panel details.claim").first().screenshot({ path: testInfo.outputPath(`could-not-run-${colorScheme}.png`) });
   });
 }

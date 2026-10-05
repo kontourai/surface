@@ -152,17 +152,24 @@ test("merged multi-producer console: attribution bar, per-claim producers, and c
 
 test("evidence detail shows could not run, collector kind, and a backed source of record", async ({ page }) => {
   const consoleErrors = collectConsoleErrors(page);
-  // Hachure's worked example (adapted), with a facet on each claim for the feed.
+  // The shipped example as is: its claims carry no `facet` (it is optional),
+  // and the feed must still render them.
   const example = JSON.parse(await readFile(resolve("examples/basis-annotations-bundle.json"), "utf8")) as { claims: Array<Record<string, unknown>> };
-  for (const claim of example.claims) claim.facet = `example.${String(claim.claimType)}`;
+  expect(example.claims.every((claim) => claim.facet === undefined)).toBe(true);
   const consoleServer = await startBundleSurfaceConsole(example);
   try {
     await page.goto(consoleServer.url);
+    await expect(page.locator("#claimFeed .claim-card")).toHaveCount(2);
     await page.locator("#claimFeed .claim-card", { hasText: "co2Tonnes2025" }).click();
     const checked = page.locator("#detailWhatWasChecked");
     await expect(checked).toContainText("Could not run: Source unreachable — HTTP 503 after 3 retries");
     await expect(checked).toContainText("Collected by a model");
     await expect(checked).not.toContainText("failed");
+    // Each evidence summary appears once, and the collector label is not doubled.
+    expect((await checked.innerText()).split("Fuel spend for 2025 extracted from 412 invoices.").length - 1).toBe(1);
+    await expect(checked).not.toContainText(/Collected by\s+Collected by/i);
+    // An attempt that could not run is not a failed verification.
+    await expect(page.locator("#detailSheet")).not.toContainText("Verification failed");
     await page.keyboard.press("Escape");
 
     await page.locator("#claimFeed .claim-card", { hasText: "totalDue" }).click();

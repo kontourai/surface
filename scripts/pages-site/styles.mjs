@@ -8,6 +8,10 @@ export function buildStyles({ lightTrustTokens = [], darkTrustTokens = [] } = {}
   --k-panel-raised: #fbf6e7;
   --k-line: rgba(36, 68, 52, 0.16);
   --k-brand: #0f6b52;
+  /* @kontourai/ui's light-mode caution (its [data-theme="light"] value). The
+     vendored tokens are dark-first and this page switches mode by media query,
+     so without it light mode keeps the dark #f3b14b (1.7:1 on --k-panel-raised). */
+  --k-caution: #8a5a00;
   --surface-panel: color-mix(in srgb, var(--k-panel) 78%, transparent);
   --surface-panel-raised: color-mix(in srgb, var(--k-panel-raised) 82%, transparent);
   --surface-accent-secondary: color-mix(in srgb, var(--k-caution) 72%, var(--k-negative));
@@ -25,6 +29,8 @@ export function buildStyles({ lightTrustTokens = [], darkTrustTokens = [] } = {}
     --k-panel-raised: #1c281f;
     --k-line: rgba(212, 224, 204, 0.16);
     --k-brand: #7ee0bd;
+    /* @kontourai/ui's dark caution, restored over the light override above. */
+    --k-caution: #f3b14b;
     --surface-panel: color-mix(in srgb, var(--k-panel) 82%, transparent);
     --surface-panel-raised: color-mix(in srgb, var(--k-panel-raised) 82%, transparent);
     --surface-accent-secondary: color-mix(in srgb, var(--k-caution) 52%, var(--k-negative));

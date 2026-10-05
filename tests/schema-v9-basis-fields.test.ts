@@ -29,6 +29,7 @@ import {
 import { claimBasisView } from "../src/display.js";
 import { requiredBundleSchemaVersion } from "../src/bundle-schema-version.js";
 import { buildMergedConsoleReadModel } from "../src/console/merged-read-model.js";
+import { buildSurfaceConsoleProjection } from "../src/console/projection.js";
 
 const Ajv2020 = (Ajv2020Import as unknown as { default?: unknown }).default ?? Ajv2020Import;
 
@@ -281,7 +282,9 @@ test("claim explanation projects an inconclusive item as could not run, whatever
   const [attempt, failure] = explanation.evidence;
   assert.equal(attempt!.passing, null, "an attempt that never ran is not a failure");
   assert.deepEqual(attempt!.couldNotRun, { reason: "tool_error", detail: "runner missing" });
-  assert.equal(attempt!.execution?.isError, true, "the execution record is still reported as recorded");
+  // isError means "ran and failed"; an attempt that never ran did neither.
+  assert.equal(attempt!.execution?.isError, false);
+  assert.equal(attempt!.execution?.exitCode, 127, "the rest of the execution record is reported as recorded");
   // isError alone still means ran-and-failed.
   assert.equal(failure!.passing, false);
   assert.equal("couldNotRun" in failure!, false);
@@ -345,6 +348,11 @@ const RESOLUTION_CASES: Array<[string, Record<string, unknown>, unknown?]> = [
   ["not yet valid", profileBundle(SOR, [{ ...TRACE, validFrom: "2026-06-02T00:00:00.000Z" }])],
   ["expired", profileBundle(SOR, [{ ...TRACE, validUntil: "2026-05-31T00:00:00.000Z" }])],
   ["unparseable bound", profileBundle(SOR, [{ ...TRACE, validUntil: "soon" }])],
+  // Bounds are inclusive except revokedAt, which must be strictly later.
+  ["validFrom equal to observedAt", profileBundle(SOR, [{ ...TRACE, validFrom: AT }])],
+  ["validUntil equal to observedAt", profileBundle(SOR, [{ ...TRACE, validUntil: AT }])],
+  ["revokedAt equal to observedAt", profileBundle(SOR, [{ ...TRACE, revokedAt: AT }])],
+  ["revokedAt one millisecond later", profileBundle(SOR, [{ ...TRACE, revokedAt: "2026-06-01T00:00:00.001Z" }])],
   ["collision list names the trace", profileBundle(SOR), { collisions: [{ collection: "authorityTrace", id: "trace.sor" }] }],
   ["collision list names another trace", profileBundle(SOR), { collisions: [{ collection: "authorityTrace", id: "trace.other" }] }],
   ["collisions malformed", profileBundle(SOR), { collisions: [{ collection: "traces", id: "trace.sor" }] }],
@@ -393,6 +401,24 @@ for (const [name, value, estimate] of ESTIMATE_CASES) {
     assert.ok(ours.some((e) => e.instancePath === "/evidence/0/metadata/sourceOfRecord/authorityTraceId"));
   });
 }
+
+test("inclusive bounds are pinned literally, not only by parity", () => {
+  const backed = (trace: Record<string, unknown>) =>
+    resolveSourceOfRecord(profileBundle(SOR, [trace]) as unknown as TrustBundle, evidence("ev.1", "claim.a", SOR) as unknown as Evidence).backed;
+  assert.equal(backed({ ...TRACE, validFrom: AT }), true);
+  assert.equal(backed({ ...TRACE, validUntil: AT }), true);
+  assert.equal(backed({ ...TRACE, revokedAt: AT }), false);
+});
+
+test("validateBasisAnnotations tolerates a truthy non-array claims or evidence, where hachure 0.17.0 throws", () => {
+  // Divergence, pinned: hachure calls `.forEach` on `bundle.claims || []`, so a
+  // truthy non-array throws a TypeError. The port reads only arrays and checks
+  // nothing else, as validateTrustBundle owns the bundle's shape.
+  for (const input of [{ claims: {}, evidence: [] }, { claims: [], evidence: "x" }]) {
+    assert.deepEqual(validateBasisAnnotations(input), []);
+    assert.throws(() => hachure.validateBasisAnnotations(input), TypeError);
+  }
+});
 
 test("validateTrustBundle does not refuse a malformed profile value (metadata stays open)", () => {
   const input = { ...bundle(9, [evidence("ev.1", "claim.a", { metadata: { sourceOfRecord: true } })]), claims: [claim("claim.a", { metadata: { estimate: "about" } })] };
@@ -449,4 +475,25 @@ test("examples/basis-annotations-bundle.json validates, derives, and resolves as
   const fleet = input.claims.find((c) => c.id === "claim.fleet.co2-2025")!;
   const view = claimBasisView(fleet, input.evidence);
   assert.ok(view.state === "recorded" && view.facets.some((f) => f.code === "could-not-run"));
+});
+
+// ── gaps: an attempt that never ran is not an unsupported inference ───────
+
+test("an inconclusive item raises no unsupported_inference gap, so the console never titles it a failed verification", () => {
+  const input = validateTrustBundle(JSON.parse(readFileSync("examples/basis-annotations-bundle.json", "utf8")));
+  const projection = buildSurfaceConsoleProjection(buildMergedConsoleReadModel([input], { now: NOW }));
+  const claimId = "claim.fleet.co2-2025";
+  const gaps = (projection.readModel as { transparencyGaps: Array<{ claimId: string; type: string; evidenceIds: string[] }> }).transparencyGaps
+    .filter((gap) => gap.claimId === claimId);
+  assert.deepEqual(gaps.map((gap) => gap.type).sort(), ["provenance_gap"]);
+  assert.ok(!gaps.some((gap) => (gap.evidenceIds ?? []).includes("evidence.co2.telematics-attempt") && gap.type !== "provenance_gap"));
+  const titles = projection.claimDetails[claimId]!.gaps.map((gap) => gap.title);
+  assert.ok(!titles.includes("Verification failed"), JSON.stringify(titles));
+
+  // Control: the same item without `inconclusive` is an ordinary citation and
+  // still raises the gap, so the rule itself is intact.
+  const cited = structuredClone(input);
+  delete cited.evidence.find((item) => item.id === "evidence.co2.telematics-attempt")!.inconclusive;
+  const citedGaps = buildTrustReport(cited, { now: NOW }).transparencyGaps.filter((gap) => gap.claimId === claimId);
+  assert.ok(citedGaps.some((gap) => gap.type === "unsupported_inference" && (gap.evidenceIds ?? []).includes("evidence.co2.telematics-attempt")));
 });

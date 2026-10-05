@@ -351,12 +351,12 @@ interface TrustPanelReport {
       color: var(--k-text-muted, #657267);
     }
     .ev-flag[data-kind="positive"] { color: var(--k-positive, #0f8f66); }
-    .ev-flag[data-kind="caution"] { color: var(--k-caution, #a86612); }
+    .ev-flag[data-kind="caution"] { color: var(--k-caution, #8a5a00); }
     .ev-flag[data-kind="negative"] { color: var(--k-negative, #c24141); }
     .ev-meta { color: var(--k-text-muted, #657267); font-size: 0.78rem; }
-    .ev-reason { color: var(--k-caution, #a86612); font-size: 0.82rem; }
+    .ev-reason { color: var(--k-caution, #8a5a00); font-size: 0.82rem; }
     .gap { color: var(--k-negative, #c24141); }
-    .gap[data-severity="low"], .gap[data-severity="medium"] { color: var(--k-caution, #a86612); }
+    .gap[data-severity="low"], .gap[data-severity="medium"] { color: var(--k-caution, #8a5a00); }
     .empty, .error { padding: 0.5rem 0; color: var(--k-text-muted, #657267); font-size: 0.9rem; }
     .error { color: var(--k-negative, #c24141); }
     .footnote { margin: 0.8rem 0 0; color: var(--k-text-muted, #657267); font-size: 0.75rem; }
