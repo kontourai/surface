@@ -285,8 +285,11 @@ function deriveTransparencyGaps(input: {
   const presentMethods = new Set(input.entailingEvidence.map((item) => item.method));
   const missingMethods = input.evaluation.missingMethods.filter((method) => !presentMethods.has(method));
   const unqualifiedMethods = input.evaluation.missingMethods.filter((method) => presentMethods.has(method));
+  // An inconclusive attempt (schemaVersion 9) never reached its source: it
+  // cites nothing, so it is not an unsupported inference. The unmet
+  // requirement it leaves is reported by the requirement gaps above and below.
   const citedEvidenceIds = input.evidence
-    .filter((item) => !input.entailingEvidence.some((entailing) => entailing.id === item.id))
+    .filter((item) => item.inconclusive === undefined && !input.entailingEvidence.some((entailing) => entailing.id === item.id))
     .map((item) => item.id);
 
   if (missingEvidence.length > 0) {

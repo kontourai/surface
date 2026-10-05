@@ -6,6 +6,9 @@ function esc(s) {
 }
 
 function surfaceLabel(surface) {
+  // `facet` is optional on a claim: a claim without one renders with no facet
+  // label rather than breaking the whole feed.
+  if (typeof surface !== "string" || surface === "") return "";
   if (vocab.surfaceLabels?.[surface]) return vocab.surfaceLabels[surface];
   const name = surface.includes(".") ? surface.split(".").slice(1).join(" ") : surface;
   return name.replace(/[-_.]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
@@ -105,7 +108,6 @@ function renderObservedResult(result) {
     result.status ? "<div class=\"observed-row\"><span>Observed</span><code>" + esc(result.status) + "</code></div>" : "",
     result.exitCode != null ? "<div class=\"observed-row\"><span>Exit code</span><code>" + esc(String(result.exitCode)) + "</code></div>" : "",
     result.command ? "<div class=\"observed-row\"><span>Command</span><code>" + esc(result.command) + "</code></div>" : "",
-    result.collectedBy ? "<div class=\"observed-row\"><span>Collected by</span><code>" + esc(result.collectedBy) + "</code></div>" : "",
     result.sourceOfRecord ? "<div class=\"observed-row\" data-source-of-record=\"" + (result.sourceOfRecord.backed ? "backed" : "not-backed") + "\"><span>Source of record</span><code>" + esc(result.sourceOfRecord.label) + "</code></div>" : "",
   ].filter(Boolean).join("");
   const outputParts = [
@@ -115,6 +117,8 @@ function renderObservedResult(result) {
   ].filter(Boolean).join("\n\n");
   return "<div class=\"observed-result\">"
     + (result.summary ? "<p>" + esc(result.summary) + "</p>" : "")
+    // The canonical label already reads "Collected by a model", so it is a line, not a labelled row.
+    + (result.collectedBy ? "<p class=\"observed-collector\">" + esc(result.collectedBy) + "</p>" : "")
     + (rows ? "<div class=\"observed-grid\">" + rows + "</div>" : "")
     + (outputParts ? "<details class=\"observed-output\"><summary>Command output</summary><pre>" + esc(outputParts) + "</pre></details>" : "")
     + "</div>";

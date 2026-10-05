@@ -16,6 +16,12 @@ export interface ClaimEvidenceItem {
   execution: {
     runner: EvidenceExecution["runner"];
     label: string;
+    /**
+     * The check ran and failed (`execution.isError`, or a non-zero exit code
+     * when `isError` is absent). Always `false` for an item that could not run
+     * (`couldNotRun`): it never ran, so it cannot have failed. The raw record
+     * stays on the report's evidence.
+     */
     isError: boolean;
     exitCode: number | null;
   } | null;
@@ -135,7 +141,7 @@ function projectEvidence(evidence: Evidence): ClaimEvidenceItem {
       ? {
           runner: execution.runner,
           label: String(execution.label ?? ""),
-          isError,
+          isError: couldNotRun ? false : isError,
           exitCode,
         }
       : null,

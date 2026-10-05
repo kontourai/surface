@@ -160,7 +160,7 @@ function buildHtml(reportJson: string): string {
   --k-panel-raised: #fbf6e7;
   --k-line: rgba(36,68,52,0.16);
   --k-positive: #0f8f66;
-  --k-caution: #a86612;
+  --k-caution: #8a5a00;
   --k-negative: #c24141;
   --k-trust-unknown: #535c66;
   --k-trust-unknown-fill: #eeeff0;

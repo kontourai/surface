@@ -337,8 +337,12 @@ take evidence lists rather than a bundle and do not run the check; validate
 first.
 
 **Display.** An inconclusive item is shown as "Could not run": `explainClaim`
-reports `passing: null` and a `couldNotRun` reason for it whatever its
-`execution` record says, `claimBasisView` puts a "could not run" caveat after
+reports `passing: null`, a `couldNotRun` reason and `execution.isError: false`
+for it whatever its `execution` record says (`isError` there means "ran and
+failed"; the raw record stays on the report's evidence). It raises no
+`unsupported_inference` gap: an attempt that never reached its source cites
+nothing, and the requirement it leaves unmet is reported by the requirement
+gaps. Further, `claimBasisView` puts a "could not run" caveat after
 Model-derived, and the trust panel and console evidence rows show the result
 and reason. `collectedByKind` appears as a "Collected by" label only when
 declared.
