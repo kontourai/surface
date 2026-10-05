@@ -1,0 +1,165 @@
+{
+  "schemaVersion": 9,
+  "source": "basis-annotations-example:2026-06",
+  "producerId": "example-producer",
+  "claims": [
+    {
+      "id": "claim.invoice.total",
+      "subjectType": "invoice",
+      "subjectId": "invoice:2025:0042",
+      "claimType": "billing-field",
+      "fieldOrBehavior": "totalDue",
+      "value": 84210,
+      "createdAt": "2026-02-01T00:00:00.000Z",
+      "updatedAt": "2026-02-01T00:00:00.000Z",
+      "impactLevel": "high",
+      "verificationPolicyId": "policy.billing-field.excerpt"
+    },
+    {
+      "id": "claim.fleet.co2-2025",
+      "subjectType": "organization",
+      "subjectId": "fleet:example-logistics",
+      "claimType": "emissions-estimate",
+      "fieldOrBehavior": "co2Tonnes2025",
+      "value": 1240,
+      "createdAt": "2026-03-01T00:00:00.000Z",
+      "updatedAt": "2026-03-01T00:00:00.000Z",
+      "impactLevel": "medium",
+      "verificationPolicyId": "policy.emissions-estimate.calculated",
+      "metadata": {
+        "estimate": {
+          "basis": "fuel spend × regional emission factor",
+          "low": 1100,
+          "high": 1400
+        }
+      }
+    }
+  ],
+  "evidence": [
+    {
+      "id": "evidence.invoice.total",
+      "claimId": "claim.invoice.total",
+      "evidenceType": "source_excerpt",
+      "method": "extraction",
+      "sourceRef": "https://billing.example/invoices/2025/0042",
+      "excerptOrSummary": "Total due: 84,210.00",
+      "observedAt": "2026-02-01T00:00:00.000Z",
+      "collectedBy": "billing-connector",
+      "collectedByKind": "deterministic",
+      "metadata": {
+        "sourceOfRecord": {
+          "authorityTraceId": "trace.billing.system-of-record"
+        }
+      }
+    },
+    {
+      "id": "evidence.co2.fuel-ledger",
+      "claimId": "claim.fleet.co2-2025",
+      "evidenceType": "document_citation",
+      "method": "extraction",
+      "sourceRef": "https://ledger.example/fuel/2025",
+      "excerptOrSummary": "Fuel spend for 2025 extracted from 412 invoices.",
+      "observedAt": "2026-03-01T00:00:00.000Z",
+      "collectedBy": "extraction-run-812",
+      "collectedByKind": "model",
+      "metadata": {
+        "collectorModel": {
+          "name": "example-llm",
+          "version": "2026-06"
+        }
+      }
+    },
+    {
+      "id": "evidence.co2.telematics-attempt",
+      "claimId": "claim.fleet.co2-2025",
+      "evidenceType": "runtime_observation",
+      "method": "monitoring",
+      "supportStrength": "cited",
+      "sourceRef": "https://telematics.example/fleet/odometer",
+      "excerptOrSummary": "Telematics endpoint returned 503.",
+      "observedAt": "2026-03-02T00:00:00.000Z",
+      "collectedBy": "ci-probe",
+      "collectedByKind": "deterministic",
+      "inconclusive": {
+        "reason": "unreachable",
+        "detail": "HTTP 503 after 3 retries"
+      }
+    }
+  ],
+  "policies": [
+    {
+      "id": "policy.billing-field.excerpt",
+      "claimType": "billing-field",
+      "requiredEvidence": [
+        "source_excerpt"
+      ],
+      "requiredMethods": [
+        "extraction"
+      ],
+      "requiresCorroboration": false,
+      "acceptanceCriteria": [
+        "fact observed at its source"
+      ],
+      "reviewAuthority": "operator",
+      "validityRule": {
+        "kind": "historical"
+      },
+      "stalenessTriggers": [],
+      "conflictRules": [],
+      "impactLevel": "medium"
+    },
+    {
+      "id": "policy.emissions-estimate.calculated",
+      "claimType": "emissions-estimate",
+      "requiredEvidence": [
+        "document_citation",
+        "runtime_observation"
+      ],
+      "requiredMethods": [
+        "extraction"
+      ],
+      "requiresCorroboration": false,
+      "acceptanceCriteria": [
+        "fuel ledger cited",
+        "odometer totals observed from telematics"
+      ],
+      "reviewAuthority": "operator",
+      "validityRule": {
+        "kind": "historical"
+      },
+      "stalenessTriggers": [],
+      "conflictRules": [],
+      "impactLevel": "medium"
+    }
+  ],
+  "events": [
+    {
+      "id": "event.invoice.verified",
+      "claimId": "claim.invoice.total",
+      "status": "verified",
+      "actor": "billing-connector",
+      "method": "automated-extraction",
+      "evidenceIds": [
+        "evidence.invoice.total"
+      ],
+      "createdAt": "2026-02-01T00:00:01.000Z",
+      "verifiedAt": "2026-02-01T00:00:01.000Z"
+    }
+  ],
+  "authorityTrace": [
+    {
+      "id": "trace.billing.system-of-record",
+      "subject": {
+        "subjectType": "invoice",
+        "subjectId": "invoice:2025:0042"
+      },
+      "actorRef": "billing.example/ledger",
+      "authorityType": "system",
+      "authorityRef": "system-of-record:invoice-totals",
+      "sourceRef": "https://billing.example/ledger/about",
+      "observedAt": "2026-01-01T00:00:00.000Z",
+      "validFrom": "2026-01-01T00:00:00.000Z",
+      "validUntil": "2027-01-01T00:00:00.000Z"
+    }
+  ]
+}

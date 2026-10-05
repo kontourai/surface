@@ -2,6 +2,12 @@ import { readFile } from "node:fs/promises";
 import { mergeBundlesDetailed, type MergeCollision } from "../merge.js";
 import { buildTrustReport } from "../report.js";
 import { validateTrustBundle } from "../validate.js";
+import { resolveSourceOfRecord } from "../provenance-annotations.js";
+import {
+  EVIDENCE_COLLECTOR_KIND_LABELS,
+  EVIDENCE_INCONCLUSIVE_REASON_LABELS,
+  EVIDENCE_RESULT_LABELS,
+} from "../display-names.js";
 import type { DerivedReportClaim, Evidence, TransparencyGap, TrustBundle, TrustReport } from "../types.js";
 
 /**
@@ -53,6 +59,27 @@ export interface ConsoleReadModel {
   producers: string[];
   producerAttribution: Record<string, string[]>;
   mergeCollisions: ConsoleMergeCollision[];
+  /**
+   * Reader-facing labels for how each evidence item was collected (schemaVersion
+   * 9 `inconclusive` / `collectedByKind`, and the basis-annotations profile's
+   * `metadata.sourceOfRecord`), keyed by evidence id. Only items carrying one of
+   * those fields have an entry, and the key is absent when none does.
+   */
+  evidenceBasisById?: Record<string, ConsoleEvidenceBasis>;
+}
+
+/** Display rows for one evidence item's collection basis. */
+export interface ConsoleEvidenceBasis {
+  /** "Could not run: Timed out — detail" when the item is inconclusive. */
+  couldNotRun?: string;
+  /** "Collected by a model", etc. Absent when the producer declared no kind. */
+  collectedBy?: string;
+  /**
+   * The source-of-record statement. Backed: "From the system of record ·
+   * <actorRef>", with the revocation when the authority was later withdrawn.
+   * Not backed: "Source-of-record label not backed (<reason>)".
+   */
+  sourceOfRecord?: { backed: boolean; label: string };
 }
 
 export interface BuildConsoleReadModelOptions {
@@ -150,6 +177,7 @@ export function projectBundleToConsoleReadModel(
   });
 
   const producers = distinctProducersInOrder(producerAttribution);
+  const evidenceBasisById = buildEvidenceBasis(bundle, mergeCollisions);
 
   return {
     producer: {
@@ -172,7 +200,41 @@ export function projectBundleToConsoleReadModel(
     producers,
     producerAttribution,
     mergeCollisions,
+    ...(evidenceBasisById ? { evidenceBasisById } : {}),
   };
+}
+
+/**
+ * Collection-basis rows for the evidence detail. Source-of-record references
+ * are resolved against the merged bundle with the merge's collisions, so a
+ * reference to a trace id two producers disagreed on is never shown as backed
+ * (basis-annotations.md, resolution rule 4).
+ */
+function buildEvidenceBasis(bundle: TrustBundle, mergeCollisions: ConsoleMergeCollision[]): Record<string, ConsoleEvidenceBasis> | undefined {
+  // Entries, then Object.fromEntries: an evidence id of `__proto__` becomes an
+  // ordinary own key (CreateDataProperty), never the object's prototype.
+  const entries: Array<[string, ConsoleEvidenceBasis]> = [];
+  for (const item of bundle.evidence) {
+    const basis: ConsoleEvidenceBasis = {};
+    if (item.inconclusive !== undefined) {
+      const reason = EVIDENCE_INCONCLUSIVE_REASON_LABELS[item.inconclusive.reason] ?? `Unrecognized reason (${String(item.inconclusive.reason)})`;
+      basis.couldNotRun = `${EVIDENCE_RESULT_LABELS["could-not-run"]}: ${reason}${item.inconclusive.detail ? ` — ${item.inconclusive.detail}` : ""}`;
+    }
+    if (item.collectedByKind !== undefined) {
+      basis.collectedBy = EVIDENCE_COLLECTOR_KIND_LABELS[item.collectedByKind] ?? `Collector: ${String(item.collectedByKind)}`;
+    }
+    if (item.metadata?.sourceOfRecord !== undefined) {
+      const resolution = resolveSourceOfRecord(bundle, item, { collisions: mergeCollisions });
+      basis.sourceOfRecord = resolution.backed
+        ? {
+            backed: true,
+            label: `From the system of record · ${resolution.trace.actorRef}${resolution.revokedAt ? ` · authority revoked ${resolution.revokedAt}` : ""}`,
+          }
+        : { backed: false, label: `Source-of-record label not backed (${resolution.reason})` };
+    }
+    if (Object.keys(basis).length > 0) entries.push([item.id, basis]);
+  }
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
 }
 
 function distinctProducersInOrder(attribution: Record<string, string[]>): string[] {

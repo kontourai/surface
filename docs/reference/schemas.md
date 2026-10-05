@@ -1,6 +1,6 @@
 # Schemas
 
-Kontour Surface starts with core contract types. Trust inputs and trust reports currently accept `schemaVersion: 2` and `schemaVersion: 3`.
+Kontour Surface starts with core contract types. Trust inputs are read at `schemaVersion` 2 through 9 and written at the lowest version their content needs; trust reports declare 5. See [Schema Versioning](schema-versioning.md).
 
 ## Claim
 
@@ -67,6 +67,23 @@ execution?: {
   metadata?: Record<string, unknown>; // runner-specific extras
 }
 ```
+
+Two optional fields arrive at `schemaVersion: 9` (Hachure 0.17). Neither
+affects trust derivation; a bundle that uses either must declare version 9.
+
+```typescript
+collectedByKind?: "human" | "deterministic" | "model"; // absent means not declared
+inconclusive?: {                 // the attempt could not run or could not reach its source
+  reason: "unreachable" | "tool_error" | "permission_denied" | "timeout" | "other";
+  detail?: string;               // required when reason is "other"
+};                               // requires supportStrength "cited" and no passing
+```
+
+An `inconclusive` item is shown as "Could not run", never as failed.
+`execution.isError` alone still means the check ran and failed. See
+[v8 to v9 migration](schema-versioning.md#v8-to-v9-migration), which also
+covers the basis-annotations profile (`metadata.sourceOfRecord`,
+`metadata.estimate`).
 
 Schema: `schemas/evidence.schema.json`
 

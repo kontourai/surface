@@ -13,6 +13,7 @@ import type {
   VerificationEvent,
   VerificationPolicy,
 } from "./types.js";
+import { assertBasisInvariants } from "./provenance-annotations.js";
 import { foldClaim } from "./claim-fold.js";
 import { deriveClaimGroupRollups } from "./claim-groups.js";
 import { deriveConflictTransparencyGaps } from "./conflict-derivation.js";
@@ -90,6 +91,12 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
     // Status function "3": no freshness comparison is possible with an invalid `now`.
     throw new RangeError(`invalid now: ${String(now)}`);
   }
+  // The status function never reads `inconclusive`; only the schema keeps such
+  // an item `cited` and so out of the fold. This entry point accepts bundles
+  // that were never validated, so it runs the minimum check the spec requires
+  // of such a caller (status-function.md, "Fields that are not inputs"). A
+  // bundle without schemaVersion 9 evidence fields always passes.
+  assertBasisInvariants(input);
   // Null-prototype map: a claim id of `__proto__`, `toString`, or `constructor`
   // must become an ordinary own key, never resolve through the prototype chain
   // (mirrors `waiverValidityByClaimId` below; #127).

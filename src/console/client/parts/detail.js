@@ -251,7 +251,8 @@ function renderDetailWhatWasChecked(claim, evidence) {
   // Item 6: cap at 5 visible by default when there are more than 8 total.
   const EVIDENCE_SHOW_LIMIT = 5;
   const EVIDENCE_COLLAPSE_THRESHOLD = 8;
-  const observedResults = evidence.map(observedResultForEvidence).filter(Boolean);
+  const basisById = currentData?.readModel?.evidenceBasisById ?? {};
+  const observedResults = evidence.map(item => observedResultForEvidence(item, Object.hasOwn(basisById, item.id) ? basisById[item.id] : undefined)).filter(Boolean);
   if (observedResults.length) {
     const showExpander = observedResults.length > EVIDENCE_COLLAPSE_THRESHOLD;
     const visibleResults = showExpander ? observedResults.slice(0, EVIDENCE_SHOW_LIMIT) : observedResults;

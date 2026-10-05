@@ -20,9 +20,11 @@
 // - Results come from `passing` / `blocking` only. `execution.isError` and a
 //   non-zero `exitCode` mean the check ran and failed (producers set isError
 //   from the exit code or the MCP tool result), so they are classified like
-//   any other result, as status derivation does. No field says "the check
-//   could not run" yet; hachure-org/spec#25 proposes `evidence.inconclusive`,
-//   and a "could not run" caveat belongs after Model-derived once it lands.
+//   any other result, as status derivation does. Only an explicit
+//   `evidence.inconclusive` (schemaVersion 9) means "could not run": such an
+//   item gets a "could not run" caveat right after Model-derived, and is not
+//   counted as not evaluated or in the line's support counts (it never
+//   reached its source).
 // - Multiple methods are listed in Surface's enum order (no depth ranking
 //   exists), collapsed to "<first> + N more methods".
 // - The producer's own `confidenceBasis.evidenceStrength` and the calibrated
@@ -37,6 +39,7 @@
 import {
   CLAIM_BASIS_MISSING_LABELS,
   DERIVATION_METHOD_LABELS,
+  EVIDENCE_COLLECTOR_KIND_LABELS,
   EVIDENCE_METHOD_LABELS,
   EVIDENCE_RESULT_LABELS,
   EVIDENCE_STRENGTH_LABELS,
@@ -47,7 +50,8 @@ import {
 } from "./display-names.js";
 import { isStandingCounterevidence } from "./evidence-support.js";
 import type { Claim, Evidence } from "./types.js";
-import { DERIVATION_METHODS, EVIDENCE_METHODS } from "./validation/constants.js";
+import { readClaimEstimate } from "./provenance-annotations.js";
+import { DERIVATION_METHODS, EVIDENCE_COLLECTOR_KINDS, EVIDENCE_METHODS } from "./validation/constants.js";
 import { evidenceStrengthOf, reviewerAuthorityOf, wireString } from "./wire-string.js";
 
 /** Maximum facets on the basis line, unless caveats alone exceed it. */
@@ -111,8 +115,13 @@ export function evidenceSupportState(evidence: Pick<Evidence, "supportStrength">
   return value === "entails" || value === "cited" ? value : "unstated";
 }
 
-/** Result state of one evidence item. Absent `passing` is `not-evaluated`, never a pass. */
-export function evidenceResultState(evidence: Pick<Evidence, "passing" | "blocking">): EvidenceResultState {
+/**
+ * Result state of one evidence item. An `inconclusive` item is `could-not-run`
+ * whatever else it records; otherwise absent `passing` is `not-evaluated`,
+ * never a pass.
+ */
+export function evidenceResultState(evidence: Pick<Evidence, "passing" | "blocking" | "inconclusive">): EvidenceResultState {
+  if (evidence.inconclusive !== undefined) return "could-not-run";
   if (evidence.passing === true) return "passed";
   if (evidence.passing === false) return evidence.blocking === true ? "failed-blocking" : "failed";
   return "not-evaluated";
@@ -203,6 +212,7 @@ export function claimBasisView(claim: Claim | null | undefined, evidence: readon
   // (checked first: cited evidence never counts, whatever `blocking` says),
   // otherwise `blocking: false` → "not blocking".
   const notEvaluated = items.filter((item) => evidenceResultState(item) === "not-evaluated");
+  const couldNotRun = items.filter((item) => evidenceResultState(item) === "could-not-run");
   const counterevidence = items.filter(isStandingCounterevidence).length;
   const otherFailures = items.filter((item) => item.passing === false && !isStandingCounterevidence(item));
   const failedCitedOnly = otherFailures.filter((item) => item.supportStrength === "cited").length;
@@ -210,7 +220,9 @@ export function claimBasisView(claim: Claim | null | undefined, evidence: readon
   // Inspector: full partition. Line: only evidence that did not fail, so one
   // item never reads as both contradicting and supporting the claim.
   const support = countBy(items.map(evidenceSupportState));
-  const lineSupport = countBy(items.filter((item) => item.passing !== false).map(evidenceSupportState));
+  const lineSupport = countBy(
+    items.filter((item) => item.passing !== false && item.inconclusive === undefined).map(evidenceSupportState),
+  );
   const evidenceMethods = countBy(items.map((item) => wireString(item.method)).filter((value) => value !== undefined));
   const orderedEvidenceMethods = enumOrdered(evidenceMethods, EVIDENCE_METHODS);
 
@@ -223,6 +235,9 @@ export function claimBasisView(claim: Claim | null | undefined, evidence: readon
   // ── Facets: caveats in fixed order, then method, support, review ────────
   const caveats: TrustBasisFacet[] = [];
   if (modelInputs > 0) caveats.push({ field: "derivationMethod", code: "model", label: DERIVATION_METHOD_LABELS.model, caveat: true });
+  if (couldNotRun.length > 0) {
+    caveats.push({ field: "result", code: "could-not-run", label: `${couldNotRun.length} could not run`, caveat: true });
+  }
   if (notEvaluated.length > 0) {
     caveats.push({ field: "result", code: "not-evaluated", label: `${notEvaluated.length} not evaluated`, caveat: true });
   }
@@ -274,7 +289,7 @@ export function claimBasisView(claim: Claim | null | undefined, evidence: readon
     detail.push({ label: "Support", value: parts.join(" · ") });
 
     const results = countBy(items.map(evidenceResultState));
-    const resultParts = (["passed", "failed", "failed-blocking", "not-evaluated"] as const)
+    const resultParts = (["passed", "failed", "failed-blocking", "not-evaluated", "could-not-run"] as const)
       .filter((state) => (results.get(state) ?? 0) > 0)
       .map((state) => `${results.get(state)} ${EVIDENCE_RESULT_LABELS[state].toLowerCase()}`);
     detail.push({ label: "Results", value: resultParts.join(" · ") });
@@ -313,6 +328,26 @@ export function claimBasisView(claim: Claim | null | undefined, evidence: readon
       label: "Calibrated confidence (producer-supplied)",
       value: `${formatNumber(confidenceValue)} probability the conclusion is correct${interval}${method}`,
     });
+  }
+  // Collector kind (schemaVersion 9) is descriptive only. Undeclared items
+  // are counted as such, never as any particular kind.
+  const collectorKinds = countBy(items.map((item) => wireString(item.collectedByKind)).filter((value) => value !== undefined));
+  if (collectorKinds.size > 0) {
+    const ordered = enumOrdered(collectorKinds, EVIDENCE_COLLECTOR_KINDS);
+    const parts = ordered.map((kind) => `${knownLabel(EVIDENCE_COLLECTOR_KIND_LABELS, kind, "collector kind")} (${collectorKinds.get(kind)})`);
+    const undeclared = items.length - [...collectorKinds.values()].reduce((sum, count) => sum + count, 0);
+    if (undeclared > 0) parts.push(`Collector not stated (${undeclared})`);
+    detail.push({ label: "Collected by", value: parts.join(" · ") });
+  }
+  // Basis-annotations profile: `claim.metadata.estimate`. A malformed estimate
+  // is named as such and its bounds are never shown.
+  const estimate = readClaimEstimate(claim);
+  if (estimate.state === "estimate") {
+    const { low, high, basis } = estimate.estimate;
+    const bounds = low !== undefined && high !== undefined ? ` · ${formatNumber(low)}–${formatNumber(high)}` : "";
+    detail.push({ label: "Estimate", value: `Estimated${bounds} (${basis})` });
+  } else if (estimate.state === "malformed") {
+    detail.push({ label: "Estimate", value: "Estimate recorded but malformed; bounds not shown" });
   }
   if (items.length > 0) {
     const sources = new Set(items.map((item) => item.sourceRef)).size;

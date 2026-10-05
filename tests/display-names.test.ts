@@ -29,6 +29,10 @@ import { readFile } from "node:fs/promises";
 import {
   CLAIM_BASIS_MISSING_DISPLAY_NAMES,
   DERIVATION_METHOD_DISPLAY_NAMES,
+  EVIDENCE_COLLECTOR_KIND_DISPLAY_NAMES,
+  EVIDENCE_COLLECTOR_KIND_LABELS,
+  EVIDENCE_INCONCLUSIVE_REASON_DISPLAY_NAMES,
+  EVIDENCE_INCONCLUSIVE_REASON_LABELS,
   EVIDENCE_RESULT_DISPLAY_NAMES,
   EVIDENCE_RESULT_LABELS,
   EVIDENCE_STRENGTH_DISPLAY_NAMES,
@@ -47,6 +51,8 @@ import {
 } from "../src/display-names.js";
 import {
   DERIVATION_METHODS,
+  EVIDENCE_COLLECTOR_KINDS,
+  EVIDENCE_INCONCLUSIVE_REASONS,
   EVIDENCE_METHODS,
   EVIDENCE_SUPPORT_STRENGTHS,
   EVIDENCE_TYPES,
@@ -157,7 +163,12 @@ test("basis tables cover their value sets exactly", () => {
   // independently of the type so a dropped or invented member fails.
   assert.deepEqual(Object.keys(REVIEWER_AUTHORITY_DISPLAY_NAMES).sort(), ["domain_expert", "none", "operator", "system"]);
   assert.deepEqual(Object.keys(EVIDENCE_STRENGTH_DISPLAY_NAMES).sort(), ["moderate", "none", "strong", "weak"]);
-  assert.deepEqual(Object.keys(EVIDENCE_RESULT_DISPLAY_NAMES).sort(), ["failed", "failed-blocking", "not-evaluated", "passed"]);
+  assert.deepEqual(Object.keys(EVIDENCE_RESULT_DISPLAY_NAMES).sort(), ["could-not-run", "failed", "failed-blocking", "not-evaluated", "passed"]);
+  // schemaVersion 9 enums, pinned independently of the validator constants.
+  assert.deepEqual(Object.keys(EVIDENCE_INCONCLUSIVE_REASON_DISPLAY_NAMES).sort(), ["other", "permission_denied", "timeout", "tool_error", "unreachable"]);
+  assert.deepEqual(Object.keys(EVIDENCE_INCONCLUSIVE_REASON_DISPLAY_NAMES).sort(), [...EVIDENCE_INCONCLUSIVE_REASONS].sort());
+  assert.deepEqual(Object.keys(EVIDENCE_COLLECTOR_KIND_DISPLAY_NAMES).sort(), ["deterministic", "human", "model"]);
+  assert.deepEqual(Object.keys(EVIDENCE_COLLECTOR_KIND_DISPLAY_NAMES).sort(), [...EVIDENCE_COLLECTOR_KINDS].sort());
   assert.deepEqual(Object.keys(CLAIM_BASIS_MISSING_DISPLAY_NAMES).sort(), ["not-available", "not-recorded", "restricted", "unavailable"]);
 });
 
@@ -166,6 +177,8 @@ test("basis tables: non-empty unique labels, one-line glosses, and the agreed vo
     DERIVATION_METHOD_DISPLAY_NAMES,
     EVIDENCE_SUPPORT_DISPLAY_NAMES,
     EVIDENCE_RESULT_DISPLAY_NAMES,
+    EVIDENCE_INCONCLUSIVE_REASON_DISPLAY_NAMES,
+    EVIDENCE_COLLECTOR_KIND_DISPLAY_NAMES,
     REVIEWER_AUTHORITY_DISPLAY_NAMES,
     EVIDENCE_STRENGTH_DISPLAY_NAMES,
     CLAIM_BASIS_MISSING_DISPLAY_NAMES,
@@ -221,6 +234,23 @@ test("trust panel support and result chip labels equal the canonical basis table
     const { support, result } = extractPanelFacetLabels(text);
     assert.deepEqual(support, EVIDENCE_SUPPORT_LABELS);
     assert.deepEqual(result, EVIDENCE_RESULT_LABELS);
+  }
+});
+
+test("trust panel collector-kind chips and could-not-run reasons equal the canonical tables (source and built module)", async () => {
+  const source = await readFile("src/trust-panel/surface-trust-panel.ts", "utf8");
+  for (const text of [source, TRUST_PANEL_JS]) {
+    const collectorBody = text.match(/function collectorFacet\([^)]*\)(?::\s*[\w |]+)?\s*\{([\s\S]*?)(?=\bfunction\s)/);
+    assert.ok(collectorBody, "expected collectorFacet in the trust panel source");
+    const collector: Record<string, string> = {};
+    for (const match of collectorBody[1]!.matchAll(/state:\s*"([\w-]+)",\s*label:\s*"((?:[^"\\]|\\.)*)"/g)) collector[match[1]!] = match[2]!;
+    assert.deepEqual(collector, EVIDENCE_COLLECTOR_KIND_LABELS);
+
+    const reasonTable = text.match(/INCONCLUSIVE_REASON_LABELS(?::\s*Record<string,\s*string>)?\s*=\s*\{([^}]*)\}/);
+    assert.ok(reasonTable, "expected INCONCLUSIVE_REASON_LABELS in the trust panel source");
+    const reasons: Record<string, string> = {};
+    for (const match of reasonTable[1]!.matchAll(/(\w+):\s*"((?:[^"\\]|\\.)*)"/g)) reasons[match[1]!] = match[2]!;
+    assert.deepEqual(reasons, EVIDENCE_INCONCLUSIVE_REASON_LABELS);
   }
 });
 

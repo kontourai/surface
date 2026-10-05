@@ -19,7 +19,16 @@
 // to hachure per tests/schema-parity.test.ts) or any serialized shape. Display
 // names are presentation only.
 
-import type { ConfidenceBasis, DerivationMethod, EvidenceMethod, EvidenceSupportStrength, EvidenceType, TrustStatus } from "./types.js";
+import type {
+  ConfidenceBasis,
+  DerivationMethod,
+  EvidenceCollectorKind,
+  EvidenceInconclusiveReason,
+  EvidenceMethod,
+  EvidenceSupportStrength,
+  EvidenceType,
+  TrustStatus,
+} from "./types.js";
 
 /** A reader-facing name for one spec enum member. */
 export interface DisplayName {
@@ -224,9 +233,10 @@ export const EVIDENCE_SUPPORT_DISPLAY_NAMES: Record<EvidenceSupportState, Displa
 
 /**
  * An evidence item's own result, from `passing` and `blocking`. An absent
- * `passing` is `not-evaluated`, never a pass.
+ * `passing` is `not-evaluated`, never a pass. An item carrying `inconclusive`
+ * (schemaVersion 9) is `could-not-run`, whatever else it records.
  */
-export type EvidenceResultState = "passed" | "failed" | "failed-blocking" | "not-evaluated";
+export type EvidenceResultState = "passed" | "failed" | "failed-blocking" | "not-evaluated" | "could-not-run";
 
 /** Reader-facing names for an evidence item's own result. */
 export const EVIDENCE_RESULT_DISPLAY_NAMES: Record<EvidenceResultState, DisplayName> = {
@@ -246,6 +256,26 @@ export const EVIDENCE_RESULT_DISPLAY_NAMES: Record<EvidenceResultState, DisplayN
     label: "Not evaluated",
     gloss: "No result is recorded for this evidence; this is not a pass.",
   },
+  "could-not-run": {
+    label: "Could not run",
+    gloss: "The attempt to collect this evidence could not run or could not reach its source; it is neither a pass nor a failure.",
+  },
+};
+
+/** Reader-facing names for why an evidence attempt could not run. */
+export const EVIDENCE_INCONCLUSIVE_REASON_DISPLAY_NAMES: Record<EvidenceInconclusiveReason, DisplayName> = {
+  unreachable: { label: "Source unreachable", gloss: "The source could not be reached." },
+  tool_error: { label: "Tool error", gloss: "The tool that collects this evidence failed before producing a result." },
+  permission_denied: { label: "Permission denied", gloss: "The collector was not allowed to read the source." },
+  timeout: { label: "Timed out", gloss: "The attempt did not finish in time." },
+  other: { label: "Other reason", gloss: "Another reason, described in the producer's detail." },
+};
+
+/** Reader-facing names for `evidence.collectedByKind` (schemaVersion 9). Absent means not declared, never a kind. */
+export const EVIDENCE_COLLECTOR_KIND_DISPLAY_NAMES: Record<EvidenceCollectorKind, DisplayName> = {
+  human: { label: "Collected by a person", gloss: "A person collected or entered this evidence." },
+  deterministic: { label: "Collected by a program", gloss: "A deterministic program (parser, test runner, probe) collected this evidence." },
+  model: { label: "Collected by a model", gloss: "A model collected or extracted this evidence; status derivation counts it like any other evidence." },
 };
 
 /** `confidenceBasis.reviewerAuthority` values. */
@@ -341,6 +371,10 @@ export const DERIVATION_METHOD_LABELS: Record<DerivationMethod, string> = labels
 export const EVIDENCE_SUPPORT_LABELS: Record<EvidenceSupportState, string> = labelsOf(EVIDENCE_SUPPORT_DISPLAY_NAMES);
 /** Label-only projection of {@link EVIDENCE_RESULT_DISPLAY_NAMES}. */
 export const EVIDENCE_RESULT_LABELS: Record<EvidenceResultState, string> = labelsOf(EVIDENCE_RESULT_DISPLAY_NAMES);
+/** Label-only projection of {@link EVIDENCE_INCONCLUSIVE_REASON_DISPLAY_NAMES}. */
+export const EVIDENCE_INCONCLUSIVE_REASON_LABELS: Record<EvidenceInconclusiveReason, string> = labelsOf(EVIDENCE_INCONCLUSIVE_REASON_DISPLAY_NAMES);
+/** Label-only projection of {@link EVIDENCE_COLLECTOR_KIND_DISPLAY_NAMES}. */
+export const EVIDENCE_COLLECTOR_KIND_LABELS: Record<EvidenceCollectorKind, string> = labelsOf(EVIDENCE_COLLECTOR_KIND_DISPLAY_NAMES);
 /** Label-only projection of {@link REVIEWER_AUTHORITY_DISPLAY_NAMES}. */
 export const REVIEWER_AUTHORITY_LABELS: Record<ReviewerAuthority, string> = labelsOf(REVIEWER_AUTHORITY_DISPLAY_NAMES);
 /** Label-only projection of {@link EVIDENCE_STRENGTH_DISPLAY_NAMES}. */

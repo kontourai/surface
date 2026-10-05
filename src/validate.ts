@@ -112,7 +112,7 @@ export function validateTrustBundle(input: unknown, options?: ValidateTrustBundl
     validateConclusionConfidence(claim as Record<string, unknown>, schemaVersion);
   }
 
-  for (const item of evidence) validateEvidence(item);
+  for (const item of evidence) validateEvidence(item, schemaVersion);
 
   for (const policy of policies) validatePolicy(policy);
 

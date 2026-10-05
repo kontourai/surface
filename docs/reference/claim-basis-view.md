@@ -64,7 +64,8 @@ put `field`, `code` and `caveat` on data attributes.
    more than 3 caveats the line holds every caveat and nothing else.
 4. **Caveats first**, in this order:
    - Model-derived (a `model` derivation edge)
-   - N not evaluated (absent `passing`)
+   - N could not run (evidence carrying `inconclusive`, schemaVersion 9)
+   - N not evaluated (absent `passing`, not inconclusive)
    - N cited only
    - N contradict(s) the claim: exactly Surface's `isStandingCounterevidence`
      (entailing evidence with `passing: false` and `blocking` not `false`)
@@ -80,9 +81,10 @@ put `field`, `code` and `caveat` on data attributes.
    `Extracted from a source + 2 more methods`. With no evidence, the non-model
    derivation methods are used instead, or `Derived from N inputs` when edges
    state no method. Support is `N entail(s) the claim`, then
-   `N with support not stated`, counting only evidence that did not fail, so
-   one item never reads as both contradicting and supporting the claim (the
-   inspector's Support row keeps the full partition). Review is the
+   `N with support not stated`, counting only evidence that did not fail and
+   is not inconclusive, so one item never reads as both contradicting and
+   supporting the claim, and an attempt that never ran is not counted as
+   cited (the inspector's Support row keeps the full partition). Review is the
    `confidenceBasis.reviewerAuthority` label when it is not `none`. It is
    producer-asserted, like the rating below, but stays on the line because a
    recorded review is first-class provenance.
@@ -90,11 +92,11 @@ put `field`, `code` and `caveat` on data attributes.
    a pass; it is counted as not evaluated. `execution.isError` and a non-zero
    `exitCode` mean the check ran and failed (producers set `isError` from the
    exit code or the MCP tool result), so they are classified like any other
-   result, exactly as status derivation does. There is no "check could not run"
-   caveat yet: no field records that today. hachure-org/spec#25 proposes an
-   explicit `evidence.inconclusive` record; once it lands, a "could not run"
-   caveat goes after Model-derived, and surface#277 tracks excluding such
-   evidence from status.
+   result, exactly as status derivation does. Only an explicit
+   `evidence.inconclusive` record (schemaVersion 9) means the check could not
+   run: its result is `could-not-run` whatever else the item records. A
+   schema-valid inconclusive item is `cited` with no `passing`, so status
+   derivation never sees it either.
 7. **Absent `supportStrength`** is shown as "with support not stated", as in the
    trust panel's evidence rows, even though status derivation treats it as
    entailing (the gloss says so).
@@ -112,7 +114,12 @@ put `field`, `code` and `caveat` on data attributes.
    a finite number in [0, 1] is left out. Neither is ever a facet.
 
 Detail rows, when there is data for them: How, Support, Results, Derived,
-Review, Producer rating, Calibrated confidence (producer-supplied), Sources.
+Review, Producer rating, Calibrated confidence (producer-supplied), Collected
+by, Estimate, Sources. Collected by counts `collectedByKind` values and names
+undeclared items as "Collector not stated"; it appears only when at least one
+item declares a kind. Estimate reads the basis-annotations profile's
+`claim.metadata.estimate`: "Estimated · low–high (basis)" for a well-formed
+one, and "Estimate recorded but malformed; bounds not shown" otherwise.
 
 ## Label tables
 
@@ -123,11 +130,13 @@ with `*_LABELS` label-only projections:
 | --- | --- |
 | `DERIVATION_METHOD_DISPLAY_NAMES` | `sum` Calculated (sum), `max` Calculated (maximum), `min` Calculated (minimum), `model` Model-derived, `rule-application` Rule applied, `copy` Copied from an input, `normalization` Normalized from an input, `manual` Entered by a person |
 | `EVIDENCE_SUPPORT_DISPLAY_NAMES` | `entails` Entails the claim, `cited` Cited only, `unstated` Support strength not stated |
-| `EVIDENCE_RESULT_DISPLAY_NAMES` | `passed` Passed, `failed` Failed, `failed-blocking` Failed — blocking, `not-evaluated` Not evaluated |
+| `EVIDENCE_RESULT_DISPLAY_NAMES` | `passed` Passed, `failed` Failed, `failed-blocking` Failed — blocking, `not-evaluated` Not evaluated, `could-not-run` Could not run |
+| `EVIDENCE_INCONCLUSIVE_REASON_DISPLAY_NAMES` | `unreachable` Source unreachable, `tool_error` Tool error, `permission_denied` Permission denied, `timeout` Timed out, `other` Other reason |
+| `EVIDENCE_COLLECTOR_KIND_DISPLAY_NAMES` | `human` Collected by a person, `deterministic` Collected by a program, `model` Collected by a model |
 | `REVIEWER_AUTHORITY_DISPLAY_NAMES` | `domain_expert` Domain expert reviewed, `operator` Operator reviewed, `system` System reviewed, `none` Not reviewed |
 | `EVIDENCE_STRENGTH_DISPLAY_NAMES` | `strong` / `moderate` / `weak` Strong / Moderate / Weak support (producer-rated), `none` No support (producer-rated) |
 | `CLAIM_BASIS_MISSING_DISPLAY_NAMES` | the four missing-state labels above |
 
-The trust panel keeps inline copies of the support and result labels (it ships
-as one bundle under a size budget); `tests/display-names.test.ts` fails if they
-drift from these tables.
+The trust panel keeps inline copies of the support, result, collector-kind and
+could-not-run reason labels (it ships as one bundle under a size budget);
+`tests/display-names.test.ts` fails if they drift from these tables.

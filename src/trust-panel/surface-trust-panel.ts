@@ -50,6 +50,10 @@ interface TrustPanelEvidence {
   passing?: unknown;
   /** Whether a non-passing result blocks the claim. */
   blocking?: unknown;
+  /** Present when the attempt could not run (schemaVersion 9); it is never a failure. */
+  inconclusive?: { reason?: unknown; detail?: unknown };
+  /** "human" / "deterministic" / "model" (schemaVersion 9). Absent means not declared. */
+  collectedByKind?: unknown;
   observedAt?: unknown;
   integrityRef?: unknown;
   integrityAnchor?: { kind?: unknown; value?: unknown; verificationStatus?: unknown };
@@ -171,8 +175,11 @@ interface TrustPanelReport {
     return { state: String(value), label: `Support: ${String(value)}`, kind: "neutral" };
   }
 
-  function resultFacet(passing: unknown, blocking: unknown): EvidenceFacet {
+  function resultFacet(passing: unknown, blocking: unknown, inconclusive: unknown): EvidenceFacet {
     const blocks = blocking === true;
+    // Only an explicit `inconclusive` record means the attempt could not run;
+    // it takes precedence over anything else the item records.
+    if (inconclusive !== undefined && inconclusive !== null) return { state: "could-not-run", label: "Could not run", kind: "caution" };
     if (passing === true) return { state: "passed", label: "Passed", kind: "positive" };
     if (passing === false) {
       return {
@@ -185,6 +192,31 @@ interface TrustPanelReport {
     // of its own, which a reader must be able to tell apart from one that
     // passed its check.
     return { state: "not-evaluated", label: "Not evaluated", kind: "neutral" };
+  }
+
+  // Collector kind is descriptive only. An undeclared kind gets no chip: absence
+  // must never read as "collected by a person" or any other kind.
+  function collectorFacet(value: unknown): EvidenceFacet | null {
+    if (value === undefined || value === null) return null;
+    if (value === "human") return { state: "human", label: "Collected by a person", kind: "neutral" };
+    if (value === "deterministic") return { state: "deterministic", label: "Collected by a program", kind: "neutral" };
+    if (value === "model") return { state: "model", label: "Collected by a model", kind: "neutral" };
+    return { state: String(value), label: `Collector: ${String(value)}`, kind: "neutral" };
+  }
+
+  const INCONCLUSIVE_REASON_LABELS: Record<string, string> = {
+    unreachable: "Source unreachable",
+    tool_error: "Tool error",
+    permission_denied: "Permission denied",
+    timeout: "Timed out",
+    other: "Other reason",
+  };
+
+  function inconclusiveText(inconclusive: TrustPanelEvidence["inconclusive"]): string {
+    const reason = asText(inconclusive?.reason);
+    const label = Object.hasOwn(INCONCLUSIVE_REASON_LABELS, reason) ? INCONCLUSIVE_REASON_LABELS[reason] : `Unrecognized reason (${reason || "not stated"})`;
+    const detail = asText(inconclusive?.detail);
+    return `Could not run: ${label}${detail ? ` — ${detail}` : ""}`;
   }
 
   function visibilityFacet(item: TrustPanelEvidence): EvidenceFacet {
@@ -237,11 +269,14 @@ interface TrustPanelReport {
 
   function renderEvidenceItem(item: TrustPanelEvidence): string {
     const support = supportFacet(item.supportStrength);
-    const result = resultFacet(item.passing, item.blocking);
+    const result = resultFacet(item.passing, item.blocking, item.inconclusive);
     const visibility = visibilityFacet(item);
     const integrity = integrityFacet(item);
+    const collector = collectorFacet(item.collectedByKind);
     const flags = [facetChip(support, "supportStrength"), facetChip(result, "result"), facetChip(visibility, "visibility")];
     if (integrity) flags.push(facetChip(integrity, "integrity"));
+    if (collector) flags.push(facetChip(collector, "collectedByKind"));
+    const couldNotRun = result.state === "could-not-run" ? `\n        <span class="ev-reason">${escapeHtml(inconclusiveText(item.inconclusive))}</span>` : "";
 
     // Reader-facing text uses the canonical display names (#224); the raw wire
     // enums stay machine-readable on data attributes. An unmapped value falls
@@ -255,7 +290,7 @@ interface TrustPanelReport {
     return `<li class="evidence" part="evidence-item" data-evidence-type="${escapeHtml(rawEvidenceType)}" data-method="${escapeHtml(rawMethod)}" data-support="${escapeHtml(support.state)}" data-result="${escapeHtml(result.state)}" data-blocking="${item.blocking === true ? "true" : "false"}" data-visibility="${escapeHtml(visibility.state)}"${integrity ? ` data-integrity="${escapeHtml(integrity.state)}"` : ""}>
         <span class="ev-head"><strong>${escapeHtml(evidenceTypeText)}</strong> · ${escapeHtml(methodText)}</span>
         <span class="ev-flags">${flags.join("")}</span>
-        <span class="ev-summary">${escapeHtml(asText(item.excerptOrSummary ?? item.sourceRef))}</span>
+        <span class="ev-summary">${escapeHtml(asText(item.excerptOrSummary ?? item.sourceRef))}</span>${couldNotRun}
         <span class="ev-meta">${escapeHtml(asText(item.sourceRef, "no source reference"))} · ${escapeHtml(observedLabel(item.observedAt))}</span>
       </li>`;
   }
@@ -319,6 +354,7 @@ interface TrustPanelReport {
     .ev-flag[data-kind="caution"] { color: var(--k-caution, #a86612); }
     .ev-flag[data-kind="negative"] { color: var(--k-negative, #c24141); }
     .ev-meta { color: var(--k-text-muted, #657267); font-size: 0.78rem; }
+    .ev-reason { color: var(--k-caution, #a86612); font-size: 0.82rem; }
     .gap { color: var(--k-negative, #c24141); }
     .gap[data-severity="low"], .gap[data-severity="medium"] { color: var(--k-caution, #a86612); }
     .empty, .error { padding: 0.5rem 0; color: var(--k-text-muted, #657267); font-size: 0.9rem; }

@@ -9,6 +9,8 @@ import {
   DERIVATION_METHODS,
   EVENT_KEYS,
   EVENT_TYPES,
+  EVIDENCE_COLLECTOR_KINDS,
+  EVIDENCE_INCONCLUSIVE_REASONS,
   EVIDENCE_KEYS,
   EVIDENCE_METHODS,
   EVIDENCE_TYPES,
@@ -22,6 +24,7 @@ import {
   REQUIREMENT_KEYS,
   ROLLUP_MODES,
   ROLLUP_POLICY_KEYS,
+  SCHEMA_VERSION_BASIS_FIELDS,
   SUPPORT_STRENGTHS,
   TRUST_STATUSES,
   VALIDATION_STRATEGY_KEYS,
@@ -278,9 +281,23 @@ export function validateClaim(claim: unknown): void {
   if (claim.metadata !== undefined) requireObject(claim.metadata, "claim.metadata");
 }
 
-export function validateEvidence(item: unknown): void {
+/**
+ * Validate one evidence record. `schemaVersion` is the declaring bundle's
+ * version: `inconclusive` and `collectedByKind` exist from schemaVersion 9, and
+ * a bundle declaring an earlier version that carries either is refused, so a
+ * reader dispatching on the declared version never meets fields it does not
+ * know (Hachure trust-bundle.schema.json).
+ */
+export function validateEvidence(item: unknown, schemaVersion: number): void {
   requireObject(item, "evidence");
   rejectUnknownKeys(item, EVIDENCE_KEYS, `evidence ${String(item.id ?? "")}`);
+  for (const field of ["inconclusive", "collectedByKind"] as const) {
+    if (item[field] !== undefined && schemaVersion < SCHEMA_VERSION_BASIS_FIELDS) {
+      throw new Error(
+        `Evidence ${String(item.id ?? "")} carries ${field}, which requires schemaVersion ${SCHEMA_VERSION_BASIS_FIELDS} or later (declared ${schemaVersion})`,
+      );
+    }
+  }
   for (const field of ["id", "claimId", "evidenceType"]) {
     requireString(item, field);
   }
@@ -301,6 +318,8 @@ export function validateEvidence(item: unknown): void {
   if (item.blocking !== undefined && typeof item.blocking !== "boolean") {
     throw new Error(`Evidence ${item.id} blocking must be a boolean`);
   }
+  if (item.collectedByKind !== undefined) requireEnum(item, "collectedByKind", EVIDENCE_COLLECTOR_KINDS);
+  if (item.inconclusive !== undefined) validateInconclusive(item);
   if (item.execution !== undefined) {
     requireObject(item.execution, `evidence ${String(item.id ?? "")} execution`);
     const execution = item.execution as Record<string, unknown>;
@@ -331,6 +350,34 @@ export function validateEvidence(item: unknown): void {
     if (execution.metadata !== undefined) requireObject(execution.metadata, "evidence.execution.metadata");
   }
   if (item.metadata !== undefined) requireObject(item.metadata, "evidence.metadata");
+}
+
+/**
+ * `evidence.inconclusive` (Hachure schemaVersion 9). The two record-level
+ * rules are what keep an attempt that never ran out of status derivation: it
+ * must be `supportStrength: "cited"` (so the fold never sees it) and must not
+ * carry `passing` (so it reports no result). `detail`, when present, must
+ * contain a non-whitespace character, where whitespace is what the ECMAScript
+ * `\s` class matches, as the schema's `pattern` is defined.
+ */
+function validateInconclusive(item: Record<string, unknown>): void {
+  const label = `evidence ${String(item.id ?? "")} inconclusive`;
+  requireObject(item.inconclusive, label);
+  const inconclusive = item.inconclusive;
+  rejectUnknownKeys(inconclusive, new Set(["reason", "detail"]), label);
+  requireEnum(inconclusive, "reason", EVIDENCE_INCONCLUSIVE_REASONS);
+  if (inconclusive.detail !== undefined && (typeof inconclusive.detail !== "string" || !/\S/.test(inconclusive.detail))) {
+    throw new Error(`Evidence ${item.id} inconclusive.detail must contain a non-whitespace character`);
+  }
+  if (inconclusive.reason === "other" && inconclusive.detail === undefined) {
+    throw new Error(`Evidence ${item.id} inconclusive.reason "other" requires detail`);
+  }
+  if (item.supportStrength !== "cited") {
+    throw new Error(`Evidence ${item.id} is inconclusive and must have supportStrength "cited" (found ${JSON.stringify(item.supportStrength)})`);
+  }
+  if (item.passing !== undefined) {
+    throw new Error(`Evidence ${item.id} is inconclusive and must not carry passing`);
+  }
 }
 
 export function validatePolicy(policy: unknown): void {
