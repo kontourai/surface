@@ -337,9 +337,10 @@ take evidence lists rather than a bundle and do not run the check; validate
 first.
 
 **Display.** An inconclusive item is shown as "Could not run": `explainClaim`
-reports `passing: null`, a `couldNotRun` reason and `execution.isError: false`
-for it whatever its `execution` record says (`isError` there means "ran and
-failed"; the raw record stays on the report's evidence). It raises no
+reports `passing: null` and a `couldNotRun` reason for it whatever its
+`execution` record says. Those two are authoritative; `execution` is reported
+exactly as the runner recorded it, so it never misstates what the runner
+reported, and a reader keys on `couldNotRun`. It raises no
 `unsupported_inference` gap: an attempt that never reached its source cites
 nothing, and the requirement it leaves unmet is reported by the requirement
 gaps. Further, `claimBasisView` puts a "could not run" caveat after

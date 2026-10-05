@@ -164,7 +164,9 @@ function renderSurfaceChips(d) {
   const facets = Object.keys(d.facetCounts ?? {});
   el("surfaceChips").innerHTML = [
     chipBtn("all", "All", d.claims?.length ?? 0),
-    ...facets.map(s => chipBtn(s, surfaceLabel(s), d.facetCounts[s]))
+    // "Unknown" is a trust status; the bucket of claims without a facet is
+    // named for what it is, unless a claim really declares the facet "unknown".
+    ...facets.map(s => chipBtn(s, s === NO_FACET_KEY && !(d.claims ?? []).some(c => (c.facet ?? c.surface) === NO_FACET_KEY) ? "No facet" : surfaceLabel(s), d.facetCounts[s]))
   ].join("");
   el("surfaceChips").querySelectorAll("[data-surface]").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -220,6 +222,14 @@ function renderFeed(d) {
   });
 }
 
+// The report counts a claim without a facet under the key "unknown"
+// (summary.byFacet), so the chip for that key must select those claims.
+const NO_FACET_KEY = "unknown";
+function facetKey(claim) {
+  const facet = claim.facet ?? claim.surface;
+  return typeof facet === "string" && facet !== "" ? facet : NO_FACET_KEY;
+}
+
 function filterClaims(claims) {
   const q = filters.search.trim().toLowerCase();
   return claims.filter(c => {
@@ -228,7 +238,7 @@ function filterClaims(claims) {
       (filters.status === "attention"
         ? ["stale","disputed","rejected","unknown","assumed","proposed"].includes(c.status)
         : c.status === filters.status);
-    const facetOk = filters.surface === "all" || (c.facet ?? c.surface) === filters.surface;
+    const facetOk = filters.surface === "all" || facetKey(c) === filters.surface;
     const hay = [c.id, c.status, c.facet ?? c.surface, c.claimType, c.fieldOrBehavior,
                  c.verificationPolicyId, c.subjectId].join(" ").toLowerCase();
     return statusOk && facetOk && (!q || hay.includes(q));
@@ -253,7 +263,7 @@ function claimCard(claim, index, visibleIndex = 0) {
       <strong class="card-title">${esc(label)}</strong>
       <span class="card-meta">
         ${trustChip(claim.status, "card-status-text")}
-        <span class="card-surface card-surface--narrow-hide">${esc(surface)}</span>
+        ${surface ? `<span class="card-surface card-surface--narrow-hide">${esc(surface)}</span>` : ""}
         ${(claim.producers && claim.producers.length)
           ? `<span class="card-producers" title="Attributed to ${esc(claim.producers.join(", "))}">${claim.producers.map(p => `<span class="card-producer">${esc(p)}</span>`).join("")}</span>`
           : ""}

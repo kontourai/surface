@@ -4,6 +4,12 @@
   gap: 0.7rem;
 }
 
+/* One block per evidence item: a rule between blocks keeps each item's lines together. */
+.observed-result + .observed-result {
+  border-top: 1px solid var(--line);
+  padding-top: 0.7rem;
+}
+
 .observed-result p {
   margin: 0;
   color: var(--ink);

@@ -17,10 +17,10 @@ export interface ClaimEvidenceItem {
     runner: EvidenceExecution["runner"];
     label: string;
     /**
-     * The check ran and failed (`execution.isError`, or a non-zero exit code
-     * when `isError` is absent). Always `false` for an item that could not run
-     * (`couldNotRun`): it never ran, so it cannot have failed. The raw record
-     * stays on the report's evidence.
+     * What the runner reported: `execution.isError`, or a non-zero exit code
+     * when `isError` is absent. Reported as recorded, also for an item that
+     * could not run; for such an item `passing: null` and `couldNotRun` are
+     * authoritative and this field says nothing about a result.
      */
     isError: boolean;
     exitCode: number | null;
@@ -35,8 +35,9 @@ export interface ClaimEvidenceItem {
   /**
    * Present only when the evidence is `inconclusive` (schemaVersion 9): the
    * attempt could not run or could not reach its source. It is neither a pass
-   * nor a failure. `execution.isError` alone still means the check ran and
-   * failed.
+   * nor a failure, and it is the field to key on: when present, `passing` is
+   * `null` and `execution` is only the runner's raw record. Without it,
+   * `execution.isError` alone still means the check ran and failed.
    */
   couldNotRun?: { reason: string; detail?: string };
   summary: string;
@@ -141,7 +142,7 @@ function projectEvidence(evidence: Evidence): ClaimEvidenceItem {
       ? {
           runner: execution.runner,
           label: String(execution.label ?? ""),
-          isError: couldNotRun ? false : isError,
+          isError,
           exitCode,
         }
       : null,

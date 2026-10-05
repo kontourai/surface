@@ -282,9 +282,9 @@ test("claim explanation projects an inconclusive item as could not run, whatever
   const [attempt, failure] = explanation.evidence;
   assert.equal(attempt!.passing, null, "an attempt that never ran is not a failure");
   assert.deepEqual(attempt!.couldNotRun, { reason: "tool_error", detail: "runner missing" });
-  // isError means "ran and failed"; an attempt that never ran did neither.
-  assert.equal(attempt!.execution?.isError, false);
-  assert.equal(attempt!.execution?.exitCode, 127, "the rest of the execution record is reported as recorded");
+  // The execution record is reported exactly as the runner recorded it;
+  // `passing: null` and `couldNotRun` are what say the attempt never ran.
+  assert.deepEqual(attempt!.execution, { runner: "bash", label: "npm test", isError: true, exitCode: 127 });
   // isError alone still means ran-and-failed.
   assert.equal(failure!.passing, false);
   assert.equal("couldNotRun" in failure!, false);
