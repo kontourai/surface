@@ -22,6 +22,22 @@
     "excerptOrSummary": { "type": "string" },
     "observedAt": { "type": "string", "format": "date-time" },
     "collectedBy": { "type": "string" },
+    "collectedByKind": {
+      "enum": ["human", "deterministic", "model"],
+      "description": "What kind of collector produced this item (added at schemaVersion 9): a person, a deterministic program (parser, test runner, probe), or a model. Descriptive only: the status function never reads it. `collectedBy` stays the collector's identity. Absent means not declared, never any particular kind."
+    },
+    "inconclusive": {
+      "type": "object",
+      "description": "Present when the attempt to collect this evidence could not run or could not reach its source (added at schemaVersion 9), as distinct from a check that ran and failed (`passing: false`). An inconclusive item MUST be `supportStrength: \"cited\"` and MUST NOT carry `passing`, so it satisfies no policy requirement and disputes nothing (status-function.md §Evidence partitioning).",
+      "required": ["reason"],
+      "properties": {
+        "reason": { "enum": ["unreachable", "tool_error", "permission_denied", "timeout", "other"] },
+        "detail": { "type": "string", "pattern": "\\S", "description": "Free-text detail. Must contain at least one non-whitespace character, where whitespace is what the ECMAScript regular expression class \\s matches (ECMA-262 WhiteSpace and LineTerminator, which include U+00A0 and U+FEFF), as JSON Schema regular expressions are defined." }
+      },
+      "if": { "required": ["reason"], "properties": { "reason": { "const": "other" } } },
+      "then": { "required": ["detail"] },
+      "additionalProperties": false
+    },
     "integrityRef": { "type": "string" },
     "integrityAnchor": { "$ref": "#/$defs/integrityAnchor" },
     "passing": {
@@ -70,6 +86,13 @@
       },
       "additionalProperties": false
     }
+  },
+  "if": { "required": ["inconclusive"] },
+  "then": {
+    "$comment": "Inconclusive evidence carries no result and is never entailing. These two constraints are what keep it out of status derivation; removing either would let an attempt that never ran satisfy a requirement or dispute a claim.",
+    "required": ["supportStrength"],
+    "properties": { "supportStrength": { "const": "cited" } },
+    "not": { "required": ["passing"] }
   },
   "additionalProperties": false
 }

@@ -87,11 +87,14 @@ const V3_VECTORS_ALREADY_MET_UNDER_V2 = new Set([
   "sf-v3-invalidation-nonterminal.json",
 ]);
 
-test("hachure package ships the post-0.16 status vectors", () => {
-  // Pinned literally (conformance/manifest.json L2 vectorCount at hachure 0.16.0).
-  assert.equal(vectorFiles.length, 17, `found: ${vectorFiles.join(", ")}`);
+test("hachure package ships the post-0.17 status vectors", () => {
+  // Pinned literally (conformance/manifest.json L2 vectorCount at hachure 0.17.0).
+  assert.equal(vectorFiles.length, 19, `found: ${vectorFiles.join(", ")}`);
   assert.equal(vectorFiles.filter((name) => name.startsWith("sf-v3-")).length, 8);
   assert.ok(vectorFiles.includes("sf-runtime-observation-required.json"));
+  // The schemaVersion 9 vectors (hachure 0.17.0) run under every version.
+  assert.ok(vectorFiles.includes("sf-inconclusive-evidence.json"));
+  assert.ok(vectorFiles.includes("sf-basis-fields-inert.json"));
 });
 
 test("statusFunctionVersion is '3' and '2' stays selectable", () => {

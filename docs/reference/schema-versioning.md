@@ -4,16 +4,17 @@ Surface schemas are product contracts. They should change more slowly than imple
 
 ## Current version
 
-Surface **writes** TrustBundles as schema version 5, 7 or 8 according to their
-content, and writes TrustReports as version 5. On **read**, it accepts
-`schemaVersion: 2` through `8` (see
+Surface **writes** TrustBundles as schema version 5, 7, 8 or 9 according to
+their content, and writes TrustReports as version 5. On **read**, it accepts
+`schemaVersion: 2` through `9` (see
 [v3 to v5 migration](#v3-to-v5-migration) for the one-release read-tolerance
 shim that covers 2-4). Each version is a strict superset of the one before
 it except for the deliberate v5 `surface` to `facet` wire rename documented
 below. The v6 and v7 fields are additive and optional, so adapters can adopt
 them on their own cadence. Version 8 adds one optional field and, for bundles
 that declare it, two validation rules; see
-[v7 to v8 migration](#v7-to-v8-migration).
+[v7 to v8 migration](#v7-to-v8-migration). Version 9 adds two optional
+evidence fields; see [v8 to v9 migration](#v8-to-v9-migration).
 
 Version 7 adds `runtime_observation` evidence and the optional
 `execution.environment` field (`test`, `staging`, or `production`). A policy
@@ -25,7 +26,7 @@ version 5 so Hachure 0.14 and older receivers do not reject it. An explicitly
 versioned `TrustBundleBuilder` fails when its declaration is too old for its
 content.
 
-Hachure's `trust-report.schema.json` (unchanged in 0.16) still permits only
+Hachure's `trust-report.schema.json` (unchanged in 0.16 and 0.17) still permits only
 top-level versions 5 and 6, even though its embedded claim, evidence and policy
 references accept the v7 and v8 vocabulary. `buildTrustReport` therefore continues declaring version 5 while
 carrying those widened pass-through records. This is an upstream schema
@@ -295,6 +296,82 @@ it.
 item has no `execution` record: `true`, `false`, or `null` when it reports no
 result. It previously reported `true` for any such item that was not marked
 disputed.
+
+## v8 to v9 migration
+
+Version 9 arrives with Hachure 0.17. It adds two optional evidence fields and
+changes nothing else. Neither is a status-function input, so no
+`statusFunctionVersion` change comes with it and a bundle derives the same
+statuses with or without them.
+
+- **`evidence.inconclusive`** `{ reason, detail? }` records that the attempt to
+  collect the evidence could not run or could not reach its source, as distinct
+  from a check that ran and failed (`passing: false`). `reason` is one of
+  `unreachable`, `tool_error`, `permission_denied`, `timeout` or `other`;
+  `detail` must contain a non-whitespace character and is required when
+  `reason` is `other`. An inconclusive item must be `supportStrength: "cited"`
+  and must not carry `passing`. Those two rules are what keep it out of status
+  derivation: it satisfies no requirement, does not corroborate, anchors no
+  `commit` rule, and never disputes or blocks a claim.
+- **`evidence.collectedByKind`** is `human`, `deterministic` or `model`. It is
+  descriptive only; absent means not declared, never any particular kind.
+- **Rules.** `validateTrustBundle` refuses either field on a bundle that
+  declares a version below 9, and applies the `inconclusive` rules above.
+  `execution.isError` alone, or a non-zero `exitCode`, still means the check
+  ran and failed.
+
+Emitters (`TrustBundleBuilder`, `mergeBundles`, the verification responder)
+declare version 9 only when evidence carries one of the two fields. An
+explicitly versioned `TrustBundleBuilder` below 9 throws when its content
+carries either.
+
+**Deriving without validation.** The status function never reads
+`inconclusive`; only the schema keeps such an item `cited`. `buildTrustReport`
+and `deriveTrustSnapshot` accept bundles that were never validated, so they
+first run `checkBasisInvariants` (exported, a port of the `hachure` function of
+the same name) and throw when an inconclusive item is entailing or carries
+`passing`, or when either field appears under a declared version below 9. A
+bundle without the fields always passes, so existing bundles derive exactly as
+before. The claim-level functions `deriveClaimStatus` and `deriveTrustStatus`
+take evidence lists rather than a bundle and do not run the check; validate
+first.
+
+**Display.** An inconclusive item is shown as "Could not run": `explainClaim`
+reports `passing: null` and a `couldNotRun` reason for it whatever its
+`execution` record says. Those two are authoritative; `execution` is reported
+exactly as the runner recorded it, so it never misstates what the runner
+reported, and a reader keys on `couldNotRun`. It raises no
+`unsupported_inference` gap: an attempt that never reached its source cites
+nothing, and the requirement it leaves unmet is reported by the requirement
+gaps. Further, `claimBasisView` puts a "could not run" caveat after
+Model-derived, and the trust panel and console evidence rows show the result
+and reason. `collectedByKind` appears as a "Collected by" label only when
+declared.
+
+### Basis-annotations profile
+
+Hachure 0.17 also defines an optional
+[basis-annotations profile](https://github.com/hachure-org/spec/blob/v0.17.0/basis-annotations.md)
+with two typed shapes under the open `metadata` object. They need no schema
+version and are never status inputs.
+
+- `claim.metadata.estimate` `{ basis, low?, high? }`: the claim's value is an
+  estimate. `validateBasisAnnotations` checks the shape (bounds together,
+  `low <= value <= high`, a numeric value when bounded, no other key).
+  `claimBasisView` shows an Estimate detail row, and never shows bounds from a
+  malformed estimate.
+- `evidence.metadata.sourceOfRecord` `{ authorityTraceId }`: the observation came
+  from the system of record named by an `AuthorityTrace`.
+  `resolveSourceOfRecord(bundle, evidence, { collisions })` says whether the
+  reference is backed (trace present, unique, `system` or `organization`, same
+  subject, active at `observedAt`, evidence not inconclusive). Over a merged
+  bundle pass the merge's collisions: a reference to a trace id two producers
+  disagreed on is never backed. The console read model does this and shows
+  "From the system of record · actor" or "Source-of-record label not backed".
+
+`validateTrustBundle` does not apply the profile: a malformed profile value
+does not make a bundle invalid. [`examples/basis-annotations-bundle.json`](../../examples/basis-annotations-bundle.json)
+adapts Hachure's worked example of both versions' fields.
 
 ## Migration expectation
 

@@ -12,9 +12,15 @@ export interface BundleSchemaVersionContent {
  * runtime-observation vocabulary requires 7; a claim that names the
  * calibration table behind its `conclusionConfidence` (the v8 field) requires
  * 8. Declaring 8 also turns on the v8 `conclusionConfidence` rules, so content
- * without `calibration` is never promoted to 8.
+ * without `calibration` is never promoted to 8. Evidence carrying
+ * `inconclusive` or `collectedByKind` (the v9 fields) requires 9; 9 adds no
+ * rule for content without them, so the check is only for presence.
  */
-export function requiredBundleSchemaVersion(content: BundleSchemaVersionContent): 5 | 7 | 8 {
+export function requiredBundleSchemaVersion(content: BundleSchemaVersionContent): 5 | 7 | 8 | 9 {
+  const usesV9Evidence = content.evidence.some(
+    (evidence) => evidence.inconclusive !== undefined || evidence.collectedByKind !== undefined,
+  );
+  if (usesV9Evidence) return 9;
   const usesV8Claim = content.claims.some((claim) => claim.conclusionConfidence?.calibration !== undefined);
   if (usesV8Claim) return 8;
   const usesV7Evidence = content.evidence.some(
@@ -33,6 +39,11 @@ export function assertBundleSchemaVersionSufficient(
   content: BundleSchemaVersionContent,
 ): void {
   const required = requiredBundleSchemaVersion(content);
+  if (required === 9 && declared < 9) {
+    throw new Error(
+      `schemaVersion ${declared} is insufficient for evidence inconclusive / collectedByKind; declare schemaVersion 9 or omit the explicit version`,
+    );
+  }
   if (required === 8 && declared < 8) {
     throw new Error(
       `schemaVersion ${declared} is insufficient for conclusionConfidence.calibration; declare schemaVersion 8 or omit the explicit version`,

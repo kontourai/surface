@@ -16,9 +16,11 @@ const BUDGETS = {
   // 13,264 with the reviewed-source choice; 14,798 with @kontourai/ui's
   // trust-state renderer and chip CSS with light fallbacks bundled in, #274).
   "src/trust-panel/surface-trust-panel.ts": 15_200,
-  // Display names + claim basis view (measured 3,919 gzip bytes); bundling for
-  // platform "browser" also proves the subpath pulls in no Node-only module.
-  "src/display.ts": 4_400,
+  // Display names + claim basis view (measured 3,919 gzip bytes; 4,238 at
+  // 5.0.0; 5,375 with the schemaVersion 9 could-not-run / collector-kind
+  // tables and the basis-annotations estimate check); bundling for platform
+  // "browser" also proves the subpath pulls in no Node-only module.
+  "src/display.ts": 5_800,
 } as const;
 
 test("Basis browser delivery bundles stay within the checked gzip ratchet", async () => {

@@ -176,16 +176,17 @@ export interface IdentityLink {
   mappingClaimId?: string;
 }
 
-export type SchemaVersion = 2 | 3 | 4 | 5 | 6 | 7 | 8;
+export type SchemaVersion = 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
 /**
  * The conservative schemaVersion for Surface-generated output. Bundle emitters
  * upgrade this to 7 when their content uses runtime-observation vocabulary and
- * to 8 when a claim carries `conclusionConfidence.calibration`; pure-v5 bundles
- * remain 5 for compatibility with older receivers. TrustReport output remains
- * 5 because Hachure's trust-report schema still permits only 5 or 6 at the top
+ * to 8 when a claim carries `conclusionConfidence.calibration`, and to 9 when
+ * evidence carries `inconclusive` or `collectedByKind`; pure-v5 bundles remain
+ * 5 for compatibility with older receivers. TrustReport output remains 5
+ * because Hachure's trust-report schema still permits only 5 or 6 at the top
  * level. Reading tolerates 2-4 (see validate.ts's legacy facet/surface shim),
- * 6, 7, and 8.
+ * 6, 7, 8, and 9.
  */
 export const CURRENT_SCHEMA_VERSION: SchemaVersion = 5;
 export type DerivationMethod =
@@ -337,6 +338,18 @@ export interface SurfaceExtension {
   }>;
 }
 
+/** Kind of collector behind an evidence item (Hachure schemaVersion 9). */
+export type EvidenceCollectorKind = "human" | "deterministic" | "model";
+
+/** Why an evidence attempt could not run (Hachure schemaVersion 9). */
+export type EvidenceInconclusiveReason = "unreachable" | "tool_error" | "permission_denied" | "timeout" | "other";
+
+/** `evidence.inconclusive`: `detail` is required when `reason` is "other". */
+export interface EvidenceInconclusive {
+  reason: EvidenceInconclusiveReason;
+  detail?: string;
+}
+
 export interface Evidence {
   id: string;
   claimId: string;
@@ -348,6 +361,20 @@ export interface Evidence {
   excerptOrSummary: string;
   observedAt: string;
   collectedBy: string;
+  /**
+   * What kind of collector produced this item (schemaVersion 9). Descriptive
+   * only: status derivation never reads it. Absent means not declared, never
+   * any particular kind.
+   */
+  collectedByKind?: EvidenceCollectorKind;
+  /**
+   * Present when the attempt to collect this evidence could not run or could
+   * not reach its source (schemaVersion 9), as distinct from a check that ran
+   * and failed (`passing: false`). An inconclusive item must be
+   * `supportStrength: "cited"` and carry no `passing`, so it satisfies no
+   * requirement and disputes nothing.
+   */
+  inconclusive?: EvidenceInconclusive;
   integrityRef?: string;
   integrityAnchor?: IntegrityAnchor;
   passing?: boolean;

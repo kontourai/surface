@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { spawn, type ChildProcess } from "node:child_process";
 import { once } from "node:events";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createServer } from "node:net";
@@ -149,6 +149,107 @@ test("merged multi-producer console: attribution bar, per-claim producers, and c
     await consoleServer.stop();
   }
 });
+
+test("evidence detail shows could not run, collector kind, and a backed source of record", async ({ page }) => {
+  const consoleErrors = collectConsoleErrors(page);
+  // The shipped example as is: its claims carry no `facet` (it is optional),
+  // and the feed must still render them.
+  const example = JSON.parse(await readFile(resolve("examples/basis-annotations-bundle.json"), "utf8")) as { claims: Array<Record<string, unknown>> };
+  expect(example.claims.every((claim) => claim.facet === undefined)).toBe(true);
+  const consoleServer = await startBundleSurfaceConsole(example);
+  try {
+    await page.goto(consoleServer.url);
+    await expect(page.locator("#claimFeed .claim-card")).toHaveCount(2);
+    // A card with no facet renders no empty facet label.
+    await expect(page.locator("#claimFeed .card-surface")).toHaveCount(0);
+    // The chip for claims without a facet is named for that, and selects them.
+    const noFacetChip = page.locator("#surfaceChips [data-surface='unknown']");
+    await expect(noFacetChip).toContainText("No facet");
+    await expect(noFacetChip).not.toContainText("Unknown");
+    await noFacetChip.click();
+    await expect(page.locator("#claimFeed .claim-card")).toHaveCount(2);
+    await expect(page.locator("#claimFeed")).not.toContainText("No claims match");
+    await page.locator("#claimFeed .claim-card", { hasText: "co2Tonnes2025" }).click();
+    const checked = page.locator("#detailWhatWasChecked");
+    await expect(checked).toContainText("Could not run: Source unreachable — HTTP 503 after 3 retries");
+    await expect(checked).toContainText("Collected by a model");
+    await expect(checked).not.toContainText("failed");
+    // Each evidence summary appears once, inside the block of its own item,
+    // and the collector label is not doubled.
+    expect((await checked.innerText()).split("Fuel spend for 2025 extracted from 412 invoices.").length - 1).toBe(1);
+    const blocks = checked.locator(".observed-result");
+    await expect(blocks).toHaveCount(2);
+    await expect(blocks.nth(0)).toContainText("Fuel spend for 2025 extracted from 412 invoices.");
+    await expect(blocks.nth(0)).toContainText("Collected by a model");
+    await expect(blocks.nth(0)).not.toContainText("Telematics");
+    await expect(blocks.nth(1)).toContainText("Telematics endpoint returned 503.");
+    await expect(blocks.nth(1)).toContainText("Collected by a program");
+    await expect(blocks.nth(1)).toContainText("Could not run: Source unreachable");
+    await expect(checked).not.toContainText(/Collected by\s+Collected by/i);
+    // An attempt that could not run is not a failed verification.
+    await expect(page.locator("#detailSheet")).not.toContainText("Verification failed");
+    await page.keyboard.press("Escape");
+
+    await page.locator("#claimFeed .claim-card", { hasText: "totalDue" }).click();
+    await expect(checked.locator('[data-source-of-record="backed"]')).toContainText("From the system of record · billing.example/ledger");
+    expect(consoleErrors).toEqual([]);
+  } finally {
+    await consoleServer.stop();
+  }
+});
+
+test("the no-facet chip selects only the claims without a facet in a mixed bundle", async ({ page }) => {
+  const consoleErrors = collectConsoleErrors(page);
+  const bundle = JSON.parse(await readFile(resolve("examples/basis-annotations-bundle.json"), "utf8")) as { claims: Array<Record<string, unknown>> };
+  bundle.claims[0]!.facet = "billing.totals";
+  const consoleServer = await startBundleSurfaceConsole(bundle);
+  try {
+    await page.goto(consoleServer.url);
+    await expect(page.locator("#claimFeed .claim-card")).toHaveCount(2);
+    await page.locator("#surfaceChips [data-surface='unknown']").click();
+    await expect(page.locator("#claimFeed .claim-card")).toHaveCount(1);
+    await expect(page.locator("#claimFeed .claim-card")).toContainText("co2Tonnes2025");
+    await page.locator("#surfaceChips [data-surface='billing.totals']").click();
+    await expect(page.locator("#claimFeed .claim-card")).toHaveCount(1);
+    await expect(page.locator("#claimFeed .claim-card")).toContainText("totalDue");
+    expect(consoleErrors).toEqual([]);
+  } finally {
+    await consoleServer.stop();
+  }
+});
+
+async function startBundleSurfaceConsole(bundle: unknown): Promise<{ url: string; stop: () => Promise<void> }> {
+  const port = await getFreePort();
+  const dir = await mkdtemp(join(tmpdir(), "surface-console-bundle-"));
+  const bundlePath = join(dir, "bundle.json");
+  await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`);
+  const child = spawn(
+    process.execPath,
+    ["bin/surface.mjs", "console", "--input", bundlePath, "--store", join(dir, "veritas.claims.json"), "--port", String(port)],
+    { cwd: resolve("."), stdio: ["ignore", "pipe", "pipe"] },
+  );
+  let output = "";
+  child.stdout.on("data", (chunk) => { output += String(chunk); });
+  child.stderr.on("data", (chunk) => { output += String(chunk); });
+  try {
+    await waitForConsole(`http://127.0.0.1:${port}/api/console-model`, child, () => output);
+  } catch (error) {
+    child.kill("SIGTERM");
+    await rm(dir, { recursive: true, force: true });
+    throw error;
+  }
+  return {
+    url: `http://127.0.0.1:${port}/`,
+    stop: async () => {
+      child.kill("SIGTERM");
+      await Promise.race([
+        once(child, "exit"),
+        new Promise((resolveTimeout) => setTimeout(resolveTimeout, 1500)).then(() => child.kill("SIGKILL")),
+      ]);
+      await rm(dir, { recursive: true, force: true });
+    },
+  };
+}
 
 const MERGED_SCREENSHOT_PATH = resolve(
   ".kontourai/flow-agents/surface-console-multi-bundle/console-multi-producer.png",

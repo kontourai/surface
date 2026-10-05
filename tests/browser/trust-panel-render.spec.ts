@@ -356,6 +356,113 @@ test("names the support strength, result, and observed time on every evidence ro
   expect(unevaluated!.text).toContain("Observed time not supplied");
 });
 
+/**
+ * schemaVersion 9: an attempt that could not run, next to a check that ran and
+ * failed. Both carry an errored execution record; only `inconclusive` makes
+ * the first one "Could not run".
+ */
+function couldNotRunReport(): unknown {
+  const common = {
+    claimId: "claim.subject",
+    evidenceType: "test_output",
+    method: "validation",
+    sourceRef: "ci://run/1",
+    excerptOrSummary: "npm test",
+    collectedBy: "ci",
+    observedAt: "2026-07-30T00:00:00.000Z",
+    execution: { runner: "bash", label: "npm test", exitCode: 1, isError: true },
+  };
+  return {
+    source: "test.trust-panel-could-not-run",
+    generatedAt: "2026-08-01T00:00:00.000Z",
+    claims: [
+      { id: "claim.subject", status: "proposed", subjectType: "service", subjectId: "acme", facet: "test.facet", fieldOrBehavior: "tests", value: "pass", impactLevel: "medium" },
+    ],
+    evidence: [
+      { ...common, id: "ev.attempt", supportStrength: "cited", collectedByKind: "deterministic", inconclusive: { reason: "timeout", detail: "after 10 minutes" } },
+      { ...common, id: "ev.failed", supportStrength: "entails", passing: false, blocking: true, collectedByKind: "model" },
+      { ...common, id: "ev.undeclared", supportStrength: "entails", passing: true },
+    ],
+    transparencyGaps: [],
+  };
+}
+
+test("an inconclusive item reads as could not run, never failed, and collector kind shows only when declared", async ({ page }) => {
+  await loadPanel(page, couldNotRunReport());
+  const [attempt, failed, undeclared] = await evidenceRows(page);
+
+  expect(attempt!.result).toBe("could-not-run");
+  expect(attempt!.text).toContain("Could not run");
+  expect(attempt!.text).toContain("Could not run: Timed out — after 10 minutes");
+  expect(attempt!.text).not.toMatch(/\bFailed\b/);
+  expect(attempt!.text).toContain("Collected by a program");
+
+  // isError alone still means the check ran and failed.
+  expect(failed!.result).toBe("failed-blocking");
+  expect(failed!.text).toContain("Failed");
+  expect(failed!.text).toContain("Collected by a model");
+
+  // Absence is not a kind: no "Collected by a person" or any collector chip.
+  expect(undeclared!.text).not.toContain("Collected by");
+});
+
+for (const colorScheme of ["light", "dark"] as const) {
+  test(`could-not-run row renders legibly in ${colorScheme} mode`, async ({ page }, testInfo) => {
+    await page.emulateMedia({ colorScheme });
+    await loadPanel(page, couldNotRunReport());
+    await evidenceRows(page);
+    const attempt = page.locator("surface-trust-panel li.evidence[data-result='could-not-run']");
+    await expect(attempt).toBeVisible();
+    // WCAG contrast of each new text element against the background it is
+    // actually painted on: the nearest ancestor background, composited
+    // through any translucent layers, crossing the shadow boundary.
+    const ratios = await attempt.evaluate((item) => {
+      const rgba = (value: string): number[] => {
+        const parts = value.match(/[\d.]+/g)?.map(Number) ?? [0, 0, 0, 0];
+        return [parts[0]!, parts[1]!, parts[2]!, parts[3] ?? 1];
+      };
+      const parentOf = (node: Element): Element | null =>
+        node.parentElement ?? ((node.getRootNode() as ShadowRoot).host ?? null);
+      const backgroundOf = (element: Element): number[] => {
+        const layers: number[][] = [];
+        for (let node: Element | null = element; node; node = parentOf(node)) {
+          const layer = rgba(getComputedStyle(node).backgroundColor);
+          if (layer[3]! > 0) layers.push(layer);
+          if (layer[3] === 1) break;
+        }
+        let [r, g, b] = [255, 255, 255];
+        for (const [lr, lg, lb, la] of layers.reverse()) {
+          r = lr! * la! + r * (1 - la!);
+          g = lg! * la! + g * (1 - la!);
+          b = lb! * la! + b * (1 - la!);
+        }
+        return [r, g, b];
+      };
+      const luminance = ([r, g, b]: number[]): number => {
+        const channel = (v: number) => {
+          const c = v / 255;
+          return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+        };
+        return 0.2126 * channel(r!) + 0.7152 * channel(g!) + 0.0722 * channel(b!);
+      };
+      const ratio = (element: Element): number => {
+        const fg = luminance(rgba(getComputedStyle(element).color));
+        const bg = luminance(backgroundOf(element));
+        return (Math.max(fg, bg) + 0.05) / (Math.min(fg, bg) + 0.05);
+      };
+      return {
+        chip: ratio(item.querySelector('.ev-flag[data-field="result"]')!),
+        reason: ratio(item.querySelector(".ev-reason")!),
+      };
+    });
+    expect(ratios.chip, `${colorScheme} "Could not run" chip contrast`).toBeGreaterThanOrEqual(4.5);
+    expect(ratios.reason, `${colorScheme} could-not-run reason contrast`).toBeGreaterThanOrEqual(4.5);
+    testInfo.annotations.push({ type: "contrast", description: `${colorScheme}: chip ${ratios.chip.toFixed(2)}, reason ${ratios.reason.toFixed(2)}` });
+    console.log(`contrast ${colorScheme}: chip ${ratios.chip.toFixed(2)}, reason ${ratios.reason.toFixed(2)}`);
+    await page.locator("surface-trust-panel details.claim").first().screenshot({ path: testInfo.outputPath(`could-not-run-${colorScheme}.png`) });
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Provenance display names (#224)
 // ---------------------------------------------------------------------------

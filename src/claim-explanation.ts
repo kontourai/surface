@@ -16,15 +16,30 @@ export interface ClaimEvidenceItem {
   execution: {
     runner: EvidenceExecution["runner"];
     label: string;
+    /**
+     * What the runner reported: `execution.isError`, or a non-zero exit code
+     * when `isError` is absent. Reported as recorded, also for an item that
+     * could not run; for such an item `passing: null` and `couldNotRun` are
+     * authoritative and this field says nothing about a result.
+     */
     isError: boolean;
     exitCode: number | null;
   } | null;
   /**
    * The check result. With an `execution` record it is that execution's
    * outcome; otherwise it is the evidence's own `passing` value, and `null`
-   * when the evidence reports no result.
+   * when the evidence reports no result. Always `null` for an item that could
+   * not run (`couldNotRun`), whatever its execution record says.
    */
   passing: boolean | null;
+  /**
+   * Present only when the evidence is `inconclusive` (schemaVersion 9): the
+   * attempt could not run or could not reach its source. It is neither a pass
+   * nor a failure, and it is the field to key on: when present, `passing` is
+   * `null` and `execution` is only the runner's raw record. Without it,
+   * `execution.isError` alone still means the check ran and failed.
+   */
+  couldNotRun?: { reason: string; detail?: string };
   summary: string;
 }
 
@@ -109,8 +124,18 @@ function projectEvidence(evidence: Evidence): ClaimEvidenceItem {
   const isError = execution
     ? Boolean(execution.isError ?? (exitCode !== null && exitCode !== 0))
     : false;
+  // Only an explicit `inconclusive` record means "could not run". It takes
+  // precedence over the execution outcome: an attempt that never ran reports
+  // no result, so it is never projected as failed.
+  const inconclusive = evidence.inconclusive;
+  const couldNotRun = inconclusive && typeof inconclusive === "object"
+    ? {
+        reason: String(inconclusive.reason ?? "other"),
+        ...(typeof inconclusive.detail === "string" ? { detail: inconclusive.detail } : {}),
+      }
+    : undefined;
 
-  return {
+  const item: ClaimEvidenceItem = {
     evidenceType: evidence.evidenceType,
     label: String(compatible.label ?? evidence.excerptOrSummary ?? evidence.sourceRef ?? evidence.id),
     execution: execution
@@ -121,14 +146,18 @@ function projectEvidence(evidence: Evidence): ClaimEvidenceItem {
           exitCode,
         }
       : null,
-    passing: execution
-      ? !isError
-      : typeof evidence.passing === "boolean"
-        ? evidence.passing
-        // Legacy read models mark a failed item with `status: "disputed"`.
-        : String(compatible.status ?? "") === "disputed" ? false : null,
+    passing: couldNotRun
+      ? null
+      : execution
+        ? !isError
+        : typeof evidence.passing === "boolean"
+          ? evidence.passing
+          // Legacy read models mark a failed item with `status: "disputed"`.
+          : String(compatible.status ?? "") === "disputed" ? false : null,
     summary: String(evidence.excerptOrSummary ?? compatible.summary ?? compatible.label ?? ""),
   };
+  if (couldNotRun) item.couldNotRun = couldNotRun;
+  return item;
 }
 
 function projectPolicy(policy: VerificationPolicy): NonNullable<ClaimExplanation["policy"]> {

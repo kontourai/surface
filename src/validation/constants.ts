@@ -28,6 +28,12 @@ export const AUTHORITY_TYPES = ["role", "permission", "credential", "system", "o
 export const DERIVATION_METHODS = ["sum", "max", "min", "model", "rule-application", "copy", "normalization", "manual"] as const;
 export const SUPPORT_STRENGTHS = ["weak", "moderate", "strong"] as const;
 export const EVIDENCE_SUPPORT_STRENGTHS = ["cited", "entails"] as const;
+/** `evidence.collectedByKind` (Hachure schemaVersion 9). */
+export const EVIDENCE_COLLECTOR_KINDS = ["human", "deterministic", "model"] as const;
+/** `evidence.inconclusive.reason` (Hachure schemaVersion 9). */
+export const EVIDENCE_INCONCLUSIVE_REASONS = ["unreachable", "tool_error", "permission_denied", "timeout", "other"] as const;
+/** The first schemaVersion that may carry `evidence.inconclusive` / `evidence.collectedByKind`. */
+export const SCHEMA_VERSION_BASIS_FIELDS = 9;
 export const INTEGRITY_ANCHOR_KINDS = ["hash", "signature", "transparency_log", "timestamp", "external_ref", "other"] as const;
 export const INTEGRITY_ANCHOR_VERIFICATION_STATUSES = ["unverified", "verified", "failed", "not_applicable"] as const;
 
@@ -95,6 +101,8 @@ export const EVIDENCE_KEYS = new Set([
   "excerptOrSummary",
   "observedAt",
   "collectedBy",
+  "collectedByKind",
+  "inconclusive",
   "integrityRef",
   "integrityAnchor",
   "passing",

@@ -108,7 +108,7 @@ test("schemaVersion 8 is accepted and round-trips", () => {
   const bundle = validateTrustBundle(bundleWith({ value: 0.8, calibration: CALIBRATION }, 8));
   assert.equal(bundle.schemaVersion, 8);
   assert.deepEqual(bundle.claims[0]!.conclusionConfidence?.calibration, CALIBRATION);
-  assert.throws(() => validateTrustBundle(bundleWith(undefined, 9)), /Unsupported schemaVersion 9: expected 2, 3, 4, 5, 6, 7, or 8/);
+  assert.throws(() => validateTrustBundle(bundleWith(undefined, 10)), /Unsupported schemaVersion 10: expected 2, 3, 4, 5, 6, 7, 8, or 9/);
 });
 
 test("the v8 rules do not apply before schemaVersion 8, but a calibration object is always checked", () => {

@@ -4,25 +4,26 @@ import { EVIDENCE_METHODS, EVIDENCE_SUPPORT_STRENGTHS } from "./constants.js";
 // TOLERANCE SHIM (owner-ratified, one release, hachure facet rename): this
 // reader intentionally still ACCEPTS legacy schemaVersion 2-4 on read (the
 // shipped `trust-bundle.schema.json` / `trust-report.schema.json` enums are a
-// [5, 6, 7, 8] wire contract for NEW bundles — see schemas/*.schema.json — but this
+// [5, 6, 7, 8, 9] wire contract for NEW bundles — see schemas/*.schema.json — but this
 // hand-written validator is the same read choke point that maps legacy
 // `surface` onto `facet`, and a bundle self-declaring schemaVersion 4 is
 // exactly the kind of archived/legacy bundle that shim exists for).
-// schemaVersions 6, 7 and 8 are current versions: they add the optional `proof`
-// block, runtime-observation evidence, and the calibrated conclusionConfidence
-// rules respectively. Bundle emitters declare 5, 7 or 8 from their content via
+// schemaVersions 6, 7, 8 and 9 are current versions: they add the optional
+// `proof` block, runtime-observation evidence, the calibrated
+// conclusionConfidence rules, and evidence `inconclusive` / `collectedByKind`
+// respectively. Bundle emitters declare 5, 7, 8 or 9 from their content via
 // requiredBundleSchemaVersion; this function governs reading only, never
 // writing.
 export function requireSchemaVersion(input: Record<string, unknown>): SchemaVersion {
   if (!("schemaVersion" in input)) {
     throw new Error(
-      "Missing required schemaVersion: expected 2, 3, 4, 5, 6, 7, or 8. See docs/reference/schema-versioning.md for the v1-to-v2 migration.",
+      "Missing required schemaVersion: expected 2, 3, 4, 5, 6, 7, 8, or 9. See docs/reference/schema-versioning.md for the v1-to-v2 migration.",
     );
   }
   const value = input.schemaVersion;
-  if (value !== 2 && value !== 3 && value !== 4 && value !== 5 && value !== 6 && value !== 7 && value !== 8) {
+  if (value !== 2 && value !== 3 && value !== 4 && value !== 5 && value !== 6 && value !== 7 && value !== 8 && value !== 9) {
     throw new Error(
-      `Unsupported schemaVersion ${String(value)}: expected 2, 3, 4, 5, 6, 7, or 8. See docs/reference/schema-versioning.md for the v1-to-v2 migration.`,
+      `Unsupported schemaVersion ${String(value)}: expected 2, 3, 4, 5, 6, 7, 8, or 9. See docs/reference/schema-versioning.md for the v1-to-v2 migration.`,
     );
   }
   return value as SchemaVersion;

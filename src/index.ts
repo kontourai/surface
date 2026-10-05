@@ -7,6 +7,7 @@ export * from "./claim-fold.js";
 export * from "./conflict-derivation.js";
 export * from "./report.js";
 export * from "./validate.js";
+export * from "./provenance-annotations.js";
 export * from "./adapter.js";
 export * from "./identity.js";
 export * from "./claim-subject-matching.js";
