@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.1.0](https://github.com/kontourai/surface/compare/v5.0.0...v5.1.0) (2026-10-05)
+
+
+### Features
+
+* **schema:** accept Hachure 0.17 schemaVersion 9 and the basis-annotations profile ([#316](https://github.com/kontourai/surface/issues/316)) ([db83143](https://github.com/kontourai/surface/commit/db83143250fdd0763208a12b546c98f818cda8f6)), closes [#311](https://github.com/kontourai/surface/issues/311)
+
 ## [5.0.0](https://github.com/kontourai/surface/compare/v4.4.1...v5.0.0) (2026-10-03)
 
 
