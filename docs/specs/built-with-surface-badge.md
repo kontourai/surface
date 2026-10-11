@@ -8,7 +8,7 @@ It is deliberately not a certification. The badge does not mean Kontour audited 
 
 A product may show the badge when all of the following hold:
 
-1. **Inspectable trust state exists.** The product exposes derived Surface trust state — a Trust Panel, an embedded [`<surface-trust-panel>`](../reference/trust-panel.md), a Surface Console, or an exported report a user can open in the [Snapshot Viewer](https://kontourai.github.io/surface/viewer.html).
+1. **Inspectable trust state exists.** The product exposes derived Surface trust state — a Trust Panel, an embedded [`<surface-trust-panel>`](../reference/trust-panel.md), or a Surface Console.
 2. **The badge is an entry point.** Activating the badge opens that trust state for the output the user is looking at, meeting the [Minimum Trust Panel](minimum-trust-panel.md) disclosure baseline.
 3. **Material claims are disclosed.** The view behind the badge discloses material claims and their gaps per the [Disclosure Requirements](disclosure-requirements.md) — including stale, disputed, missing, and private support.
 4. **Core semantics are intact.** The product has not redefined core statuses or derivation behavior; see [Producer Extension Limits](producer-extension-limits.md). Implementations other than the reference kernel should pass the [conformance suite](conformance.md).
@@ -21,11 +21,11 @@ In context — the badge as the entry point to an embedded Trust Panel on a prod
 
 ![A product listing showing the Built with Surface badge next to an inspectable trust panel](../../assets/screenshots/product-embed.png)
 
-The badge ships as an SVG on the docs site at `built-with-surface.svg`:
+The badge ships as an SVG on the docs site at `assets/built-with-surface.svg`:
 
 ```html
 <a href="https://kontourai.github.io/surface/">
-  <img src="https://kontourai.github.io/surface/built-with-surface.svg"
+  <img src="https://kontourai.github.io/surface/assets/built-with-surface.svg"
        alt="Built with Surface" height="36">
 </a>
 ```

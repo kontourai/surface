@@ -77,12 +77,11 @@ Every `package.json` script is an active repo workflow, release guard, or contri
 | `test` | Verification | Builds and runs the Node test suite from `dist/tests`. |
 | `test:external-adapter` | Verification | Runs the package-consumer adapter example test. |
 | `test:package-smoke` | Release guard | Builds the package, installs the packed tarball into a fresh consumer project, imports the root API, and runs the installed CLI. |
-| `test:browser` | Verification | Runs Playwright coverage for the standalone Console and docs site. |
+| `test:browser` | Verification | Runs Playwright coverage for the standalone Console, the MCP UI trust panel, and the `surface-trust-panel` element on a test host page. |
 | `test:coverage` | Verification | Runs Node tests with experimental coverage reporting. |
-| `docs:build` | Build | Syncs Kontour UI docs assets and builds the static docs site. |
-| `sync:ui-assets` | Build | Copies docs-site token assets from the installed public `@kontourai/ui` package. |
+| `docs:check` | Guard | Runs the docs-kit gate: links, anchors, reachability, MCP topics, and `covers` globs for the documents listed in `docs-kit.json`. |
+| `docs:build` | Build | Builds the docs-kit Pages site and `docs-bundle.json` into `dist-pages/`. |
 | `sync:schemas` | Build | Generates `schemas/` from the installed `hachure` package — the single normative source for the trust-format schemas. |
-| `check:ui-assets` | Guard | Fails when generated docs-site Kontour UI assets are stale. |
 | `check:console-token-drift` | Guard | Fails when the embedded Console token block drifts from the installed @kontourai/ui token source. |
 | `check:doc-links` | Guard | Fails when local relative Markdown links in repo docs do not resolve. |
 | `check:generated-boundaries` | Guard | Fails when generated/runtime artifacts blur source, gitignore, or package boundaries. |

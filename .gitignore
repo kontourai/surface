@@ -3,7 +3,7 @@ node_modules/
 # Generated build and verification output. Source lives in src/, docs/, schemas/,
 # examples/, scripts/, and tests/; these paths are regenerated locally.
 dist/
-docs-site/
+dist-pages/
 test-results/
 playwright-report/
 .npm-pack-cache/

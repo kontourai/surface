@@ -2,7 +2,7 @@
 
 Start here when you are working on the Surface repo or building against `@kontourai/surface`.
 
-The generated `docs-site/` output is a curated public site built from selected source docs. This index includes both published pages and repo-only references for maintainers and contributors.
+The public docs site at <https://kontourai.github.io/surface/> is built from these sources by [docs-kit](https://github.com/kontourai/docs-kit). This index includes both published pages and repo-only references for maintainers and contributors.
 
 ## Folder Layout
 
@@ -20,9 +20,9 @@ Keep new docs in the folder that matches the reader's intent. If a page is a dur
 
 ## Published Site Pages
 
-The public site is built from the grouped page list in `scripts/pages-site/pages.mjs`. Keep the index below aligned with that registry when adding, moving, or removing public pages; `tests/docs-site-pages.test.ts` verifies every published source page is linked here.
+`docs-kit.json` at the repository root lists every published page, its navigation section, and the topics the Kontour docs MCP serves to agents. Every `docs/**/*.md` file must be either listed there or named in its `exclude` list; `npm run docs:check` fails otherwise, and also checks links, anchors, and topic headings. `npm run docs:build` renders the site into `dist-pages/`.
 
-Maintainer-only material stays repo-only: this index, brand language, ADRs, audits, and the `maintenance/` docs.
+Repo-only material is named in `exclude`: brand language, the internal sales notes, the source module audit, and Claim Subject Matching while its API settles.
 
 ## Product Model
 
@@ -97,4 +97,4 @@ Maintainer-only material stays repo-only: this index, brand language, ADRs, audi
 
 The public npm package exposes `@kontourai/surface`, the headless `@kontourai/surface/basis` subpath, the browser-safe `@kontourai/surface/display` subpath (display names and the claim basis view), and the `surface` CLI. The root declarations are published through `dist/src/index.d.ts`; Basis has its own tree-shaken declaration entrypoint. Consumers should not import deep `dist/` paths directly.
 
-The package intentionally includes docs, schemas, examples, and built runtime files. It intentionally excludes source files, tests, scripts, generated docs-site output, Playwright artifacts, and local workflow artifacts. `npm run check:package-contents` is the release guard for that boundary.
+The package intentionally includes docs, schemas, examples, and built runtime files. It intentionally excludes source files, tests, scripts, generated docs site output, Playwright artifacts, and local workflow artifacts. `npm run check:package-contents` is the release guard for that boundary.

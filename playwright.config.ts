@@ -12,7 +12,7 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: "npm run build && npm run docs:build && python3 -m http.server 4181 --bind 127.0.0.1 --directory docs-site",
+    command: "npm run build && node tests/browser/support/build-trust-panel-host.mjs && python3 -m http.server 4181 --bind 127.0.0.1 --directory dist/trust-panel-host",
     url: "http://127.0.0.1:4181/index.html",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

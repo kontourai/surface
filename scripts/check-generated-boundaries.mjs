@@ -44,7 +44,7 @@ const generatedHeaders = [
 
 const ignoredGeneratedOrRuntimePaths = [
   "dist/",
-  "docs-site/",
+  "dist-pages/",
   "test-results/",
   "playwright-report/",
   ".npm-pack-cache/",
@@ -61,7 +61,7 @@ const generatedOrRuntimePathSegments = [
   ".npm-pack-cache",
   ".omx",
   "dist",
-  "docs-site",
+  "dist-pages",
   "node_modules",
   "playwright-report",
   "test-results",
@@ -69,7 +69,7 @@ const generatedOrRuntimePathSegments = [
 
 const trackedGeneratedOrRuntimePatterns = [
   /^dist\//,
-  /^docs-site\//,
+  /^dist-pages\//,
   /^test-results\//,
   /^playwright-report\//,
   /^\.npm-pack-cache\//,
@@ -82,7 +82,7 @@ const packageFileForbiddenPatterns = [
   /^src\//,
   /^scripts\//,
   /^tests\//,
-  /^docs-site\//,
+  /^dist-pages\//,
   /^dist\/tests\//,
   /^\.agents\//,
   /^\.flow-agents\//,

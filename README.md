@@ -212,7 +212,6 @@ The merged view attributes every claim to the producer(s) that asserted it (an i
 ![A product listing with the Built with Surface badge and an embedded trust panel disclosing a stale registration-status claim, its evidence, and the freshness gap](assets/screenshots/product-embed.png)
 
 - **Trust Panel embed** — ship the dependency-free [`<surface-trust-panel>`](docs/reference/trust-panel.md) element so viewers can inspect claims, evidence, freshness, and gaps inside your product.
-- **Snapshot Viewer** — paste any derived report into the [hosted viewer](https://kontourai.github.io/surface/viewer.html); parsing happens entirely in the browser.
 - **Built with Surface badge** — the [inspectability signal](docs/specs/built-with-surface-badge.md): your product exposes inspectable trust state, with no certification implied.
 - **Compatibility and conformance** — Hachure publishes the normative
   [specification and vectors](https://github.com/hachure-org/spec); Surface's
@@ -237,7 +236,7 @@ import {
 } from "@kontourai/surface";
 ```
 
-The package also ships the `surface` CLI, JSON schemas under `schemas/`, examples, docs, and TypeScript declarations. Internal files under `dist/src/` are included so the exported module graph can run, but consumers should import from `@kontourai/surface` (or `@kontourai/surface/trust-panel/element`) rather than deep `dist/` paths. The package contents guard in `scripts/check-package-contents.mjs` keeps generated test output, local docs-site output, scripts, and source files out of the published tarball.
+The package also ships the `surface` CLI, JSON schemas under `schemas/`, examples, docs, and TypeScript declarations. Internal files under `dist/src/` are included so the exported module graph can run, but consumers should import from `@kontourai/surface` (or `@kontourai/surface/trust-panel/element`) rather than deep `dist/` paths. The package contents guard in `scripts/check-package-contents.mjs` keeps generated test output, local docs site output, scripts, and source files out of the published tarball.
 
 ## What sits on top
 
@@ -271,16 +270,16 @@ npm run surface:summary
 - `examples/` — sample Surface inputs and package-shaped producer examples.
 - `examples/external-adapter/` — canonical external adapter example for product-owned producer logic.
 - `tests/` — Node test coverage for library, CLI, adapter, Console, and docs behavior.
-- `tests/browser/` — Playwright coverage for the generated docs site and the standalone Surface Console.
+- `tests/browser/` — Playwright coverage for the `surface-trust-panel` element, the MCP UI trust panel, and the standalone Surface Console.
 - `docs/` — source documentation. Some pages publish to the generated site; repo-only references stay here.
 - `scripts/` — repo maintenance, docs build, package-boundary, content-boundary, and hook setup scripts.
-- `.github/workflows/` — CI and GitHub Pages publishing workflow definitions.
+- `.github/workflows/` — CI, docs gate, and GitHub Pages publishing workflow definitions.
 - `.githooks/` — repo-owned local Git hooks installed by `npm run setup:repo-hooks`.
 - `dist/` — generated TypeScript build output from `npm run build`; do not edit directly.
-- `docs-site/` — generated GitHub Pages output from `npm run docs:build`; curated public subset, not source.
+- `dist-pages/` — generated GitHub Pages output from `npm run docs:build`; not source.
 - `test-results/` — local Playwright/test artifacts; ignored and safe to regenerate.
 
-Ignored local/generated directories such as `node_modules/`, `.surface/`, `.flow-agents/`, `dist/`, `docs-site/`, `test-results/`, and `playwright-report/` should be regenerated from source commands rather than reviewed as product source.
+Ignored local/generated directories such as `node_modules/`, `.surface/`, `.flow-agents/`, `dist/`, `dist-pages/`, `test-results/`, and `playwright-report/` should be regenerated from source commands rather than reviewed as product source.
 
 ## Documentation
 
@@ -301,7 +300,7 @@ Ignored local/generated directories such as `node_modules/`, `.surface/`, `.flow
 - [Developer Architecture](docs/architecture/developer-architecture.md) — trust/evidence flow and cross-product boundaries
 - [External Adapter Example](examples/external-adapter/README.md) — minimal package-shaped producer
 
-The published docs site is generated from these sources by `npm run docs:build`; see [docs/README.md](docs/README.md) for the full maintainer index.
+The published docs site is generated from these sources by [docs-kit](https://github.com/kontourai/docs-kit) (`npm run docs:build`); `docs-kit.json` lists the published pages. See [docs/README.md](docs/README.md) for the full maintainer index.
 
 ## License
 
