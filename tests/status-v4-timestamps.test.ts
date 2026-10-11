@@ -225,3 +225,43 @@ test("every derivation entry point refuses a string now with the same RangeError
     );
   }
 });
+
+// ── console gap titles: derived staleness vs producer freshness hints ─────
+
+function consoleDetail(bundle: TrustBundle, claimId: string) {
+  return buildSurfaceConsoleProjection(buildMergedConsoleReadModel([validateTrustBundle(bundle)], { now: new Date("2026-10-10T00:00:00.000Z") })).claimDetails[claimId]!;
+}
+
+test("a producer freshness hint on a verified claim is a freshness concern, not 'Verification is stale'", () => {
+  const raw = JSON.parse(readFileSync("examples/surface-example-bundle.json", "utf8")) as TrustBundle;
+  const claimId = "claim.fact-resolution.w2-wages";
+  const evidence = raw.evidence.find((e) => e.claimId === claimId)!;
+  evidence.metadata = {
+    ...evidence.metadata,
+    transparencyGapHints: [{ type: "freshness_breach", blocking: false, message: "Evidence inventory suite.payroll freshness is review-needed." }],
+  };
+  const detail = consoleDetail(raw, claimId);
+  const hint = detail.gaps.find((g) => g.message.includes("review-needed"))!;
+  assert.deepEqual([hint.kindLabel, hint.title], ["Freshness", "Freshness concern"]);
+  assert.ok(!detail.gaps.some((g) => g.title === "Verification is stale"), JSON.stringify(detail.gaps.map((g) => g.title)));
+});
+
+test("the derived freshness gap of a stale claim says the verification is stale", () => {
+  const raw = JSON.parse(readFileSync("examples/surface-example-bundle.json", "utf8")) as TrustBundle;
+  const detail = consoleDetail(raw, "claim.field-attested-records.registration-status");
+  const stale = detail.gaps.find((g) => g.kindLabel === "Freshness");
+  assert.ok(stale, JSON.stringify(detail.gaps.map((g) => g.title)));
+  assert.equal(stale!.title, "Verification is stale");
+});
+
+test("an unevaluable validity gap is labelled by what could not be read: the claim's own window or the policy rule", () => {
+  const own = JSON.parse(readFileSync("examples/surface-example-bundle.json", "utf8")) as TrustBundle;
+  own.claims.find((c) => c.id === "claim.repo-governance.api-proof")!.expiresAt = "2027-02-30T00:00:00Z";
+  const ownGap = consoleDetail(own, "claim.repo-governance.api-proof").gaps.find((g) => g.title === "Validity could not be evaluated")!;
+  assert.equal(ownGap.kindLabel, "Claim validity");
+
+  const rule = JSON.parse(readFileSync("examples/surface-example-bundle.json", "utf8")) as TrustBundle;
+  delete rule.claims.find((c) => c.id === "claim.repo-governance.api-proof")!.currentIntegrityRef;
+  const ruleGap = consoleDetail(rule, "claim.repo-governance.api-proof").gaps.find((g) => g.title === "Validity could not be evaluated")!;
+  assert.equal(ruleGap.kindLabel, "Policy mismatch");
+});
