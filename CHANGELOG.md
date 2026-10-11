@@ -1,5 +1,16 @@
 # Changelog
 
+## [6.0.0](https://github.com/kontourai/surface/compare/v5.1.0...v6.0.0) (2026-10-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* **status:** derived statuses can change for existing bundles that are derived without an explicit statusFunctionVersion. Under "4" every time the fold reads must be an RFC 3339 date-time with an offset and is compared exactly; a dispute resolution whose time, or whose resolver's trace bound, cannot be evaluated is not honoured; a blocking failure with an unevaluable observedAt is not set aside by a resolution; an unevaluable event time sorts oldest; validity windows are exact decimal products. A status can strengthen as well as weaken. Reports, inquiry records and checkpoints record "4". Under "4", a derivation rule's fresherThan reads times the same way, and a claim whose own expiresAt or ttlSeconds window cannot be evaluated carries an unevaluable-validity-rule gap. Every derivation entry point refuses a non-Date now with RangeError (buildTrustReport and deriveTrustSnapshot used to throw TypeError). The exported StatusFunctionVersion type gains "4", so exhaustive switches over it must handle it. Pass statusFunctionVersion: "3" to re-derive under the previous rules. See docs/reference/schema-versioning.md, "Migrating from version 3". Console gap titles changed under every version: a derived freshness_breach gap reads "Freshness · Verification is stale" and a producer freshness hint "Freshness · Freshness concern" (both previously "Quality failure · Verification failed"), and an unevaluable-validity gap reads "Validity could not be evaluated".
+
+### Features
+
+* **status:** adopt Hachure 0.18 and make status function version 4 the default ([#317](https://github.com/kontourai/surface/issues/317)) ([a51c214](https://github.com/kontourai/surface/commit/a51c2140c9235fdc5fe60bbe3c27b183bcea114e)), closes [#311](https://github.com/kontourai/surface/issues/311)
+
 ## [5.1.0](https://github.com/kontourai/surface/compare/v5.0.0...v5.1.0) (2026-10-05)
 
 
