@@ -76,7 +76,6 @@
           "bin/",
           "conformance/",
           "context/",
-          "docs-site/",
           "examples/",
           "schemas/"
         ]
