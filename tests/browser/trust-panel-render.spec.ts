@@ -18,11 +18,11 @@
  *    all produced the same `<li>`. The evidence tests assert that those four
  *    rows are pairwise distinct and that each state is named on the row.
  *
- * The panel is exercised through the host page that
- * tests/browser/support/build-trust-panel-host.mjs writes, which loads the
- * same compiled `surface-trust-panel.js` the npm package ships — so a change
- * to src/trust-panel/surface-trust-panel.ts reaches these assertions through
- * the real build.
+ * The panel is exercised through the published Trust Snapshot Viewer page
+ * (scripts/build-pages-extras.mjs), which loads the same compiled
+ * `surface-trust-panel.js` the npm package ships — so a change to
+ * src/trust-panel/surface-trust-panel.ts reaches these assertions through the
+ * real build.
  */
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
@@ -132,13 +132,13 @@ function evidenceReport(): unknown {
   };
 }
 
-/** Load the host page and hand the panel a report object directly. */
+/** Load the viewer page and hand the panel a report object directly. */
 async function loadPanel(page: Page, report: unknown): Promise<void> {
   const consoleErrors: string[] = [];
   page.on("console", (message) => {
     if (message.type() === "error") consoleErrors.push(message.text());
   });
-  const response = await page.goto("/index.html");
+  const response = await page.goto("/viewer.html");
   expect(response?.ok()).toBe(true);
   await page.waitForFunction(() => customElements.get("surface-trust-panel") !== undefined);
   await page.evaluate((value) => {
@@ -228,7 +228,7 @@ test("status chips resolve ui's trust-state colours, not the old tone bands", as
 });
 
 test("status chips follow the page's light or dark mode", async ({ page }) => {
-  // The host page switches modes with prefers-color-scheme; the chips must use
+  // The viewer switches modes with prefers-color-scheme; the chips must use
   // ui's light inks and fills on the light page and its dark ones on the dark.
   const expected = {
     light: { color: "rgb(0, 109, 66)", background: "rgb(230, 240, 236)" },
@@ -551,7 +551,7 @@ test("discloses evidence visibility and integrity-anchor verification state", as
 });
 
 test("Basis mode keeps mandatory standing and gaps visible while disclosures remain native", async ({ page }) => {
-  await page.goto("/index.html");
+  await page.goto("/viewer.html");
   await page.waitForFunction(() => customElements.get("surface-trust-panel") !== undefined);
   await page.evaluate(() => {
     const panel = document.getElementById("viewer-panel") as HTMLElement & { basisProjection: unknown };
@@ -644,7 +644,7 @@ test("Basis mode preserves complete disclosure, focus, accessibility, and narrow
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: "reduce", colorScheme: "dark" });
-  await page.goto("/index.html");
+  await page.goto("/viewer.html");
   await page.waitForFunction(() => customElements.get("surface-trust-panel") !== undefined);
   await page.evaluate((value) => {
     const panel = document.getElementById("viewer-panel") as HTMLElement & { basisProjection: unknown };

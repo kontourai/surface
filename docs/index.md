@@ -33,13 +33,13 @@ Each scenario ships as a runnable example in the repo. [See the full use cases.]
 
 ## See it
 
-The example report, rendered by the [`<surface-trust-panel>`](reference/trust-panel.md) element any product can embed:
+The same example report, inspected three ways — in the browser-local [Snapshot Viewer](https://kontourai.github.io/surface/viewer.html), embedded in a product page, and in the operator Console:
 
-![The surface-trust-panel element rendering the example report: status chips, expandable claims, evidence, and policy context](../assets/screenshots/trust-panel.png)
+![The Trust Snapshot Viewer rendering the example report with status chips and an expanded claim showing its evidence](../assets/screenshots/snapshot-viewer.png)
 
 ## Four ways in
 
-- **Inspect** — open the trust state behind an answer, report, or agent output before you rely on it. Ship the [Trust Panel embed](reference/trust-panel.md) inside your product so viewers can open it where they see the claim.
+- **Inspect** — open the trust state behind an answer, report, or agent output before you rely on it. Paste any derived report into the [Snapshot Viewer](https://kontourai.github.io/surface/viewer.html) — it parses in your browser and never leaves the page — or ship the [Trust Panel embed](reference/trust-panel.md) inside your product.
 - **Build** — emit claims, evidence, and policies from your product with the [TypeScript SDK](guides/consumer-sdk.md), then let Surface derive and serve the trust state to people, agents, and downstream systems.
 - **Operate** — manage the claims your product makes — ownership, evidence review, policies, gaps, conflicts — in the [Surface Console](reference/console.md). It runs locally. No cloud, no login.
 - **Automate** — point an agent at [`surface mcp`](reference/mcp.md) and it reads the same derived trust state over the Model Context Protocol: act on verified, reverify stale, escalate disputed.

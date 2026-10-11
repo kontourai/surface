@@ -122,6 +122,7 @@ test("package scripts are classified active repo workflows", async () => {
     "check:trust-state-css",
     "docs:build",
     "docs:check",
+    "docs:extras",
     "freeze:adrs",
     "gen:decisions-index",
     "prepare",

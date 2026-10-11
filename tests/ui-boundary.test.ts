@@ -23,9 +23,9 @@ test("Kontour UI stays a development asset source, not a runtime dependency", as
   assert.equal(packageJson.peerDependencies?.react, undefined);
 });
 
-test("Kontour UI test-host assets come from the installed public package", async () => {
+test("Kontour UI Pages assets come from the installed public package", async () => {
   const [script, ciWorkflow, docsWorkflow, publishWorkflow] = await Promise.all([
-    readFile("tests/browser/support/build-trust-panel-host.mjs", "utf8"),
+    readFile("scripts/build-pages-extras.mjs", "utf8"),
     readFile(".github/workflows/ci.yml", "utf8"),
     readFile(".github/workflows/docs.yml", "utf8"),
     readFile(".github/workflows/publish-npm.yml", "utf8"),

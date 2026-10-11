@@ -8,6 +8,8 @@ Here is the intended integration, end to end: a product listing shows the Built 
 
 ![A product listing with the Built with Surface badge and an embedded trust panel showing a stale registration-status claim with its evidence and freshness gap](../../assets/screenshots/product-embed.png)
 
+Try it without installing anything in the hosted [Trust Snapshot Viewer](https://kontourai.github.io/surface/viewer.html) — reports are parsed entirely in the browser and never leave the page.
+
 ## Embed it
 
 The component is authored in TypeScript ([`src/trust-panel/surface-trust-panel.ts`](../../src/trust-panel/surface-trust-panel.ts)) and compiles to a single standalone script with no dependencies and no module loader. It ships in the npm package — copy or serve it from there and load a derived report:

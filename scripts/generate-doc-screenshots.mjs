@@ -1,27 +1,24 @@
 // Regenerates the documentation screenshots committed under
-// assets/screenshots/. The panel captures load <surface-trust-panel> from the
-// browser-test host page, so build dist/ and that page first:
-//   npm run build && node tests/browser/support/build-trust-panel-host.mjs && node scripts/generate-doc-screenshots.mjs
+// assets/screenshots/. The viewer captures load the Trust Snapshot Viewer
+// that docs:extras writes. Run after UI or brand changes:
+//   npm run build && rm -rf dist/pages-extras && DOCS_SITE_DIR=dist/pages-extras npm run docs:extras && node scripts/generate-doc-screenshots.mjs
 import { createServer } from "node:http";
-import { execFile, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { extname, join } from "node:path";
-import { promisify } from "node:util";
 import { chromium } from "@playwright/test";
-
-const hostDir = join("dist", "trust-panel-host");
 
 const MIME = { ".html": "text/html", ".css": "text/css", ".js": "text/javascript", ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png" };
 
+const siteDir = join("dist", "pages-extras");
 await mkdir("assets/screenshots", { recursive: true });
-const site = await serveHost();
+const site = await serveDocsSite();
 const browser = await chromium.launch();
-const report = await sampleReport();
 
 try {
-  await capturePanel(browser, site.url, report);
-  await captureProductEmbed(browser, site.url, report);
+  await captureViewer(browser, site.url);
+  await captureProductEmbed(browser, site.url);
   await captureConsole(browser);
 } finally {
   await browser.close();
@@ -29,30 +26,21 @@ try {
 }
 console.log("Wrote assets/screenshots/*.png");
 
-// The example report, derived through the public CLI so it always matches
-// current kernel behavior.
-async function sampleReport() {
-  const { stdout } = await promisify(execFile)("node", ["bin/surface.mjs", "report", "--input", "examples/surface-example-bundle.json"], { maxBuffer: 16 * 1024 * 1024 });
-  return JSON.parse(stdout);
-}
-
-async function capturePanel(browser, baseUrl, report) {
+async function captureViewer(browser, baseUrl) {
   const page = await browser.newPage({ viewport: { width: 1280, height: 860 }, colorScheme: "light" });
-  await page.goto(`${baseUrl}/index.html`);
-  await page.waitForFunction(() => customElements.get("surface-trust-panel") !== undefined);
-  await page.evaluate((value) => {
-    document.getElementById("viewer-panel").report = value;
-  }, report);
+  await page.goto(`${baseUrl}/viewer.html`);
+  await page.getByRole("button", { name: "Load sample report" }).click();
   const panel = page.locator("surface-trust-panel");
   await panel.locator("details.claim").first().locator("summary").click();
+  await page.locator("article").screenshot({ path: "assets/screenshots/snapshot-viewer.png" });
   await panel.screenshot({ path: "assets/screenshots/trust-panel.png" });
   await page.close();
 }
 
 // A small fictional product page demonstrating the intended integration:
 // the Built with Surface badge as the entry point to an embedded Trust Panel.
-async function captureProductEmbed(browser, baseUrl, sample) {
-  const report = structuredClone(sample);
+async function captureProductEmbed(browser, baseUrl) {
+  const report = JSON.parse(await readFile(join(siteDir, "sample-report.json"), "utf8"));
   // Keep the demo focused: just the field-attested record claims.
   // `facet` is the current field name; `surface` is the pre-rename fallback
   // (Hachure 0.9.0). Reading only `surface` filtered every claim out of the
@@ -89,9 +77,9 @@ async function captureProductEmbed(browser, baseUrl, sample) {
   </script>
 </body></html>`;
 
-  // Served same-origin from the host page's directory so the module import
+  // Served same-origin from the viewer's directory so the module import
   // works, then removed.
-  const demoPath = join(hostDir, "demo-embed.html");
+  const demoPath = join(siteDir, "demo-embed.html");
   await writeFile(demoPath, html);
   try {
     const page = await browser.newPage({ viewport: { width: 760, height: 980 }, colorScheme: "light" });
@@ -183,10 +171,10 @@ function consoleReadModel() {
   };
 }
 
-async function serveHost() {
+async function serveDocsSite() {
   const server = createServer(async (request, response) => {
     const path = decodeURIComponent(new URL(request.url, "http://localhost").pathname);
-    const file = path === "/built-with-surface.svg" ? join("assets", "built-with-surface.svg") : join(hostDir, path === "/" ? "index.html" : path.slice(1));
+    const file = join(siteDir, path === "/" ? "index.html" : path.slice(1));
     try {
       const body = await readFile(file);
       response.writeHead(200, { "content-type": MIME[extname(file)] ?? "application/octet-stream" });

@@ -18,7 +18,7 @@ Surface ships the Surface library, CLI, local Surface Console, and claim authori
 
 **MCP server** — `surface mcp` serves summary, stale, missing-evidence, claim, and policy tools to agents over the Model Context Protocol. See [Agents and MCP](../reference/mcp.md).
 
-**Trust Panel embed** — the dependency-free `<surface-trust-panel>` element for derived reports. See [Trust Panel Embed](../reference/trust-panel.md).
+**Trust Panel embed and Snapshot Viewer** — the dependency-free `<surface-trust-panel>` element and the hosted browser-local viewer for derived reports. See [Trust Panel Embed](../reference/trust-panel.md).
 
 **Conformance suite** — fixed inputs with expected statuses and transparency gaps under `conformance/`, so alternate implementations can verify they derive the same trust state. See [Conformance](../specs/conformance.md).
 

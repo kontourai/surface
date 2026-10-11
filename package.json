@@ -85,6 +85,7 @@
     "test:coverage": "npm run build && node --test --experimental-test-coverage dist/tests/*.test.js && node --test dist/tests/serial/*.test.js",
     "docs:check": "npx -y github:kontourai/docs-kit#482fb2e691fe7686f79a9a4da8bc2247384b85c3 docs-kit check",
     "docs:build": "npx -y github:kontourai/docs-kit#482fb2e691fe7686f79a9a4da8bc2247384b85c3 docs-kit build",
+    "docs:extras": "node scripts/build-pages-extras.mjs",
     "check:doc-links": "node scripts/check-doc-links.mjs",
     "check:generated-boundaries": "node scripts/check-generated-boundaries.mjs",
     "check:package-contents": "node scripts/check-package-contents.mjs",

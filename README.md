@@ -212,6 +212,7 @@ The merged view attributes every claim to the producer(s) that asserted it (an i
 ![A product listing with the Built with Surface badge and an embedded trust panel disclosing a stale registration-status claim, its evidence, and the freshness gap](assets/screenshots/product-embed.png)
 
 - **Trust Panel embed** — ship the dependency-free [`<surface-trust-panel>`](docs/reference/trust-panel.md) element so viewers can inspect claims, evidence, freshness, and gaps inside your product.
+- **Snapshot Viewer** — paste any derived report into the [hosted viewer](https://kontourai.github.io/surface/viewer.html); parsing happens entirely in the browser.
 - **Built with Surface badge** — the [inspectability signal](docs/specs/built-with-surface-badge.md): your product exposes inspectable trust state, with no certification implied.
 - **Compatibility and conformance** — Hachure publishes the normative
   [specification and vectors](https://github.com/hachure-org/spec); Surface's
@@ -270,7 +271,7 @@ npm run surface:summary
 - `examples/` — sample Surface inputs and package-shaped producer examples.
 - `examples/external-adapter/` — canonical external adapter example for product-owned producer logic.
 - `tests/` — Node test coverage for library, CLI, adapter, Console, and docs behavior.
-- `tests/browser/` — Playwright coverage for the `surface-trust-panel` element, the MCP UI trust panel, and the standalone Surface Console.
+- `tests/browser/` — Playwright coverage for the `surface-trust-panel` element in the Trust Snapshot Viewer, the MCP UI trust panel, and the standalone Surface Console.
 - `docs/` — source documentation. Some pages publish to the generated site; repo-only references stay here.
 - `scripts/` — repo maintenance, docs build, package-boundary, content-boundary, and hook setup scripts.
 - `.github/workflows/` — CI, docs gate, and GitHub Pages publishing workflow definitions.
