@@ -1,3 +1,7 @@
+// The old docs site's stylesheet (scripts/pages-site/styles.mjs before the
+// move to docs-kit), now used only by the Trust Snapshot Viewer page. The
+// navigation and hero rules are unused there but kept verbatim so the viewer
+// looks as it did.
 export function buildStyles({ lightTrustTokens = [], darkTrustTokens = [] } = {}) {
   return `:root {
   color-scheme: light dark;${lightTrustTokens.map((declaration) => `\n  ${declaration}`).join("")}

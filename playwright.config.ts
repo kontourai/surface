@@ -12,8 +12,8 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: "npm run build && npm run docs:build && python3 -m http.server 4181 --bind 127.0.0.1 --directory docs-site",
-    url: "http://127.0.0.1:4181/index.html",
+    command: "npm run build && rm -rf dist/pages-extras && DOCS_SITE_DIR=dist/pages-extras node scripts/build-pages-extras.mjs && python3 -m http.server 4181 --bind 127.0.0.1 --directory dist/pages-extras",
+    url: "http://127.0.0.1:4181/viewer.html",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

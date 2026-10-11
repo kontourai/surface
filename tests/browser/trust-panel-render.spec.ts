@@ -18,10 +18,11 @@
  *    all produced the same `<li>`. The evidence tests assert that those four
  *    rows are pairwise distinct and that each state is named on the row.
  *
- * The panel is exercised through the published docs-site viewer page, which
- * loads the same compiled `surface-trust-panel.js` the npm package ships —
- * so a change to src/trust-panel/surface-trust-panel.ts reaches these
- * assertions through the real build.
+ * The panel is exercised through the published Trust Snapshot Viewer page
+ * (scripts/build-pages-extras.mjs), which loads the same compiled
+ * `surface-trust-panel.js` the npm package ships — so a change to
+ * src/trust-panel/surface-trust-panel.ts reaches these assertions through the
+ * real build.
  */
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";

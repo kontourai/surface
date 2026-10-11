@@ -59,6 +59,7 @@
         "label": "root manifests",
         "patterns": [
           "package.json",
+          "docs-kit.json",
           "pnpm-lock.yaml",
           "pnpm-workspace.yaml",
           "README.md",
@@ -75,7 +76,6 @@
           "bin/",
           "conformance/",
           "context/",
-          "docs-site/",
           "examples/",
           "schemas/"
         ]
