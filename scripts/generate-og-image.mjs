@@ -1,6 +1,6 @@
 // Regenerates the static Open Graph card committed at
-// scripts/pages-site/assets/og-image.png (copied to docs-site/ by the docs
-// build). Run manually after brand changes: node scripts/generate-og-image.mjs
+// scripts/pages-extras/og-image.png (copied to the Pages site root by
+// npm run docs:extras). Run manually after brand changes: node scripts/generate-og-image.mjs
 import { mkdir } from "node:fs/promises";
 import { chromium } from "@playwright/test";
 
@@ -44,10 +44,10 @@ const html = `<!doctype html>
   <p>The open trust format that connects evidence provenance to the claims products ask humans and AI agents to trust.</p>
 </body></html>`;
 
-await mkdir("scripts/pages-site/assets", { recursive: true });
+await mkdir("scripts/pages-extras", { recursive: true });
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1200, height: 630 } });
 await page.setContent(html);
-await page.screenshot({ path: "scripts/pages-site/assets/og-image.png" });
+await page.screenshot({ path: "scripts/pages-extras/og-image.png" });
 await browser.close();
-console.log("Wrote scripts/pages-site/assets/og-image.png");
+console.log("Wrote scripts/pages-extras/og-image.png");

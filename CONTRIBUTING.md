@@ -9,7 +9,7 @@ This file is the footnote for people developing the product itself.
 
 - keep Surface behavior stable unless the task explicitly asks for runtime changes — validation, trust derivation, report projection, adapters, extension registry, CLI, and Console routes are compatibility-sensitive
 - prefer small edits that match existing TypeScript and docs style
-- do not hand-edit generated Pages output in `docs-site/`
+- do not hand-edit generated Pages output in `dist-pages/`
 - do not add empty placeholder directories
 - keep `CONTEXT.md` current with the domain vocabulary when surface boundary changes
 
@@ -34,11 +34,11 @@ Before opening a PR:
 npm run verify
 ```
 
-This runs the content-boundary check, doc-link check, generated-boundary check, typecheck, full test suite, docs build, Kontour UI asset check, package-contents check, external-adapter test, package smoke test, surface summary, and browser tests.
+This runs the content-boundary check, doc-link check, generated-boundary check, typecheck, full test suite, console token drift check, package-contents check, external-adapter test, package smoke test, surface summary, and browser tests.
 
 Individual checks by change type:
 
-- docs-only: `npm run check:doc-links` and `npm run docs:build`
+- docs-only: `npm run check:doc-links` and `npm run docs:check` (the docs-kit gate; `docs-kit.json` lists the published pages)
 - generated/source boundary: `npm run check:generated-boundaries`
 - public API or package metadata: `npm run check:package-contents` and `npm run test:package-smoke` and `npm run test:external-adapter`
 - CLI, trust derivation, schemas, adapters, or Console runtime: `npm test`

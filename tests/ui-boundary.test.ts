@@ -23,18 +23,17 @@ test("Kontour UI stays a development asset source, not a runtime dependency", as
   assert.equal(packageJson.peerDependencies?.react, undefined);
 });
 
-test("Kontour UI docs assets sync from the installed public package", async () => {
-  const [script, ciWorkflow, pagesWorkflow, publishWorkflow] = await Promise.all([
-    readFile("scripts/sync-ui-assets.mjs", "utf8"),
+test("Kontour UI Pages assets come from the installed public package", async () => {
+  const [script, ciWorkflow, docsWorkflow, publishWorkflow] = await Promise.all([
+    readFile("scripts/build-pages-extras.mjs", "utf8"),
     readFile(".github/workflows/ci.yml", "utf8"),
-    readFile(".github/workflows/pages.yml", "utf8"),
+    readFile(".github/workflows/docs.yml", "utf8"),
     readFile(".github/workflows/publish-npm.yml", "utf8"),
   ]);
 
-  assert.match(script, /node_modules.+@kontourai.+ui/s);
-  assert.equal(script.includes('path.resolve(root, "..", "ui")'), false);
-  assert.equal(script.includes("kontourai workspace with ../ui"), false);
-  for (const workflow of [ciWorkflow, pagesWorkflow, publishWorkflow]) {
+  assert.match(script, /"node_modules", "@kontourai", "ui"/);
+  assert.equal(script.includes('"..", "ui"'), false);
+  for (const workflow of [ciWorkflow, docsWorkflow, publishWorkflow]) {
     assert.equal(workflow.includes("repository: kontourai/ui"), false);
     assert.equal(workflow.includes("path: ui"), false);
   }

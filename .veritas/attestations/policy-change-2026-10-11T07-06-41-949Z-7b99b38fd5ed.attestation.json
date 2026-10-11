@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "id": "policy-change-2026-10-11T07-06-41-949Z-7b99b38fd5ed",
+  "kind": "policy-change",
+  "actor": {
+    "id": "brian-anderson",
+    "displayName": "Brian Anderson",
+    "identityEvidence": {
+      "gitEmail": null,
+      "signingKeyFingerprint": null
+    }
+  },
+  "attestedAt": "2026-10-11T07:06:41.949Z",
+  "repoStandardsHash": "sha256:a86218febeb226018fdddf5d45c461d07ae74b8b182f24361b241cee4da93504",
+  "repoMapHash": "sha256:a0d53d1988f31b6eb0bb0f9a4cef766a954b9c0d6dadf63d6738c3493dca5f90",
+  "repoMapHashAlgorithm": "public-policy-v1",
+  "authoritySettingsHash": "sha256:db9ae5af663554d795695c9528d16c6fa5f941aeb8e52b538ceae774a1df136a",
+  "priorAttestationId": "legacy-attestation-v0:518862089782bd2a",
+  "validUntilDays": 90,
+  "notes": "Re-baseline protected standards for surface#326: map docs-kit.json (published docs and MCP topics manifest) as a root manifest; attest the root-manifests change from 909290d (pnpm migration: package-lock.json removed, pnpm-lock.yaml and pnpm-workspace.yaml added), which was never attested; remove the stale docs-site/ product-area pattern for the deleted Pages builder output; record hashes under the veritas 1.7.6 public-policy-v1 algorithm.",
+  "metadata": {
+    "protectedStandardsPaths": {
+      "repoStandardsPath": ".veritas/repo-standards/default.repo-standards.json",
+      "repoMapPath": ".veritas/repo-map.json",
+      "authoritySettingsPath": ".veritas/authority/default.authority-settings.json"
+    },
+    "supersedes": "legacy-attestation-v0:518862089782bd2a",
+    "approvalRef": "https://github.com/kontourai/surface/pull/326",
+    "approvalRefPolicy": {
+      "mode": "reference-only",
+      "matchedPrefix": null,
+      "requiresResolution": false
+    },
+    "approvalResolution": null
+  },
+  "surface": {
+    "claim": {
+      "id": "veritas.attestation.policy-change-2026-10-11T07-06-41-949Z-7b99b38fd5ed",
+      "subjectType": "veritas-protected-standards",
+      "subjectId": "protected-standards",
+      "facet": "veritas.attestations",
+      "claimType": "veritas-human-attestation",
+      "fieldOrBehavior": "policy-change",
+      "value": {
+        "contentHash": "5f0ff13e527c644e6897065b66d4e1417a89fbd85af01325e2b2a18563839632",
+        "validUntil": "2027-01-09T07:06:41.949Z"
+      },
+      "createdAt": "2026-10-11T07:06:41.949Z",
+      "updatedAt": "2026-10-11T07:06:41.949Z",
+      "status": "verified",
+      "impactLevel": "high",
+      "confidenceBasis": {
+        "sourceQuality": "strong",
+        "reviewerAuthority": "human",
+        "evidenceStrength": "strong",
+        "impactLevel": "high"
+      }
+    },
+    "evidence": {
+      "id": "evidence.attestation.veritas.attestation.policy-change-2026-10-11T07-06-41-949Z-7b99b38fd5ed",
+      "claimId": "veritas.attestation.policy-change-2026-10-11T07-06-41-949Z-7b99b38fd5ed",
+      "evidenceType": "attestation",
+      "method": "attestation",
+      "sourceRef": "veritas:protected-standards",
+      "excerptOrSummary": "Re-baseline protected standards for surface#326: map docs-kit.json (published docs and MCP topics manifest) as a root manifest; attest the root-manifests change from 909290d (pnpm migration: package-lock.json removed, pnpm-lock.yaml and pnpm-workspace.yaml added), which was never attested; remove the stale docs-site/ product-area pattern for the deleted Pages builder output; record hashes under the veritas 1.7.6 public-policy-v1 algorithm.",
+      "observedAt": "2026-10-11T07:06:41.949Z",
+      "collectedBy": "brian-anderson",
+      "integrityRef": "5f0ff13e527c644e6897065b66d4e1417a89fbd85af01325e2b2a18563839632",
+      "metadata": {
+        "actor": {
+          "id": "brian-anderson",
+          "displayName": "Brian Anderson"
+        },
+        "attestedAt": "2026-10-11T07:06:41.949Z",
+        "validUntil": "2027-01-09T07:06:41.949Z",
+        "contentHash": "5f0ff13e527c644e6897065b66d4e1417a89fbd85af01325e2b2a18563839632"
+      },
+      "sourceLocator": ".veritas/attestations"
+    },
+    "event": {
+      "id": "veritas.attestation.policy-change-2026-10-11T07-06-41-949Z-7b99b38fd5ed.verified",
+      "claimId": "veritas.attestation.policy-change-2026-10-11T07-06-41-949Z-7b99b38fd5ed",
+      "status": "verified",
+      "actor": "brian-anderson",
+      "method": "human attestation",
+      "evidenceIds": [
+        "evidence.attestation.veritas.attestation.policy-change-2026-10-11T07-06-41-949Z-7b99b38fd5ed"
+      ],
+      "createdAt": "2026-10-11T07:06:41.949Z",
+      "verifiedAt": "2026-10-11T07:06:41.949Z"
+    }
+  }
+}

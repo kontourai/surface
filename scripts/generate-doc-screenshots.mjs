@@ -1,7 +1,7 @@
 // Regenerates the documentation screenshots committed under
-// assets/screenshots/ (copied to docs-site/assets/ by the docs build).
-// Run after UI or brand changes, with dist/ and docs-site/ already built:
-//   npm run build && npm run docs:build && node scripts/generate-doc-screenshots.mjs
+// assets/screenshots/. The viewer captures load the Trust Snapshot Viewer
+// that docs:extras writes. Run after UI or brand changes:
+//   npm run build && rm -rf dist/pages-extras && DOCS_SITE_DIR=dist/pages-extras npm run docs:extras && node scripts/generate-doc-screenshots.mjs
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -11,6 +11,7 @@ import { chromium } from "@playwright/test";
 
 const MIME = { ".html": "text/html", ".css": "text/css", ".js": "text/javascript", ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png" };
 
+const siteDir = join("dist", "pages-extras");
 await mkdir("assets/screenshots", { recursive: true });
 const site = await serveDocsSite();
 const browser = await chromium.launch();
@@ -39,7 +40,7 @@ async function captureViewer(browser, baseUrl) {
 // A small fictional product page demonstrating the intended integration:
 // the Built with Surface badge as the entry point to an embedded Trust Panel.
 async function captureProductEmbed(browser, baseUrl) {
-  const report = JSON.parse(await readFile("docs-site/sample-report.json", "utf8"));
+  const report = JSON.parse(await readFile(join(siteDir, "sample-report.json"), "utf8"));
   // Keep the demo focused: just the field-attested record claims.
   // `facet` is the current field name; `surface` is the pre-rename fallback
   // (Hachure 0.9.0). Reading only `surface` filtered every claim out of the
@@ -76,8 +77,9 @@ async function captureProductEmbed(browser, baseUrl) {
   </script>
 </body></html>`;
 
-  // Served same-origin from docs-site so the module import works, then removed.
-  const demoPath = "docs-site/demo-embed.html";
+  // Served same-origin from the viewer's directory so the module import
+  // works, then removed.
+  const demoPath = join(siteDir, "demo-embed.html");
   await writeFile(demoPath, html);
   try {
     const page = await browser.newPage({ viewport: { width: 760, height: 980 }, colorScheme: "light" });
@@ -172,7 +174,7 @@ function consoleReadModel() {
 async function serveDocsSite() {
   const server = createServer(async (request, response) => {
     const path = decodeURIComponent(new URL(request.url, "http://localhost").pathname);
-    const file = join("docs-site", path === "/" ? "index.html" : path.slice(1));
+    const file = join(siteDir, path === "/" ? "index.html" : path.slice(1));
     try {
       const body = await readFile(file);
       response.writeHead(200, { "content-type": MIME[extname(file)] ?? "application/octet-stream" });

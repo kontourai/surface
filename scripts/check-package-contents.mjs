@@ -45,7 +45,7 @@ for (const requiredFile of requiredFiles) {
 
 const forbiddenPatterns = [
   /^node_modules\//,
-  /^docs-site\//,
+  /^dist-pages\//,
   /^test-results\//,
   /^playwright-report\//,
   /^\.agents\//,
