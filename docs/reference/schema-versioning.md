@@ -408,8 +408,11 @@ Version `"4"` defines what a time is and compares times exactly:
   a timestamp derives `stale`.
 - **`now`.** Surface takes `now` only as a `Date` (whole milliseconds). Under
   `"3"` and `"4"` any other value, including a string that is a valid
-  timestamp, is refused with a `RangeError`, so no string `now` is ever read
-  loosely.
+  timestamp, is refused with `RangeError: invalid now: …` by every derivation
+  entry point (`buildTrustReport`, `deriveTrustSnapshot`, `deriveClaimStatus`,
+  `deriveTrustStatus`, and the inquiry functions through them), so no string
+  `now` is ever read loosely. Before 6.0, `buildTrustReport` and
+  `deriveTrustSnapshot` failed on a string `now` with a `TypeError` instead.
 
 A status can strengthen under `"4"` as well as weaken: refusing an unevaluable
 resolution to `rejected` lets a later `verified` event stand. Hachure's
@@ -428,13 +431,19 @@ authority-trace bounds as ISO strings and orders an unparseable event time as
 `NaN`. Surface keeps `"2"` unchanged so records resolved under it re-derive as
 they were; the differing claims are pinned in `tests/spec-conformance.test.ts`.
 
-The inquiry `fresherThan` and `requiresActiveAuthority` predicates of a
-derivation rule are not part of the status function and are not versioned by
-it. `fresherThan` still reads the verification time with `Date.parse`, and
-`requiresActiveAuthority` compares trace bounds with `now` as ISO strings (so
-two spellings of one instant can disagree), under every version. They decide
-whether a rule's requirement is met at `now`, not a claim's status, and the
-claim's derived status is checked separately by `acceptedStatuses`.
+Derivation rules' `fresherThan` predicate follows the version: under `"4"` it
+reads times as the status function does (the latest verification whose time
+is a timestamp; a verification time that is not one is not fresh) and compares
+the window exactly; under `"3"` and `"2"` it reads them with `Date.parse`, as
+before.
+
+The `requiresActiveAuthority` predicate (`checkAuthorityActive`) is not
+versioned and compares trace bounds with `now` **as strings**, under every
+version. A bound written with a non-`Z` offset can therefore be misread by up
+to the size of the offset: `validUntil: "2026-10-10T01:00:00+02:00"` (23:00
+UTC) still reads as active at 23:30 UTC. Fixing it changes behaviour under
+`"2"` and `"3"`, so it is tracked separately in
+[kontourai/surface#320](https://github.com/kontourai/surface/issues/320).
 
 ### Migrating from version 3
 
@@ -487,7 +496,12 @@ functions above. The CLI, console and MCP tools have no flag and derive under
 `"4"`.
 
 `now` is taken only as a `Date`; a string is refused under `"3"` and `"4"`, as
-it already was under `"3"`, so no caller's `now` handling changes.
+it already was under `"3"`. Every derivation entry point now refuses it with
+the same `RangeError: invalid now: …` (`buildTrustReport` and
+`deriveTrustSnapshot` used to throw a `TypeError`).
+
+The exported `StatusFunctionVersion` type gains `"4"`, so an exhaustive
+`switch` over it stops type-checking until it handles `"4"`.
 
 Times the report shows are read the same way as the status function reads
 them: under `"4"` a claim's `freshness.expiresAt` is omitted when the expiry
@@ -495,6 +509,12 @@ them: under `"4"` a claim's `freshness.expiresAt` is omitted when the expiry
 timestamp, so a claim never shows `stale` beside a future expiry the status
 function could not read, and the governing verified event for freshness and
 for the unevaluable-validity gap is chosen in the version `"4"` event order.
+When the claim's own `expiresAt` is not a timestamp, or a `ttlSeconds` window
+cannot be evaluated (an invalid `ttlSeconds`, or a verification time that is
+not a timestamp), the report carries the blocking `unevaluable-validity-rule`
+gap naming the value, its `freshness_breach` gap says the claim is treated as
+stale because its validity could not be evaluated, and the console explains
+it as "Validity could not be evaluated" rather than as outdated evidence.
 
 ## Migration expectation
 
