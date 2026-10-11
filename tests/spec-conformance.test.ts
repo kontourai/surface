@@ -7,8 +7,10 @@
  * under every status function version the vector applies to.
  *
  * A vector with a `statusFunctionVersions` array applies only to the versions
- * it lists; a vector without one applies to every version. Both supported
- * versions ("2" and "3") are run.
+ * it lists; a vector without one applies to every version. Every supported
+ * version ("2", "3" and "4") is run. Vectors are derived without validation,
+ * which is the specification's "format assertion off": several vectors carry
+ * non-`date-time` strings on purpose.
  *
  * Vectors are derived from `vector.input` as published. `validateTrustBundle`
  * is Surface's stricter read contract (referential integrity, validity-rule
@@ -70,9 +72,35 @@ function derive(vector: SpecTestVector, version: StatusFunctionVersion): Record<
  * vector leaving or joining this list is a contract change, not a test detail.
  */
 const VALIDATION_REFUSALS: Record<string, RegExp> = {
+  "sf-authority-window-before-v4.json": /expiresAt must be an ISO-8601 UTC date-time/,
+  "sf-unparseable-event-time.json": /createdAt must be an ISO-8601 UTC date-time/,
   "sf-v3-dangling-policy-id.json": /references unknown policy policy\.does-not-exist/,
   "sf-v3-derivation-ceiling.json": /derives from unknown claim claim\.ceiling\.not-in-bundle/,
-  "sf-v3-unevaluable-validity.json": /durationDays must be a finite number/,
+  "sf-v3-unevaluable-validity.json": /expiresAt must be an ISO-8601 UTC date-time/,
+  "sf-v4-authority-window.json": /observedAt must be an ISO-8601 UTC date-time/,
+  "sf-v4-timestamp-forms.json": /expiresAt must be an ISO-8601 UTC date-time/,
+};
+
+/**
+ * Unversioned vectors (added in hachure 0.18.0) that Surface's version "2"
+ * does not meet, with the claims it derives differently. Surface's "2" is
+ * kept exactly as it was so records resolved under it re-derive unchanged:
+ * it compares authority-trace bounds as ISO strings and orders an unparseable
+ * event time as NaN, which Hachure's "2" never did. Pinned literally, so a
+ * change to Surface's "2" or to the vectors is visible here.
+ */
+const SURFACE_V2_DIVERGENCES: Record<string, string[]> = {
+  "sf-authority-window-before-v4.json": ["claim.before-v4.unparseable-event-after-1969", "claim.before-v4.unparseable-valid-from"],
+  "sf-authority-window-instants.json": [
+    "claim.revoked-at.no-millis-equal",
+    "claim.revoked-at.offset-later",
+    "claim.valid-from.no-millis-equal",
+    "claim.valid-from.offset-earlier",
+    "claim.valid-from.offset-later",
+    "claim.valid-until.event-no-millis-equal",
+    "claim.valid-until.offset-earlier",
+  ],
+  "sf-unparseable-event-time.json": ["claim.event-time.unparseable-listed-first"],
 };
 
 /**
@@ -87,19 +115,25 @@ const V3_VECTORS_ALREADY_MET_UNDER_V2 = new Set([
   "sf-v3-invalidation-nonterminal.json",
 ]);
 
-test("hachure package ships the post-0.17 status vectors", () => {
-  // Pinned literally (conformance/manifest.json L2 vectorCount at hachure 0.17.0).
-  assert.equal(vectorFiles.length, 19, `found: ${vectorFiles.join(", ")}`);
+test("hachure package ships the post-0.18 status vectors", () => {
+  // Pinned literally (conformance/manifest.json L2 vectorCount at hachure 0.18.0).
+  assert.equal(vectorFiles.length, 25, `found: ${vectorFiles.join(", ")}`);
   assert.equal(vectorFiles.filter((name) => name.startsWith("sf-v3-")).length, 8);
+  assert.deepEqual(vectorFiles.filter((name) => name.startsWith("sf-v4-")), [
+    "sf-v4-authority-window.json",
+    "sf-v4-exact-instants.json",
+    "sf-v4-timestamp-forms.json",
+  ]);
+  assert.ok(vectorFiles.includes("sf-authority-window-before-v4.json"));
   assert.ok(vectorFiles.includes("sf-runtime-observation-required.json"));
   // The schemaVersion 9 vectors (hachure 0.17.0) run under every version.
   assert.ok(vectorFiles.includes("sf-inconclusive-evidence.json"));
   assert.ok(vectorFiles.includes("sf-basis-fields-inert.json"));
 });
 
-test("statusFunctionVersion is '3' and '2' stays selectable", () => {
-  assert.equal(statusFunctionVersion, "3");
-  assert.deepEqual([...supportedStatusFunctionVersions], ["2", "3"]);
+test("statusFunctionVersion is '4'; '3' and '2' stay selectable", () => {
+  assert.equal(statusFunctionVersion, "4");
+  assert.deepEqual([...supportedStatusFunctionVersions], ["2", "3", "4"]);
 });
 
 test("implementation statusFunctionVersion matches the hachure spec package", async () => {
@@ -113,7 +147,7 @@ test("an unsupported statusFunctionVersion is refused, not defaulted", async () 
   const vector = await loadVector("sf-verified-commit.json");
   assert.throws(
     () => buildTrustReport(vector.input as TrustBundle, { now: new Date(vector.now), statusFunctionVersion: "1" as StatusFunctionVersion }),
-    /unsupported statusFunctionVersion "1"; supported: 2, 3/,
+    /unsupported statusFunctionVersion "1"; supported: 2, 3, 4/,
   );
 });
 
@@ -140,6 +174,11 @@ for (const version of supportedStatusFunctionVersions) {
       }
 
       const actual = derive(vector, version);
+      if (version === "2" && fileName in SURFACE_V2_DIVERGENCES) {
+        const differing = Object.keys(expected).filter((claimId) => actual[claimId] !== expected[claimId]).sort();
+        assert.deepEqual(differing, SURFACE_V2_DIVERGENCES[fileName], `${fileName}: Surface v2 divergences changed`);
+        return;
+      }
       for (const [claimId, expectedStatus] of Object.entries(expected)) {
         assert.ok(claimId in actual, `${fileName}: expected claim ${claimId} not found in report`);
         assert.equal(

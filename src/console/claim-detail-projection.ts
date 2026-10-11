@@ -102,6 +102,8 @@ export interface SurfaceConsoleClaimDetail {
 }
 
 const GAP_KIND_LABEL: Record<string, string> = {
+  freshness: "Freshness",
+  validity: "Claim validity",
   setup: "Setup issue",
   config: "Configuration issue",
   workflow: "Workflow incomplete",
@@ -163,7 +165,10 @@ export function buildClaimDetail(
 
 /** `metadata.source` of a derived transparency gap, or "". */
 function gapSource(gap: Record<string, unknown>): string {
-  return isRecord(gap.metadata) ? stringValue(gap.metadata.source) : "";
+  const source = isRecord(gap.metadata) ? stringValue(gap.metadata.source) : "";
+  // The unevaluable-validity gap carries no source under status function "3".
+  if (!source && stringValue(gap.id).endsWith(".gap.unevaluable-validity-rule")) return "validity.unevaluable";
+  return source;
 }
 
 /**
@@ -196,6 +201,9 @@ function statusGuidance(status: string, evidenceCount: number, transparencyGaps:
     return evidenceCount === 0
       ? "This claim has never been evaluated — no evidence has been collected yet."
       : "Evidence exists but trust status could not be determined from it.";
+  }
+  if (status === "stale" && transparencyGaps.some((gap) => gapSource(gap) === "validity.unevaluable")) {
+    return "This claim's validity could not be evaluated, so it is treated as stale. See the gap below for the value that could not be read.";
   }
   const messages: Record<string, string> = {
     assumed: "This claim depends on an explicit assumption. Review the assumption before relying on downstream conclusions.",
@@ -250,7 +258,7 @@ function buildGaps(
 
   return merged.map(({ record, typeKey }) => {
     const message = stringValue(record.message);
-    const classified = classifyGap(typeKey, message, gapSource(record));
+    const classified = classifyGap(typeKey, message, gapSource(record), record);
     const gap: SurfaceConsoleClaimDetailGap = {
       kind: classified.kind,
       kindLabel: GAP_KIND_LABEL[classified.kind] ?? classified.kind,
@@ -266,7 +274,12 @@ function buildGaps(
   });
 }
 
-function classifyGap(gapType: string, message: string, source = ""): { kind: string; title: string; hint: string | null } {
+function classifyGap(
+  gapType: string,
+  message: string,
+  source = "",
+  record: Record<string, unknown> = {},
+): { kind: string; title: string; hint: string | null } {
   if (gapType === "provenance_gap") {
     if (message.includes("Missing required evidence")) {
       return {
@@ -282,6 +295,16 @@ function classifyGap(gapType: string, message: string, source = ""): { kind: str
     };
   }
   if (gapType === "policy_violation") {
+    if (source === "validity.unevaluable") {
+      // The claim's own expiresAt / ttlSeconds window (named in metadata), or
+      // else the policy's validity rule, is what could not be evaluated.
+      const ownWindow = isRecord(record.metadata) && typeof record.metadata.validityWindow === "string";
+      return {
+        kind: ownWindow ? "validity" : "policy",
+        title: "Validity could not be evaluated",
+        hint: "A time or rule the claim's validity depends on could not be read, so the claim is treated as stale rather than verified. Fix the value named above (for example write times as RFC 3339 with an offset, such as 2027-01-01T00:00:00Z) and re-derive.",
+      };
+    }
     if (source === "policy.requiresNothing") {
       return {
         kind: "policy",
@@ -314,6 +337,16 @@ function classifyGap(gapType: string, message: string, source = ""): { kind: str
       kind: "policy",
       title: "Policy requirement not met",
       hint: "The claim does not satisfy the requirements of its policy. Check what the policy requires and whether the producer is configured to meet those requirements.",
+    };
+  }
+  if (gapType === "freshness_breach") {
+    // Only the gap derivation emits for a stale claim says the verification is
+    // stale; a producer-supplied freshness hint is a concern, not a verdict.
+    const derived = stringValue(record.id).endsWith(".gap.freshness-breach");
+    return {
+      kind: "freshness",
+      title: derived ? "Verification is stale" : "Freshness concern",
+      hint: null,
     };
   }
   if (gapType === "attestation_actor_missing") {

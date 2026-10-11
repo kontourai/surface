@@ -18,7 +18,8 @@ import {
 } from "./claim-evaluation.js";
 import { partitionEvidenceBySupport } from "./evidence-support.js";
 import { resolvePolicyForClaim } from "./policy-resolver.js";
-import { applyVerifiedStaleness, claimIntrinsicExpiry, deriveTrustStatus, verifiedBranchEvent } from "./status.js";
+import { parseTimestamp } from "./timestamp.js";
+import { applyVerifiedStaleness, claimIntrinsicExpiry, sortEventsMostRecentFirstV4, deriveTrustStatus, verifiedBranchEvent } from "./status.js";
 import { resolveStatusFunctionVersion, type StatusFunctionVersion } from "./status-function-version.js";
 
 const TRANSPARENCY_GAP_TYPES: TransparencyGapType[] = [
@@ -163,19 +164,39 @@ export function foldClaim(input: ClaimFoldInput): ClaimFoldResult {
     eventsFolded,
     eventsTotal: input.events.length,
     fromCheckpoint: canShortCircuit,
-    freshnessForStatus: (status) => freshnessForClaim(input.claim, input.allEvents, status, input.now),
+    freshnessForStatus: (status) => freshnessForClaim(input.claim, input.allEvents, status, input.now, statusFunctionVersion),
   };
 }
 
-function governingVerifiedEvent(claimId: string, events: VerificationEvent[]): VerificationEvent | undefined {
-  return events
-    .filter((event) => event.claimId === claimId && event.status === "verified")
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0];
+/**
+ * The latest `verified` event, in the event order of the status function
+ * version: under "4" exact instants with an unevaluable `createdAt` oldest.
+ */
+function governingVerifiedEvent(claimId: string, events: VerificationEvent[], version: StatusFunctionVersion): VerificationEvent | undefined {
+  const verified = events.filter((event) => event.claimId === claimId && event.status === "verified");
+  if (version === "4") return sortEventsMostRecentFirstV4(verified)[0];
+  return verified.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0];
 }
 
-function freshnessForClaim(claim: Claim, events: VerificationEvent[], status: TrustStatus, now: Date): ClaimFreshness {
-  const governing = governingVerifiedEvent(claim.id, events);
-  const intrinsic = claimIntrinsicExpiry(governing, claim);
+/**
+ * Version "4": the claim-intrinsic expiry for display, read with the v4
+ * timestamp reader, so a time the status function cannot evaluate (and so
+ * derives `stale`) is never shown as a future expiry. Whole milliseconds.
+ */
+function claimIntrinsicExpiryV4(event: VerificationEvent | undefined, claim: Claim): number | undefined {
+  if (typeof claim.expiresAt === "string" && claim.expiresAt.length > 0) {
+    return parseTimestamp(claim.expiresAt)?.epochMilliseconds;
+  }
+  if (typeof claim.ttlSeconds === "number" && Number.isFinite(claim.ttlSeconds)) {
+    const anchor = parseTimestamp(event?.verifiedAt ?? event?.createdAt ?? claim.updatedAt);
+    return anchor === undefined ? undefined : anchor.epochMilliseconds + claim.ttlSeconds * 1000;
+  }
+  return undefined;
+}
+
+function freshnessForClaim(claim: Claim, events: VerificationEvent[], status: TrustStatus, now: Date, version: StatusFunctionVersion): ClaimFreshness {
+  const governing = governingVerifiedEvent(claim.id, events, version);
+  const intrinsic = version === "4" ? claimIntrinsicExpiryV4(governing, claim) : claimIntrinsicExpiry(governing, claim);
   const freshness: ClaimFreshness = {
     asOf: now.toISOString(),
     stale: status === "stale",
@@ -371,6 +392,7 @@ function deriveTransparencyGaps(input: {
     }
   }
 
+  const unevaluableValidityGap = deriveUnevaluableValidityGap(input);
   if (input.status === "stale") {
     transparencyGaps.push({
       id: `${input.claim.id}.gap.freshness-breach`,
@@ -378,7 +400,11 @@ function deriveTransparencyGaps(input: {
       type: "freshness_breach",
       severity: input.claim.impactLevel ?? input.policy.impactLevel,
       ...materialityFromClaim(input.claim),
-      message: "Claim verification is stale under its verification policy.",
+      // Under "4" say why when the window could not be evaluated; "3" and "2"
+      // keep their message.
+      message: input.statusFunctionVersion === "4" && unevaluableValidityGap
+        ? "Claim verification is treated as stale because its validity could not be evaluated."
+        : "Claim verification is stale under its verification policy.",
       evidenceIds: input.entailingEvidence.map((item) => item.id),
       policyId: input.policy.id,
       blocking: true,
@@ -386,7 +412,6 @@ function deriveTransparencyGaps(input: {
     });
   }
 
-  const unevaluableValidityGap = deriveUnevaluableValidityGap(input);
   if (unevaluableValidityGap) transparencyGaps.push(unevaluableValidityGap);
 
   // Check-type evidence satisfies a policy requirement only by reporting a
@@ -444,6 +469,31 @@ function deriveTransparencyGaps(input: {
 }
 
 /**
+ * Version "4": why the claim's own validity window (`expiresAt`, else
+ * `ttlSeconds`) cannot be evaluated, or undefined when it can or is absent.
+ * Mirrors Step 4a: `expiresAt` must be a timestamp; `ttlSeconds` must be a
+ * finite non-negative number counted from a verification time that is one.
+ */
+function unevaluableIntrinsicWindowV4(claim: Claim, events: VerificationEvent[]): string | undefined {
+  if (claim.expiresAt !== undefined) {
+    return parseTimestamp(claim.expiresAt) === undefined
+      ? `Claim validity cannot be evaluated because expiresAt (${JSON.stringify(claim.expiresAt)}) is not an RFC 3339 timestamp with an offset.`
+      : undefined;
+  }
+  if (claim.ttlSeconds === undefined) return undefined;
+  const ttl: unknown = claim.ttlSeconds;
+  if (typeof ttl !== "number" || !Number.isFinite(ttl) || ttl < 0) {
+    return "Claim validity cannot be evaluated because ttlSeconds is missing or invalid.";
+  }
+  const latest = sortEventsMostRecentFirstV4(events.filter((event) => event.claimId === claim.id))[0];
+  if (latest?.status !== "verified") return undefined;
+  const verifiedAt = latest.verifiedAt ?? latest.createdAt;
+  return parseTimestamp(verifiedAt) === undefined
+    ? `Claim validity cannot be evaluated because the verification time (${JSON.stringify(verifiedAt)}) is not an RFC 3339 timestamp with an offset.`
+    : undefined;
+}
+
+/**
  * Status function "3" derives `stale` for a verified claim whose validity rule
  * cannot be evaluated; "2" leaves such rules outside its output contract. This
  * snapshot projection names the unevaluable rule and blocks on it under either
@@ -460,7 +510,17 @@ function deriveUnevaluableValidityGap(input: {
   const rule = input.policy.validityRule as { kind?: unknown; durationDays?: unknown };
   let message: string | undefined;
 
-  if (rule.kind === "commit") {
+  // Version "4": the claim's own validity window comes first (Step 4a), and a
+  // time it cannot read makes the claim stale. Name that cause, so the claim
+  // is not explained as outdated or failed. Gated on "4": the "3" and "2"
+  // projections are unchanged.
+  const intrinsic = input.statusFunctionVersion === "4" ? unevaluableIntrinsicWindowV4(input.claim, input.events) : undefined;
+  if (intrinsic !== undefined) {
+    message = intrinsic;
+  } else if (input.statusFunctionVersion === "4" && (input.claim.expiresAt !== undefined || input.claim.ttlSeconds !== undefined)) {
+    // An evaluable intrinsic window overrides the policy rule, which is then not read.
+    return undefined;
+  } else if (rule.kind === "commit") {
     if (typeof input.claim.currentIntegrityRef !== "string" || input.claim.currentIntegrityRef.length === 0) {
       message = "Commit validity cannot be evaluated because currentIntegrityRef is missing.";
     }
@@ -473,9 +533,12 @@ function deriveUnevaluableValidityGap(input: {
     ) {
       message = "Duration validity cannot be evaluated because durationDays is missing or invalid.";
     } else {
-      const verifiedEvent = governingVerifiedEvent(input.claim.id, input.events);
+      const verifiedEvent = governingVerifiedEvent(input.claim.id, input.events, input.statusFunctionVersion);
       const verifiedAt = verifiedEvent?.verifiedAt ?? verifiedEvent?.createdAt;
-      if (verifiedEvent !== undefined && (verifiedAt === undefined || !Number.isFinite(Date.parse(verifiedAt)))) {
+      // Version "4" reads the time as an RFC 3339 timestamp, as Step 4a does.
+      const evaluable = (value: string): boolean =>
+        input.statusFunctionVersion === "4" ? parseTimestamp(value) !== undefined : Number.isFinite(Date.parse(value));
+      if (verifiedEvent !== undefined && (verifiedAt === undefined || !evaluable(verifiedAt))) {
         message = "Duration validity cannot be evaluated because the verification timestamp is invalid.";
       }
     }
@@ -484,6 +547,21 @@ function deriveUnevaluableValidityGap(input: {
   }
 
   if (!message) return undefined;
+  if (intrinsic !== undefined) {
+    return {
+      id: `${input.claim.id}.gap.unevaluable-validity-rule`,
+      claimId: input.claim.id,
+      type: "policy_violation",
+      severity: input.claim.impactLevel ?? input.policy.impactLevel,
+      ...materialityFromClaim(input.claim),
+      message,
+      evidenceIds: input.evidence.map((item) => item.id),
+      policyId: input.policy.id,
+      blocking: true,
+      createdAt: input.now.toISOString(),
+      metadata: { source: "validity.unevaluable", validityWindow: input.claim.expiresAt !== undefined ? "expiresAt" : "ttlSeconds" },
+    };
+  }
   return {
     id: `${input.claim.id}.gap.unevaluable-validity-rule`,
     claimId: input.claim.id,

@@ -45,8 +45,8 @@ importers:
         specifier: 0.28.1
         version: 0.28.1
       hachure:
-        specifier: ^0.17.0
-        version: 0.17.0
+        specifier: ^0.18.0
+        version: 0.18.0
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
@@ -907,8 +907,8 @@ packages:
     resolution: {integrity: sha512-4YKLShbDKG+k52lJvH9shup7UYAX7pW+EA8c/4dx3RQFqCmORHl9gjJrM9vUljuTml/haTJgWYPd1G1MWmrm8Q==}
     hasBin: true
 
-  hachure@0.17.0:
-    resolution: {integrity: sha512-8Na28DfgQLd4NDDtG45Z1R8fGvmt5xy2gsBpP72MLSEhDUTNLfDWLKwyCUnG81N0+PbUnQiZQqfY5txhbFloAA==}
+  hachure@0.18.0:
+    resolution: {integrity: sha512-DnSAPYqUxPEehNLPBoFoRNGeCNo8JdeB/Yy6DOFBPJg5zo+WcxZSx5RiR/Y6BQCSPkOqS7H5DYwTcx5H9lBTmw==}
     hasBin: true
 
   has-symbols@1.1.0:
@@ -2143,7 +2143,7 @@ snapshots:
 
   hachure@0.15.0: {}
 
-  hachure@0.17.0: {}
+  hachure@0.18.0: {}
 
   has-symbols@1.1.0: {}
 

@@ -23,7 +23,8 @@ import type {
 } from "./types.js";
 import type { CanonicalClaimTarget } from "./canonical.js";
 import { canonicalClaimKey } from "./canonical.js";
-import { checkAuthorityActive, deriveClaimStatus, resolveStatusFunctionVersion, type StatusFunctionVersion } from "./status.js";
+import { checkAuthorityActive, deriveClaimStatus, resolveStatusFunctionVersion, sortEventsMostRecentFirstV4, type StatusFunctionVersion } from "./status.js";
+import { instantFromDate, laterThanWindowEnd, parseTimestamp } from "./timestamp.js";
 import { weakerStatus } from "./derivation.js";
 import {
   isObject,
@@ -391,7 +392,7 @@ function evaluateDerivationRuleInternal(
     const statusOk = claimReq.acceptedStatuses.includes(status);
     const predicateOk = claimReq.predicate ? evaluatePredicate(claimReq.predicate, claim.value) : true;
     const freshnessOk = claimReq.fresherThan
-      ? evaluateFresherThan(claim, bundle.events, claimReq.fresherThan.days, now)
+      ? evaluateFresherThan(claim, bundle.events, claimReq.fresherThan.days, now, statusFunctionVersion)
       : true;
     const authorityOk = claimReq.requiresActiveAuthority
       ? evaluateActiveAuthority(claim, bundle.events, bundle.authorityTrace ?? [], now)
@@ -444,7 +445,9 @@ function evaluateFresherThan(
   events: VerificationEvent[],
   days: number,
   now: Date,
+  statusFunctionVersion: StatusFunctionVersion,
 ): boolean {
+  if (statusFunctionVersion === "4") return evaluateFresherThanV4(claim, events, days, now);
   // Find the most recent event that marks the claim as verified (or a positive verifying status)
   const verifyingStatuses = new Set(["verified", "assumed"]);
   const claimEvents = events
@@ -464,6 +467,24 @@ function evaluateFresherThan(
 
   const windowMs = days * 24 * 60 * 60 * 1000;
   return now.getTime() - authTimestamp <= windowMs;
+}
+
+/**
+ * Version "4": the same rule, with times read as the status function reads
+ * them. Events are ordered by exact instant with an unevaluable `createdAt`
+ * oldest, so the latest verification is the latest one whose time can be
+ * read; a verification time that is not a timestamp is not fresh. The window
+ * is compared exactly.
+ */
+function evaluateFresherThanV4(claim: Claim, events: VerificationEvent[], days: number, now: Date): boolean {
+  if (typeof days !== "number" || !Number.isFinite(days) || days < 0) return false;
+  const nowInstant = instantFromDate(now);
+  if (nowInstant === undefined) return false;
+  const verifyingStatuses = new Set(["verified", "assumed"]);
+  const latest = sortEventsMostRecentFirstV4(events.filter((e) => e.claimId === claim.id && verifyingStatuses.has(e.status)))[0];
+  const at = parseTimestamp(latest ? latest.verifiedAt ?? latest.createdAt : claim.updatedAt);
+  if (at === undefined) return false;
+  return !laterThanWindowEnd(nowInstant, at, days, 86_400_000);
 }
 
 function evaluatePredicate(

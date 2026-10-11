@@ -87,8 +87,10 @@ export interface SnapshotEventProbe {
 export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnapshotOptions = {}): TrustSnapshotDerivation {
   const now = options.now ?? new Date();
   const statusFunctionVersion = resolveStatusFunctionVersion(options.statusFunctionVersion);
-  if (statusFunctionVersion !== "2" && !Number.isFinite(now.getTime())) {
-    // Status function "3": no freshness comparison is possible with an invalid `now`.
+  if (statusFunctionVersion !== "2" && !(now instanceof Date && Number.isFinite(now.getTime()))) {
+    // From status function "3": no freshness comparison is possible with an
+    // invalid `now`. A value that is not a Date (a string, even a valid
+    // timestamp) is refused the same way, as deriveClaimStatus refuses it.
     throw new RangeError(`invalid now: ${String(now)}`);
   }
   // The status function never reads `inconclusive`; only the schema keeps such

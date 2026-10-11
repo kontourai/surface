@@ -289,7 +289,7 @@ derivation under the same version. Any other value is refused.
 
 Version `"2"` is selectable through the library API only. The `surface` CLI
 (`report`, `console` and the other commands), the console read model and the
-MCP tools always derive under the current version, `"3"`, and have no flag for
+MCP tools always derive under the current version, `"4"`, and have no flag for
 it.
 
 `explainClaim` now reports each evidence item's own `passing` value when the
@@ -372,6 +372,149 @@ version and are never status inputs.
 `validateTrustBundle` does not apply the profile: a malformed profile value
 does not make a bundle invalid. [`examples/basis-annotations-bundle.json`](../../examples/basis-annotations-bundle.json)
 adapts Hachure's worked example of both versions' fields.
+
+## Status function version 4
+
+Hachure 0.18 defines status function version `"4"` and makes it Hachure's
+default. **From Surface 6.0 it is Surface's default too.** Versions `"3"` and
+`"2"` stay selectable and derive exactly as they did in 5.1 (see
+[Migrating from version 3](#migrating-from-version-3)).
+
+Version `"4"` defines what a time is and compares times exactly:
+
+- **Timestamps.** Every time the fold reads must be an RFC 3339 `date-time`:
+  offset required (`Z` or `±hh:mm`), lower-case `t` / `z` accepted, a date that
+  exists in the calendar, any number of fractional digits, and second `60` only
+  at `23:59:60` UTC (read as the next instant). A date with no time, a time with
+  no offset, hour `24`, a space separator and prose are not timestamps.
+  `parseTimestamp(value)` and `compareTimestamps(a, b)` are exported; an instant
+  is `{ epochMilliseconds, subMillisecond }`, never a floating-point number.
+- **Exact comparison.** Instants compare to every fractional digit:
+  `00:00:00.0009Z` is later than `00:00:00.0001Z`, and `00:00:00.5Z` equals
+  `00:00:00.500000Z`.
+- **Step 1 fails closed on unevaluable times.** A `resolvesDispute` event whose
+  `createdAt` is absent or not a timestamp is not a resolution (it stays an
+  ordinary event). A trace whose `revokedAt`, `validFrom` or `validUntil` is
+  present but not a timestamp is not active; one evaluable active trace is
+  enough, and an unevaluable one does not veto it. A blocking failure whose
+  `observedAt` is absent or not a timestamp counts as newer than the
+  resolution.
+- **Ordering.** An event whose `createdAt` is not a timestamp sorts before every
+  event with a timestamp, so it is the latest event only when no event has one.
+- **Exact validity windows.** `ttlSeconds × 1000` and `durationDays × 86 400 000`
+  are exact decimal products of the number's shortest round-trip form, and "now
+  is later than the window's end" is evaluated without rounding. `durationDays:
+  0.7` is exactly 60 480 000 ms. An `expiresAt` or verification time that is not
+  a timestamp derives `stale`.
+- **`now`.** Surface takes `now` only as a `Date` (whole milliseconds). Under
+  `"3"` and `"4"` any other value, including a string that is a valid
+  timestamp, is refused with `RangeError: invalid now: …` by every derivation
+  entry point (`buildTrustReport`, `deriveTrustSnapshot`, `deriveClaimStatus`,
+  `deriveTrustStatus`, and the inquiry functions through them), so no string
+  `now` is ever read loosely. Before 6.0, `buildTrustReport` and
+  `deriveTrustSnapshot` failed on a string `now` with a `TypeError` instead.
+
+A status can strengthen under `"4"` as well as weaken: refusing an unevaluable
+resolution to `rejected` lets a later `verified` event stand. Hachure's
+"Migrating from version 3" table in `status-function.md` lists every bundle
+shape that derives differently. A schema-valid bundle whose times are all RFC
+3339 with an offset, at most three fractional digits and no leap second, and
+whose `now` is not within a millisecond of a validity window's end, derives the
+same under `"3"` and `"4"`.
+
+The conformance vectors run through `buildTrustReport` under every version they
+apply to, without validation (several carry non-`date-time` strings on
+purpose). Three unversioned vectors added in Hachure 0.18
+(`sf-authority-window-instants`, `sf-unparseable-event-time`, and part of
+`sf-authority-window-before-v4`) are not met by Surface's `"2"`, which compares
+authority-trace bounds as ISO strings and orders an unparseable event time as
+`NaN`. Surface keeps `"2"` unchanged so records resolved under it re-derive as
+they were; the differing claims are pinned in `tests/spec-conformance.test.ts`.
+
+Derivation rules' `fresherThan` predicate follows the version: under `"4"` it
+reads times as the status function does (the latest verification whose time
+is a timestamp; a verification time that is not one is not fresh) and compares
+the window exactly; under `"3"` and `"2"` it reads them with `Date.parse`, as
+before.
+
+The `requiresActiveAuthority` predicate (`checkAuthorityActive`) is not
+versioned and compares trace bounds with `now` **as strings**, under every
+version. A bound written with a non-`Z` offset can therefore be misread by up
+to the size of the offset: `validUntil: "2026-10-10T01:00:00+02:00"` (23:00
+UTC) still reads as active at 23:30 UTC. Fixing it changes behaviour under
+`"2"` and `"3"`, so it is tracked separately in
+[kontourai/surface#320](https://github.com/kontourai/surface/issues/320).
+
+### Migrating from version 3
+
+**What changes.** A bundle derives a different status under `"4"` only when
+it has one of these shapes (Hachure's `status-function.md`, "Migrating from
+version 3", lists them with the vectors that cover each):
+
+| Bundle shape | `"3"` | `"4"` |
+|---|---|---|
+| A resolution whose every matching trace has a `revokedAt`, `validFrom` or `validUntil` that is present but not a timestamp | resolution status | as if there were no resolution (either way) |
+| A resolution whose `createdAt` is absent or not a timestamp | resolution status | as if there were no resolution (either way) |
+| A blocking failure whose `observedAt` is absent or not a timestamp, after a resolution | resolution status | `disputed` |
+| A time the fold reads that `Date.parse` accepts but is not RFC 3339 with an offset (date only, no offset, hour 24, impossible day, space separator, prose) | read as `Date.parse` reads it | unevaluable: the event sorts first, the window is `stale`, the bound does not hold |
+| A leap second (`23:59:60` UTC) | unevaluable | the next instant |
+| Two compared times less than a millisecond apart | equal | ordered exactly (either way) |
+| An unevaluable `createdAt` on a claim with an event at or before the epoch | the unevaluable event is later | it is earlier (either way) |
+| `now` within a millisecond of a validity window's end, where the floating-point sum does not land exactly on it | floating-point comparison | exact comparison (either way) |
+
+"Either way" means the status can strengthen as well as weaken: refusing an
+unevaluable resolution to `rejected` lets a later `verified` event stand.
+
+**Which claims flip.** A bundle whose times are all RFC 3339 with an offset, at
+most three fractional digits and no leap second, and whose `now` is not within
+a millisecond of a validity window's end, derives the same under `"3"` and
+`"4"`. `validateTrustBundle` refuses dates without a time, times without an
+offset, lower-case or space separators, prose, out-of-range offsets and leap
+seconds, so a validated bundle can flip only through sub-millisecond times,
+hour `24`, an impossible calendar day (`2027-02-30`), or a `now` within a
+millisecond of a validity window's end. The other shapes reach derivation only
+from unvalidated or typed input. Measured when this default moved: every bundle in
+this repository's examples, conformance cases and fixtures (17 bundles, 35
+claims) and 54 committed delivery trust bundles from three consumer
+repositories (771 claims) derive identically under `"3"` and `"4"`. The
+Hachure 0.18 conformance vectors, which exist to exercise these shapes, flip 42
+of 143 claims.
+
+**Who is affected.** Any caller that derives without passing
+`statusFunctionVersion`: `buildTrustReport`, `deriveTrustSnapshot`,
+`deriveClaimStatus`, `deriveTrustStatus`, `resolveInquiry`,
+`evaluateDerivationRule`, the `surface` CLI, the console and the MCP tools. A
+reader that re-derives a stored bundle under the version stamped on it (for
+example a bundle whose `source` records `statusFunctionVersion=2`, or an
+inquiry record, report or checkpoint that records its version) is unaffected:
+each version still derives exactly as before. A report, inquiry record and
+checkpoint record `"4"`, and a checkpoint made under `"3"` is not reused by a
+derivation under `"4"`.
+
+**Keeping the old behaviour.** Pass `statusFunctionVersion: "3"` to the
+functions above. The CLI, console and MCP tools have no flag and derive under
+`"4"`.
+
+`now` is taken only as a `Date`; a string is refused under `"3"` and `"4"`, as
+it already was under `"3"`. Every derivation entry point now refuses it with
+the same `RangeError: invalid now: …` (`buildTrustReport` and
+`deriveTrustSnapshot` used to throw a `TypeError`).
+
+The exported `StatusFunctionVersion` type gains `"4"`, so an exhaustive
+`switch` over it stops type-checking until it handles `"4"`.
+
+Times the report shows are read the same way as the status function reads
+them: under `"4"` a claim's `freshness.expiresAt` is omitted when the expiry
+(or the verification time a `ttlSeconds` window starts from) is not a
+timestamp, so a claim never shows `stale` beside a future expiry the status
+function could not read, and the governing verified event for freshness and
+for the unevaluable-validity gap is chosen in the version `"4"` event order.
+When the claim's own `expiresAt` is not a timestamp, or a `ttlSeconds` window
+cannot be evaluated (an invalid `ttlSeconds`, or a verification time that is
+not a timestamp), the report carries the blocking `unevaluable-validity-rule`
+gap naming the value, its `freshness_breach` gap says the claim is treated as
+stale because its validity could not be evaluated, and the console explains
+it as "Validity could not be evaluated" rather than as outdated evidence.
 
 ## Migration expectation
 

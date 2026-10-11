@@ -10,9 +10,9 @@ Generate a report from a native Surface trust input:
 surface report --input examples/surface-example-bundle.json --format summary
 ```
 
-Every command derives under the current status function version (`"3"`). There
-is no flag to select version `"2"`; that is available through the library API
-only (see [Status function version 3](schema-versioning.md#status-function-version-3)).
+Every command derives under the current status function version (`"4"`). There
+is no flag to select version `"3"` or `"2"`; those are available through the
+library API only (see [Status function version 4](schema-versioning.md#status-function-version-4)).
 
 Generate reports from a custom registered adapter:
 
