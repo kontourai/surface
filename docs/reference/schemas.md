@@ -103,8 +103,8 @@ Schema: `schemas/verification-policy.schema.json`
 
 ### Validity-rule evaluation
 
-`statusFunctionVersion` is `"3"` (Hachure 0.16) by default; `"4"` (Hachure
-0.18) and `"2"` are selectable. See
+`statusFunctionVersion` is `"4"` (Hachure 0.18) by default; `"3"` (Hachure
+0.16) and `"2"` are selectable. See
 [Status function version 3](schema-versioning.md#status-function-version-3) and
 [Status function version 4](schema-versioning.md#status-function-version-4) for
 every difference. Under `"3"` a verified claim whose validity rule cannot be

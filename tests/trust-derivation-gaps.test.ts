@@ -84,7 +84,7 @@ test("a required check that reports no result derives proposed and produces one 
     assert.equal(gap.blocking, true);
     assert.deepEqual(gap.evidenceIds, ["evidence.result-less"]);
   }
-  assert.equal(buildTrustReport(input, { now }).statusFunctionVersion, "3");
+  assert.equal(buildTrustReport(input, { now }).statusFunctionVersion, "4");
 });
 
 test("a required method carried only by a result-less check is reported as unqualified, not missing", () => {

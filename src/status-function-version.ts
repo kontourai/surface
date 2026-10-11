@@ -1,9 +1,8 @@
 /**
- * Status function versions this package can evaluate. Version "3" is the
- * default. Version "4" (Hachure 0.18: RFC 3339 timestamps compared exactly,
- * unevaluable times fail closed) is selectable and is Hachure's default; this
- * package has not moved its default to it. Version "2" stays selectable so a
- * record resolved under it (`InquiryRecord.statusFunctionVersion`, a stored
+ * Status function versions this package can evaluate. Version "4" (Hachure
+ * 0.18: RFC 3339 timestamps compared exactly, unevaluable times fail closed)
+ * is the default, as it is Hachure's. Versions "3" and "2" stay selectable so a
+ * record resolved under them (`InquiryRecord.statusFunctionVersion`, a stored
  * report or checkpoint) can be re-derived with the algorithm that produced it.
  */
 export const supportedStatusFunctionVersions = ["2", "3", "4"] as const;
@@ -15,7 +14,7 @@ export type StatusFunctionVersion = (typeof supportedStatusFunctionVersions)[num
  * Increment when the algorithm changes so that stored InquiryRecords can be
  * re-evaluated if needed.
  */
-export const statusFunctionVersion: StatusFunctionVersion = "3";
+export const statusFunctionVersion: StatusFunctionVersion = "4";
 
 export function isSupportedStatusFunctionVersion(value: unknown): value is StatusFunctionVersion {
   return (supportedStatusFunctionVersions as readonly unknown[]).includes(value);

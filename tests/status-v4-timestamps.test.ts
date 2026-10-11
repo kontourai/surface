@@ -119,3 +119,20 @@ test("a 0.7-day window is exactly 60,480,000 ms under v4, and v3 matches the ref
     assert.equal(status("3", ms), hachure.deriveStatuses(bundle, at(ms), { statusFunctionVersion: "3" })["claim.a"]);
   }
 });
+
+test("a report's freshness never shows an expiry the v4 status function cannot read", () => {
+  const bundle = verifiedBundle();
+  const withExpiry = (expiresAt: string): TrustBundle => ({ ...bundle, claims: [{ ...bundle.claims[0]!, expiresAt }] });
+  const freshness = (input: TrustBundle, version: StatusFunctionVersion) => {
+    const claim = buildTrustReport(input, { now: new Date("2026-06-01T12:00:00.000Z"), statusFunctionVersion: version }).claims[0]!;
+    return { status: claim.status, expiresAt: claim.freshness?.expiresAt };
+  };
+  // Date only: not a v4 timestamp, so v4 derives stale and shows no expiry;
+  // v3 reads it with Date.parse, as it always has.
+  assert.deepEqual(freshness(withExpiry("2027-04-01"), "4"), { status: "stale", expiresAt: undefined });
+  assert.deepEqual(freshness(withExpiry("2027-04-01"), "3"), { status: "verified", expiresAt: "2027-04-01T00:00:00.000Z" });
+  // An RFC 3339 expiry with an offset is shown as the same instant under both.
+  for (const version of ["3", "4"] as const) {
+    assert.deepEqual(freshness(withExpiry("2027-04-01T02:00:00+02:00"), version), { status: "verified", expiresAt: "2027-04-01T00:00:00.000Z" });
+  }
+});

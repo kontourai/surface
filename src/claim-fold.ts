@@ -19,7 +19,7 @@ import {
 import { partitionEvidenceBySupport } from "./evidence-support.js";
 import { resolvePolicyForClaim } from "./policy-resolver.js";
 import { parseTimestamp } from "./timestamp.js";
-import { applyVerifiedStaleness, claimIntrinsicExpiry, deriveTrustStatus, verifiedBranchEvent } from "./status.js";
+import { applyVerifiedStaleness, claimIntrinsicExpiry, sortEventsMostRecentFirstV4, deriveTrustStatus, verifiedBranchEvent } from "./status.js";
 import { resolveStatusFunctionVersion, type StatusFunctionVersion } from "./status-function-version.js";
 
 const TRANSPARENCY_GAP_TYPES: TransparencyGapType[] = [
@@ -164,19 +164,39 @@ export function foldClaim(input: ClaimFoldInput): ClaimFoldResult {
     eventsFolded,
     eventsTotal: input.events.length,
     fromCheckpoint: canShortCircuit,
-    freshnessForStatus: (status) => freshnessForClaim(input.claim, input.allEvents, status, input.now),
+    freshnessForStatus: (status) => freshnessForClaim(input.claim, input.allEvents, status, input.now, statusFunctionVersion),
   };
 }
 
-function governingVerifiedEvent(claimId: string, events: VerificationEvent[]): VerificationEvent | undefined {
-  return events
-    .filter((event) => event.claimId === claimId && event.status === "verified")
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0];
+/**
+ * The latest `verified` event, in the event order of the status function
+ * version: under "4" exact instants with an unevaluable `createdAt` oldest.
+ */
+function governingVerifiedEvent(claimId: string, events: VerificationEvent[], version: StatusFunctionVersion): VerificationEvent | undefined {
+  const verified = events.filter((event) => event.claimId === claimId && event.status === "verified");
+  if (version === "4") return sortEventsMostRecentFirstV4(verified)[0];
+  return verified.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0];
 }
 
-function freshnessForClaim(claim: Claim, events: VerificationEvent[], status: TrustStatus, now: Date): ClaimFreshness {
-  const governing = governingVerifiedEvent(claim.id, events);
-  const intrinsic = claimIntrinsicExpiry(governing, claim);
+/**
+ * Version "4": the claim-intrinsic expiry for display, read with the v4
+ * timestamp reader, so a time the status function cannot evaluate (and so
+ * derives `stale`) is never shown as a future expiry. Whole milliseconds.
+ */
+function claimIntrinsicExpiryV4(event: VerificationEvent | undefined, claim: Claim): number | undefined {
+  if (typeof claim.expiresAt === "string" && claim.expiresAt.length > 0) {
+    return parseTimestamp(claim.expiresAt)?.epochMilliseconds;
+  }
+  if (typeof claim.ttlSeconds === "number" && Number.isFinite(claim.ttlSeconds)) {
+    const anchor = parseTimestamp(event?.verifiedAt ?? event?.createdAt ?? claim.updatedAt);
+    return anchor === undefined ? undefined : anchor.epochMilliseconds + claim.ttlSeconds * 1000;
+  }
+  return undefined;
+}
+
+function freshnessForClaim(claim: Claim, events: VerificationEvent[], status: TrustStatus, now: Date, version: StatusFunctionVersion): ClaimFreshness {
+  const governing = governingVerifiedEvent(claim.id, events, version);
+  const intrinsic = version === "4" ? claimIntrinsicExpiryV4(governing, claim) : claimIntrinsicExpiry(governing, claim);
   const freshness: ClaimFreshness = {
     asOf: now.toISOString(),
     stale: status === "stale",
@@ -474,7 +494,7 @@ function deriveUnevaluableValidityGap(input: {
     ) {
       message = "Duration validity cannot be evaluated because durationDays is missing or invalid.";
     } else {
-      const verifiedEvent = governingVerifiedEvent(input.claim.id, input.events);
+      const verifiedEvent = governingVerifiedEvent(input.claim.id, input.events, input.statusFunctionVersion);
       const verifiedAt = verifiedEvent?.verifiedAt ?? verifiedEvent?.createdAt;
       // Version "4" reads the time as an RFC 3339 timestamp, as Step 4a does.
       const evaluable = (value: string): boolean =>

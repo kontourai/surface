@@ -131,19 +131,16 @@ test("hachure package ships the post-0.18 status vectors", () => {
   assert.ok(vectorFiles.includes("sf-basis-fields-inert.json"));
 });
 
-test("statusFunctionVersion is '3'; '4' and '2' are selectable", () => {
-  assert.equal(statusFunctionVersion, "3");
+test("statusFunctionVersion is '4'; '3' and '2' stay selectable", () => {
+  assert.equal(statusFunctionVersion, "4");
   assert.deepEqual([...supportedStatusFunctionVersions], ["2", "3", "4"]);
 });
 
-test("implementation supports every hachure status function version; its default deliberately lags the spec's", async () => {
+test("implementation statusFunctionVersion matches the hachure spec package", async () => {
   // @ts-expect-error — the hachure package ships no TypeScript types
   const spec = (await import("hachure")) as { statusFunctionVersion: string; supportedStatusFunctionVersions: string[] };
+  assert.equal(statusFunctionVersion, spec.statusFunctionVersion);
   assert.deepEqual([...supportedStatusFunctionVersions], [...spec.supportedStatusFunctionVersions]);
-  // Hachure 0.18.0 defaults to "4". Moving Surface's default changes derived
-  // statuses for existing bundles, so it is a separate, major-release decision.
-  assert.equal(spec.statusFunctionVersion, "4");
-  assert.equal(statusFunctionVersion, "3");
 });
 
 test("an unsupported statusFunctionVersion is refused, not defaulted", async () => {

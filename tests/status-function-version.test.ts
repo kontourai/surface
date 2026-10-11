@@ -45,23 +45,28 @@ const bundle: TrustBundle = { schemaVersion: 5, source: "status-function-version
 
 test("the report records the version it was derived with", () => {
   const current = buildTrustReport(bundle, { now });
-  assert.deepEqual([current.statusFunctionVersion, current.claims[0]!.status], ["3", "proposed"]);
+  assert.deepEqual([current.statusFunctionVersion, current.claims[0]!.status], ["4", "proposed"]);
+  const v3 = buildTrustReport(bundle, { now, statusFunctionVersion: "3" });
+  assert.deepEqual([v3.statusFunctionVersion, v3.claims[0]!.status], ["3", "proposed"]);
   const v2 = buildTrustReport(bundle, { now, statusFunctionVersion: "2" });
   assert.deepEqual([v2.statusFunctionVersion, v2.claims[0]!.status], ["2", "verified"]);
 });
 
 test("a checkpoint is served only to a derivation under the version that produced it", () => {
-  const served = (since: ReturnType<typeof checkpointFromReport>, statusFunctionVersion: "2" | "3") => {
+  const served = (since: ReturnType<typeof checkpointFromReport>, statusFunctionVersion: "2" | "3" | "4") => {
     const probes: boolean[] = [];
     const report = buildTrustReport(bundle, { now, since, statusFunctionVersion, instrument: (probe) => probes.push(probe.fromCheckpoint) });
     return { fromCheckpoint: probes, status: report.claims[0]!.status };
   };
   const v2Checkpoint = checkpointFromReport(buildTrustReport(bundle, { now, statusFunctionVersion: "2" }));
-  const v3Checkpoint = checkpointFromReport(buildTrustReport(bundle, { now }));
+  const v3Checkpoint = checkpointFromReport(buildTrustReport(bundle, { now, statusFunctionVersion: "3" }));
+  const v4Checkpoint = checkpointFromReport(buildTrustReport(bundle, { now }));
 
   // Same version: the claim is served from the checkpoint.
   assert.deepEqual(served(v2Checkpoint, "2"), { fromCheckpoint: [true], status: "verified" });
   assert.deepEqual(served(v3Checkpoint, "3"), { fromCheckpoint: [true], status: "proposed" });
+  assert.deepEqual(served(v4Checkpoint, "4"), { fromCheckpoint: [true], status: "proposed" });
+  assert.deepEqual(served(v4Checkpoint, "3"), { fromCheckpoint: [false], status: "proposed" });
   // Across versions the checkpoint's `verified` must not leak into a v3 report, or the reverse.
   assert.deepEqual(served(v2Checkpoint, "3"), { fromCheckpoint: [false], status: "proposed" });
   assert.deepEqual(served(v3Checkpoint, "2"), { fromCheckpoint: [false], status: "verified" });
@@ -73,7 +78,7 @@ test("resolveInquiry records the selected version and answers under it", () => {
     target: { subjectType: "service", subjectId: "svc", fieldOrBehavior: "ratelimit" },
   };
   const current = resolveInquiry(bundle, inquiry, { now });
-  assert.deepEqual([current.statusFunctionVersion, current.answer?.status], ["3", "proposed"]);
+  assert.deepEqual([current.statusFunctionVersion, current.answer?.status], ["4", "proposed"]);
   const v2 = resolveInquiry(bundle, inquiry, { now, statusFunctionVersion: "2" });
   assert.deepEqual([v2.statusFunctionVersion, v2.answer?.status], ["2", "verified"]);
 });
@@ -105,6 +110,6 @@ test("an evaluation computed for another version is refused rather than trusted"
   assert.equal(evaluateClaimEvidence({ entailingEvidence: [resultLess], policy }).requirementUnmet, true);
   assert.throws(
     () => deriveTrustStatus({ claim, evidence: [resultLess], policy, events: [verified], now, evaluation }),
-    /computed for statusFunctionVersion 2, not 3/,
+    /computed for statusFunctionVersion 2, not 4/,
   );
 });
