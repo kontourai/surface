@@ -4,7 +4,10 @@
 
 [![npm version](https://img.shields.io/npm/v/%40kontourai%2Fsurface)](https://www.npmjs.com/package/@kontourai/surface)
 [![CI](https://github.com/kontourai/surface/actions/workflows/ci.yml/badge.svg)](https://github.com/kontourai/surface/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/docs-kontourai.github.io-blue)](https://kontourai.github.io/surface/)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
+[Documentation](https://kontourai.github.io/surface/) · [kontourai.io/surface](https://kontourai.io/surface/)
 
 Surface is the shared transparency foundation for Kontour products and any product that needs to show its work. It connects evidence provenance to claims, derives portable trust state — verified, stale, disputed, missing — and makes that state inspectable through reports, a local console, APIs, and agent-readable resources. See [Vision](docs/product/vision.md) for the fuller narrative.
 
