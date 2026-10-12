@@ -548,9 +548,13 @@ function evaluateActiveAuthority(
   const statusBearing = new Set<string>([
     "verified", "assumed", "stale", "rejected", "disputed", "superseded",
   ]);
-  const claimEvents = events
-    .filter((e) => e.claimId === claim.id && statusBearing.has(e.status))
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  const bearing = events.filter((e) => e.claimId === claim.id && statusBearing.has(e.status));
+  // Version "4" picks the latest event the way the status function orders
+  // events: exact instants, an unevaluable `createdAt` oldest. "3" and "2"
+  // keep their `Date.parse` order.
+  const claimEvents = statusFunctionVersion === "4"
+    ? sortEventsMostRecentFirstV4(bearing)
+    : bearing.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
 
   if (claimEvents.length === 0) return false;
 

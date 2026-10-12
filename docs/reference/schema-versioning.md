@@ -462,8 +462,24 @@ Both now compare instants, read the way each version reads times:
   already did; `checkAuthorityActive` reports an unreadable `revokedAt` as
   `revoked` and an unreadable `validUntil` or `validFrom` as `expired`.
 - **`"3"` and `"2"`**: `Date.parse`, to the millisecond, as Hachure's reference
-  implementation of both versions does. A bound that cannot be parsed excludes
-  nothing (Step 1 under `"3"` already behaved this way).
+  implementation of both versions does. A bound that cannot be parsed
+  (including an empty string) excludes nothing (Step 1 under `"3"` already
+  behaved this way).
+
+A derivation rule's `requiresActiveAuthority` uses the rule's status function
+version. `checkAuthorityActive` is exported; a direct caller that passes no
+`statusFunctionVersion` gets the current version's rules (`"4"`). For a bound
+that is not an RFC 3339 timestamp that is stricter than before: a date-only
+`validUntil: "2026-12-31"` read as `active` on 6.0.0 (as a string it sorted
+after `now`) and reads as `expired` now. This narrows a fail-open on input
+`validateTrustBundle` already refuses (it requires bounds to be ISO-8601
+date-times). Pass `{ statusFunctionVersion: "3" }` for the `Date.parse`
+reading.
+
+Under `"4"`, `requiresActiveAuthority` also picks the actor of the latest
+status-bearing event in the version `"4"` event order (exact instants, an
+unevaluable `createdAt` oldest), as `fresherThan` already did; under `"3"` and
+`"2"` it keeps the `Date.parse` order.
 
 This is a fix, not a new version, so it changes results under `"2"` and `"3"`
 for these shapes only, and only where a trace bound decides the outcome:
@@ -480,8 +496,12 @@ compared with derives as before. Measured when this shipped: 109 committed
 delivery trust bundles from eight repositories carry no authority trace at all,
 and every report under `"3"` and `"4"`, over those bundles, this repository's
 corpus, the Hachure 0.18 vectors and the specification's examples, is
-byte-identical to 6.0.0. Only four Hachure vectors derive differently under
-`"2"`, as the specification expects.
+byte-identical to 6.0.0. Under `"2"`, four Hachure vector reports change:
+`sf-authority-window-instants` and `sf-authority-window-before-v4`, which now
+match the specification's `"2"` results, and `sf-v4-authority-window` and
+`sf-v4-exact-instants`, which apply to `"4"` only, so the specification defines
+no `"2"` result for them (they still derive differently from their `"4"`
+expectations under `"2"`).
 
 ### Migrating from version 3
 

@@ -619,7 +619,10 @@ export function checkAuthorityActive(
   }
   // Under "4" an unreadable bound fails closed; under "3" and "2" it excludes nothing.
   const fails = (bound: string | undefined, failing: (o: number) => boolean): boolean => {
-    if (!bound) return false;
+    // Absent is no bound. A present but empty string is unreadable: under "4"
+    // it fails closed, under "3" and "2" Date.parse("") is NaN and excludes
+    // nothing, as Step 1 reads it.
+    if (bound === undefined) return false;
     const o = order(bound);
     return o === undefined ? version === "4" : failing(o);
   };

@@ -161,3 +161,69 @@ for (const [name, bounds, expected] of STEP1_CASES) {
     }
   });
 }
+
+// ── review round: version pass-through, v4 actor order, empty bounds ──────
+
+const ALL_STATUSES = ["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected", "revoked"] as const;
+
+function authorityRule(): DerivationRule {
+  return {
+    id: "rule.authority", version: "1", name: "Authority", target: { subjectType: "t", subjectId: "t", fieldOrBehavior: "t" },
+    requirements: [{ target: { subjectType: "service", subjectId: "svc", fieldOrBehavior: "deploy" }, acceptedStatuses: [...ALL_STATUSES], requiresActiveAuthority: true }],
+    combinator: "all",
+  };
+}
+
+function authorityBundle(events: Array<{ actor: string; createdAt: string }>, traces: AuthorityTrace[]): TrustBundle {
+  return {
+    schemaVersion: 5,
+    source: "authority-instants-inquiry",
+    claims: [{ id: "claim.a", subjectType: "service", subjectId: "svc", claimType: "grant", fieldOrBehavior: "deploy", value: true, createdAt: "2026-10-01T00:00:00Z", updatedAt: "2026-10-01T00:00:00Z" }],
+    evidence: [],
+    policies: [],
+    events: events.map((e, i) => ({ id: `event.${i}`, claimId: "claim.a", status: "verified" as const, actor: e.actor, method: "review", evidenceIds: [], createdAt: e.createdAt })),
+    authorityTrace: traces,
+  };
+}
+
+test("requiresActiveAuthority reads a bound with the rule's own status function version", () => {
+  // A date-only validUntil: Date.parse reads it (still active under "3" and
+  // "2"); it is not a v4 timestamp, so under "4" the trace is not active.
+  const bundle = authorityBundle([{ actor: "reviewer", createdAt: "2026-10-01T00:00:00Z" }], [trace({ validUntil: "2026-12-31" })]);
+  const now = new Date("2026-10-10T12:00:00.000Z");
+  const satisfied = (statusFunctionVersion: StatusFunctionVersion) => evaluateDerivationRule(authorityRule(), bundle, { now, statusFunctionVersion }).satisfied;
+  assert.equal(satisfied("2"), true);
+  assert.equal(satisfied("3"), true);
+  assert.equal(satisfied("4"), false);
+  // Called directly with no version, checkAuthorityActive uses the current one ("4").
+  assert.equal(checkAuthorityActive("reviewer", bundle.authorityTrace!, now), "expired");
+});
+
+test("requiresActiveAuthority under v4 checks the actor of the latest event v4 can read", () => {
+  // B verified at a readable time and holds no trace; A's event at hour 24 is
+  // not a v4 timestamp, so B's is the latest. Date.parse reads hour 24 as the
+  // next day, so "3" and "2" still pick A.
+  const bundle = authorityBundle(
+    [{ actor: "actor.b", createdAt: "2026-10-09T12:00:00Z" }, { actor: "reviewer", createdAt: "2026-10-09T24:00:00Z" }],
+    [trace({})],
+  );
+  const now = new Date("2026-10-10T12:00:00.000Z");
+  assert.equal(evaluateDerivationRule(authorityRule(), bundle, { now, statusFunctionVersion: "4" }).satisfied, false);
+  assert.equal(evaluateDerivationRule(authorityRule(), bundle, { now, statusFunctionVersion: "3" }).satisfied, true);
+  assert.equal(evaluateDerivationRule(authorityRule(), bundle, { now, statusFunctionVersion: "2" }).satisfied, true);
+});
+
+test("an empty bound is unreadable: it fails closed under v4 and excludes nothing under v3 and v2, in both paths", () => {
+  for (const [bounds, v4] of [[{ revokedAt: "" }, "revoked"], [{ validUntil: "" }, "expired"], [{ validFrom: "" }, "expired"]] as const) {
+    assert.equal(checkAuthorityActive("reviewer", [trace(bounds)], NOW, { statusFunctionVersion: "4" }), v4, JSON.stringify(bounds));
+    for (const statusFunctionVersion of ["2", "3"] as const) {
+      assert.equal(checkAuthorityActive("reviewer", [trace(bounds)], NOW, { statusFunctionVersion }), "active", `v${statusFunctionVersion} ${JSON.stringify(bounds)}`);
+    }
+  }
+  // Step 1 agrees: under "4" the resolver's trace is not active, so the later rejection stands.
+  const bundle = resolutionBundle({ revokedAt: "" });
+  for (const [statusFunctionVersion, expected] of [["4", "rejected"], ["3", "verified"], ["2", "verified"]] as const) {
+    assert.equal(buildTrustReport(structuredClone(bundle), { now: STEP1_NOW, statusFunctionVersion }).claims[0]!.status, expected, `v${statusFunctionVersion}`);
+    assert.equal(hachure.deriveStatuses(bundle, STEP1_NOW, { statusFunctionVersion })["claim.grant"], expected, `reference v${statusFunctionVersion}`);
+  }
+});
