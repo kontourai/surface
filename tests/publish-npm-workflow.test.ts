@@ -39,6 +39,73 @@ test("publish workflow always runs the fail-closed verifier without absolute has
   assert.match(verificationStep, /working-directory: surface/);
 });
 
+async function ancestryStepScript(): Promise<string> {
+  const workflow = await readFile(workflowPath, "utf8");
+  const block = workflow.match(/- name: Verify Tagged Commit Is On Main\n {8}run: \|\n((?: {10}.*\n|\n)+)/)?.[1];
+  assert.ok(block, "the publish workflow must keep its main-ancestry step");
+  return block.split("\n").map((line) => line.slice(10)).join("\n");
+}
+
+function git(cwd: string, ...args: string[]): string {
+  const result = spawnSync("git", ["-c", "user.name=t", "-c", "user.email=t@example.invalid", "-c", "init.defaultBranch=main", "-c", "core.hooksPath=/dev/null", ...args], { cwd, encoding: "utf8" });
+  assert.equal(result.status, 0, `git ${args.join(" ")}: ${result.stderr}`);
+  return result.stdout.trim();
+}
+
+test("main-ancestry check does not shallow-fetch main", async () => {
+  const commands = (await ancestryStepScript()).split("\n").filter((line) => !line.trimStart().startsWith("#"));
+  assert.equal(commands.some((line) => /git fetch\b.*--depth/.test(line)), false);
+});
+
+// A dispatch checks out the tag with full history; main has usually moved on
+// since. The step must accept a tagged commit behind main's tip and still
+// refuse one that is not on main at all.
+test("main-ancestry check accepts a tag behind main's tip and refuses one off main", async () => {
+  const script = await ancestryStepScript();
+  const directory = await mkdtemp(join(tmpdir(), "surface-ancestry-"));
+  try {
+    const origin = join(directory, "origin.git");
+    const seed = join(directory, "seed");
+    git(directory, "init", "-q", "--bare", origin);
+    git(directory, "init", "-q", seed);
+    for (const n of ["1", "2"]) {
+      await writeFile(join(seed, "f"), n);
+      git(seed, "add", "f");
+      git(seed, "commit", "-qm", n);
+    }
+    git(seed, "tag", "v1.0.0");
+    git(seed, "checkout", "-q", "-b", "side");
+    await writeFile(join(seed, "f"), "side");
+    git(seed, "commit", "-qam", "side");
+    git(seed, "tag", "v9.9.9");
+    git(seed, "checkout", "-q", "main");
+    for (const n of ["3", "4"]) {
+      await writeFile(join(seed, "f"), n);
+      git(seed, "commit", "-qam", n);
+    }
+    git(seed, "push", "-q", origin, "main", "v1.0.0", "v9.9.9");
+
+    const runAt = (tag: string) => {
+      const workspace = join(directory, `ws-${tag}`);
+      git(directory, "clone", "-q", `file://${origin}`, workspace);
+      git(workspace, "checkout", "-q", tag);
+      return spawnSync("bash", ["-e", "-c", script], {
+        cwd: workspace,
+        encoding: "utf8",
+        env: { ...process.env, GITHUB_SHA: git(workspace, "rev-parse", "HEAD") },
+      });
+    };
+
+    const behindTip = runAt("v1.0.0");
+    assert.equal(behindTip.status, 0, behindTip.stderr);
+    const offMain = runAt("v9.9.9");
+    assert.equal(offMain.status, 1);
+    assert.match(offMain.stderr, /is not reachable/);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("present Sigstore bundle invokes cosign with the release workflow identity", async () => {
   const directory = await mkdtemp(join(tmpdir(), "surface-sigstore-present-"));
   try {
