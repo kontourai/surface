@@ -108,9 +108,9 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.2",
-    "@kontourai/flow-agents": "5.5.0",
-    "@kontourai/forage": "1.0.0",
-    "@kontourai/lookout": "0.8.1",
+    "@kontourai/flow-agents": "6.5.2",
+    "@kontourai/forage": "1.0.1",
+    "@kontourai/lookout": "0.8.8",
     "@kontourai/survey": "^8.0.0",
     "@kontourai/ui": "^1.17.1",
     "@modelcontextprotocol/ext-apps": "1.7.5",
