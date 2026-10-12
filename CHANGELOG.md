@@ -1,5 +1,18 @@
 # Changelog
 
+## [6.0.1](https://github.com/kontourai/surface/compare/v6.0.0...v6.0.1) (2026-10-12)
+
+
+### Fixes
+
+* **status:** compare authority-trace bounds as instants under every version ([#331](https://github.com/kontourai/surface/issues/331)) ([d8ce470](https://github.com/kontourai/surface/commit/d8ce470798a810ce4925bf84d4c7dbaedec305ee)), closes [#320](https://github.com/kontourai/surface/issues/320)
+
+
+### Documentation
+
+* adopt docs-kit gate, Pages site, and MCP bundle ([#326](https://github.com/kontourai/surface/issues/326)) ([2f2dc43](https://github.com/kontourai/surface/commit/2f2dc4315aad6b06dc924f13f8773692c99eea87))
+* extras adds. docs:check and docs:build now pin efe0bfe, the org pin. ([2f2dc43](https://github.com/kontourai/surface/commit/2f2dc4315aad6b06dc924f13f8773692c99eea87))
+
 ## [6.0.0](https://github.com/kontourai/surface/compare/v5.1.0...v6.0.0) (2026-10-11)
 
 
