@@ -57,8 +57,14 @@ function statusUnder(bundle: TrustBundle, version: StatusFunctionVersion, at: Da
   return buildTrustReport(bundle, { now: at, statusFunctionVersion: version }).claims[0]!.status;
 }
 
-function referenceStatus(bundle: TrustBundle, at: Date = now): string {
-  return hachure.deriveStatuses(bundle, at, { statusFunctionVersion: "3" })["claim.grant"]!;
+function referenceStatus(bundle: TrustBundle, at: Date = now, version: StatusFunctionVersion = "3"): string {
+  return hachure.deriveStatuses(bundle, at, { statusFunctionVersion: version })["claim.grant"]!;
+}
+
+/** Since 6.0.1 (#320) version "2" compares the trace window as instants too, as Hachure's "2" does. */
+function assertV2MatchesReference(bundle: TrustBundle, expected: string): void {
+  assert.equal(statusUnder(bundle, "2"), expected, "version 2 compares trace bounds as instants");
+  assert.equal(referenceStatus(bundle, now, "2"), expected);
 }
 
 test("baseline: an active trace lets the resolution govern; a trace revoked earlier does not", () => {
@@ -71,7 +77,7 @@ test("revokedAt at the event's instant, spelled without milliseconds, revokes th
   const bundle = resolutionBundle({ revokedAt: "2026-05-02T00:00:00Z" });
   assert.equal(statusUnder(bundle, "3"), "rejected");
   assert.equal(referenceStatus(bundle), "rejected");
-  assert.equal(statusUnder(bundle, "2"), "verified", "version 2 keeps the string comparison it shipped with");
+  assertV2MatchesReference(bundle, "rejected");
 });
 
 test("validUntil an hour before the event, spelled in another offset, has expired", () => {
@@ -79,7 +85,7 @@ test("validUntil an hour before the event, spelled in another offset, has expire
   const bundle = resolutionBundle({ validUntil: "2026-05-02T01:00:00.000+02:00" });
   assert.equal(statusUnder(bundle, "3"), "rejected");
   assert.equal(referenceStatus(bundle), "rejected");
-  assert.equal(statusUnder(bundle, "2"), "verified");
+  assertV2MatchesReference(bundle, "rejected");
 });
 
 test("the reverse spelling no longer excludes a trace that is still active", () => {
@@ -88,13 +94,13 @@ test("the reverse spelling no longer excludes a trace that is still active", () 
   const bundle = resolutionBundle({ validUntil: "2026-05-01T23:30:00.000-02:00" });
   assert.equal(statusUnder(bundle, "3"), "verified");
   assert.equal(referenceStatus(bundle), "verified");
-  assert.equal(statusUnder(bundle, "2"), "rejected");
+  assertV2MatchesReference(bundle, "verified");
 
   // validFrom half an hour after the event, spelled so that it sorts before it.
   const notYet = resolutionBundle({ validFrom: "2026-05-01T22:30:00.000-02:00" });
   assert.equal(statusUnder(notYet, "3"), "rejected");
   assert.equal(referenceStatus(notYet), "rejected");
-  assert.equal(statusUnder(notYet, "2"), "verified");
+  assertV2MatchesReference(notYet, "rejected");
 });
 
 test("an event with an unparseable createdAt sorts as the oldest, so a dated event governs", () => {

@@ -546,31 +546,19 @@ function isResolutionAuthorized(
 ): boolean {
   if (authorityTrace.length === 0) return false;
   if (version === "4") return isResolutionAuthorizedV4(event, authorityTrace);
-  if (version !== "2") {
-    // "3": the trace window is compared as instants, so two spellings of the
-    // same instant (`...00Z` / `...00.000Z`, or another UTC offset) agree. A
-    // bound that is present but unparseable never excludes the trace; that is
-    // the specification's reference behaviour, kept so results match it.
-    const at = parseInstant(event.createdAt) as number;
-    return authorityTrace.some((trace) => {
-      if (trace.actorRef !== event.actor) return false;
-      if (trace.revokedAt !== undefined && (parseInstant(trace.revokedAt) as number) <= at) return false;
-      if (trace.validFrom !== undefined && (parseInstant(trace.validFrom) as number) > at) return false;
-      if (trace.validUntil !== undefined && (parseInstant(trace.validUntil) as number) < at) return false;
-      if (event.authorityRef !== undefined && trace.authorityRef !== event.authorityRef) return false;
-      return true;
-    });
-  }
-  // "2" compares the ISO strings, which misorders instants spelled differently.
+  // "3" and "2": the trace window is compared as instants read with
+  // `Date.parse`, so two spellings of the same instant (`...00Z` /
+  // `...00.000Z`, or another UTC offset) agree. A bound that is present but
+  // unparseable never excludes the trace (every comparison with NaN is false);
+  // that is the specification's reference behaviour for both versions, kept so
+  // results match it. Before 6.0.1, "2" compared the ISO strings, which
+  // misordered instants spelled differently (#320).
+  const at = parseInstant(event.createdAt) as number;
   return authorityTrace.some((trace) => {
-    // Actor must match
     if (trace.actorRef !== event.actor) return false;
-    // The trace must be active at the time of the decision (use event.createdAt as the moment)
-    const atDecision = event.createdAt;
-    if (trace.revokedAt && trace.revokedAt <= atDecision) return false;
-    if (trace.validFrom && trace.validFrom > atDecision) return false;
-    if (trace.validUntil && trace.validUntil < atDecision) return false;
-    // AuthorityRef must match if the event specifies one
+    if (trace.revokedAt !== undefined && (parseInstant(trace.revokedAt) as number) <= at) return false;
+    if (trace.validFrom !== undefined && (parseInstant(trace.validFrom) as number) > at) return false;
+    if (trace.validUntil !== undefined && (parseInstant(trace.validUntil) as number) < at) return false;
     if (event.authorityRef !== undefined && trace.authorityRef !== event.authorityRef) return false;
     return true;
   });
@@ -594,29 +582,61 @@ export type AuthorityCheckResult = "active" | "no-trace" | "expired" | "revoked"
  * `now`.  Returns the first problem encountered when no trace is valid.
  *
  * Precedence of failure reasons: revoked > expired > no-trace.
+ *
+ * Trace bounds are compared with `now` as instants, never as strings (#320).
+ * How a bound is read follows the status function version, as in Step 1:
+ * under "4" (the default) a bound must be an RFC 3339 timestamp, and one that
+ * is present but is not makes the trace not active (an unreadable `revokedAt`
+ * counts as revoked, an unreadable `validUntil` / `validFrom` as expired);
+ * under "3" and "2" a bound is read with `Date.parse`, and one that cannot be
+ * parsed excludes nothing.
  */
 export function checkAuthorityActive(
   actorRef: string,
   authorityTrace: AuthorityTrace[],
   now: Date,
+  options: { statusFunctionVersion?: StatusFunctionVersion } = {},
 ): AuthorityCheckResult {
+  const version = resolveStatusFunctionVersion(options.statusFunctionVersion);
   const actorTraces = authorityTrace.filter((t) => t.actorRef === actorRef);
   if (actorTraces.length === 0) return "no-trace";
 
-  const nowIso = now.toISOString();
+  // order(bound): negative when the bound is earlier than `now`, positive when
+  // later, 0 when equal; undefined when the bound cannot be read.
+  let order: (bound: string) => number | undefined;
+  if (version === "4") {
+    const nowInstant = instantFromDate(now) as TimestampInstant;
+    order = (bound) => {
+      const time = parseTimestamp(bound);
+      return time === undefined ? undefined : compareTimestamps(time, nowInstant);
+    };
+  } else {
+    const nowMs = now.getTime();
+    order = (bound) => {
+      const time = parseInstant(bound);
+      return time === undefined || !Number.isFinite(nowMs) ? undefined : Math.sign(time - nowMs);
+    };
+  }
+  // Under "4" an unreadable bound fails closed; under "3" and "2" it excludes nothing.
+  const fails = (bound: string | undefined, failing: (o: number) => boolean): boolean => {
+    if (!bound) return false;
+    const o = order(bound);
+    return o === undefined ? version === "4" : failing(o);
+  };
+
   let sawRevoked = false;
   let sawExpired = false;
 
   for (const trace of actorTraces) {
-    if (trace.revokedAt && trace.revokedAt <= nowIso) {
+    if (fails(trace.revokedAt, (o) => o <= 0)) {
       sawRevoked = true;
       continue;
     }
-    if (trace.validUntil && trace.validUntil < nowIso) {
+    if (fails(trace.validUntil, (o) => o < 0)) {
       sawExpired = true;
       continue;
     }
-    if (trace.validFrom && trace.validFrom > nowIso) {
+    if (fails(trace.validFrom, (o) => o > 0)) {
       // Not yet valid — treat as expired for UI purposes
       sawExpired = true;
       continue;
