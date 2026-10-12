@@ -226,7 +226,7 @@ any claim):
 | `ttlSeconds` negative or not finite; unparseable `expiresAt` | `verified` (or `stale`, by `now`, for a negative window) | `stale` |
 | A blocking failure and an unmet requirement together | `proposed` | `disputed` |
 | No event and no evidence, under a policy that requires nothing (any claim without a `proposed` / `assumed` baseline) | `proposed` | `unknown` |
-| A dispute-resolution event whose `AuthorityTrace` window (`revokedAt`, `validFrom`, `validUntil`) is spelled differently from the event time: no milliseconds, or another UTC offset | compared as strings, so the trace can read active when it is revoked or expired, or the reverse | compared as instants |
+| A dispute-resolution event whose `AuthorityTrace` window (`revokedAt`, `validFrom`, `validUntil`) is spelled differently from the event time: no milliseconds, or another UTC offset | compared as strings, so the trace can read active when it is revoked or expired, or the reverse (until 6.0.1; see [Authority-trace bounds compared as instants](#authority-trace-bounds-compared-as-instants-601)) | compared as instants |
 | An event whose `createdAt` cannot be parsed | order left to a NaN comparison | sorts as the oldest event |
 | Evaluation with an invalid `now` (any claim) | freshness checks pass | refused (`RangeError`) |
 
@@ -424,12 +424,14 @@ same under `"3"` and `"4"`.
 
 The conformance vectors run through `buildTrustReport` under every version they
 apply to, without validation (several carry non-`date-time` strings on
-purpose). Three unversioned vectors added in Hachure 0.18
-(`sf-authority-window-instants`, `sf-unparseable-event-time`, and part of
-`sf-authority-window-before-v4`) are not met by Surface's `"2"`, which compares
-authority-trace bounds as ISO strings and orders an unparseable event time as
-`NaN`. Surface keeps `"2"` unchanged so records resolved under it re-derive as
-they were; the differing claims are pinned in `tests/spec-conformance.test.ts`.
+purpose). Two unversioned vectors added in Hachure 0.18
+(`sf-unparseable-event-time`, and one claim of `sf-authority-window-before-v4`)
+are not met by Surface's `"2"`, which orders an event whose `createdAt` cannot
+be parsed by a `NaN` comparison. Surface keeps that unchanged so records
+resolved under `"2"` re-derive as they were; the differing claims are pinned in
+`tests/spec-conformance.test.ts`. (`sf-authority-window-instants` and the
+unparseable-bound claim of `sf-authority-window-before-v4` pass under `"2"`
+since 6.0.1; see [Authority-trace bounds compared as instants](#authority-trace-bounds-compared-as-instants-601).)
 
 Derivation rules' `fresherThan` predicate follows the version: under `"4"` it
 reads times as the status function does (the latest verification whose time
@@ -437,13 +439,69 @@ is a timestamp; a verification time that is not one is not fresh) and compares
 the window exactly; under `"3"` and `"2"` it reads them with `Date.parse`, as
 before.
 
-The `requiresActiveAuthority` predicate (`checkAuthorityActive`) is not
-versioned and compares trace bounds with `now` **as strings**, under every
-version. A bound written with a non-`Z` offset can therefore be misread by up
-to the size of the offset: `validUntil: "2026-10-10T01:00:00+02:00"` (23:00
-UTC) still reads as active at 23:30 UTC. Fixing it changes behaviour under
-`"2"` and `"3"`, so it is tracked separately in
-[kontourai/surface#320](https://github.com/kontourai/surface/issues/320).
+### Authority-trace bounds compared as instants (6.0.1)
+
+Before 6.0.1, two places compared an `AuthorityTrace`'s `revokedAt`,
+`validFrom` and `validUntil` as ISO strings rather than as instants
+([kontourai/surface#320](https://github.com/kontourai/surface/issues/320)):
+Step 1 of status function `"2"` (whether a dispute resolution's actor had an
+active trace at the resolution's `createdAt`), and the
+`requiresActiveAuthority` predicate of a derivation rule
+(`checkAuthorityActive`, compared with `now`) under every version. A bound
+written with a non-`Z` offset was misread by up to the size of the offset, in
+either direction: `validUntil: "2026-10-10T01:00:00+02:00"` (23:00 UTC) still
+read as active at 23:30 UTC. A bound with a different number of fractional
+digits than the time it was compared with was misread too: `"…T00:00:00Z"`
+sorts after `"…T00:00:00.000Z"`, so a trace revoked at that instant read as
+revoked later.
+
+Both now compare instants, read the way each version reads times:
+
+- **`"4"`** (the default): RFC 3339 timestamps, compared exactly. A bound that
+  is present but is not a timestamp makes the trace not active, as Step 1
+  already did; `checkAuthorityActive` reports an unreadable `revokedAt` as
+  `revoked` and an unreadable `validUntil` or `validFrom` as `expired`.
+- **`"3"` and `"2"`**: `Date.parse`, to the millisecond, as Hachure's reference
+  implementation of both versions does. A bound that cannot be parsed
+  (including an empty string) excludes nothing (Step 1 under `"3"` already
+  behaved this way).
+
+A derivation rule's `requiresActiveAuthority` uses the rule's status function
+version. `checkAuthorityActive` is exported; a direct caller that passes no
+`statusFunctionVersion` gets the current version's rules (`"4"`). For a bound
+that is not an RFC 3339 timestamp that is stricter than before: a date-only
+`validUntil: "2026-12-31"` read as `active` on 6.0.0 (as a string it sorted
+after `now`) and reads as `expired` now. This narrows a fail-open on input
+`validateTrustBundle` already refuses (it requires bounds to be ISO-8601
+date-times). Pass `{ statusFunctionVersion: "3" }` for the `Date.parse`
+reading.
+
+Under `"4"`, `requiresActiveAuthority` also picks the actor of the latest
+status-bearing event in the version `"4"` event order (exact instants, an
+unevaluable `createdAt` oldest), as `fresherThan` already did; under `"3"` and
+`"2"` it keeps the `Date.parse` order.
+
+This is a fix, not a new version, so it changes results under `"2"` and `"3"`
+for these shapes only, and only where a trace bound decides the outcome:
+
+| Bound shape | Path | Before | After |
+|---|---|---|---|
+| Non-`Z` offset (`+02:00`, `-05:00`, …) | Step 1 under `"2"`; `requiresActiveAuthority` under every version | compared as a string | compared as the instant it names |
+| Same instant with a different number of fractional digits than the compared time (`…:00Z` vs `…:00.000Z`) | the same | ordered by string | equal |
+| Present but unparseable | Step 1 under `"2"`; `requiresActiveAuthority` under `"2"`/`"3"` | ordered by string | excludes nothing |
+| Present but unparseable | `requiresActiveAuthority` under `"4"` | ordered by string | trace not active |
+
+Every bound written as `…Z` with the same fractional digits as the time it is
+compared with derives as before. Measured when this shipped: 109 committed
+delivery trust bundles from eight repositories carry no authority trace at all,
+and every report under `"3"` and `"4"`, over those bundles, this repository's
+corpus, the Hachure 0.18 vectors and the specification's examples, is
+byte-identical to 6.0.0. Under `"2"`, four Hachure vector reports change:
+`sf-authority-window-instants` and `sf-authority-window-before-v4`, which now
+match the specification's `"2"` results, and `sf-v4-authority-window` and
+`sf-v4-exact-instants`, which apply to `"4"` only, so the specification defines
+no `"2"` result for them (they still derive differently from their `"4"`
+expectations under `"2"`).
 
 ### Migrating from version 3
 

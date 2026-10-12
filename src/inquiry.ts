@@ -395,7 +395,7 @@ function evaluateDerivationRuleInternal(
       ? evaluateFresherThan(claim, bundle.events, claimReq.fresherThan.days, now, statusFunctionVersion)
       : true;
     const authorityOk = claimReq.requiresActiveAuthority
-      ? evaluateActiveAuthority(claim, bundle.events, bundle.authorityTrace ?? [], now)
+      ? evaluateActiveAuthority(claim, bundle.events, bundle.authorityTrace ?? [], now, statusFunctionVersion)
       : true;
     const corroborationOk = claimReq.corroboration
       ? evaluateCorroboration(bundle.evidence.filter((e) => e.claimId === claim.id), claimReq.corroboration.minActors)
@@ -542,19 +542,24 @@ function evaluateActiveAuthority(
   events: VerificationEvent[],
   authorityTrace: AuthorityTrace[],
   now: Date,
+  statusFunctionVersion: StatusFunctionVersion,
 ): boolean {
   // Statuses that indicate a meaningful verification actor
   const statusBearing = new Set<string>([
     "verified", "assumed", "stale", "rejected", "disputed", "superseded",
   ]);
-  const claimEvents = events
-    .filter((e) => e.claimId === claim.id && statusBearing.has(e.status))
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  const bearing = events.filter((e) => e.claimId === claim.id && statusBearing.has(e.status));
+  // Version "4" picks the latest event the way the status function orders
+  // events: exact instants, an unevaluable `createdAt` oldest. "3" and "2"
+  // keep their `Date.parse` order.
+  const claimEvents = statusFunctionVersion === "4"
+    ? sortEventsMostRecentFirstV4(bearing)
+    : bearing.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
 
   if (claimEvents.length === 0) return false;
 
   const actor = claimEvents[0].actor;
-  const result = checkAuthorityActive(actor, authorityTrace, now);
+  const result = checkAuthorityActive(actor, authorityTrace, now, { statusFunctionVersion });
   return result === "active";
 }
 

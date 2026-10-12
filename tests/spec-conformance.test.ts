@@ -83,23 +83,16 @@ const VALIDATION_REFUSALS: Record<string, RegExp> = {
 
 /**
  * Unversioned vectors (added in hachure 0.18.0) that Surface's version "2"
- * does not meet, with the claims it derives differently. Surface's "2" is
- * kept exactly as it was so records resolved under it re-derive unchanged:
- * it compares authority-trace bounds as ISO strings and orders an unparseable
- * event time as NaN, which Hachure's "2" never did. Pinned literally, so a
- * change to Surface's "2" or to the vectors is visible here.
+ * does not meet, with the claims it derives differently. Surface's "2" orders
+ * an event whose `createdAt` cannot be parsed by a NaN comparison, which
+ * Hachure's "2" never did, and keeps doing so so records resolved under it
+ * re-derive unchanged. Its authority-trace window is compared as instants
+ * since 6.0.1 (#320), so `sf-authority-window-instants` and the
+ * unparseable-bound claim of `sf-authority-window-before-v4` now pass.
+ * Pinned literally, so a change to Surface's "2" or to the vectors is visible.
  */
 const SURFACE_V2_DIVERGENCES: Record<string, string[]> = {
-  "sf-authority-window-before-v4.json": ["claim.before-v4.unparseable-event-after-1969", "claim.before-v4.unparseable-valid-from"],
-  "sf-authority-window-instants.json": [
-    "claim.revoked-at.no-millis-equal",
-    "claim.revoked-at.offset-later",
-    "claim.valid-from.no-millis-equal",
-    "claim.valid-from.offset-earlier",
-    "claim.valid-from.offset-later",
-    "claim.valid-until.event-no-millis-equal",
-    "claim.valid-until.offset-earlier",
-  ],
+  "sf-authority-window-before-v4.json": ["claim.before-v4.unparseable-event-after-1969"],
   "sf-unparseable-event-time.json": ["claim.event-time.unparseable-listed-first"],
 };
 
