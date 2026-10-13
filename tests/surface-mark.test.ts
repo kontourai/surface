@@ -4,16 +4,21 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-// The viewer and the badge must draw the Surface mark the installed
-// @kontourai/ui ships, path for path, so a revert to an older mark fails here.
+// The viewer, the badge and the Open Graph card must draw the Surface mark the
+// installed @kontourai/ui ships, element for element, so a revert to an older
+// mark fails here.
 
 function pathElements(svg: string): string[] {
   return svg.match(/<path\b[^>]*\/>/g) ?? [];
 }
 
+function shapeElements(svg: string): string[] {
+  return svg.match(/<(?:path|circle)\b[^>]*\/>/g) ?? [];
+}
+
 function firstMatch(html: string, pattern: RegExp, name: string): RegExpExecArray {
   const match = pattern.exec(html);
-  assert.ok(match, `the viewer page has no ${name}`);
+  assert.ok(match, `the page has no ${name}`);
   return match;
 }
 
@@ -45,4 +50,15 @@ test("the Built with Surface badge draws the installed Surface mark in one color
 
   assert.deepEqual(pathElements(badge), expected);
   assert.match(badge, /<g color="#eafff6" fill="none" stroke="currentColor"/);
+});
+
+test("the Open Graph card generator draws the installed Surface badge mark", async () => {
+  const expected = shapeElements(await readFile("node_modules/@kontourai/ui/icons/surface-badge.svg", "utf8"));
+  assert.ok(expected.length > 0, "the installed @kontourai/ui icons/surface-badge.svg has no shapes");
+  // Importing the generator does not write the card: it renders only when run directly.
+  const { renderOgImageHtml } = await import(pathToFileURL(resolve("scripts/generate-og-image.mjs")).href) as { renderOgImageHtml: () => string };
+  const html = renderOgImageHtml();
+
+  const [, mark] = firstMatch(html, /<div class="brand">\s*(<svg\b[\s\S]*?<\/svg>)/, "brand mark in the Open Graph card");
+  assert.deepEqual(shapeElements(mark), expected);
 });
