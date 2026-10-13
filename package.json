@@ -112,7 +112,7 @@
     "@kontourai/forage": "1.0.0",
     "@kontourai/lookout": "0.8.1",
     "@kontourai/survey": "^8.0.0",
-    "@kontourai/ui": "^1.17.1",
+    "@kontourai/ui": "^1.20.0",
     "@modelcontextprotocol/ext-apps": "1.7.5",
     "@modelcontextprotocol/server": "2.0.0",
     "@playwright/test": "^1.60.0",

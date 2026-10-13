@@ -1,18 +1,29 @@
 // The Trust Snapshot Viewer page, carried over from the pre-docs-kit site
 // builder (scripts/pages-site/viewer.mjs). docs-kit renders only sanitized
 // Markdown, so this page is added to the Pages site by build-pages-extras.mjs.
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+
 const siteBaseUrl = "https://kontourai.github.io/surface/";
 const githubRepoUrl = "https://github.com/kontourai/surface";
 const npmPackageUrl = "https://www.npmjs.com/package/@kontourai/surface";
 
-// Contour-line mark and favicon from the old site shell.
-const logoMark = `<svg class="logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
-  <path d="M12 4.5c4.7 0 8 2.6 8 6.1 0 4.2-3.9 8.9-8 8.9s-8-4.7-8-8.9c0-3.5 3.3-6.1 8-6.1Z"/>
-  <path d="M12 8.1c2.8 0 4.8 1.4 4.8 3.4 0 2.4-2.2 5-4.8 5s-4.8-2.6-4.8-5c0-2 2-3.4 4.8-3.4Z"/>
-  <path d="M12 11.6c1 0 1.7.5 1.7 1.2 0 .9-.8 1.8-1.7 1.8s-1.7-.9-1.7-1.8c0-.7.7-1.2 1.7-1.2Z"/>
-</svg>`;
-const faviconSvg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2314a37a' stroke-width='1.7' stroke-linecap='round'><path d='M12 4.5c4.7 0 8 2.6 8 6.1 0 4.2-3.9 8.9-8 8.9s-8-4.7-8-8.9c0-3.5 3.3-6.1 8-6.1Z'/><path d='M12 8.1c2.8 0 4.8 1.4 4.8 3.4 0 2.4-2.2 5-4.8 5s-4.8-2.6-4.8-5c0-2 2-3.4 4.8-3.4Z'/><path d='M12 11.6c1 0 1.7.5 1.7 1.2 0 .9-.8 1.8-1.7 1.8s-1.7-.9-1.7-1.8c0-.7.7-1.2 1.7-1.2Z'/></svg>`;
+// The Surface mark, read from the installed @kontourai/ui so the page draws the
+// package's mark rather than a copy of it. The logo renders at 1.6rem and the
+// favicon at 16-32px, so both take the frameless mark: ui's DESIGN.md keeps the
+// badge variant for endorsements and hero use from 32px.
+const surfaceMarkSvg = readFileSync(createRequire(import.meta.url).resolve("@kontourai/ui/icons/surface.svg"), "utf8").trim();
+const surfaceMarkParts = /^<svg\b([^>]*)>([\s\S]*)<\/svg>$/.exec(surfaceMarkSvg);
+if (!surfaceMarkParts) throw new Error("The installed @kontourai/ui icons/surface.svg is not a single <svg> element.");
+// The root's width and height are dropped: the logo is sized by viewer.css.
+const surfaceMarkAttributes = surfaceMarkParts[1].replace(/\s(?:width|height)="[^"]*"/g, "");
+const surfaceMarkContent = surfaceMarkParts[2];
 
+const logoMark = `<svg class="logo"${surfaceMarkAttributes} aria-hidden="true">${surfaceMarkContent}</svg>`;
+// A standalone SVG has no text color for the mark's currentColor to inherit, so
+// the favicon sets it: Surface's brand color for each mode (--k-brand under
+// .theme-surface), each at least 3:1 against that mode's tab strip.
+const faviconSvg = `<svg${surfaceMarkAttributes}><style>svg{color:#0f6b52}@media (prefers-color-scheme:dark){svg{color:#14a37a}}</style>${surfaceMarkContent}</svg>`;
 
 export function renderViewerPage() {
   const body = `<article>
@@ -95,7 +106,7 @@ import "./surface-trust-panel.js";
   <meta name="twitter:card" content="summary_large_image">
   <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3efe3">
   <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#101511">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,${faviconSvg}">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,${encodeURIComponent(faviconSvg)}">
   <link rel="stylesheet" href="vendor/kontourai-ui/tokens/index.css">
   <link rel="stylesheet" href="viewer.css">
 </head>

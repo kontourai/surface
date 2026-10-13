@@ -59,10 +59,12 @@ button {
   font-family: ui-monospace, "Cascadia Code", "SF Mono", monospace;
 }
 
-/* Surface product mark from @kontourai/ui, paired with the brand eyebrow. */
+/* Surface product mark from @kontourai/ui, paired with the brand eyebrow. It
+   renders at ui's 16px minimum and in Surface's brand color, which
+   .theme-surface sets for each mode. */
 .dash-eyebrow .brand-mark {
   flex-shrink: 0;
-  color: var(--blue);
+  color: var(--k-brand);
 }
 
 .dash-title-row {
