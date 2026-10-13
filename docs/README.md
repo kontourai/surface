@@ -20,7 +20,7 @@ Keep new docs in the folder that matches the reader's intent. If a page is a dur
 
 ## Published Site Pages
 
-`docs-kit.json` at the repository root lists every published page, its navigation section, and the topics the Kontour docs MCP serves to agents. Every `docs/**/*.md` file must be either listed there or named in its `exclude` list; `npm run docs:check` fails otherwise, and also checks links, anchors, and topic headings. `npm run docs:build` renders the site into `dist-pages/`.
+`corpus.json` at the repository root lists every published page, its navigation section, and the topics the Kontour docs MCP serves to agents. Every `docs/**/*.md` file must be either listed there or named in its `exclude` list; `npm run docs:check` fails otherwise, and also checks links, anchors, and topic headings. `npm run docs:build` renders the site into `dist-pages/`.
 
 Repo-only material is named in `exclude`: brand language, the internal sales notes, the source module audit, and Claim Subject Matching while its API settles.
 
