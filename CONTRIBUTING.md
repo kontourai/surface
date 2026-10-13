@@ -38,7 +38,7 @@ This runs the content-boundary check, doc-link check, generated-boundary check, 
 
 Individual checks by change type:
 
-- docs-only: `npm run check:doc-links` and `npm run docs:check` (the docs-kit gate; `docs-kit.json` lists the published pages)
+- docs-only: `npm run check:doc-links` and `npm run docs:check` (the Corpus gate; `corpus.json` lists the published pages)
 - generated/source boundary: `npm run check:generated-boundaries`
 - public API or package metadata: `npm run check:package-contents` and `npm run test:package-smoke` and `npm run test:external-adapter`
 - CLI, trust derivation, schemas, adapters, or Console runtime: `npm test`

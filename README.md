@@ -304,7 +304,7 @@ Ignored local/generated directories such as `node_modules/`, `.surface/`, `.flow
 - [Developer Architecture](docs/architecture/developer-architecture.md) — trust/evidence flow and cross-product boundaries
 - [External Adapter Example](examples/external-adapter/README.md) — minimal package-shaped producer
 
-The published docs site is generated from these sources by [docs-kit](https://github.com/kontourai/docs-kit) (`npm run docs:build`); `docs-kit.json` lists the published pages. See [docs/README.md](docs/README.md) for the full maintainer index.
+The published docs site is generated from these sources by [docs-kit](https://github.com/kontourai/docs-kit) (`npm run docs:build`); `corpus.json` lists the published pages. See [docs/README.md](docs/README.md) for the full maintainer index.
 
 ## License
 

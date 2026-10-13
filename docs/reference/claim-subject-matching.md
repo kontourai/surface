@@ -12,7 +12,7 @@
 > settles its shape.
 >
 > This page is intentionally kept out of the public docs site (it is listed
-> under `exclude` in `docs-kit.json`) while the API is in this early, shape-may-evolve
+> under `exclude` in `corpus.json`) while the API is in this early, shape-may-evolve
 > state — it remains a repo-internal reference (linked from `docs/README.md`,
 > covered by `npm run check:doc-links`) rather than a promoted public-docs
 > page. This is a deliberate decision, not an oversight; revisit once the API

@@ -79,7 +79,7 @@ Every `package.json` script is an active repo workflow, release guard, or contri
 | `test:package-smoke` | Release guard | Builds the package, installs the packed tarball into a fresh consumer project, imports the root API, and runs the installed CLI. |
 | `test:browser` | Verification | Runs Playwright coverage for the standalone Console, the MCP UI trust panel, and the `surface-trust-panel` element in the Trust Snapshot Viewer. |
 | `test:coverage` | Verification | Runs Node tests with experimental coverage reporting. |
-| `docs:check` | Guard | Runs the docs-kit gate: links, anchors, reachability, MCP topics, and `covers` globs for the documents listed in `docs-kit.json`. |
+| `docs:check` | Guard | Runs the Corpus gate: links, anchors, reachability, MCP topics, and `covers` globs for the documents listed in `corpus.json`. |
 | `docs:build` | Build | Builds the docs-kit Pages site and `docs-bundle.json` into `dist-pages/`. |
 | `docs:extras` | Build | Adds the pages docs-kit cannot render to the built site in `$DOCS_SITE_DIR`: the Trust Snapshot Viewer with its panel module, sample report, and Kontour UI tokens, plus the Open Graph card and the root `built-with-surface.svg`. |
 | `sync:schemas` | Build | Generates `schemas/` from the installed `hachure` package — the single normative source for the trust-format schemas. |

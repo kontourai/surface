@@ -1,5 +1,13 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
+  "purpose": "Derive deterministic, inspectable trust state from claims, evidence, policies, and events.",
+  "builtOn": [
+    {
+      "product": "ui",
+      "via": "@kontourai/ui",
+      "for": "Style inspectable trust panels and consoles with shared trust-state tokens."
+    }
+  ],
   "product": "surface",
   "title": "Kontour Surface",
   "tagline": "The open trust format under Kontour's products: claims, evidence, freshness, and gaps in one inspectable shape.",
