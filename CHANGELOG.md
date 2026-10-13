@@ -1,5 +1,17 @@
 # Changelog
 
+## [6.1.0](https://github.com/kontourai/surface/compare/v6.0.1...v6.1.0) (2026-10-13)
+
+
+### Features
+
+* **deps:** adopt @kontourai/ui 1.20.0 and its contour Surface mark ([#334](https://github.com/kontourai/surface/issues/334)) ([cfa7d47](https://github.com/kontourai/surface/commit/cfa7d479b463055fc5c2fce273f9935820d1b852))
+
+
+### Documentation
+
+* **readme:** add Docs badge and documentation links to the header ([#332](https://github.com/kontourai/surface/issues/332)) ([1102f49](https://github.com/kontourai/surface/commit/1102f49d0fb30149e5e2b792edc7cc8b2ccdccc2))
+
 ## [6.0.1](https://github.com/kontourai/surface/compare/v6.0.0...v6.0.1) (2026-10-12)
 
 
