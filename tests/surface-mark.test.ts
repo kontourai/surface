@@ -4,9 +4,11 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-// The viewer, the badge and the Open Graph card must draw the Surface mark the
-// installed @kontourai/ui ships, element for element, so a revert to an older
-// mark fails here.
+import { buildConsoleHtml } from "../src/console/shell.js";
+
+// The Console header, the viewer, the badge and the Open Graph card must draw
+// the Surface mark the installed @kontourai/ui ships, element for element, so a
+// revert to an older mark fails here.
 
 function pathElements(svg: string): string[] {
   return svg.match(/<path\b[^>]*\/>/g) ?? [];
@@ -27,6 +29,16 @@ async function installedSurfaceMarkPaths(): Promise<string[]> {
   assert.ok(paths.length > 0, "the installed @kontourai/ui icons/surface.svg has no paths");
   return paths;
 }
+
+test("the Console header draws the installed Surface mark at ui's 16px minimum", async () => {
+  const expected = await installedSurfaceMarkPaths();
+  const [mark] = firstMatch(buildConsoleHtml(), /<svg class="brand-mark"[\s\S]*?<\/svg>/, "Console header mark");
+
+  assert.deepEqual(pathElements(mark), expected);
+  // ui's DESIGN.md: 16px high is the minimum for every small-tier mark.
+  const [, width, height] = firstMatch(mark, /\bwidth="(\d+)" height="(\d+)"/, "Console header mark size");
+  assert.ok(Number(width) >= 16 && Number(height) >= 16, `the Console header mark renders at ${width}x${height}px, under 16px`);
+});
 
 test("the Trust Snapshot Viewer logo and favicon draw the installed Surface mark", async () => {
   const expected = await installedSurfaceMarkPaths();
