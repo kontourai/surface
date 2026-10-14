@@ -103,6 +103,9 @@
     "docs/audits/source-module-audit.md",
     "docs/reference/claim-subject-matching.md"
   ],
+  "decisions": {
+    "adr": { "dir": "docs/adr" }
+  },
   "redirects": {
     "start-here.html": "docs/product/start-here.md",
     "getting-started.html": "docs/guides/getting-started.md",
