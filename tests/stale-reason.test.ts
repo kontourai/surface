@@ -315,11 +315,22 @@ test("summarizeClaims refuses a stale claim with no reason when given reasons, a
 
 test("a checkpoint whose stale status the claim's own events do not explain replays that claim in full", () => {
   const source = bundle();
+  // Off the verified-event branch: the latest event records `disputed`.
+  source.claims.push(claim("contested", "policy.manual"));
+  source.evidence.push(evidence("contested"));
+  source.events.push(verified("contested"), {
+    ...verified("contested", "2026-09-10T00:00:00.000Z"),
+    id: "event.contested.disputed",
+    status: "disputed",
+  });
   const full = buildTrustReport(source, { now });
+  assert.equal(full.claims.find((item) => item.id === "contested")?.status, "disputed");
   const checkpoint = checkpointFromReport(buildTrustReport(source, { now: new Date(verifiedAt) }));
-  // The `fresh` claim is verified on its events; this checkpoint says stale.
+  // `fresh` is verified on its events and `contested` disputed; this
+  // checkpoint says both are stale.
   assert.equal(checkpoint.untimedOwnStatusByClaimId?.fresh, "verified");
   checkpoint.untimedOwnStatusByClaimId!.fresh = "stale";
+  checkpoint.untimedOwnStatusByClaimId!.contested = "stale";
 
   const probes: Record<string, boolean> = {};
   const report = buildTrustReport(source, {
@@ -327,7 +338,8 @@ test("a checkpoint whose stale status the claim's own events do not explain repl
     since: checkpoint,
     instrument: (probe) => { probes[probe.claimId] = probe.fromCheckpoint; },
   });
-  assert.equal(probes.fresh, false, "the disagreeing claim is replayed");
+  assert.equal(probes.fresh, false, "the disagreeing verified claim is replayed");
+  assert.equal(probes.contested, false, "the disagreeing disputed claim is replayed");
   assert.equal(probes.ttl, true, "other claims still come from the checkpoint");
   assert.deepEqual(report.claims.map((item) => [item.id, item.status]), full.claims.map((item) => [item.id, item.status]));
   assert.deepEqual(report.summary.staleReasonByClaimId, expected);
