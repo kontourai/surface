@@ -58,7 +58,7 @@ Output formats:
 
 Query commands emit JSON:
 
-- `surface stale`: stale claim queue.
+- `surface stale`: stale claim queue. Each item carries `staleReason`, why the claim is stale (see [Why a claim is stale](schemas.md#why-a-claim-is-stale)).
 - `surface missing`: evidence and requirement gaps, including weak attestation signals. Surfaces gaps by type: `provenance_gap` (missing evidence), `policy_violation` (missing required method), `freshness_breach` (verification expired), `attestation_authority_unverified` (attestation lacks authority source), `attestation_identity_unverified` (attestation lacks actor identity), and `attestation_integrity_missing` (attestation lacks content hash).
 - `surface get`: claim drilldown with evidence, events, policy, requirement gaps, current `transparencyGaps` annotations, and a `derivation` read model.
 - `surface policy`: policy drilldown or policy index with related claims and gaps.

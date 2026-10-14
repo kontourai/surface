@@ -3,6 +3,7 @@ import type {
   DerivationCheckpoint,
   DerivedReportClaim,
   FreshnessTransitionEvent,
+  StaleReason,
   TransparencyGap,
   TransparencyGapType,
   TrustBundle,
@@ -93,7 +94,7 @@ export function buildTrustReport(input: TrustBundle, options: BuildTrustReportOp
     changeRecords: snapshot.changeRecords,
     subjectGroups: snapshot.subjectGroups,
     claimGroupRollups: snapshot.claimGroupRollups,
-    summary: summarizeClaims(snapshot.claims, snapshot.transparencyGaps, snapshot.changeRecords),
+    summary: summarizeClaims(snapshot.claims, snapshot.transparencyGaps, snapshot.changeRecords, snapshot.staleReasonByClaimId),
     statusFunctionVersion,
     waiverValidityByClaimId: snapshot.waiverValidityByClaimId,
     waiverValidityFunctionVersion,
@@ -179,6 +180,8 @@ export function summarizeClaims(
   claims: Array<Claim & { status: TrustStatus }>,
   transparencyGaps: TransparencyGap[] = [],
   changeRecords: Array<{ claimId: string; action: string }> = [],
+  /** Why each stale claim is stale. When given, the summary carries it for every stale claim. */
+  staleReasonByClaimId?: Record<string, StaleReason>,
 ): TrustReportSummary {
   const byStatus = Object.fromEntries(TRUST_STATUS_ORDER.map((status) => [status, 0])) as Record<TrustStatus, number>;
   const byFacet: Record<string, number> = {};
@@ -192,6 +195,9 @@ export function summarizeClaims(
   const transparencyGapsByType = Object.fromEntries(TRANSPARENCY_GAP_TYPES.map((type) => [type, 0])) as Record<TransparencyGapType, number>;
   const highImpactUnsupported: string[] = [];
   const staleClaims: string[] = [];
+  // Entries, then Object.fromEntries: a claim id of `__proto__` becomes an
+  // ordinary own key, never the object's prototype.
+  const staleReasons: Array<[string, StaleReason]> = [];
   const disputedClaims: string[] = [];
   const recomputeNeededClaims = [...new Set(changeRecords.filter((record) => record.action === "recompute").map((record) => record.claimId))];
 
@@ -218,7 +224,14 @@ export function summarizeClaims(
     ) {
       highImpactUnsupported.push(claim.id);
     }
-    if (claim.status === "stale") staleClaims.push(claim.id);
+    if (claim.status === "stale") {
+      staleClaims.push(claim.id);
+      if (staleReasonByClaimId !== undefined) {
+        const reason = Object.hasOwn(staleReasonByClaimId, claim.id) ? staleReasonByClaimId[claim.id] : undefined;
+        if (reason === undefined) throw new RangeError(`no stale reason for stale claim ${claim.id}`);
+        staleReasons.push([claim.id, reason]);
+      }
+    }
     if (claim.status === "disputed") disputedClaims.push(claim.id);
   }
 
@@ -244,6 +257,7 @@ export function summarizeClaims(
     transparencyGapsByType,
     highImpactUnsupported,
     staleClaims,
+    ...(staleReasonByClaimId !== undefined ? { staleReasonByClaimId: Object.fromEntries(staleReasons) } : {}),
     disputedClaims,
     recomputeNeededClaims,
   };

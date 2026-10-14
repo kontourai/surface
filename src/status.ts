@@ -1,4 +1,4 @@
-import type { AuthorityTrace, Claim, Evidence, TrustStatus, VerificationEvent, VerificationPolicy } from "./types.js";
+import type { AuthorityTrace, Claim, Evidence, StaleReason, TimeStaleReason, TrustStatus, VerificationEvent, VerificationPolicy } from "./types.js";
 import { type ClaimEvidenceEvaluation, evaluateClaimEvidence, policyRequiresSomething } from "./claim-evaluation.js";
 import { evidenceEntailsClaim, partitionEvidenceBySupport } from "./evidence-support.js";
 import { resolvePolicyForClaim } from "./policy-resolver.js";
@@ -331,24 +331,41 @@ function isVerifiedEventStale(
   now: Date,
   version: StatusFunctionVersion,
 ): boolean {
-  if (version === "4") return isVerifiedEventStaleV4(event, claim, evidence, policy, now);
-  if (version !== "2") return isVerifiedEventStaleV3(event, claim, evidence, policy, now);
+  return verifiedEventStaleReason(event, claim, evidence, policy, now, version) !== undefined;
+}
+
+/**
+ * Step 4a with its cause: why the governing verified event is stale at `now`,
+ * or undefined when it is not. This is the staleness test itself, so the
+ * reason and the `stale` status cannot disagree.
+ */
+function verifiedEventStaleReason(
+  event: VerificationEvent,
+  claim: Claim,
+  evidence: Evidence[],
+  policy: VerificationPolicy | undefined,
+  now: Date,
+  version: StatusFunctionVersion,
+): TimeStaleReason | undefined {
+  if (version === "4") return verifiedEventStaleReasonV4(event, claim, evidence, policy, now);
+  if (version !== "2") return verifiedEventStaleReasonV3(event, claim, evidence, policy, now);
 
   // Claim-intrinsic validity window (Hachure schema 4) overrides policy timing
   // when present. expiresAt is canonical; ttlSeconds is the relative fallback,
   // resolved against the governing event's verifiedAt (fallback createdAt).
   const intrinsic = claimIntrinsicExpiry(event, claim);
   if (intrinsic !== undefined) {
-    return now.getTime() > intrinsic;
+    if (!(now.getTime() > intrinsic)) return undefined;
+    return typeof claim.expiresAt === "string" && claim.expiresAt.length > 0 ? "intrinsic-window" : "ttl";
   }
 
   if (!policy) {
-    return false;
+    return undefined;
   }
 
   if (policy.validityRule.kind === "commit") {
     if (!claim.currentIntegrityRef) {
-      return false;
+      return undefined;
     }
     const eventEvidenceRefs = new Set(
       evidence
@@ -356,68 +373,71 @@ function isVerifiedEventStale(
         .map((item) => item.integrityRef)
         .filter((item): item is string => typeof item === "string" && item.length > 0),
     );
-    return !eventEvidenceRefs.has(claim.currentIntegrityRef);
+    return eventEvidenceRefs.has(claim.currentIntegrityRef) ? undefined : "commit";
   }
 
   if (policy.validityRule.kind !== "duration") {
-    return false;
+    return undefined;
   }
 
   const verifiedAt = event.verifiedAt ?? event.createdAt;
   const verifiedTime = Date.parse(verifiedAt);
   if (!Number.isFinite(verifiedTime) || typeof policy.validityRule.durationDays !== "number") {
-    return false;
+    return undefined;
   }
 
   const expiresAt = verifiedTime + policy.validityRule.durationDays * 24 * 60 * 60 * 1000;
-  return expiresAt < now.getTime();
+  return expiresAt < now.getTime() ? "duration" : undefined;
 }
 
-function isVerifiedEventStaleV3(
+function verifiedEventStaleReasonV3(
   event: VerificationEvent,
   claim: Claim,
   evidence: Evidence[],
   policy: VerificationPolicy | undefined,
   now: Date,
-): boolean {
+): TimeStaleReason | undefined {
   const nowMs = now.getTime();
   const verifiedTime = Date.parse(event.verifiedAt ?? event.createdAt);
 
   // Claim-intrinsic validity window; `expiresAt` wins over `ttlSeconds`.
   if (claim.expiresAt !== undefined) {
     const expiry = Date.parse(claim.expiresAt);
-    return !Number.isFinite(expiry) || nowMs > expiry;
+    if (!Number.isFinite(expiry)) return "unevaluable";
+    return nowMs > expiry ? "intrinsic-window" : undefined;
   }
   if (claim.ttlSeconds !== undefined) {
     const ttl: unknown = claim.ttlSeconds;
-    if (!Number.isFinite(verifiedTime) || typeof ttl !== "number" || !Number.isFinite(ttl) || ttl < 0) return true;
-    return nowMs > verifiedTime + ttl * 1000;
+    if (!Number.isFinite(verifiedTime) || typeof ttl !== "number" || !Number.isFinite(ttl) || ttl < 0) return "unevaluable";
+    return nowMs > verifiedTime + ttl * 1000 ? "ttl" : undefined;
   }
 
   // No effective policy: not stale here; the requirement step caps the result at `proposed`.
-  if (!policy) return false;
+  if (!policy) return undefined;
 
   const rule = policy.validityRule as { kind?: unknown; durationDays?: unknown } | undefined;
   switch (rule?.kind) {
     case "commit": {
       // Without a current integrity reference there is nothing to compare the
       // verified evidence against.
-      if (claim.currentIntegrityRef === undefined) return true;
+      if (claim.currentIntegrityRef === undefined) return "unevaluable";
       const linkedIds = event.evidenceIds ?? [];
-      return !evidence.some((item) => linkedIds.includes(item.id) && item.integrityRef === claim.currentIntegrityRef);
+      return evidence.some((item) => linkedIds.includes(item.id) && item.integrityRef === claim.currentIntegrityRef)
+        ? undefined
+        : "commit";
     }
     case "duration": {
       const days = rule.durationDays;
-      if (typeof days !== "number" || !Number.isFinite(days) || days < 0) return true;
-      if (!Number.isFinite(verifiedTime)) return true;
-      return nowMs > verifiedTime + days * 86_400_000;
+      if (typeof days !== "number" || !Number.isFinite(days) || days < 0) return "unevaluable";
+      if (!Number.isFinite(verifiedTime)) return "unevaluable";
+      return nowMs > verifiedTime + days * 86_400_000 ? "duration" : undefined;
     }
     case "historical":
     case "manual":
-      return false;
+      return undefined;
     default:
       // Absent or unknown kind: the rule cannot be evaluated.
-      return true;
+      return "unevaluable";
   }
 }
 
@@ -427,45 +447,98 @@ function isVerifiedEventStaleV3(
  * product of `ttlSeconds` (or `durationDays`) and its unit, never a
  * floating-point sum.
  */
-function isVerifiedEventStaleV4(
+function verifiedEventStaleReasonV4(
   event: VerificationEvent,
   claim: Claim,
   evidence: Evidence[],
   policy: VerificationPolicy | undefined,
   now: Date,
-): boolean {
+): TimeStaleReason | undefined {
   const nowInstant = instantFromDate(now) as TimestampInstant;
   const verifiedTime = parseTimestamp(event.verifiedAt ?? event.createdAt);
   const evaluable = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n) && n >= 0;
 
   if (claim.expiresAt !== undefined) {
     const expiry = parseTimestamp(claim.expiresAt);
-    return expiry === undefined || compareTimestamps(nowInstant, expiry) > 0;
+    if (expiry === undefined) return "unevaluable";
+    return compareTimestamps(nowInstant, expiry) > 0 ? "intrinsic-window" : undefined;
   }
   if (claim.ttlSeconds !== undefined) {
-    if (verifiedTime === undefined || !evaluable(claim.ttlSeconds)) return true;
-    return laterThanWindowEnd(nowInstant, verifiedTime, claim.ttlSeconds, 1000);
+    if (verifiedTime === undefined || !evaluable(claim.ttlSeconds)) return "unevaluable";
+    return laterThanWindowEnd(nowInstant, verifiedTime, claim.ttlSeconds, 1000) ? "ttl" : undefined;
   }
 
-  if (!policy) return false;
+  if (!policy) return undefined;
 
   const rule = policy.validityRule as { kind?: unknown; durationDays?: unknown } | undefined;
   switch (rule?.kind) {
     case "commit": {
-      if (claim.currentIntegrityRef === undefined) return true;
+      if (claim.currentIntegrityRef === undefined) return "unevaluable";
       const linkedIds = event.evidenceIds ?? [];
-      return !evidence.some((item) => linkedIds.includes(item.id) && item.integrityRef === claim.currentIntegrityRef);
+      return evidence.some((item) => linkedIds.includes(item.id) && item.integrityRef === claim.currentIntegrityRef)
+        ? undefined
+        : "commit";
     }
     case "duration": {
-      if (!evaluable(rule.durationDays) || verifiedTime === undefined) return true;
-      return laterThanWindowEnd(nowInstant, verifiedTime, rule.durationDays, 86_400_000);
+      if (!evaluable(rule.durationDays) || verifiedTime === undefined) return "unevaluable";
+      return laterThanWindowEnd(nowInstant, verifiedTime, rule.durationDays, 86_400_000) ? "duration" : undefined;
     }
     case "historical":
     case "manual":
-      return false;
+      return undefined;
     default:
-      return true;
+      return "unevaluable";
   }
+}
+
+/**
+ * Why a claim whose own status is `stale` is stale. Call it only for a claim
+ * `deriveTrustStatus` derived `stale` for, with the same inputs: it follows
+ * the same branches, and throws when no branch explains `stale` rather than
+ * returning a reason nothing computed.
+ *
+ * - On the verified-event branch the cause is the Step 4a test that failed:
+ *   `commit`, `duration`, `ttl`, `intrinsic-window` or `unevaluable`.
+ * - Otherwise an event decided the status (a revocation, an invalidation, a
+ *   recorded `stale` status, or an authorized dispute resolution), and the
+ *   cause is `external:<method>`, from the deciding event's `method`.
+ *
+ * `evidence` is the entailing evidence and `policy` the resolved policy, as
+ * `deriveTrustStatus` takes them. The derivation ceiling is not applied here:
+ * a claim capped at `stale` by a stale input is `derived-input`, which the
+ * snapshot assigns.
+ */
+export function deriveOwnStaleReason(input: {
+  claim: Claim;
+  evidence: Evidence[];
+  policy?: VerificationPolicy;
+  events: VerificationEvent[];
+  now: Date;
+  authorityTrace?: AuthorityTrace[];
+  /** Must be the version the `stale` status was derived with. Defaults to the current version. */
+  statusFunctionVersion?: StatusFunctionVersion;
+}): StaleReason {
+  const version = resolveStatusFunctionVersion(input.statusFunctionVersion);
+  const governing = verifiedBranchEvent(input.claim, input.events, input.authorityTrace, version);
+  if (governing !== undefined) {
+    const reason = verifiedEventStaleReason(governing, input.claim, input.evidence, effectivePolicy(input.policy, version), input.now, version);
+    if (reason === undefined) {
+      throw new RangeError(`claim ${input.claim.id} is not stale on its verified-event branch at ${input.now.toISOString()}`);
+    }
+    return reason;
+  }
+  const claimEvents = claimEventsMostRecentFirst(input.claim, input.events, version);
+  const deciding = findLatestResolutionEvent(claimEvents, input.authorityTrace ?? [], version) ?? claimEvents[0];
+  if (deciding === undefined) {
+    throw new RangeError(`claim ${input.claim.id} has no event that could derive stale`);
+  }
+  return externalStaleReason(deciding);
+}
+
+/** `external:<method>` for the event that decided a claim stale. */
+function externalStaleReason(event: VerificationEvent): `external:${string}` {
+  const method = typeof event.method === "string" ? event.method.trim() : "";
+  return `external:${method.length > 0 ? method : "unspecified"}`;
 }
 
 /**

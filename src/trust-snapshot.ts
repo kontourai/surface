@@ -6,6 +6,7 @@ import type {
   DerivedReportClaim,
   Evidence,
   EvidenceRequirement,
+  StaleReason,
   SubjectGroup,
   TransparencyGap,
   TrustBundle,
@@ -38,6 +39,11 @@ export interface TrustSnapshotDerivation {
    * `docs/reference/waiver-validity.md`).
    */
   waiverValidityByClaimId: Record<string, WaiverValidity>;
+  /**
+   * Why each `stale` claim is stale, keyed by claim id: the claim's own reason,
+   * or `derived-input` when only the derivation ceiling made it stale.
+   */
+  staleReasonByClaimId: Record<string, StaleReason>;
   /** Per-claim checkpoint input digest (see `DerivationCheckpoint.inputDigestByClaimId`). */
   inputDigestByClaimId: Record<string, string>;
   /** Per-claim untimed own status (see `DerivationCheckpoint.untimedOwnStatusByClaimId`). */
@@ -196,6 +202,7 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
   // prototype chain. (`evidenceRequirementsByClaimId` above uses the same
   // guard — #127.)
   const waiverValidityByClaimId: Record<string, WaiverValidity> = Object.create(null);
+  const staleReasonByClaimId: Record<string, StaleReason> = Object.create(null);
   const claims = foldedClaims.map((folded) => {
     const outcome = applyDerivation({
       claim: folded.claim,
@@ -215,6 +222,9 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
     if (folded.producerStatus !== undefined && folded.producerStatus !== derived) {
       output.producerStatus = folded.producerStatus;
     }
+    // The ceiling only lowers a status, so a derived `stale` with an own status
+    // that is not stale came from a stale input.
+    if (derived === "stale") staleReasonByClaimId[folded.claim.id] = folded.ownStaleReason ?? "derived-input";
     waiverValidityByClaimId[folded.claim.id] = deriveWaiverValidity({
       claim: folded.claim,
       status: derived,
@@ -238,6 +248,7 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
     subjectGroups: identityIndex.groups,
     claimGroupRollups: deriveClaimGroupRollups({ claimGroups: input.claimGroups, claims }),
     waiverValidityByClaimId,
+    staleReasonByClaimId,
     inputDigestByClaimId,
     untimedOwnStatusByClaimId,
   };

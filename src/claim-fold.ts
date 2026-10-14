@@ -3,6 +3,7 @@ import type {
   ClaimFreshness,
   Evidence,
   EvidenceRequirement,
+  StaleReason,
   TransparencyGap,
   TransparencyGapType,
   TrustStatus,
@@ -19,7 +20,7 @@ import {
 import { partitionEvidenceBySupport } from "./evidence-support.js";
 import { resolvePolicyForClaim } from "./policy-resolver.js";
 import { parseTimestamp } from "./timestamp.js";
-import { applyVerifiedStaleness, claimIntrinsicExpiry, sortEventsMostRecentFirstV4, deriveTrustStatus, verifiedBranchEvent } from "./status.js";
+import { applyVerifiedStaleness, claimIntrinsicExpiry, deriveOwnStaleReason, sortEventsMostRecentFirstV4, deriveTrustStatus, verifiedBranchEvent } from "./status.js";
 import { resolveStatusFunctionVersion, type StatusFunctionVersion } from "./status-function-version.js";
 
 const TRANSPARENCY_GAP_TYPES: TransparencyGapType[] = [
@@ -61,6 +62,8 @@ export interface ClaimFoldResult {
    */
   untimedOwnStatus: TrustStatus;
   producerStatus?: TrustStatus;
+  /** Why `ownStatus` is `stale`; set exactly when it is. */
+  ownStaleReason?: StaleReason;
   policy?: VerificationPolicy;
   evidence: Evidence[];
   entailingEvidence: Evidence[];
@@ -127,11 +130,24 @@ export function foldClaim(input: ClaimFoldInput): ClaimFoldResult {
     eventsFolded = input.events.length;
   }
 
+  const ownStaleReason = ownStatus === "stale"
+    ? deriveOwnStaleReason({
+      claim: input.claim,
+      evidence: entailingEvidence,
+      policy,
+      events: input.events,
+      now: input.now,
+      authorityTrace: input.authorityTrace,
+      statusFunctionVersion,
+    })
+    : undefined;
+
   return {
     claim: input.claim,
     ownStatus,
     untimedOwnStatus,
     producerStatus: input.claim.status,
+    ...(ownStaleReason !== undefined ? { ownStaleReason } : {}),
     policy,
     evidence: input.evidence,
     entailingEvidence,
@@ -146,6 +162,7 @@ export function foldClaim(input: ClaimFoldInput): ClaimFoldResult {
           policy,
           evaluation,
           status: ownStatus,
+          staleReason: ownStaleReason,
           now: input.now,
           statusFunctionVersion,
         })
@@ -287,6 +304,8 @@ function deriveTransparencyGaps(input: {
   policy: VerificationPolicy;
   evaluation: ClaimEvidenceEvaluation;
   status: TrustStatus;
+  /** Why `status` is `stale`; set exactly when it is. */
+  staleReason?: StaleReason;
   now: Date;
   statusFunctionVersion: StatusFunctionVersion;
 }): TransparencyGap[] {
@@ -409,6 +428,7 @@ function deriveTransparencyGaps(input: {
       policyId: input.policy.id,
       blocking: true,
       createdAt,
+      metadata: { staleReason: input.staleReason },
     });
   }
 

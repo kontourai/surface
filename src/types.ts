@@ -625,6 +625,13 @@ export interface TrustReportSummary {
   transparencyGapsByType: Record<TransparencyGapType, number>;
   highImpactUnsupported: string[];
   staleClaims: string[];
+  /**
+   * Why each claim in `staleClaims` is stale, keyed by claim id. Set by
+   * `buildTrustReport`; absent when `summarizeClaims` is called without
+   * reasons. It is in the summary because the Hachure claim schema closes
+   * `freshness`, so the reason cannot ride on the claim yet.
+   */
+  staleReasonByClaimId?: Record<string, StaleReason>;
   disputedClaims: string[];
   recomputeNeededClaims: string[];
 }
@@ -682,6 +689,28 @@ export interface ClaimFreshness {
   /** True when the claim's derived status is time-stale at `asOf`. */
   stale: boolean;
 }
+
+/**
+ * Why the verified-event staleness test (Step 4a) found a claim stale:
+ * - `commit`: the policy's commit rule, and no evidence the verified event
+ *   links carries the claim's `currentIntegrityRef`.
+ * - `duration`: the policy's duration window has elapsed since verification.
+ * - `ttl`: the claim's own `ttlSeconds` has elapsed since verification.
+ * - `intrinsic-window`: the claim's own `expiresAt` has passed.
+ * - `unevaluable`: a time, window or rule the test needs could not be read,
+ *   so the claim is treated as stale (status function "3" and later).
+ */
+export type TimeStaleReason = "commit" | "duration" | "ttl" | "intrinsic-window" | "unevaluable";
+
+/**
+ * Why a derived claim is `stale`. A {@link TimeStaleReason}, or:
+ * - `derived-input`: the claim's own status is not stale, but a claim it is
+ *   derived from is, and the derivation ceiling caps it at `stale`.
+ * - `external:<kind>`: an event decided it (a revocation, an invalidation, a
+ *   recorded `stale` status, or an authorized dispute resolution). `<kind>` is
+ *   that event's `method`, or `unspecified` when the method is empty.
+ */
+export type StaleReason = TimeStaleReason | "derived-input" | `external:${string}`;
 
 export type DerivedReportClaim = Claim & {
   status: TrustStatus;
@@ -847,6 +876,8 @@ export interface ClaimQueueItem {
   claimType: string;
   subject: SubjectRef;
   policyId?: string;
+  /** Why the claim is stale, when it is and the report says why. */
+  staleReason?: StaleReason;
 }
 
 export interface TransparencyGapQueueItem {

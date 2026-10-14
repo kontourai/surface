@@ -32,6 +32,7 @@ interface DetailClaimLike {
   evidenceTypes?: unknown;
   evidenceMethods?: unknown;
   metadata?: unknown;
+  staleReason?: unknown;
 }
 
 export interface SurfaceConsoleSuggestedCommand {
@@ -153,7 +154,7 @@ export function buildClaimDetail(
   const evidenceCount = evidenceIds.length;
 
   return {
-    guidance: statusGuidance(stringValue(claim.status), evidenceCount, transparencyGaps),
+    guidance: statusGuidance(stringValue(claim.status), evidenceCount, transparencyGaps, staleReasonOf(claim, transparencyGaps)),
     suggestedCommand: suggestCommand(claim, readModel),
     gaps: buildGaps(transparencyGaps, claimGaps),
     policyGap: policyGapAnalysis(claim, policy, transparencyGaps),
@@ -194,7 +195,45 @@ function proposedGuidance(evidenceCount: number, transparencyGaps: Record<string
   return "Evidence is recorded but does not yet meet this claim's verification policy. See the transparency gaps for what is unmet.";
 }
 
-function statusGuidance(status: string, evidenceCount: number, transparencyGaps: Record<string, unknown>[]): string | null {
+/**
+ * Why a stale claim is stale: the read model's `staleReason` for the claim, or
+ * else the reason on its derived freshness-breach gap. "" when neither says.
+ */
+function staleReasonOf(claim: DetailClaimLike, transparencyGaps: Record<string, unknown>[]): string {
+  const own = stringValue(claim.staleReason);
+  if (own) return own;
+  const breach = transparencyGaps.find((gap) => stringValue(gap.id).endsWith(".gap.freshness-breach"));
+  return breach && isRecord(breach.metadata) ? stringValue(breach.metadata.staleReason) : "";
+}
+
+/** Guidance for a stale claim, by why it is stale. */
+function staleGuidance(reason: string): string {
+  if (reason === "commit") {
+    return "Evidence is outdated: it was collected against a different version than the claim's current integrity reference. Re-run the check to refresh it.";
+  }
+  if (reason === "duration") {
+    return "The verification is older than its policy's validity window allows. Re-verify the claim to refresh it.";
+  }
+  if (reason === "ttl") {
+    return "The claim's own time to live (ttlSeconds) has passed since it was verified. Re-verify the claim to refresh it.";
+  }
+  if (reason === "intrinsic-window") {
+    return "The claim is past its own expiry time (expiresAt). Re-verify it, or record a new validity window.";
+  }
+  if (reason === "unevaluable") {
+    return "This claim's validity could not be evaluated, so it is treated as stale. See the gap below for the value that could not be read.";
+  }
+  if (reason === "derived-input") {
+    return "A claim this one is derived from is stale, so this claim cannot be more current than it. Refresh that input first.";
+  }
+  if (reason.startsWith("external:")) {
+    const kind = reason.slice("external:".length);
+    return `A recorded event (${kind}) marked this claim as no longer current. Review that event, then re-verify the claim.`;
+  }
+  return "This claim's verification is no longer current. See the gaps below for why, then re-verify it.";
+}
+
+function statusGuidance(status: string, evidenceCount: number, transparencyGaps: Record<string, unknown>[], staleReason: string): string | null {
   if (status === "verified") return null;
   if (status === "proposed") return proposedGuidance(evidenceCount, transparencyGaps);
   if (status === "unknown") {
@@ -202,12 +241,14 @@ function statusGuidance(status: string, evidenceCount: number, transparencyGaps:
       ? "This claim has never been evaluated — no evidence has been collected yet."
       : "Evidence exists but trust status could not be determined from it.";
   }
-  if (status === "stale" && transparencyGaps.some((gap) => gapSource(gap) === "validity.unevaluable")) {
-    return "This claim's validity could not be evaluated, so it is treated as stale. See the gap below for the value that could not be read.";
+  if (status === "stale") {
+    // A read model without reasons (status function "3", or another producer)
+    // still names an unevaluable validity rule through its gap.
+    const unevaluable = transparencyGaps.some((gap) => gapSource(gap) === "validity.unevaluable");
+    return staleGuidance(staleReason || (unevaluable ? "unevaluable" : ""));
   }
   const messages: Record<string, string> = {
     assumed: "This claim depends on an explicit assumption. Review the assumption before relying on downstream conclusions.",
-    stale: "Evidence is outdated — collected against a different version of the code. Stale claims are refreshed one run at a time.",
     disputed: "Surface derived a different status than the producer declared. Resolve the transparency gaps above.",
     rejected: "Verification failed. Check the transparency gaps above for specific remediation steps.",
   };

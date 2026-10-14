@@ -232,6 +232,24 @@ recompute time. See [Answer Card Projection](answer-card-projection.md).
 
 `waiverValidityByClaimId` (and its companion `waiverValidityFunctionVersion`) is an additive `TrustReport` field populated by `buildTrustReport` (and round-tripped through `surface report` CLI JSON) when the [waivers profile](https://github.com/hachure-org/spec/blob/main/waivers.md) is in use. It is declared in the vendored **`trust-report-waivers.schema.json`** extension schema (Hachure ≥ 0.12.0, synced via `npm run sync:schemas`): a strict consumer that expects waiver-validity validates a report against that extension, while the neutral core `trust-report.schema.json` stays field-minimal and does not carry these keys. Core report validation is unchanged — the core schema exposes its field set as an open `$defs/core` block that the extension references, so validating a report against the core alone remains exactly as strict as before. See [Waiver Validity](waiver-validity.md) for the field's shape.
 
+### Why a claim is stale
+
+Every `stale` claim in a report carries a reason, so a consumer can tell an outdated commit from an elapsed window or a revocation without re-deriving. `summary.staleReasonByClaimId` maps each id in `summary.staleClaims` to one of:
+
+| Reason | The claim is stale because |
+| --- | --- |
+| `commit` | its policy's commit rule holds, and no evidence the verified event links carries the claim's `currentIntegrityRef` |
+| `duration` | its policy's duration window has elapsed since verification |
+| `ttl` | its own `ttlSeconds` has elapsed since verification |
+| `intrinsic-window` | its own `expiresAt` has passed |
+| `unevaluable` | a time, window or rule its validity depends on could not be read (status function `"3"` and later) |
+| `derived-input` | its own status is not stale, but a claim it is derived from is, and the derivation ceiling caps it |
+| `external:<kind>` | an event decided it: a revocation, an invalidation, a recorded `stale` status, or an authorized dispute resolution. `<kind>` is that event's `method` (`unspecified` when empty), so a producer names the kind by the method it records, for example `external:review-coverage` |
+
+The reason comes from the staleness test that derived `stale`, so the two cannot disagree. The claim's own `freshness_breach` gap carries the same value as `metadata.staleReason`. A claim made stale only by a stale input has no breach gap of its own, and a claim with no resolved policy has no breach gap either, so read the summary for a complete list. `surface stale` and the analytics stale queue carry it as `staleReason` on each item.
+
+The reason is not on `claim.freshness`: the Hachure claim schema closes that object (`additionalProperties: false`), so a report carrying `freshness.reason` would fail validation against the vendored schemas. The summary and the gap are loosely typed in the report schema and carry it today.
+
 ## Eval Summary
 
 `EvalSummary` is a producer-agnostic record for post-hoc evaluation of a run. Producers such as Veritas write it into the run snapshot after a human reviews a completed run. The console displays it alongside live trust state.

@@ -122,7 +122,7 @@ On viewports wider than 900 px the Surface Console uses a sticky side panel inst
 
 ### Claim detail
 
-The detail panel shows evidence, events, policy context, and integrity scope for the selected claim. The integrity scope is where producers can expose what a verified claim is anchored to: a source revision, working-tree digest, file fingerprints, or producer configuration hashes. For claims that are not yet verified, the panel shows contextual guidance describing what is needed to reach the verified state.
+The detail panel shows evidence, events, policy context, and integrity scope for the selected claim. The integrity scope is where producers can expose what a verified claim is anchored to: a source revision, working-tree digest, file fingerprints, or producer configuration hashes. For claims that are not yet verified, the panel shows contextual guidance describing what is needed to reach the verified state. For a stale claim the guidance follows [why it is stale](schemas.md#why-a-claim-is-stale): the read-model claim's `staleReason`, or else the reason on its freshness-breach gap; only a `commit` reason is described as outdated evidence.
 
 `Evidence summary` is the human-readable producer summary. `Observed result` is reserved for structured runtime output such as a pass/fail result, command, exit code, stdout, or stderr. If a producer only supplies a summary, the Surface Console does not duplicate it as an observed result.
 
