@@ -411,6 +411,7 @@ function consoleReadModel() {
         transparencyGapIds: ["gap.npm-test.stale"],
         evidence: [{ excerptOrSummary: "Last test evidence is stale." }],
         verificationPolicyId: "policy.test",
+        staleReason: "commit",
       },
     ],
   };
@@ -515,7 +516,7 @@ test("live refresh: metrics and feed update after read-model file mutation witho
 
     // Guidance renders from the server-side claim detail projection (issue #4):
     // the stale claim's guidance text must reach the DOM without the browser
-    // deriving it inline.
+    // deriving it inline. The claim is stale for a commit mismatch.
     await expect(page.locator("#detailGuidance")).toBeVisible();
     await expect(page.locator("#detailGuidance")).toContainText("Evidence is outdated");
 

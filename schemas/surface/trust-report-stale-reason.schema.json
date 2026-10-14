@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kontourai.io/surface/schemas/trust-report-stale-reason.schema.json",
+  "title": "Surface TrustReport — stale reason extension",
+  "$comment": "Surface-owned extension, not a Hachure schema: the files directly under schemas/ mirror the hachure package, and this subdirectory holds Surface's own. A report built by Surface 6.2 or later says why each stale claim is stale. This schema references the Hachure waivers report schema (which Surface reports also satisfy) and declares the two places the reason appears: summary.staleReasonByClaimId, and metadata.staleReason on a claim's own derived freshness_breach gap. It adds no top-level field, so the waivers schema's closed field set is unchanged. The reason is not on claim.freshness because the Hachure claim schema closes that object.",
+  "type": "object",
+  "allOf": [{ "$ref": "https://hachure.org/schemas/trust-report-waivers.schema.json" }],
+  "required": ["summary", "transparencyGaps"],
+  "properties": {
+    "summary": {
+      "type": "object",
+      "required": ["staleReasonByClaimId"],
+      "properties": {
+        "staleReasonByClaimId": {
+          "type": "object",
+          "$comment": "Claim id -> why the claim is stale, for every id in summary.staleClaims. Keys are arbitrary claim ids (including \"__proto__\"); treat this as a plain data map of own keys.",
+          "additionalProperties": { "$ref": "#/$defs/staleReason" }
+        }
+      }
+    },
+    "transparencyGaps": {
+      "type": "array",
+      "items": {
+        "if": {
+          "type": "object",
+          "required": ["id", "type"],
+          "properties": {
+            "id": { "type": "string", "pattern": "\\.gap\\.freshness-breach$" },
+            "type": { "const": "freshness_breach" }
+          }
+        },
+        "then": {
+          "$comment": "The freshness_breach gap Surface derives for a claim stale on its own. A producer-supplied freshness hint has another id and is not constrained here.",
+          "required": ["metadata"],
+          "properties": {
+            "metadata": {
+              "type": "object",
+              "required": ["staleReason"],
+              "properties": { "staleReason": { "$ref": "#/$defs/staleReason" } }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "staleReason": {
+      "$comment": "commit: the policy's commit rule, and no linked verified evidence carries currentIntegrityRef. duration: the policy's duration window elapsed. ttl: the claim's ttlSeconds elapsed. intrinsic-window: the claim's expiresAt passed. unevaluable: a time, window or rule could not be read. derived-input: only the derivation ceiling made the claim stale (summary only, never on the claim's own gap). external:<kind>: an event decided it; <kind> is that event's method, or unspecified.",
+      "anyOf": [
+        { "enum": ["commit", "duration", "ttl", "intrinsic-window", "unevaluable", "derived-input"] },
+        { "type": "string", "pattern": "^external:\\S([\\s\\S]*\\S)?$" }
+      ]
+    }
+  }
+}

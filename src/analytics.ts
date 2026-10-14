@@ -10,6 +10,7 @@ import type {
   TransparencyGapType,
   ImpactLevel,
   Materiality,
+  StaleReason,
   FacetTrustCoverage,
   TrustActionQueues,
   TrustAnalyticsProjection,
@@ -35,7 +36,11 @@ const GAP_TRANSPARENCY_GAP_TYPES: TransparencyGapType[] = [
 
 export function buildTrustAnalyticsProjection(report: TrustReport): TrustAnalyticsProjection {
   const claimsById = new Map(report.claims.map((claim) => [claim.id, claim]));
-  const claimItems = report.claims.map((claim) => claimQueueItem(claim));
+  const staleReasons = report.summary.staleReasonByClaimId;
+  const claimItems = report.claims.map((claim) => claimQueueItem(
+    claim,
+    claim.status === "stale" && staleReasons !== undefined && Object.hasOwn(staleReasons, claim.id) ? staleReasons[claim.id] : undefined,
+  ));
   const transparencyGapItems = report.transparencyGaps.map((transparencyGap) => transparencyGapQueueItem(transparencyGap));
   const evidenceGaps = buildEvidenceGaps(report, claimsById);
   const traceAnalysis = analyzeTrustTraces(report);
@@ -153,7 +158,7 @@ function buildCoverageByFacet(claims: Array<Claim & { status: TrustStatus }>): F
     .sort((a, b) => a.facet.localeCompare(b.facet));
 }
 
-function claimQueueItem(claim: Claim & { status: TrustStatus }): ClaimQueueItem {
+function claimQueueItem(claim: Claim & { status: TrustStatus }, staleReason?: StaleReason): ClaimQueueItem {
   const item: ClaimQueueItem = {
     claimId: claim.id,
     facet: claim.facet ?? "unknown",
@@ -167,6 +172,7 @@ function claimQueueItem(claim: Claim & { status: TrustStatus }): ClaimQueueItem 
   };
   if (claim.materiality) item.materiality = claim.materiality;
   if (claim.verificationPolicyId) item.policyId = claim.verificationPolicyId;
+  if (staleReason !== undefined) item.staleReason = staleReason;
   return item;
 }
 

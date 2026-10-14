@@ -8,7 +8,7 @@ import {
   EVIDENCE_INCONCLUSIVE_REASON_LABELS,
   EVIDENCE_RESULT_LABELS,
 } from "../display-names.js";
-import type { DerivedReportClaim, Evidence, TransparencyGap, TrustBundle, TrustReport } from "../types.js";
+import type { DerivedReportClaim, Evidence, StaleReason, TransparencyGap, TrustBundle, TrustReport } from "../types.js";
 
 /**
  * A merge collision enriched for the console view. The wire {@link MergeCollision}
@@ -53,7 +53,8 @@ export interface ConsoleReadModel {
     producerCount?: number;
     collisionCount?: number;
   };
-  claims: Array<DerivedReportClaim & { evidenceIds: string[]; transparencyGapIds: string[]; producers?: string[] }>;
+  /** `staleReason` is the report's reason for a `stale` claim (`summary.staleReasonByClaimId`). */
+  claims: Array<DerivedReportClaim & { evidenceIds: string[]; transparencyGapIds: string[]; producers?: string[]; staleReason?: StaleReason }>;
   evidence: Evidence[];
   transparencyGaps: TransparencyGap[];
   producers: string[];
@@ -165,14 +166,17 @@ export function projectBundleToConsoleReadModel(
   }
 
   const attentionClaimIds: string[] = [];
+  const staleReasons = report.summary.staleReasonByClaimId ?? {};
   const claims = report.claims.map((claim) => {
     if (ATTENTION_STATUSES.has(claim.status)) attentionClaimIds.push(claim.id);
     const producers = producerAttribution[claim.id];
+    const staleReason = claim.status === "stale" && Object.hasOwn(staleReasons, claim.id) ? staleReasons[claim.id] : undefined;
     return {
       ...claim,
       evidenceIds: evidenceByClaim.get(claim.id) ?? [],
       transparencyGapIds: gapsByClaim.get(claim.id) ?? [],
       ...(producers ? { producers } : {}),
+      ...(staleReason !== undefined ? { staleReason } : {}),
     };
   });
 
