@@ -20,7 +20,8 @@ import {
 import { partitionEvidenceBySupport } from "./evidence-support.js";
 import { resolvePolicyForClaim } from "./policy-resolver.js";
 import { parseTimestamp } from "./timestamp.js";
-import { applyVerifiedStaleness, claimIntrinsicExpiry, deriveOwnStaleReason, sortEventsMostRecentFirstV4, deriveTrustStatus, verifiedBranchEvent } from "./status.js";
+import { applyVerifiedStaleness, claimIntrinsicExpiry, sortEventsMostRecentFirstV4, deriveTrustStatus, verifiedBranchEvent } from "./status.js";
+import { deriveOwnStaleReason } from "./status-rules.js";
 import { resolveStatusFunctionVersion, type StatusFunctionVersion } from "./status-function-version.js";
 
 const TRANSPARENCY_GAP_TYPES: TransparencyGapType[] = [
@@ -95,42 +96,7 @@ export function foldClaim(input: ClaimFoldInput): ClaimFoldResult {
     tailEvents.length === 0 &&
     input.checkpointStatus !== undefined;
 
-  let ownStatus: TrustStatus;
-  let untimedOwnStatus: TrustStatus;
-  let eventsFolded: number;
-  if (canShortCircuit) {
-    untimedOwnStatus = input.checkpointStatus as TrustStatus;
-    ownStatus = applyVerifiedStaleness({
-      untimedStatus: untimedOwnStatus,
-      claim: input.claim,
-      evidence: entailingEvidence,
-      events: input.events,
-      policy,
-      now: input.now,
-      authorityTrace: input.authorityTrace,
-      statusFunctionVersion,
-    });
-    eventsFolded = 0;
-  } else {
-    const statusInput = {
-      claim: input.claim,
-      evidence: entailingEvidence,
-      policy,
-      events: input.events,
-      now: input.now,
-      authorityTrace: input.authorityTrace,
-      evaluation,
-      statusFunctionVersion,
-    };
-    ownStatus = deriveTrustStatus(statusInput);
-    // Only the verified-event branch reads `now`; elsewhere the untimed status is the status.
-    untimedOwnStatus = verifiedBranchEvent(input.claim, input.events, input.authorityTrace, statusFunctionVersion) === undefined
-      ? ownStatus
-      : deriveTrustStatus({ ...statusInput, ignoreVerifiedStaleness: true });
-    eventsFolded = input.events.length;
-  }
-
-  const ownStaleReason = ownStatus === "stale"
+  const staleReasonFor = (status: TrustStatus): StaleReason | undefined => status === "stale"
     ? deriveOwnStaleReason({
       claim: input.claim,
       evidence: entailingEvidence,
@@ -141,6 +107,64 @@ export function foldClaim(input: ClaimFoldInput): ClaimFoldResult {
       statusFunctionVersion,
     })
     : undefined;
+  const replay = (): { ownStatus: TrustStatus; untimedOwnStatus: TrustStatus } => {
+    const statusInput = {
+      claim: input.claim,
+      evidence: entailingEvidence,
+      policy,
+      events: input.events,
+      now: input.now,
+      authorityTrace: input.authorityTrace,
+      evaluation,
+      statusFunctionVersion,
+    };
+    const status = deriveTrustStatus(statusInput);
+    // Only the verified-event branch reads `now`; elsewhere the untimed status is the status.
+    return {
+      ownStatus: status,
+      untimedOwnStatus: verifiedBranchEvent(input.claim, input.events, input.authorityTrace, statusFunctionVersion) === undefined
+        ? status
+        : deriveTrustStatus({ ...statusInput, ignoreVerifiedStaleness: true }),
+    };
+  };
+
+  let ownStatus: TrustStatus;
+  let untimedOwnStatus: TrustStatus;
+  let eventsFolded: number;
+  let fromCheckpoint = canShortCircuit;
+  let ownStaleReason: StaleReason | undefined;
+  if (canShortCircuit) {
+    untimedOwnStatus = input.checkpointStatus as TrustStatus;
+    ownStatus = applyVerifiedStaleness({
+      untimedStatus: untimedOwnStatus,
+      claim: input.claim,
+      evidence: entailingEvidence,
+      policy,
+      events: input.events,
+      now: input.now,
+      authorityTrace: input.authorityTrace,
+      statusFunctionVersion,
+    });
+    eventsFolded = 0;
+    ownStaleReason = staleReasonFor(ownStatus);
+    // A checkpointed `stale` that no rule explains disagrees with the claim's
+    // own events (the checkpoint is not one this derivation produced). Replay
+    // this claim in full rather than trust or refuse it.
+    if (ownStatus === "stale" && ownStaleReason === undefined) {
+      ({ ownStatus, untimedOwnStatus } = replay());
+      eventsFolded = input.events.length;
+      fromCheckpoint = false;
+      ownStaleReason = staleReasonFor(ownStatus);
+    }
+  } else {
+    ({ ownStatus, untimedOwnStatus } = replay());
+    eventsFolded = input.events.length;
+    ownStaleReason = staleReasonFor(ownStatus);
+  }
+  if (ownStatus === "stale" && ownStaleReason === undefined) {
+    // A full fold derived `stale`, so a rule derived it: the reason must exist.
+    throw new RangeError(`claim ${input.claim.id} derived stale with no stale reason`);
+  }
 
   return {
     claim: input.claim,
@@ -180,7 +204,7 @@ export function foldClaim(input: ClaimFoldInput): ClaimFoldResult {
     ],
     eventsFolded,
     eventsTotal: input.events.length,
-    fromCheckpoint: canShortCircuit,
+    fromCheckpoint,
     freshnessForStatus: (status) => freshnessForClaim(input.claim, input.allEvents, status, input.now, statusFunctionVersion),
   };
 }
@@ -419,10 +443,9 @@ function deriveTransparencyGaps(input: {
       type: "freshness_breach",
       severity: input.claim.impactLevel ?? input.policy.impactLevel,
       ...materialityFromClaim(input.claim),
-      // Under "4" say why when the window could not be evaluated; "3" and "2"
-      // keep their message.
-      message: input.statusFunctionVersion === "4" && unevaluableValidityGap
-        ? "Claim verification is treated as stale because its validity could not be evaluated."
+      // Under "4" say why it is stale; "3" and "2" keep their message.
+      message: input.statusFunctionVersion === "4" && input.staleReason !== undefined
+        ? freshnessBreachMessage(input.staleReason)
         : "Claim verification is stale under its verification policy.",
       evidenceIds: input.entailingEvidence.map((item) => item.id),
       policyId: input.policy.id,
@@ -486,6 +509,31 @@ function deriveTransparencyGaps(input: {
   }
 
   return transparencyGaps;
+}
+
+/** Version "4": the freshness-breach message for why the claim is stale. */
+function freshnessBreachMessage(reason: StaleReason): string {
+  switch (reason) {
+    case "commit":
+      return "Claim verification is stale: no evidence its verification links carries the claim's current integrity reference.";
+    case "duration":
+      return "Claim verification is stale: its verification policy's validity window has elapsed.";
+    case "ttl":
+      return "Claim verification is stale: the claim's own time to live (ttlSeconds) has elapsed.";
+    case "intrinsic-window":
+      return "Claim verification is stale: the claim is past its own expiry time (expiresAt).";
+    case "unevaluable":
+      return "Claim verification is treated as stale because its validity could not be evaluated.";
+    case "derived-input":
+      // Never a claim's own reason; kept for an exhaustive switch.
+      return "Claim verification is stale because a claim it is derived from is stale.";
+    default: {
+      const kind = reason.slice("external:".length);
+      return kind === "unspecified"
+        ? "Claim verification is stale: a recorded event marked it as no longer current."
+        : `Claim verification is stale: a recorded event (${kind}) marked it as no longer current.`;
+    }
+  }
 }
 
 /**

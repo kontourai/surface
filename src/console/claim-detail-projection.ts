@@ -206,8 +206,11 @@ function staleReasonOf(claim: DetailClaimLike, transparencyGaps: Record<string, 
   return breach && isRecord(breach.metadata) ? stringValue(breach.metadata.staleReason) : "";
 }
 
-/** Guidance for a stale claim, by why it is stale. */
-function staleGuidance(reason: string): string {
+/**
+ * Guidance for a stale claim, by why it is stale. `unevaluableGap` says the
+ * claim has the gap that names the value its validity could not be read from.
+ */
+function staleGuidance(reason: string, unevaluableGap: boolean): string {
   if (reason === "commit") {
     return "Evidence is outdated: it was collected against a different version than the claim's current integrity reference. Re-run the check to refresh it.";
   }
@@ -221,14 +224,17 @@ function staleGuidance(reason: string): string {
     return "The claim is past its own expiry time (expiresAt). Re-verify it, or record a new validity window.";
   }
   if (reason === "unevaluable") {
-    return "This claim's validity could not be evaluated, so it is treated as stale. See the gap below for the value that could not be read.";
+    return unevaluableGap
+      ? "This claim's validity could not be evaluated, so it is treated as stale. See the gap below for the value that could not be read."
+      : "This claim's validity could not be evaluated, so it is treated as stale. Check its expiresAt, ttlSeconds and verification time, and its policy's validity rule, for a value that cannot be read.";
   }
   if (reason === "derived-input") {
     return "A claim this one is derived from is stale, so this claim cannot be more current than it. Refresh that input first.";
   }
   if (reason.startsWith("external:")) {
     const kind = reason.slice("external:".length);
-    return `A recorded event (${kind}) marked this claim as no longer current. Review that event, then re-verify the claim.`;
+    const event = kind === "unspecified" ? "A recorded event" : `A recorded event (${kind})`;
+    return `${event} marked this claim as no longer current. Review that event, then re-verify the claim.`;
   }
   return "This claim's verification is no longer current. See the gaps below for why, then re-verify it.";
 }
@@ -245,7 +251,7 @@ function statusGuidance(status: string, evidenceCount: number, transparencyGaps:
     // A read model without reasons (status function "3", or another producer)
     // still names an unevaluable validity rule through its gap.
     const unevaluable = transparencyGaps.some((gap) => gapSource(gap) === "validity.unevaluable");
-    return staleGuidance(staleReason || (unevaluable ? "unevaluable" : ""));
+    return staleGuidance(staleReason || (unevaluable ? "unevaluable" : ""), unevaluable);
   }
   const messages: Record<string, string> = {
     assumed: "This claim depends on an explicit assumption. Review the assumption before relying on downstream conclusions.",

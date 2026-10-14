@@ -246,9 +246,11 @@ Every `stale` claim in a report carries a reason, so a consumer can tell an outd
 | `derived-input` | its own status is not stale, but a claim it is derived from is, and the derivation ceiling caps it |
 | `external:<kind>` | an event decided it: a revocation, an invalidation, a recorded `stale` status, or an authorized dispute resolution. `<kind>` is that event's `method` (`unspecified` when empty), so a producer names the kind by the method it records, for example `external:review-coverage` |
 
-The reason comes from the staleness test that derived `stale`, so the two cannot disagree. The claim's own `freshness_breach` gap carries the same value as `metadata.staleReason`. A claim made stale only by a stale input has no breach gap of its own, and a claim with no resolved policy has no breach gap either, so read the summary for a complete list. `surface stale` and the analytics stale queue carry it as `staleReason` on each item.
+The reason comes from the staleness test that derived `stale`, so the two cannot disagree. The claim's own `freshness_breach` gap carries the same value as `metadata.staleReason`, and under status function `"4"` its message says why; under `"3"` and `"2"` the message is unchanged. A claim made stale only by a stale input has no breach gap of its own, and a claim with no resolved policy has no breach gap either, so read the summary for a complete list. `surface stale` and the analytics stale queue carry it as `staleReason` on each item.
 
-The reason is not on `claim.freshness`: the Hachure claim schema closes that object (`additionalProperties: false`), so a report carrying `freshness.reason` would fail validation against the vendored schemas. The summary and the gap are loosely typed in the report schema and carry it today.
+The reason is not on `claim.freshness`: the Hachure claim schema closes that object (`additionalProperties: false`), so a report carrying `freshness.reason` would fail validation against the vendored schemas. The summary and the gap are loosely typed in the report schema and carry it today. A Hachure proposal for an optional `freshness.reason` is [hachure-org/spec#33](https://github.com/hachure-org/spec/issues/33).
+
+`schemas/surface/trust-report-stale-reason.schema.json` declares both places. It is a Surface-owned extension (the files directly under `schemas/` mirror the `hachure` package; this subdirectory does not): it references the Hachure waivers report schema, requires `summary.staleReasonByClaimId`, requires `metadata.staleReason` on a derived `freshness_breach` gap, and limits each value to the reasons above, with `external:` followed by a non-blank kind. A report built by Surface 6.2 or later validates against it.
 
 ## Eval Summary
 
