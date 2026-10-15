@@ -250,7 +250,9 @@ The reason comes from the staleness test that derived `stale`, so the two cannot
 
 The reason is not on `claim.freshness`: the Hachure claim schema closes that object (`additionalProperties: false`), so a report carrying `freshness.reason` would fail validation against the vendored schemas. The summary and the gap are loosely typed in the report schema and carry it today. A Hachure proposal for an optional `freshness.reason` is [hachure-org/spec#33](https://github.com/hachure-org/spec/issues/33).
 
-`schemas/surface/trust-report-stale-reason.schema.json` declares both places. It is a Surface-owned extension (the files directly under `schemas/` mirror the `hachure` package; this subdirectory does not): it references the Hachure waivers report schema, requires `summary.staleReasonByClaimId`, requires `metadata.staleReason` on a derived `freshness_breach` gap, and limits each value to the reasons above, with `external:` followed by a non-blank kind. A report built by Surface 6.2 or later validates against it.
+The [Surface stale reason schema](../../schemas/surface/trust-report-stale-reason.schema.json) declares both places. It is a Surface-owned extension (the files directly under `schemas/` mirror the `hachure` package; this subdirectory does not): it references the Hachure waivers report schema, requires `summary.staleReasonByClaimId`, requires `metadata.staleReason` on a derived `freshness_breach` gap, and limits each value to the reasons above, with `external:` followed by a non-blank kind. A report built by Surface 6.2 or later validates against it. Its `$id` resolves to the [raw schema in the source repository](https://raw.githubusercontent.com/kontourai/surface/main/schemas/surface/trust-report-stale-reason.schema.json). The schema checks the reason shape; it does not prove that the map contains exactly the stale claim ids or prohibit `derived-input` on a gap. Surface's report builder owns those semantic constraints.
+
+With the default status function (version 4), Surface 6.2 also changes a `freshness_breach` gap's message to name its stale reason. Versions 2 and 3 retain their previous wording.
 
 ## Eval Summary
 
