@@ -4,7 +4,6 @@ import { once } from "node:events";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { createServer } from "node:net";
 import { TRUST_STATES, uiTrustStateMarkup } from "./support/ui-trust-state.js";
 
 test("renders standalone Surface Console with embedded Kontour UI tokens", async ({ page }) => {
@@ -219,7 +218,7 @@ test("the no-facet chip selects only the claims without a facet in a mixed bundl
 });
 
 async function startBundleSurfaceConsole(bundle: unknown): Promise<{ url: string; stop: () => Promise<void> }> {
-  const port = await getFreePort();
+  const port = 0;
   const dir = await mkdtemp(join(tmpdir(), "surface-console-bundle-"));
   const bundlePath = join(dir, "bundle.json");
   await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`);
@@ -231,15 +230,16 @@ async function startBundleSurfaceConsole(bundle: unknown): Promise<{ url: string
   let output = "";
   child.stdout.on("data", (chunk) => { output += String(chunk); });
   child.stderr.on("data", (chunk) => { output += String(chunk); });
+  let url: string;
   try {
-    await waitForConsole(`http://127.0.0.1:${port}/api/console-model`, child, () => output);
+    url = await waitForConsole(child, () => output);
   } catch (error) {
     child.kill("SIGTERM");
     await rm(dir, { recursive: true, force: true });
     throw error;
   }
   return {
-    url: `http://127.0.0.1:${port}/`,
+    url,
     stop: async () => {
       child.kill("SIGTERM");
       await Promise.race([
@@ -256,7 +256,7 @@ const MERGED_SCREENSHOT_PATH = resolve(
 );
 
 async function startMergedSurfaceConsole(): Promise<{ url: string; stop: () => Promise<void> }> {
-  const port = await getFreePort();
+  const port = 0;
   const dir = await mkdtemp(join(tmpdir(), "surface-console-merged-"));
   const storePath = join(dir, "veritas.claims.json");
   const exampleDir = resolve("examples/console-multi-producer");
@@ -277,8 +277,9 @@ async function startMergedSurfaceConsole(): Promise<{ url: string; stop: () => P
   child.stdout.on("data", (chunk) => { output += String(chunk); });
   child.stderr.on("data", (chunk) => { output += String(chunk); });
 
+  let url: string;
   try {
-    await waitForConsole(`http://127.0.0.1:${port}/api/console-model`, child, () => output);
+    url = await waitForConsole(child, () => output);
   } catch (error) {
     child.kill("SIGTERM");
     await rm(dir, { recursive: true, force: true });
@@ -286,7 +287,7 @@ async function startMergedSurfaceConsole(): Promise<{ url: string; stop: () => P
   }
 
   return {
-    url: `http://127.0.0.1:${port}/`,
+    url,
     stop: async () => {
       child.kill("SIGTERM");
       await Promise.race([
@@ -310,7 +311,7 @@ function collectConsoleErrors(page: Page): string[] {
 }
 
 async function startSurfaceConsole(opts: { emptyClaims?: boolean; readModel?: unknown } = {}): Promise<{ url: string; stop: () => Promise<void> }> {
-  const port = await getFreePort();
+  const port = 0;
   const dir = await mkdtemp(join(tmpdir(), "surface-console-browser-"));
   const readModelPath = join(dir, "latest.console.json");
   const storePath = join(dir, "veritas.claims.json");
@@ -326,8 +327,9 @@ async function startSurfaceConsole(opts: { emptyClaims?: boolean; readModel?: un
   child.stdout.on("data", (chunk) => { output += String(chunk); });
   child.stderr.on("data", (chunk) => { output += String(chunk); });
 
+  let url: string;
   try {
-    await waitForConsole(`http://127.0.0.1:${port}/api/console-model`, child, () => output);
+    url = await waitForConsole(child, () => output);
   } catch (error) {
     child.kill("SIGTERM");
     await rm(dir, { recursive: true, force: true });
@@ -335,7 +337,7 @@ async function startSurfaceConsole(opts: { emptyClaims?: boolean; readModel?: un
   }
 
   return {
-    url: `http://127.0.0.1:${port}/`,
+    url,
     stop: async () => {
       child.kill("SIGTERM");
       await Promise.race([
@@ -347,31 +349,28 @@ async function startSurfaceConsole(opts: { emptyClaims?: boolean; readModel?: un
   };
 }
 
-async function waitForConsole(url: string, child: ChildProcess, output: () => string): Promise<void> {
+async function waitForConsole(child: ChildProcess, output: () => string): Promise<string> {
   const startedAt = Date.now();
   while (Date.now() - startedAt < 15_000) {
     if (child.exitCode !== null) {
       throw new Error(`Surface Console exited early with code ${child.exitCode}:\n${output()}`);
     }
     try {
-      const response = await fetch(url);
-      if (response.ok) return;
+      const announced = /^Surface console running at (http:\/\/localhost:\d+)/m.exec(output());
+      if (announced) {
+        const url = announced[1].replace("localhost", "127.0.0.1");
+        const response = await fetch(`${url}/api/console-model`);
+        if (response.ok) return url;
+      }
     } catch {
       // Server is still starting.
     }
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 150));
   }
-  throw new Error(`Surface Console did not start within 15s:\n${output()}`);
+  throw new Error(`Surface Console did not announce a reachable URL within 15s:\n${output()}`);
 }
 
-async function getFreePort(): Promise<number> {
-  const server = createServer();
-  await new Promise<void>((resolveListen) => server.listen(0, "127.0.0.1", resolveListen));
-  const address = server.address();
-  await new Promise<void>((resolveClose) => server.close(() => resolveClose()));
-  if (!address || typeof address === "string") throw new Error("Could not allocate a test port");
-  return address.port;
-}
+
 
 function consoleReadModel() {
   return {
@@ -482,7 +481,7 @@ test("live indicator dot is present in the header on boot", async ({ page }) => 
 });
 
 test("live refresh: metrics and feed update after read-model file mutation without reload", async ({ page }) => {
-  const port = await getFreePort();
+  const port = 0;
   const { mkdtemp: mkTmp, writeFile: wf, rm: rmDir } = await import("node:fs/promises");
   const { join: j, resolve: r } = await import("node:path");
   const dir = await mkTmp(j(tmpdir(), "surface-live-test-"));
@@ -499,10 +498,11 @@ test("live refresh: metrics and feed update after read-model file mutation witho
   child.stdout.on("data", (c: Buffer) => { output += String(c); });
   child.stderr.on("data", (c: Buffer) => { output += String(c); });
 
+  let url: string;
   try {
-    await waitForConsole(`http://127.0.0.1:${port}/api/console-model`, child, () => output);
+    url = await waitForConsole(child, () => output);
 
-    await page.goto(`http://127.0.0.1:${port}/`);
+    await page.goto(url);
 
     // Wait for initial render: 2 claim cards
     await expect(page.locator("#claimFeed .claim-card")).toHaveCount(2);
