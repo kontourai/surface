@@ -200,7 +200,9 @@ export async function startConsoleServer(config: SurfaceConsoleConfig = {}): Pro
 
   await new Promise<void>((resolveListen) => server.listen(runtime.port, resolveListen));
   server.on("close", () => broadcaster.stop());
-  console.log(`Surface console running at http://localhost:${runtime.port}`);
+  const address = server.address();
+  const port = address && typeof address === "object" ? address.port : runtime.port;
+  console.log(`Surface console running at http://localhost:${port}`);
 }
 
 async function readJsonBody(req: IncomingMessage): Promise<Record<string, unknown>> {

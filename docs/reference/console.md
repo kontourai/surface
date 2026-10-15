@@ -20,6 +20,9 @@ Pass a custom path or port explicitly:
 surface console --read-model .surface/runs/latest.json --port 4242
 ```
 
+Use `--port 0` to let the operating system assign a free port. The startup
+message prints the assigned URL after the server has bound it.
+
 Or use a config file:
 
 ```json
