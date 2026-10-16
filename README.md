@@ -9,7 +9,7 @@
 
 [Documentation](https://kontourai.github.io/surface/) · [kontourai.io/surface](https://kontourai.io/surface/)
 
-Surface is the shared transparency foundation for Kontour products and any product that needs to show its work. It connects evidence provenance to claims, derives portable trust state — verified, stale, disputed, missing — and makes that state inspectable through reports, a local console, APIs, and agent-readable resources. See [Vision](docs/product/vision.md) for the fuller narrative.
+Use Surface to validate a trust bundle, recompute claim statuses from its recorded evidence and policies, and inspect missing, stale, or disputed support. Its CLI, library, local console, and agent-readable resources expose the resulting report. Derived status reflects the supplied records and policy; it does not establish that a claim is factually correct. See [Vision](docs/product/vision.md) for the fuller narrative.
 
 ## Who builds with it
 
