@@ -1,5 +1,24 @@
 # Changelog
 
+## [6.2.0](https://github.com/kontourai/surface/compare/v6.1.0...v6.2.0) (2026-10-16)
+
+
+### Features
+
+* **status:** label why a claim is stale ([#340](https://github.com/kontourai/surface/issues/340)) ([7b35fd8](https://github.com/kontourai/surface/commit/7b35fd8ead62fc5e3a1584abbcfe769aa1960ad6))
+
+
+### Fixes
+
+* **console:** use held ephemeral ports in browser fixtures ([#342](https://github.com/kontourai/surface/issues/342)) ([1fbf63d](https://github.com/kontourai/surface/commit/1fbf63d01747ded650845592d8daa71f5d42d57c))
+
+
+### Documentation
+
+* declare product purpose and verified building blocks ([#336](https://github.com/kontourai/surface/issues/336)) ([fd0e791](https://github.com/kontourai/surface/commit/fd0e7912e023e76c624103a3b0df1444270e9665))
+* lead Surface with bundle inspection task ([#343](https://github.com/kontourai/surface/issues/343)) ([25c4ea0](https://github.com/kontourai/surface/commit/25c4ea0182e0af3b04564c9eba0a46e2f6d1ba49))
+* resolve the stale-reason schema identity and state its limits ([#341](https://github.com/kontourai/surface/issues/341)) ([d3ef284](https://github.com/kontourai/surface/commit/d3ef2849571a81dec465afd83a91210d5e9ce208))
+
 ## [6.1.0](https://github.com/kontourai/surface/compare/v6.0.1...v6.1.0) (2026-10-13)
 
 
