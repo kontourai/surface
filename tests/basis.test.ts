@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { build } from "esbuild";
-import { buildAnswerAssessmentProjection, composeBasisProjection, parseBasisComposition, parseBasisProjection, parseThreadAnswerRef, SURFACE_ANSWER_ASSESSMENT_VERSION, SURFACE_BASIS_VERSION, type AnswerAssessmentProjection, type BasisCompositionInput, type BasisContribution, type BasisContributionRef, type ThreadAnswerRef } from "../src/basis/index.js";
+import { buildAnswerAssessmentProjection, composeBasisProjection, composeBasisProjectionV2, parseBasisComposition, parseBasisCompositionV2, parseBasisProjection, parseBasisProjectionV2, parseThreadAnswerRef, SURFACE_BASIS_V2_VERSION, SURFACE_ANSWER_ASSESSMENT_VERSION, SURFACE_BASIS_VERSION, type AnswerAssessmentProjection, type BasisCompositionInput, type BasisContribution, type BasisContributionRef, type ThreadAnswerRef } from "../src/basis/index.js";
 import { buildTrustReport, ordinaryVerificationPolicy, type TrustBundle } from "../src/index.js";
 import { buildBasisPanelViewModel, SURFACE_BASIS_PANEL_VIEW_VERSION } from "../src/basis/view-index.js";
 import * as rootSurface from "../src/index.js";
@@ -264,4 +264,99 @@ test("Basis has a browser bundle with no Node external runtime", async () => {
 test("Basis remains subpath-only and absent from the package root", () => {
   assert.equal("composeBasisProjection" in rootSurface, false);
   assert.equal("parseBasisComposition" in rootSurface, false);
+});
+
+// Host identities observed in the wild: `agent:epoch`, `external:<engine>:<hex>`, `task:<uuid>`.
+const hostThreadId = "station:1792425046978";
+const hostMessageId = "external:claude:0f3a5c7e9b1d2f4a6c8e0b2d4f6a8c0e";
+const hostTaskId = "task:6f1c2d4e-0a1b-4c2d-8e3f-5a6b7c8d9e0f";
+function hostIdentityInput(): BasisCompositionInput {
+  const ref: ThreadAnswerRef = { ...answerRef, threadId: hostThreadId, messageId: hostMessageId };
+  const hostAnswer: BasisCompositionInput["answer"] = { ...answer, value: { ref, fact: "answer-observed", observedAt: answer.observedAt } } as BasisCompositionInput["answer"];
+  const at = answer.observedAt;
+  return { version: SURFACE_BASIS_VERSION, answer: hostAnswer, assessment: noAssessment, contributions: [
+    { owner: { authority: "@kontourai/thread" }, state: "available", observedAt: at, value: [{ ref: { authority: "@kontourai/thread", schemaVersion: "1.2.0", kind: "result", threadId: hostThreadId, resultId: hostMessageId }, answer: ref, role: "execution", context: { kind: "thread-result", name: "run", terminalStatus: "completed", truncatedParts: 0, omittedParts: 0 } }] },
+    { owner: { authority: "@kontourai/station" }, state: "available", observedAt: at, value: [
+      { ref: { authority: "@kontourai/station", schemaVersion: "1", kind: "input", sessionId: hostThreadId, eventId: `session-seeded:${hostThreadId}` }, answer: ref, role: "input", context: { kind: "station-input", inputKind: "prompt", attachmentCount: 0 } },
+      { ref: { authority: "@kontourai/station", schemaVersion: "1", kind: "task-output", taskId: hostTaskId, outputId: `output:${hostTaskId}` }, answer: ref, role: "outcome", context: { kind: "station-output", title: "Report", mediaType: "text/plain", byteLength: 4, digest: "sha256-abcd" } },
+      { ref: { authority: "@kontourai/station", schemaVersion: "1", kind: "live", sessionId: hostThreadId, observationId: "live:1" }, answer: ref, role: "live", context: { kind: "station-live", state: "running", observedAt: at } },
+    ] },
+    { owner: { authority: "@kontourai/flow-agents" }, state: "available", observedAt: at, value: [{ ref: { authority: "@kontourai/flow-agents", schemaVersion: "grounded-execution-narrative/v1", kind: "narrative", narrativeId: `narrative:${hostTaskId}` }, answer: ref, role: "execution", context: { kind: "grounded-narrative", statementCount: 1, sourceCompleteness: "complete" } }] },
+  ] };
+}
+function assertHostIdentityRegions(p: { standing: string; answer: { observedAt: string }; gaps: readonly unknown[]; regions: Record<string, ReadonlyArray<{ ref: unknown }>> }): void {
+  assert.deepEqual(p.gaps, []);
+  assert.equal(p.standing, "execution-only");
+  assert.equal(p.answer.observedAt, answer.observedAt);
+  assert.deepEqual(p.regions.inputs!.map((item) => item.ref), [{ authority: "@kontourai/station", schemaVersion: "1", kind: "input", sessionId: hostThreadId, eventId: `session-seeded:${hostThreadId}` }]);
+  assert.deepEqual(p.regions.outcomes!.map((item) => item.ref), [{ authority: "@kontourai/station", schemaVersion: "1", kind: "task-output", taskId: hostTaskId, outputId: `output:${hostTaskId}` }]);
+  assert.deepEqual(p.regions.live!.map((item) => (item.ref as { observationId: string }).observationId), ["live:1"]);
+  assert.deepEqual(p.regions.execution!.map((item) => item.ref).sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))), [
+    { authority: "@kontourai/flow-agents", schemaVersion: "grounded-execution-narrative/v1", kind: "narrative", narrativeId: `narrative:${hostTaskId}` },
+    { authority: "@kontourai/thread", schemaVersion: "1.2.0", kind: "result", threadId: hostThreadId, resultId: hostMessageId },
+  ]);
+}
+test("contribution owner ids are opaque like the answer ref: colon host ids compose in v1, v2, and the panel", () => {
+  const v1 = hostIdentityInput();
+  assert.equal(parseBasisComposition(v1).ok, true);
+  const p1 = composeBasisProjection(v1);
+  assertHostIdentityRegions(p1);
+  assert.equal(parseBasisProjection(JSON.parse(JSON.stringify(p1))).ok, true);
+
+  const v2 = { ...v1, version: SURFACE_BASIS_V2_VERSION } as Parameters<typeof composeBasisProjectionV2>[0];
+  assert.equal(parseBasisCompositionV2(v2).ok, true);
+  const p2 = composeBasisProjectionV2(v2);
+  assertHostIdentityRegions(p2);
+  assert.equal(parseBasisProjectionV2(JSON.parse(JSON.stringify(p2))).ok, true);
+
+  const view = buildBasisPanelViewModel(JSON.parse(JSON.stringify(p1)));
+  assert.equal(view.state, "ready");
+  if (view.state === "ready") {
+    const items = view.contextGroups.flatMap((group) => group.items);
+    assert.equal(items.length, 5);
+    assert.deepEqual(view.contextGroups.find((group) => group.id === "outcomes")?.items[0]?.ref, p1.regions.outcomes[0]?.ref);
+    assert.equal(new Set(items.map((item) => item.id)).size, 5);
+  }
+});
+test("contribution contract tuple stays restricted while owner ids stay bounded and well-formed", () => {
+  const station = (mutate: (ref: Record<string, unknown>) => void): BasisCompositionInput => { const value = hostIdentityInput(); const ref = (value.contributions[1] as unknown as { value: Array<{ ref: Record<string, unknown> }> }).value[1]!.ref; mutate(ref); return value; };
+  for (const [field, unsafe] of [["authority", "@kontourai/station:x"], ["schemaVersion", "1:x"], ["kind", "task-output<b>"]] as const) {
+    const parsed = parseBasisComposition(station((ref) => { ref[field] = unsafe; }));
+    assert.equal(parsed.ok, false, field);
+    if (!parsed.ok) assert.equal(parsed.gap.code, "invalid-contribution-ref", field);
+  }
+  for (const unsafe of ["", "\ud800", "x".repeat(4_097)]) assert.equal(parseBasisComposition(station((ref) => { ref.taskId = unsafe; })).ok, false);
+});
+function taskOutput(taskId: string, outputId: string, title = "Report"): BasisContribution<Extract<BasisContributionRef, { authority: "@kontourai/station" }>> { return { ...contribution, ref: { authority: "@kontourai/station", schemaVersion: "1", kind: "task-output", taskId, outputId }, context: { ...contribution.context, title } as typeof contribution.context }; }
+function stationRead(value: BasisContribution[]): BasisCompositionInput["contributions"][number] { return { owner: { authority: "@kontourai/station" }, state: "available", observedAt: answer.observedAt, value } as BasisCompositionInput["contributions"][number]; }
+test("panel item ids are injective when opaque owner ids contain the old `|` and `=` separators", () => {
+  const left = taskOutput("u", "o|schemaVersion=1|taskId=t");
+  const right = taskOutput("t|schemaVersion=1|taskId=u", "o");
+  // Precondition: the former `key=value|...` join maps these distinct refs to one string.
+  const oldJoin = (ref: Record<string, unknown>) => Object.keys(ref).sort().map((key) => `${key}=${String(ref[key])}`).join("|");
+  assert.equal(oldJoin(left.ref), oldJoin(right.ref));
+  const projection = composeBasisProjection(input(noAssessment, [stationRead([left, right])]));
+  assert.equal(projection.regions.outcomes.length, 2);
+  const view = buildBasisPanelViewModel(JSON.parse(JSON.stringify(projection)));
+  assert.equal(view.state, "ready");
+  if (view.state === "ready") { const ids = view.contextGroups.find((group) => group.id === "outcomes")!.items.map((item) => item.id); assert.equal(ids.length, 2); assert.notEqual(ids[0], ids[1]); }
+});
+test("composer dedupe keys are injective over U+0000 and order is total over canonically equivalent ids", () => {
+  const left = taskOutput("u", "o\u0000schemaVersion=1\u0000taskId=t", "left");
+  const right = taskOutput("t\u0000schemaVersion=1\u0000taskId=u", "o", "right");
+  const distinct = composeBasisProjection(input(noAssessment, [stationRead([left, right])]));
+  assert.deepEqual(distinct.gaps, []);
+  assert.deepEqual(distinct.regions.outcomes.map((item) => item.context.kind === "station-output" ? item.context.title : null).sort(), ["left", "right"]);
+
+  const composed = taskOutput("é", "o", "composed"); const precomposed = taskOutput("é", "o", "precomposed");
+  assert.equal("é".localeCompare("é", "en"), 0);
+  const order = (items: BasisContribution[]) => composeBasisProjection(input(noAssessment, [stationRead(items)])).regions.outcomes.map((item) => (item.ref as { taskId: string }).taskId);
+  assert.deepEqual(order([composed, precomposed]), order([precomposed, composed]));
+  assert.equal(order([composed, precomposed]).length, 2);
+
+  // A conflicting duplicate gap never echoes opaque ids into display text, so the projection still reparses.
+  const conflict = composeBasisProjection(input(noAssessment, [stationRead([left, { ...left, context: { ...left.context, title: "other" } as typeof left.context }])]));
+  assert.deepEqual(conflict.gaps.map((gap) => gap.code), ["corrupt-duplicate-contribution"]);
+  assert.equal(parseBasisProjection(JSON.parse(JSON.stringify(conflict))).ok, true);
+  assert.equal(buildBasisPanelViewModel(JSON.parse(JSON.stringify(conflict))).state, "ready");
 });
