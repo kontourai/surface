@@ -1,5 +1,12 @@
 # Changelog
 
+## [6.2.1](https://github.com/kontourai/surface/compare/v6.2.0...v6.2.1) (2026-10-19)
+
+
+### Fixes
+
+* **basis:** accept opaque owner ids in contribution refs ([#346](https://github.com/kontourai/surface/issues/346)) ([2527750](https://github.com/kontourai/surface/commit/252775094b158e1dcf01d823b94983164868d4f5))
+
 ## [6.2.0](https://github.com/kontourai/surface/compare/v6.1.0...v6.2.0) (2026-10-16)
 
 
