@@ -83,6 +83,18 @@ test("identityLinks merge subjects across claims transitively", () => {
   assert.equal(group!.members.length, 3);
 });
 
+test("only equivalent identity links join subject groups", () => {
+  const a = { subjectType: "org", subjectId: "a" };
+  const b = { subjectType: "org", subjectId: "b" };
+  for (const relation of ["equivalent", "subsumes", "converts"] as const) {
+    const input = validateTrustBundle(makeInput({ identityLinks: [{ relation, subjects: [a, b] }] }));
+    const index = buildIdentityIndex(input);
+    assert.equal(index.canonicalKey(a) === index.canonicalKey(b), relation === "equivalent", relation);
+    assert.equal(index.groups.length, relation === "equivalent" ? 1 : 2, relation);
+    assert.equal(buildTrustReport(input).identityLinks?.[0]?.relation, relation);
+  }
+});
+
 test("trust report carries identityLinks and computed subjectGroups", () => {
   const input = validateTrustBundle(makeInput({
     claims: [
