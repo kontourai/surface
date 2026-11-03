@@ -19,7 +19,7 @@ import { assertBasisInvariants } from "./provenance-annotations.js";
 import { foldClaim } from "./claim-fold.js";
 import { deriveClaimGroupRollups } from "./claim-groups.js";
 import { deriveConflictTransparencyGaps } from "./conflict-derivation.js";
-import { applyDerivation, assertDeletedClaimsHaveNoEvidence, isDeletedClaim, survivingDerivationInputs } from "./derivation.js";
+import { applyDerivation, assertDeletedClaimsHaveNoEvidence, derivationInputsAffectedByDeletion, isDeletedClaim, survivingDerivationInputs } from "./derivation.js";
 import { buildIdentityIndex } from "./identity.js";
 import { canonicalJson, sha256Hex } from "./canonical-digest.js";
 import { resolvePolicyForClaim } from "./policy-resolver.js";
@@ -206,7 +206,9 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
   // guard — #127.)
   const waiverValidityByClaimId: Record<string, WaiverValidity> = Object.create(null);
   const staleReasonByClaimId: Record<string, StaleReason> = Object.create(null);
-  const survivingInputIds = input.claims.some(isDeletedClaim) ? survivingDerivationInputs(claimsById) : undefined;
+  const hasDeletedClaims = input.claims.some(isDeletedClaim);
+  const survivingInputIds = hasDeletedClaims ? survivingDerivationInputs(claimsById) : undefined;
+  const deletionAffectedInputIds = hasDeletedClaims ? derivationInputsAffectedByDeletion(claimsById) : undefined;
   const claims = foldedClaims.map((folded) => {
     const outcome = applyDerivation({
       claim: folded.claim,
@@ -214,6 +216,7 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
       ownStatusByClaimId,
       claimsById,
       survivingInputIds,
+      deletionAffectedInputIds,
       now,
     });
     transparencyGaps.push(...outcome.transparencyGaps);

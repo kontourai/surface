@@ -48,7 +48,7 @@ import {
 export function validateDeletedRetention(claim: Record<string, unknown>): void {
   if (!isObject(claim.metadata) || !Object.hasOwn(claim.metadata, "surfaceRetention")) return;
   const retention = claim.metadata.surfaceRetention;
-  if (!isObject(retention) || retention.state !== "deleted" ||
+  if (!isObject(retention) || !Object.hasOwn(retention, "state") || retention.state !== "deleted" ||
       typeof retention.actor !== "string" || retention.actor.trim().length === 0 ||
       typeof retention.rationale !== "string" || retention.rationale.trim().length === 0) {
     throw new Error("claim metadata.surfaceRetention must be a deleted tombstone with erasedAt, actor and rationale");

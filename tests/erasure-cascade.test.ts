@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import type { TrustBundle } from "../src/types.js";
-import { analyzeCounterfactual, buildDerivationDrilldown, buildTrustReport, recomputeChangeRecords, traceDependents, validateTrustBundle } from "../src/index.js";
+import { analyzeCounterfactual, isDeletedClaim, buildDerivationDrilldown, buildTrustReport, recomputeChangeRecords, traceDependents, validateTrustBundle } from "../src/index.js";
 
 const now = new Date("2026-04-26T00:00:00.000Z");
 const timestamp = "2026-04-25T00:00:00.000Z";
@@ -187,6 +187,10 @@ test("a live unsupported intermediate limits downstream support", () => {
   const derived = buildTrustReport(bundle, { now });
   assert.equal(derived.claims.find((claim) => claim.id === "sole")?.status, "unknown");
   assert.equal(derived.claims.find((claim) => claim.id === "target")?.status, "unknown");
+  assert.ok(derived.transparencyGaps.some((gap) => gap.claimId === "target" && gap.type === "unsupported_inference" && (gap.metadata?.unsupportedInputs as string[]).includes("sole")));
+  const trace = derived.changeRecords.find((record) => record.claimId === "target" && record.reason === "input-deleted");
+  assert.equal(trace?.inputStatuses?.sole, "unknown");
+  assert.deepEqual(trace?.metadata?.unsupportedInputs, ["sole"]);
 });
 
 test("unvalidated report derivation rejects tombstone content and integrity references", () => {
@@ -219,4 +223,45 @@ test("deep erasure traversal and recompute avoid recursive stack exhaustion", ()
   const result = spawnSync(process.execPath, ["--input-type=module", "-e", script], { timeout: 8000, encoding: "utf8" });
   assert.ifError(result.error);
   assert.equal(result.status, 0, result.stderr);
+});
+
+
+test("erasure does not weaken an unrelated live cycle", () => {
+  const next = report(true);
+  const template = next.claims.find((claim) => claim.id === "survivor")!;
+  const source = next.claims.find((claim) => claim.id === "source")!;
+  const claims = [source, { ...template, id: "c1", derivedFrom: ["c2"] },
+    { ...template, id: "c2", derivedFrom: ["c1"] }, { ...template, id: "target", derivedFrom: ["source", "c1"] }];
+  const evidence = ["c1", "c2", "target"].map((id) => ({ ...next.evidence.find((item) => item.claimId === "survivor")!, id: `e-${id}`, claimId: id }));
+  const events = ["c1", "c2", "target"].map((id) => ({ ...next.events.find((item) => item.claimId === "survivor")!, id: `ev-${id}`, claimId: id }));
+  const derived = buildTrustReport(validateTrustBundle({ schemaVersion: 3, source: "independent-cycle", claims, evidence, events, policies: next.policies }), { now });
+  assert.equal(derived.claims.find((claim) => claim.id === "target")?.status, "verified");
+  assert.ok(derived.transparencyGaps.some((gap) => gap.claimId === "target" && gap.metadata?.source === "derivation.cycle"));
+});
+
+test("counterfactuals never recalculate a deleted dependent", () => {
+  const next = report(true);
+  const template = next.claims.find((claim) => claim.id === "survivor")!;
+  const bad = { ...template, id: "bad", derivedFrom: [] };
+  const source = { ...next.claims.find((claim) => claim.id === "source")!, derivedFrom: ["bad"] };
+  const evidence = { ...next.evidence.find((item) => item.claimId === "survivor")!, id: "bad-evidence", claimId: "bad" };
+  const event = { ...next.events.find((item) => item.claimId === "survivor")!, id: "bad-event", claimId: "bad", status: "rejected" };
+  const claims = next.claims.map((claim) => claim.id === "source" ? source : claim);
+  const derived = buildTrustReport(validateTrustBundle({ schemaVersion: 3, source: "deleted-dependent", claims: [...claims, bad],
+    evidence: [...next.evidence, evidence], events: [...next.events, event], policies: next.policies }), { now });
+  assert.deepEqual(analyzeCounterfactual(derived, "bad", "rejected").affected, []);
+});
+
+test("inherited retention declarations are not treated as tombstones", () => {
+  const next = report(true);
+  const source = next.claims.find((claim) => claim.id === "source")!;
+  const declaration = source.metadata!.surfaceRetention as Record<string, unknown>;
+  const inherited = { ...source, value: "ordinary live content", currentIntegrityRef: "sha256:abc", metadata: Object.create({ surfaceRetention: declaration }) };
+  assert.equal(isDeletedClaim(inherited), false);
+  const bundle = { schemaVersion: 3, source: "prototype", claims: next.claims.map((claim) => claim.id === "source" ? inherited : claim),
+    evidence: next.evidence, events: next.events, policies: next.policies } as TrustBundle;
+  assert.equal(isDeletedClaim(validateTrustBundle(bundle).claims.find((claim) => claim.id === "source")!), false);
+  assert.equal(isDeletedClaim(buildTrustReport(bundle, { now }).claims.find((claim) => claim.id === "source")!), false);
+  const inheritedState = Object.assign(Object.create({ state: "deleted" }), { erasedAt: timestamp, actor: "owner", rationale: "request" });
+  assert.throws(() => validateTrustBundle({ ...bundle, claims: [{ ...source, metadata: { surfaceRetention: inheritedState } }, ...next.claims.filter((claim) => claim.id !== "source")] }), /surfaceRetention/);
 });

@@ -44,6 +44,8 @@ interface DerivationInputs {
   now: Date;
   /** Shared report-wide survival index; standalone callers may omit it. */
   survivingInputIds?: ReadonlySet<string>;
+  /** Shared reverse reachability from tombstones. */
+  deletionAffectedInputIds?: ReadonlySet<string>;
 }
 
 /**
@@ -89,6 +91,10 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
   const surviving = deletedInputs.size > 0
     ? input.survivingInputIds ?? survivingDerivationInputs(claimsById)
     : undefined;
+  const deletionAffected = deletedInputs.size > 0
+    ? input.deletionAffectedInputIds ?? derivationInputsAffectedByDeletion(claimsById)
+    : undefined;
+  const unsupportedInputs = new Set<string>();
 
   // Explicit DFS frames preserve the existing visit order without growing the
   // JavaScript call stack for deep provenance chains.
@@ -106,10 +112,13 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
       continue;
     }
     if (isDeletedClaim(inputClaim)) continue;
-    const inputStatus = ownStatusByClaimId.get(currentId) ?? "unknown";
+    let inputStatus = ownStatusByClaimId.get(currentId) ?? "unknown";
+    if (surviving && deletionAffected?.has(currentId) && !surviving.has(currentId)) {
+      unsupportedInputs.add(currentId);
+      inputStatus = weakerStatus(inputStatus, "unknown");
+    }
     statusesByInputId.set(currentId, inputStatus);
     ceiling = weakerStatus(ceiling, inputStatus);
-    if (surviving && !surviving.has(currentId)) ceiling = weakerStatus(ceiling, "unknown");
     collectWeakEdges(inputClaim);
     const children = derivationInputIds(inputClaim);
     if (children.length > 0) frames.push({ ids: children, index: 0 });
@@ -117,15 +126,21 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
 
   if (deletedInputs.size > 0) {
     const erased = [...deletedInputs].sort();
-    const unsupported = !inputIds.some((id) => surviving!.has(id));
+    const unsupported = unsupportedInputs.size > 0 || !inputIds.some((id) => {
+      const candidate = claimsById.get(id);
+      return !candidate || (!isDeletedClaim(candidate) &&
+        (!deletionAffected!.has(id) || surviving!.has(id)));
+    });
     if (unsupported) {
       ceiling = weakerStatus(ceiling, "unknown");
       transparencyGaps.push({
         id: `${claim.id}.gap.deleted-input`, claimId: claim.id,
         type: "unsupported_inference", severity: claim.impactLevel ?? "medium",
         ...materialityFromClaim(claim),
-        message: `Claim ${claim.id} has no surviving derivation input.`, createdAt,
-        metadata: { source: "derivation.deleted", deletedInputs: erased },
+        message: unsupportedInputs.size > 0
+          ? `Claim ${claim.id} depends on inputs with no surviving support.`
+          : `Claim ${claim.id} has no surviving derivation input.`, createdAt,
+        metadata: { source: "derivation.deleted", deletedInputs: erased, unsupportedInputs: [...unsupportedInputs].sort() },
       });
     } else {
       transparencyGaps.push({
@@ -140,7 +155,8 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
       id: `${claim.id}.change.input-deleted`, claimId: claim.id,
       inputClaimIds: erased, reason: "input-deleted", action: "review", createdAt,
       message: `Claim ${claim.id} depends on deleted input; review derived content for removal.`,
-      metadata: { source: "derivation.deleted" },
+      inputStatuses: Object.fromEntries(statusesByInputId),
+      metadata: { source: "derivation.deleted", unsupportedInputs: [...unsupportedInputs].sort() },
     });
   }
 
@@ -290,9 +306,10 @@ function changeRecordsForInputStatuses(input: {
 
 /** Surface retention metadata is a producer-authored tombstone, not a content hash. */
 export function isDeletedClaim(claim: Claim): boolean {
-  const retention = claim.metadata?.surfaceRetention;
+  if (!claim.metadata || !Object.hasOwn(claim.metadata, "surfaceRetention")) return false;
+  const retention = claim.metadata.surfaceRetention;
   return typeof retention === "object" && retention !== null &&
-    (retention as Record<string, unknown>).state === "deleted";
+    Object.hasOwn(retention, "state") && (retention as Record<string, unknown>).state === "deleted";
 }
 
 /** Index branches that reach a non-deleted leaf or missing input in O(V + E). */
@@ -326,4 +343,26 @@ export function assertDeletedClaimsHaveNoEvidence(claims: readonly Claim[], evid
   if (evidence.some((item) => deleted.has(item.claimId))) {
     throw new Error("deleted claims must not retain attached evidence");
   }
+}
+
+/** Claims with a path to a tombstone, stopping at deleted claims. */
+export function derivationInputsAffectedByDeletion(claimsById: ReadonlyMap<string, Claim>): ReadonlySet<string> {
+  const parents = new Map<string, string[]>();
+  const queue: string[] = [];
+  for (const [id, claim] of claimsById) {
+    if (isDeletedClaim(claim)) { queue.push(id); continue; }
+    for (const child of derivationInputIds(claim)) {
+      const owners = parents.get(child) ?? [];
+      owners.push(id);
+      parents.set(child, owners);
+    }
+  }
+  const affected = new Set<string>();
+  for (let index = 0; index < queue.length; index++) {
+    const id = queue[index];
+    if (affected.has(id)) continue;
+    affected.add(id);
+    for (const parent of parents.get(id) ?? []) queue.push(parent);
+  }
+  return affected;
 }

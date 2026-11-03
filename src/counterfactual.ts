@@ -100,7 +100,7 @@ export function analyzeCounterfactual(
   }
 
   // Only claims downstream of the target can have their ceiling move.
-  const reachable = [...depthByDependent.keys()];
+  const reachable = [...depthByDependent.keys()].filter((id) => !deleted.has(id));
 
   const projected = new Map<string, TrustStatus>(baseline);
   projected.set(targetClaimId, hypotheticalStatus);
