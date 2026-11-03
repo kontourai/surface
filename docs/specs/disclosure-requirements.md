@@ -33,6 +33,8 @@ A disclosure record should explain:
 - who or what requirements access when supplied
 - whether redaction affects claim status or policy satisfaction
 
+A derived claim is never more visible than the claims it is derived from. Its effective visibility is the intersection of its own and its inputs' visibility, and an input whose visibility is missing or unreadable counts as the most restrictive, so omission never widens disclosure. Supersession is evaluated per viewer: a viewer who cannot see a newer value sees the prior current value and no sign of the newer one. See [Derived Visibility](../decisions/derived-visibility.md).
+
 ## Materiality
 
 Disclosure should prioritize material claims: claims that affect whether a user or agent should rely on product output. Producers own materiality mapping. Surface displays and carries the domain-neutral `low`, `medium`, and `high` ordinal so gaps around important claims are visible without adding numeric trust scores or domain-specific materiality labels to Surface core.

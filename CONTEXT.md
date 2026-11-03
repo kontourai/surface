@@ -287,7 +287,7 @@ The outcome of evaluating one evidence item, such as passed, failed, warned, inc
 _Avoid_: Claim status, domain validity, action decision
 
 **Evidence Visibility**:
-The disclosure state of evidence for a viewer, such as public, redacted, private, permissioned, unavailable, or missing. Surface represents visibility and redaction metadata; producers enforce access control.
+The disclosure state of evidence for a viewer, such as public, redacted, private, permissioned, unavailable, or missing. Surface represents visibility and redaction metadata; producers enforce access control. A derived claim's effective visibility is no wider than the intersection of its own and its derivation inputs' visibility, anything missing or unreadable counts as the most restrictive, and supersession is evaluated per viewer context so a viewer who cannot see a newer value sees the prior current one. See [Derived Visibility](docs/decisions/derived-visibility.md).
 _Avoid_: Access control system, no evidence
 
 **Evidence Access Request**:
