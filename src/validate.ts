@@ -3,6 +3,7 @@ import {
   isObject,
   rejectUnknownKeys,
   requireArray,
+  requireDateTime,
   requireSchemaVersion,
   requireString,
 } from "./validation/primitives.js";
@@ -18,6 +19,7 @@ import {
   validateIntegrityAnchor,
   validatePolicy,
 } from "./validation/records.js";
+import { assertDeletedClaimsHaveNoEvidence } from "./derivation.js";
 import { resolvePolicyForClaim } from "./policy-resolver.js";
 import { deriveTrustStatus } from "./status.js";
 import { resolveStatusFunctionVersion, type StatusFunctionVersion } from "./status-function-version.js";
@@ -114,6 +116,7 @@ export function validateTrustBundle(input: unknown, options?: ValidateTrustBundl
   }
 
   for (const item of evidence) validateEvidence(item, schemaVersion);
+  assertDeletedClaimsHaveNoEvidence(claims as TrustBundle["claims"], evidence as TrustBundle["evidence"]);
 
   for (const policy of policies) validatePolicy(policy);
 
@@ -149,6 +152,22 @@ export function validateTrustBundle(input: unknown, options?: ValidateTrustBundl
   return result;
 }
 
+/** Validate the Surface-specific tombstone envelope, not physical deletion. */
+function validateDeletedRetention(claim: Record<string, unknown>): void {
+  if (!isObject(claim.metadata) || !Object.hasOwn(claim.metadata, "surfaceRetention")) return;
+  const retention = claim.metadata.surfaceRetention;
+  if (!isObject(retention) || retention.state !== "deleted" ||
+      typeof retention.actor !== "string" || retention.actor.trim().length === 0 ||
+      typeof retention.rationale !== "string" || retention.rationale.trim().length === 0) {
+    throw new Error("claim metadata.surfaceRetention must be a deleted tombstone with erasedAt, actor and rationale");
+  }
+  requireDateTime(retention, "erasedAt");
+  rejectUnknownKeys(retention, new Set(["state", "erasedAt", "actor", "rationale"]), "claim metadata.surfaceRetention");
+  if (claim.value !== null || claim.currentIntegrityRef !== undefined || claim.currentIntegrityAnchor !== undefined) {
+    throw new Error("deleted claim must have null value and no content integrity reference or anchor");
+  }
+}
+
 /**
  * Version "2" only. Under "2" a verified claim governed by a `commit` rule
  * derives `verified` even without `currentIntegrityRef`, so a caller that will
@@ -156,22 +175,6 @@ export function validateTrustBundle(input: unknown, options?: ValidateTrustBundl
  * before version "3". Under "3" the same claim derives `stale` and needs no
  * refusal.
  */
-/** Validate the Surface-specific tombstone envelope, not physical deletion. */
-function validateDeletedRetention(claim: Record<string, unknown>): void {
-  if (!isObject(claim.metadata) || !Object.hasOwn(claim.metadata, "surfaceRetention")) return;
-  const retention = claim.metadata.surfaceRetention;
-  if (!isObject(retention) || retention.state !== "deleted" ||
-      typeof retention.erasedAt !== "string" || !Number.isFinite(Date.parse(retention.erasedAt)) ||
-      typeof retention.actor !== "string" || retention.actor.length === 0 ||
-      typeof retention.rationale !== "string" || retention.rationale.length === 0) {
-    throw new Error("claim metadata.surfaceRetention must be a deleted tombstone with erasedAt, actor and rationale");
-  }
-  rejectUnknownKeys(retention, new Set(["state", "erasedAt", "actor", "rationale"]), "claim metadata.surfaceRetention");
-  if (claim.value !== null || claim.currentIntegrityRef !== undefined || claim.currentIntegrityAnchor !== undefined) {
-    throw new Error("deleted claim must have null value and no content integrity reference or anchor");
-  }
-}
-
 function validateResolvedValidityInputs(input: Pick<TrustBundle, "claims" | "evidence" | "policies" | "events" | "authorityTrace">): void {
   for (const claim of input.claims) {
     const policy = resolvePolicyForClaim(claim, input.policies, { statusFunctionVersion: "2" });

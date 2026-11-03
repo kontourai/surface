@@ -42,6 +42,8 @@ interface DerivationInputs {
   /** Map from claimId to claim, used to walk derivedFrom chains. */
   claimsById: Map<string, Claim>;
   now: Date;
+  /** Shared report-wide survival index; standalone callers may omit it. */
+  survivingInputIds?: ReadonlySet<string>;
 }
 
 /**
@@ -82,32 +84,9 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
   };
   for (const id of inputIds) collectDeleted(id, new Set([claim.id]));
 
-  // Propagate survival backwards from non-deleted leaves and missing inputs.
-  // Unlike recursive path enumeration this visits each node and edge once per
-  // derivation, including diamond-shaped graphs. Cycles without an exit do not
-  // manufacture surviving support; missing inputs remain conservative unknowns.
-  const surviving = new Set<string>();
-  if (deletedInputs.size > 0) {
-    const parents = new Map<string, string[]>();
-    const queue: string[] = [];
-    for (const [id, candidate] of claimsById) {
-      if (isDeletedClaim(candidate)) continue;
-      const children = derivationInputIds(candidate);
-      if (children.length === 0) queue.push(id);
-      for (const child of children) {
-        const owners = parents.get(child) ?? [];
-        owners.push(id);
-        parents.set(child, owners);
-        if (!claimsById.has(child)) queue.push(child);
-      }
-    }
-    for (let index = 0; index < queue.length; index++) {
-      const id = queue[index];
-      if (surviving.has(id)) continue;
-      surviving.add(id);
-      for (const parent of parents.get(id) ?? []) queue.push(parent);
-    }
-  }
+  const surviving = deletedInputs.size > 0
+    ? input.survivingInputIds ?? survivingDerivationInputs(claimsById)
+    : undefined;
 
   const walk = (currentId: string): void => {
     const inputClaim = claimsById.get(currentId);
@@ -117,11 +96,9 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
       return;
     }
     if (isDeletedClaim(inputClaim)) return;
-    if (deletedInputs.size === 0 || surviving.has(currentId)) {
-      const inputStatus = ownStatusByClaimId.get(currentId) ?? "unknown";
-      statusesByInputId.set(currentId, inputStatus);
-      ceiling = weakerStatus(ceiling, inputStatus);
-    }
+    const inputStatus = ownStatusByClaimId.get(currentId) ?? "unknown";
+    statusesByInputId.set(currentId, inputStatus);
+    ceiling = weakerStatus(ceiling, inputStatus);
     const nextInputs = derivationInputIds(inputClaim);
     collectWeakEdges(inputClaim);
     if (nextInputs.length === 0) return;
@@ -146,7 +123,7 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
 
   if (deletedInputs.size > 0) {
     const erased = [...deletedInputs].sort();
-    const unsupported = !inputIds.some((id) => surviving.has(id));
+    const unsupported = !inputIds.some((id) => surviving!.has(id));
     if (unsupported) {
       ceiling = weakerStatus(ceiling, "unknown");
       transparencyGaps.push({
@@ -322,4 +299,37 @@ export function isDeletedClaim(claim: Claim): boolean {
   const retention = claim.metadata?.surfaceRetention;
   return typeof retention === "object" && retention !== null &&
     (retention as Record<string, unknown>).state === "deleted";
+}
+
+/** Index branches that reach a non-deleted leaf or missing input in O(V + E). */
+export function survivingDerivationInputs(claimsById: ReadonlyMap<string, Claim>): ReadonlySet<string> {
+  const parents = new Map<string, string[]>();
+  const queue: string[] = [];
+  for (const [id, candidate] of claimsById) {
+    if (isDeletedClaim(candidate)) continue;
+    const children = derivationInputIds(candidate);
+    if (children.length === 0) queue.push(id);
+    for (const child of children) {
+      const owners = parents.get(child) ?? [];
+      owners.push(id);
+      parents.set(child, owners);
+      if (!claimsById.has(child)) queue.push(child);
+    }
+  }
+  const surviving = new Set<string>();
+  for (let index = 0; index < queue.length; index++) {
+    const id = queue[index];
+    if (surviving.has(id)) continue;
+    surviving.add(id);
+    for (const parent of parents.get(id) ?? []) queue.push(parent);
+  }
+  return surviving;
+}
+
+/** Refuse a bundle that would publish evidence belonging to a deleted claim. */
+export function assertDeletedClaimsHaveNoEvidence(claims: readonly Claim[], evidence: readonly { claimId: string }[]): void {
+  const deleted = new Set(claims.filter(isDeletedClaim).map((claim) => claim.id));
+  if (evidence.some((item) => deleted.has(item.claimId))) {
+    throw new Error("deleted claims must not retain attached evidence");
+  }
 }

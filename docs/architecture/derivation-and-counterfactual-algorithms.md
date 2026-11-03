@@ -124,7 +124,7 @@ Because derivation only bounds *downward*, a *strengthening* hypothetical produc
 
 ### Deleted inputs
 
-Surface's [erasure decision](../decisions/erasure-cascade.md) defines a producer-authored tombstone in claim metadata. The derivation excludes deleted branches from support, emits an unsupported inference gap when none survives, and emits a provenance gap and deletion trace when support remains. Removing a weak ceiling can strengthen the resulting status, so producers must review affected content and support. The ordinary weakest-input model above applies to surviving inputs; the counterfactual status simulator is not an erasure simulator. Use `traceDependents` to enumerate dependencies before or after deletion and `recomputeChangeRecords` to compare reports, including descendants whose status did not change.
+Surface's [erasure decision](../decisions/erasure-cascade.md) defines a producer-authored tombstone in claim metadata. The derivation excludes deleted branches from support, emits an unsupported inference gap when none survives, and emits a provenance gap and deletion trace when support remains. Removing a deleted input’s ceiling can strengthen the resulting status, while live intermediate claims still impose their own ceilings. Producers must review affected content and support. The ordinary weakest-input model above applies to surviving inputs; the counterfactual status simulator is not an erasure simulator. Use `traceDependents` to enumerate dependencies before or after deletion and `recomputeChangeRecords` to compare reports, including descendants whose status did not change.
 
 ## Recompute change records
 

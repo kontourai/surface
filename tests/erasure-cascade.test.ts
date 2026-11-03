@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import type { TrustBundle } from "../src/types.js";
 import { buildDerivationDrilldown, buildTrustReport, recomputeChangeRecords, traceDependents, validateTrustBundle } from "../src/index.js";
 
 const now = new Date("2026-04-26T00:00:00.000Z");
@@ -74,8 +75,11 @@ test("a cycle cannot replace erased support", () => {
 test("malformed tombstones and retained claim content are rejected at validation", () => {
   const source = report(true).claims.find((claim) => claim.id === "source")!;
   const validate = (claim: unknown) => validateTrustBundle({ schemaVersion: 3, source: "invalid", claims: [claim], evidence: [], policies: [], events: [] });
-  for (const surfaceRetention of ["deleted", { state: "DELETED" }, { state: "deleted", erasedAt: 42 }]) {
-    assert.throws(() => validate({ ...source, metadata: { surfaceRetention } }), /surfaceRetention/);
+  for (const surfaceRetention of ["deleted", { state: "DELETED" }, { state: "deleted", erasedAt: 42 },
+    { state: "expired", erasedAt: timestamp, actor: "owner", rationale: "request" },
+    { state: "deleted", erasedAt: "March 7", actor: "owner", rationale: "request" },
+    { state: "deleted", erasedAt: timestamp, actor: " ", rationale: "request" }]) {
+    assert.throws(() => validate({ ...source, metadata: { surfaceRetention } }), /surfaceRetention|erasedAt/);
   }
   assert.throws(() => validate({ ...source, value: "erased" }), /null value/);
   assert.throws(() => validate({ ...source, currentIntegrityRef: "sha256:abc" }), /integrity reference/);
@@ -120,4 +124,44 @@ test("removing a rejected input can lift the ceiling and leaves a provenance gap
   assert.equal(before.claims.find((claim) => claim.id === "survivor")?.status, "rejected");
   assert.equal(after.claims.find((claim) => claim.id === "survivor")?.status, "verified");
   assert.ok(after.transparencyGaps.some((gap) => gap.claimId === "survivor" && gap.type === "provenance_gap" && gap.metadata?.source === "derivation.deleted"));
+});
+
+
+test("a live rejected intermediate remains a ceiling after its sole input is erased", () => {
+  const original = report(false);
+  const source = report(true).claims.find((claim) => claim.id === "source")!;
+  const template = original.claims.find((claim) => claim.id === "survivor")!;
+  const claims = [source, original.claims.find((claim) => claim.id === "other")!,
+    { ...template, id: "intermediate", derivedFrom: ["source"] },
+    { ...template, id: "target", derivedFrom: ["intermediate", "other"] }];
+  const evidence = ["other", "intermediate", "target"].map((id) => ({ ...original.evidence.find((item) => item.claimId === "survivor")!, id: `e-${id}`, claimId: id }));
+  const events = ["other", "intermediate", "target"].map((id) => ({ ...original.events.find((item) => item.claimId === "survivor")!, id: `ev-${id}`, claimId: id, status: id === "intermediate" ? "rejected" : "verified" }));
+  const next = buildTrustReport(validateTrustBundle({ schemaVersion: 3, source: "intermediate", claims, evidence, events, policies: original.policies }), { now });
+  assert.equal(next.claims.find((claim) => claim.id === "target")?.status, "rejected");
+  assert.ok(next.changeRecords.some((record) => record.claimId === "target" && record.reason === "input-rejected" && record.inputClaimIds.includes("intermediate")));
+});
+
+test("attached evidence on a tombstone is refused at validation and report derivation", () => {
+  const erased = report(true);
+  const old = report(false);
+  const bundle = { schemaVersion: 3, source: "leak", claims: erased.claims,
+    evidence: [old.evidence.find((item) => item.claimId === "source")!], policies: [], events: [] } as TrustBundle;
+  assert.throws(() => validateTrustBundle(bundle), /deleted claims must not retain attached evidence/);
+  assert.throws(() => buildTrustReport(bundle, { now }), /deleted claims must not retain attached evidence/);
+});
+
+test("many dependents share the survival index within a bounded time", () => {
+  const index = new URL("../src/index.js", import.meta.url).href;
+  const script = `
+    import { buildTrustReport, validateTrustBundle } from ${JSON.stringify(index)};
+    const time = "2026-04-25T00:00:00.000Z";
+    const base = {subjectType:"repo",subjectId:"x",claimType:"fact",fieldOrBehavior:"fact",value:true,createdAt:time,updatedAt:time};
+    const claims = [{...base,id:"root",value:null,metadata:{surfaceRetention:{state:"deleted",erasedAt:time,actor:"owner",rationale:"request"}}},{...base,id:"live"}];
+    for (let i=0;i<12000;i++) claims.push({...base,id:"claim"+i,derivedFrom:["root","live"]});
+    const bundle = validateTrustBundle({schemaVersion:3,source:"star",claims,evidence:[],policies:[],events:[]});
+    if (buildTrustReport(bundle,{now:new Date(time)}).claims.length !== claims.length) process.exit(2);
+  `;
+  const result = spawnSync(process.execPath, ["--input-type=module", "-e", script], { timeout: 8000, encoding: "utf8" });
+  assert.ifError(result.error);
+  assert.equal(result.status, 0, result.stderr);
 });
