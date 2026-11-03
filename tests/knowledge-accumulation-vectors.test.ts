@@ -24,7 +24,7 @@ interface VectorExpect {
 }
 interface VectorSlot { subjectType: string; subjectId: string; fieldOrBehavior: string; claimType: string; qualifiers?: Record<string, string> }
 interface VectorQuery { id: string; bundles: string[]; slot: VectorSlot; validAt?: string; knownAt?: string; expect?: VectorExpect; sameAs?: string }
-interface VectorCase { id: string; now: string; bundles: Record<string, VectorBundle>; observedAtByBundle: Record<string, string>; fixtureAuthority: { authenticatedOwnerByClaimId: Record<string, string>; admittedEventIds: string[] }; premise: { bundles: string[]; statusByClaimId: Record<string, string> }; queries: VectorQuery[] }
+interface VectorCase { id: string; now: string; bundles: Record<string, VectorBundle>; observedAtByBundle: Record<string, string>; fixtureAuthority: { authenticatedOwnerByClaimId: Record<string, string>; admittedEventIds: string[]; admittedIdentityLinkIds?: string[] }; premise: { bundles: string[]; statusByClaimId: Record<string, string> }; queries: VectorQuery[] }
 interface Vectors { proposedClaimFields: string[]; cases: VectorCase[] }
 
 const vectors = JSON.parse(await readFile("tests/fixtures/knowledge-accumulation/vectors.json", "utf8")) as Vectors;
@@ -103,22 +103,27 @@ for (const vectorCase of vectors.cases) {
           return { id: key, observedAt: vectorCase.observedAtByBundle[key], contentDigest: accumulationDigest(bundle), authenticatedPublisher: bundle.producerId!, bundle };
         });
         const eventDecisions = Object.values(vectorCase.bundles).flatMap((bundle) => bundle.events.map((event) => ({ eventId: event.id, eventDigest: accumulationDigest(event), publisher: bundle.producerId!, admitted: vectorCase.fixtureAuthority.admittedEventIds.includes(event.id) })));
-        const policy = { version: "1" as const, ownerByClaimId: vectorCase.fixtureAuthority.authenticatedOwnerByClaimId, eventDecisions };
+        const identityDecisions = Object.values(vectorCase.bundles).flatMap(bundle => (bundle.identityLinks ?? []).filter(link => link.id && link.mappingClaimId && vectorCase.fixtureAuthority.admittedIdentityLinkIds?.includes(link.id)).map(link => ({ linkDigest: accumulationDigest(link), publisher: bundle.producerId!, mappingClaimId: link.mappingClaimId!, admitted: true })));
+        const policy = { version: "1" as const, ownerByClaimId: vectorCase.fixtureAuthority.authenticatedOwnerByClaimId, eventDecisions, identityDecisions };
         const authority: AccumulationAuthority = { ...policy, integrityRef: accumulationDigest(policy) };
         return projectAccumulation(observations, authority, { slot: q.slot, now: vectorCase.now, knownAt: q.knownAt, validAt: q.validAt, valuePolicy: "single-json-v1" });
       };
       const result = run(query);
-      if (query.sameAs) {
-        assert.deepEqual(result, run(vectorCase.queries.find((q) => q.id === query.sameAs)!));
-      } else {
-        for (const [key, value] of Object.entries(query.expect!)) {
-          const actual = (result as unknown as Record<string, unknown>)[key];
-          if (["statusByClaimId", "dispositionByClaimId", "excluded"].includes(key)) {
-            assert.deepEqual({ ...(actual as Record<string, string>) }, value, key);
-          } else assert.deepEqual(actual, value, key);
+      const comparison = () => {
+        if (query.sameAs) {
+          assert.deepEqual(result, run(vectorCase.queries.find((q) => q.id === query.sameAs)!));
+        } else {
+          for (const [key, value] of Object.entries(query.expect!)) {
+            const actual = (result as unknown as Record<string, unknown>)[key];
+            if (["statusByClaimId", "dispositionByClaimId", "excluded"].includes(key)) {
+              assert.deepEqual({ ...(actual as Record<string, string>) }, value, key);
+            } else assert.deepEqual(actual, value, key);
+          }
         }
-      }
-      assert.ok(!expectedFails.cases.includes(`${vectorCase.id}/${query.id}`), "unexpected pass in expected-fail list");
+      };
+      if (expectedFails.cases.includes(`${vectorCase.id}/${query.id}`)) {
+        assert.throws(comparison, { code: "ERR_ASSERTION" }, "unexpected pass in expected-fail list");
+      } else comparison();
     });
   }
   test(`${vectorCase.id}: each bundle has a recorded knowledge time`, () => {
@@ -131,6 +136,8 @@ for (const vectorCase of vectors.cases) {
     assert.deepEqual(Object.keys(vectorCase.fixtureAuthority.authenticatedOwnerByClaimId).sort(), [...claims].sort());
     for (const owner of Object.values(vectorCase.fixtureAuthority.authenticatedOwnerByClaimId)) assert.ok(owner);
     for (const id of vectorCase.fixtureAuthority.admittedEventIds) assert.ok(events.has(id), `admitted event ${id} missing`);
+    const links = new Set(Object.values(vectorCase.bundles).flatMap(bundle => (bundle.identityLinks ?? []).flatMap(link => link.id ? [link.id] : [])));
+    for (const id of vectorCase.fixtureAuthority.admittedIdentityLinkIds ?? []) assert.ok(links.has(id), `admitted identity link ${id} missing`);
   });
   test(`${vectorCase.id}: bundles validate without the proposed fields`, () => {
     for (const [key, bundle] of Object.entries(vectorCase.bundles)) {

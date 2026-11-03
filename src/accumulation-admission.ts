@@ -31,6 +31,8 @@ export interface AccumulationAuthority {
   integrityRef: string;
   ownerByClaimId: Readonly<Record<string, string>>;
   eventDecisions: readonly EventAdmission[];
+  /** Host admits the exact link, publisher and mapping relationship. */
+  identityDecisions?: readonly { linkDigest: string; publisher: string; mappingClaimId: string; admitted: boolean }[];
   /** Explicit third-party replacement grants, keyed by successor and predecessor. */
   replacementGrants?: readonly { successorId: string; predecessorId: string }[];
 }
@@ -76,6 +78,14 @@ export function admitAccumulationObservations(
     const old = decisions.get(key);
     if (old && canonicalJson(old) !== canonicalJson(decision)) throw new Error(`conflicting admission ${decision.eventId}`);
     decisions.set(key, decision);
+  }
+  const identityDecisions = new Map<string, string>();
+  for (const decision of authority.identityDecisions ?? []) {
+    const key = canonicalJson([decision.linkDigest, decision.publisher]);
+    const content = canonicalJson(decision);
+    const old = identityDecisions.get(key);
+    if (old !== undefined && old !== content) throw new Error("conflicting identity admission");
+    identityDecisions.set(key, content);
   }
   const claimProvenance: Record<string, RecordProvenance[]> = Object.create(null);
   const eventProvenance: Record<string, EventProvenance[]> = Object.create(null);

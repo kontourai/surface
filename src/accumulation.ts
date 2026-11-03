@@ -1,4 +1,4 @@
-import { admitAccumulationObservations, type AccumulationAuthority, type AccumulationClaim, type BundleObservation } from "./accumulation-admission.js";
+import { accumulationDigest, admitAccumulationObservations, type AccumulationAuthority, type AccumulationClaim, type BundleObservation } from "./accumulation-admission.js";
 import { canonicalJson } from "./canonical-digest.js";
 import { canonicalClaimKey, type CanonicalClaimTarget } from "./canonical.js";
 import { buildIdentityIndex } from "./identity.js";
@@ -46,6 +46,7 @@ function boundContains(claim: AccumulationClaim, at: ReturnType<typeof time>): b
 /** Rebuilds from receiver observations. Hosts must enforce visibility before exposing this raw view. */
 export function projectAccumulation(observations: readonly BundleObservation[], authority: AccumulationAuthority, query: AccumulationQuery) {
   if (query.valuePolicy !== "single-json-v1") throw new Error("unsupported value policy");
+  if (!query.slot || [query.slot.subjectType, query.slot.subjectId, query.slot.fieldOrBehavior, query.slot.claimType].some(part => typeof part !== "string" || !part.trim())) throw new Error("invalid accumulation slot");
   const now = time(query.now);
   const validAt = time(query.validAt ?? query.now);
   const admitted = admitAccumulationObservations(observations, authority, query.knownAt ?? query.now);
@@ -91,33 +92,35 @@ export function projectAccumulation(observations: readonly BundleObservation[], 
   const inputTrace = admitted.observations.map(o => ({ observationId: o.id, observedAt: o.observedAt, publisher: o.authenticatedPublisher, contentDigest: o.contentDigest, claims: o.bundle.claims, events: o.bundle.events, evidence: o.bundle.evidence, policies: o.bundle.policies, identityLinks: o.bundle.identityLinks ?? [], authorityTrace: o.bundle.authorityTrace ?? [] }));
   merged.bundle.identityLinks = [];
   const report = buildTrustReport(merged.bundle, { now: new Date(now.epochMilliseconds) });
+  const foldStatusByClaimId = new Map(report.claims.map(claim => [claim.id, claim.status]));
   for (const claim of report.claims) statusByClaimId[claim.id] = owner(claim.id) ? claim.status : "unknown";
   const ownStatuses = new Map(Object.entries(statusByClaimId));
   const claimsById = new Map(merged.bundle.claims.map(claim => [claim.id, claim]));
   for (const claim of merged.bundle.claims) statusByClaimId[claim.id] = applyDerivation({ claim, ownStatus: ownStatuses.get(claim.id) ?? "unknown", ownStatusByClaimId: ownStatuses, claimsById, now: new Date(now.epochMilliseconds) }).status;
-  const activeLinks = links.filter(link => (link.relation ?? "equivalent") === "equivalent" && link.mappingClaimId && statusByClaimId[link.mappingClaimId] === "verified" && owner(link.mappingClaimId));
+  const activeLinks = links.filter(link => (link.relation ?? "equivalent") === "equivalent" && link.mappingClaimId && statusByClaimId[link.mappingClaimId] === "verified" && owner(link.mappingClaimId) && admitted.observations.some(observation => (observation.bundle.identityLinks ?? []).some(candidate => canonicalJson(candidate) === canonicalJson(link)) && authority.identityDecisions?.some(decision => decision.admitted && decision.mappingClaimId === link.mappingClaimId && decision.linkDigest === accumulationDigest(link) && decision.publisher === observation.authenticatedPublisher)));
   const identity = buildIdentityIndex({ ...merged.bundle, identityLinks: activeLinks });
   const identityLinkIds = sort(new Set(activeLinks.flatMap(link => link.id ? [link.id] : [])));
   const inertIdentityLinkIds = sort(new Set(links.filter(link => (link.relation ?? "equivalent") === "equivalent" && !activeLinks.includes(link)).flatMap(link => link.id ? [link.id] : [])));
   const key = (claim: AccumulationClaim | AccumulationSlot): string => canonicalJson([identity.canonicalKey(claim), claim.claimType, canonicalClaimKey({ ...claim, subjectType: "_", subjectId: "_" })]);
   const queryKey = key(query.slot);
   const relevant = [...claims.values()].filter(claim => key(claim) === queryKey).sort((a, b) => cmp(a.id, b.id));
+  const missingLineage = new Set<string>();
   for (const claim of relevant) {
     if (!owner(claim.id)) gapCodes.add("owner-unverified");
     if (report.transparencyGaps.some(g => g.claimId === claim.id && g.metadata?.source === "derivation.cycle")) { statusByClaimId[claim.id] = "unknown"; gapCodes.add("lineage-cycle"); }
-    if ([...(claim.derivedFrom ?? []), ...(claim.derivationEdges ?? []).map(e => e.inputClaimId)].some(id => !claims.has(id))) {
-      statusByClaimId[claim.id] = "unknown";
+    if (report.transparencyGaps.some(g => g.claimId === claim.id && g.metadata?.source === "derivation.missing")) {
+      missingLineage.add(claim.id);
       gapCodes.add("lineage-missing");
     }
   }
-  const unresolvedAlias = [...claims.values()].some(claim => (claim.subjectAliases ?? []).some(alias => identity.canonicalKey(alias) === identity.canonicalKey(query.slot) || identity.canonicalKey(claim) === identity.canonicalKey(query.slot)));
+  const unresolvedAlias = [...claims.values()].some(claim => claim.claimType === query.slot.claimType && canonicalClaimKey({ ...claim, subjectType: "_", subjectId: "_" }) === canonicalClaimKey({ ...query.slot, subjectType: "_", subjectId: "_" }) && (claim.subjectAliases ?? []).some(alias => identity.canonicalKey(alias) === identity.canonicalKey(query.slot) || identity.canonicalKey(claim) === identity.canonicalKey(query.slot)));
   const unresolvedIdentity = unresolvedAlias || links.some(link => (link.relation ?? "equivalent") === "equivalent" && !activeLinks.includes(link) && (!link.mappingClaimId || !["rejected", "revoked"].includes(statusByClaimId[link.mappingClaimId] ?? "unknown")) && link.subjects.some(subject => identity.canonicalKey(subject) === identity.canonicalKey(query.slot)));
   if (unresolvedIdentity) gapCodes.add("identity-unresolved");
   const retracted = new Set<string>();
   for (const claim of claims.values()) {
     const latest = sortEventsMostRecentFirstV4(admitted.events.filter(e => e.claimId === claim.id).sort((a,b) => cmp(a.id,b.id)))[0];
     const resolution = findLatestResolutionEvent(sortEventsMostRecentFirstV4(admitted.events.filter(e => e.claimId === claim.id).sort((a,b) => cmp(a.id,b.id))), merged.bundle.authorityTrace ?? [], "4");
-    if (!resolution && latest?.status === "revoked" && statusByClaimId[claim.id] === "stale") retracted.add(claim.id);
+    if (!resolution && latest?.status === "revoked" && foldStatusByClaimId.get(claim.id) === "stale") retracted.add(claim.id);
   }
   const edges: ReplacementTrace[] = [];
   for (const claim of claims.values()) for (const edge of claim.supersedes ?? []) {
@@ -126,7 +129,7 @@ export function projectAccumulation(observations: readonly BundleObservation[], 
     if (key(claim) !== queryKey && key(target) !== queryKey) continue;
     let state: ReplacementTrace["state"] = "pending";
     if (key(claim) !== key(target)) { state = "inert"; gapCodes.add("supersession-cross-slot"); }
-    else if (retracted.has(claim.id) || statusByClaimId[claim.id] === "rejected") state = "withdrawn";
+    else if (retracted.has(claim.id) || foldStatusByClaimId.get(claim.id) === "rejected") state = "withdrawn";
     else if (statusByClaimId[claim.id] === "verified" && owner(claim.id) && ((owner(claim.id) === owner(target.id) && admitted.claimProvenance[claim.id]?.some(p => p.publisher === owner(claim.id))) || authority.replacementGrants?.some(grant => grant.successorId === claim.id && grant.predecessorId === target.id))) state = "accepted";
     else gapCodes.add("supersession-pending");
     edges.push({ claimId: target.id, byClaimId: claim.id, kind: edge.kind, state });
@@ -149,7 +152,7 @@ export function projectAccumulation(observations: readonly BundleObservation[], 
   }
   for (const claim of relevant) {
     if (retracted.has(claim.id)) excluded[claim.id] = "retracted";
-    else if (statusByClaimId[claim.id] === "rejected") excluded[claim.id] = "rejected";
+    else if (foldStatusByClaimId.get(claim.id) === "rejected") excluded[claim.id] = "rejected";
     else if (!boundContains(claim, validAt)) dispositionByClaimId[claim.id] = "not-valid-at";
   }
   for (const edge of edges.filter(e => e.state === "accepted")) {
@@ -175,6 +178,7 @@ export function projectAccumulation(observations: readonly BundleObservation[], 
   const independentSupportClaimIds = candidates.filter(c => !dependsOnCandidate(c)).map(c => c.id);
   const result = { ...empty, inputTrace, supersessions: edges, gapCodes: sort(gapCodes), identityLinkIds, inertIdentityLinkIds, derivationEdges, independentSupportClaimIds };
   if (unresolvedIdentity) return { ...result, outcome: "invalid" as const, reason: "identity-unresolved", candidateClaimIds: candidates.map(c => c.id) };
+  if (candidates.some(claim => missingLineage.has(claim.id))) return { ...result, outcome: "invalid" as const, reason: "lineage-missing", candidateClaimIds: candidates.map(c => c.id) };
   if (values.size > 1) return { ...result, outcome: "contested" as const, reason: undefined, candidateClaimIds: candidates.map(c => c.id) };
   if (!candidates.length) return { ...result, reason: relevant.length === 0 ? "empty" : Object.keys(excluded).length ? "withdrawn" : "not-valid-at" };
   const status = candidates.map(c => statusByClaimId[c.id] ?? "unknown").sort((a,b) => compareStatusStrength(b,a))[0];
