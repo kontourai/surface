@@ -113,9 +113,26 @@ pending, both viable values remain visible, and a gap explains why. The vector
 examples assume the fixture producer identities are established for self
 revisions; production must supply that custody input.
 
-At fixed `(K,V,now)` the pure projection validates inputs and identity, merges
-and deduplicates, admits only events whose provenance and authority permit the
-asserted action, folds the admitted events and derivation ceiling, evaluates
+At fixed `(K,V,now)` the pure projection validates inputs and identity. Before
+merge it records each claim and event's observation and authenticated publisher,
+and an independently established claim-owner binding; a copied claim does not
+transfer ownership. It retains this sidecar through deduplication and merge,
+which deliberately omits producerId. Neither ID prefixes nor the unsigned
+producerId alone establish ownership. The versioned admission policy must bind
+each actor to the relevant action and scope: an ordinary verification needs an
+authorized verifier for the claim, and a producer's own terminal event needs
+authenticated ownership and permission to perform that action. A third-party
+decision needs applicable authority. The vectors assume established producer
+ownership and delegated `producer-review` permission for each producer's own
+claims, and the stated reviewed mapping permission for the identity desk; these
+are fixture inputs, not evidence that the wire format authenticates them. Each
+case supplies `fixtureAuthority` ownership and admitted-event IDs as synthetic
+test inputs; a host must derive these from its own protected custody and policy.
+An admitted-event list is an input assumption here, not an implementation of
+the authority decision.
+The projection then admits only events whose provenance and authority permit the
+asserted action, merges and deduplicates without dropping the sidecar, folds the
+admitted events and derivation ceiling, evaluates
 admissible replacement edges, then groups eligible values by slot. A valid
 accepted correction excludes its predecessor in the corrected interval and
 reports it as superseded in this projection; a succession applies at its valid
@@ -126,7 +143,9 @@ an entire observation recomputes from the remaining inputs and cannot retain an
 orphaned edge. Retraction is not physical erasure. The existing fold maps revoked
 to `stale`, which also describes expiry. The projection must retain the admitted
 governing event and distinguish retraction from expiry; vector `retracted` is an
-exclusion reason, not a TrustStatus. Ordinary stale claims remain visible but
+exclusion reason, not a TrustStatus. For these vectors an admitted `revoked`
+event is a retraction whether or not it has `type: invalidation`; an
+invalidation carrying `stale` is not by itself a retraction. Ordinary stale claims remain visible but
 cannot establish verified standing. A terminal rejection or admitted retraction
 excludes that assertion; a disputed claim stays visible as disputed,
 not a verified answer. Existing authority-gated event resolution is applied by
@@ -142,6 +161,8 @@ rejected and retracted assertions are excluded. A proposed conflicting value
 can prevent a unique answer without overruling stronger evidence. Equal values
 collect individually labeled support; the answer status is the strongest
 independently eligible supporting status, never a promotion of weaker claims.
+Derived copies retain their input trace and cannot count as independent
+corroboration of their own inputs.
 Incomparable or policy-undefined standings produce ambiguity. Cardinality and
 value equality must be explicit versioned inputs; vectors assume a declared
 single-valued JSON property.

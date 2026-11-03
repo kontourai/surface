@@ -32,6 +32,8 @@
     "late-observation/before-late-bundle",
     "late-observation/after-late-bundle",
     "untrusted-terminal-event/rival-rejection-pending",
-    "derivation-lineage/derived-support-trace"
+    "derivation-lineage/derived-support-trace",
+    "freshness-without-retraction/expired-still-visible",
+    "qualified-property/retail-qualifier"
   ]
 }
