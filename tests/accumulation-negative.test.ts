@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { accumulationDigest, advanceAccumulation, projectAccumulation, type AccumulationAuthority, type AccumulationBundle, type BundleObservation } from "../src/index.js";
+import { accumulationDigest, accumulationReplacementVisibilityKey, accumulationViewerSupersessionInput, advanceAccumulation, projectAccumulation, viewerSupersessionView, type AccumulationAuthority, type AccumulationBundle, type BundleObservation } from "../src/index.js";
 
 const vectors = JSON.parse(readFileSync("tests/fixtures/knowledge-accumulation/vectors.json", "utf8"));
 function fixture(id: string) {
@@ -513,4 +513,38 @@ test("subject type matching uses the canonical spelling without changing provena
   assert.equal(result.outcome, "current");
   assert.equal(result.value, "Berlin");
   assert.equal(result.inputTrace?.[0].claims[0].subjectType, "Org");
+});
+
+test("visibility handoff uses derived visibility and only effective admitted edges", () => {
+  const f = fixture("self-revision-correction");
+  const observations = structuredClone(f.observations);
+  for (const observation of observations) for (const claim of observation.bundle.claims) claim.metadata = { visibility: claim.id.endsWith(".1") ? "public" : { audiences: ["team"] } };
+  observations[0].bundle.claims.push({ ...structuredClone(observations[0].bundle.claims[0]), id: "other-property", fieldOrBehavior: "other" });
+  for (const observation of observations) observation.contentDigest = accumulationDigest(observation.bundle);
+  const result = projectAccumulation(observations, f.authority, f.query);
+  assert.equal(result.outcome, "current");
+  assert.deepEqual(result.visibilityByClaimId.get("producer-a.acme.hq.1"), { kind: "public" });
+  assert.deepEqual(result.visibilityByClaimId.get("producer-a.acme.hq.2"), { kind: "restricted", audiences: ["team"] });
+  const edge = result.effectiveSupersessions[0];
+  const edgeVisibilityByKey = new Map([[accumulationReplacementVisibilityKey(edge), { kind: "public" as const }]]);
+  const input = accumulationViewerSupersessionInput({ ...result, edgeVisibilityByKey, viewer: { audiences: [] } });
+  assert.deepEqual(viewerSupersessionView(input).currentClaimIds, ["producer-a.acme.hq.1"]);
+  assert.ok(!viewerSupersessionView(input).visibleClaimIds.includes("other-property"));
+  const team = accumulationViewerSupersessionInput({ ...result, edgeVisibilityByKey, viewer: { audiences: ["team"] } });
+  assert.deepEqual(viewerSupersessionView(team).currentClaimIds, ["producer-a.acme.hq.2"]);
+  const missing = accumulationViewerSupersessionInput({ ...result, edgeVisibilityByKey: new Map(), viewer: { audiences: ["team"] } });
+  assert.deepEqual(viewerSupersessionView(missing).currentClaimIds, ["producer-a.acme.hq.1", "producer-a.acme.hq.2"]);
+  const succession = fixture("succession-bitemporal");
+  const historical = projectAccumulation(succession.observations, succession.authority, { ...succession.query, validAt: "2023-01-01T00:00:00Z" });
+  assert.equal(historical.supersessions[0].state, "accepted");
+  assert.deepEqual(historical.effectiveSupersessions, []);
+});
+
+test("visibility handoff excludes pending replacement proposals", () => {
+  const f = fixture("competing-authority-resolution");
+  const result = projectAccumulation([f.observations[0], f.observations[3]], f.authority, f.query);
+  assert.equal(result.supersessions[0].state, "pending");
+  assert.deepEqual(result.effectiveSupersessions, []);
+  const input = accumulationViewerSupersessionInput({ ...result, edgeVisibilityByKey: new Map(), viewer: { audiences: [] } });
+  assert.deepEqual(input.edges, []);
 });

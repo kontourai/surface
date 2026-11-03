@@ -199,9 +199,12 @@ status-change records do not capture this projected disposition.
 * **Visibility context (#350):** before exposing a projection, accept a
   context-specific visibility decision and trace over each input and edge;
   filtering and supersession must occur within that context, with omission
-  failing closed and no disclosure of hidden successors. The lattice, derived
-  visibility and enforcement are #350 work, not implemented here. A raw global
-  projection is not safe to expose directly to an arbitrary viewer.
+  failing closed and no disclosure of hidden successors. The merged #350 API
+  derives claim visibility; `accumulationViewerSupersessionInput` supplies only
+  effective admitted edges to its viewer evaluator and seals omitted edge
+  decisions. This handoff is host-only and names hidden claims. Hosts must filter
+  the entire traversal and recompute in viewer context before disclosure; a raw
+  global projection is not safe to expose directly to an arbitrary viewer.
 * **Retention and erasure (#351):** accept retention/tombstone and dependency
   recomputation results as inputs to the same fold. An unavailable input cannot
   silently support a derived answer; retain permitted audit references and
@@ -235,9 +238,19 @@ detects changes relative to a trusted
 reference; it is not a signature or independent authorization. Callers must not
 construct those decisions from unsigned bundle fields. Unadmitted events are kept
 in the trace but excluded from the fold. The resulting global projection must not
-be exposed directly to an arbitrary viewer; visibility and erasure remain separate
-work ([#350](https://github.com/kontourai/surface/issues/350),
-[#351](https://github.com/kontourai/surface/issues/351)).
+be exposed directly to an arbitrary viewer; per-viewer disclosure enforcement and
+[erasure](https://github.com/kontourai/surface/issues/351) remain separate
+responsibilities.
+
+Survey's reviewed entity projection ([Survey #358](https://github.com/kontourai/survey/pull/358))
+produces candidate links, mapping claims, evidence and events. The Surface-local
+`surveyIdentityAdmission` adapter binds an exact accepted record to separate host
+verification and identity decisions; a reviewed split can withdraw the prior link
+through `surveySplitIdentityAdmission`. The host authenticates custody, validates
+the Survey outcome and provides the applicable verification policy and authority
+snapshot. The adapter does not authenticate a digest, evaluate Survey ancestry,
+or make an unsigned review authoritative. The fixture is generated from the merged
+Survey source at `da1e74c60f96cd8f77dceaacc8ca1a3bbfb84d47`.
 
 The [vectors](../../tests/fixtures/knowledge-accumulation/vectors.json) execute
 against the projection, and the local shapes do not claim Hachure portability.

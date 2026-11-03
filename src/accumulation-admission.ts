@@ -25,6 +25,16 @@ export interface EventAdmission {
   publisher: string;
   admitted: boolean;
 }
+export interface IdentityAdmission {
+  linkDigest: string;
+  publisher: string;
+  mappingClaimId: string;
+  admitted: boolean;
+  /** A host-admitted reviewed split or replacement withdraws the earlier link. */
+  reviewedInactive?: true;
+  /** Host-held review provenance; not itself an authentication proof. */
+  reviewProvenance?: { system: "survey"; outcomeId: string; supersedingOutcomeId?: string; recordDigest: string };
+}
 /** The host supplies the protected authority snapshot in force at the query's knowledge cut. */
 export interface AccumulationAuthority {
   version: "1";
@@ -33,7 +43,7 @@ export interface AccumulationAuthority {
   ownerByClaimId: Readonly<Record<string, string>>;
   eventDecisions: readonly EventAdmission[];
   /** Host admits the exact link, publisher and mapping relationship. */
-  identityDecisions?: readonly { linkDigest: string; publisher: string; mappingClaimId: string; admitted: boolean }[];
+  identityDecisions?: readonly IdentityAdmission[];
   /** Explicit third-party replacement grants, keyed by successor and predecessor. */
   replacementGrants?: readonly { successorId: string; predecessorId: string }[];
 }
@@ -82,6 +92,7 @@ export function admitAccumulationObservations(
   }
   const identityDecisions = new Map<string, string>();
   for (const decision of authority.identityDecisions ?? []) {
+    if (decision.reviewedInactive !== undefined && decision.reviewedInactive !== true) throw new Error("invalid identity admission state");
     const key = canonicalJson([decision.linkDigest, decision.publisher]);
     const content = canonicalJson(decision);
     const old = identityDecisions.get(key);
