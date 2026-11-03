@@ -55,9 +55,11 @@ export function buildIdentityIndex(input: TrustBundle): IdentityIndex {
     }
   }
 
-  // Apply explicit identityLinks.
+  // Only equivalence links declare co-reference. Other relations remain visible
+  // as links but must not collapse their subjects into one equivalence class.
   if (Array.isArray(input.identityLinks)) {
     for (const link of input.identityLinks) {
+      if ((link.relation ?? "equivalent") !== "equivalent") continue;
       if (!Array.isArray(link.subjects) || link.subjects.length < 2) continue;
       const head = ensure(refKey(link.subjects[0]));
       for (let i = 1; i < link.subjects.length; i += 1) {
