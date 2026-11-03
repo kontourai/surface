@@ -212,7 +212,9 @@ status-change records do not capture this projected disposition.
   derivation APIs in the same fold. A deleted claim is excluded as a value;
   a claim with only erased support cannot supply a current answer. Surviving
   support retains its status, with affected claims, deleted input IDs and
-  review change records in the host trace. Tombstone visibility still bounds
+  review change records in the host trace. An erased-only claim is not listed
+  as support, but a conflicting value remains visible to the host as a
+  contradiction until the producer resolves or removes it. Tombstone visibility still bounds
   derivations. Hosts and producers remove old content and enforce deletion;
   immutable logical history does not require retaining erased content.
 

@@ -83,6 +83,7 @@ test("independent surviving support remains visible and an erased-only rival can
   const result = projectAccumulation([observation], authority, f.query("sole"));
   assert.equal(result.outcome, "current"); assert.equal(result.status, "verified");
   assert.deepEqual(result.independentSupportClaimIds, ["independent"]);
+  assert.deepEqual(result.supportingClaimIds, ["independent"]);
   assert.deepEqual(result.erasureUnsupportedClaimIds, ["sole"]);
   assert.ok(result.gapCodes.includes("erasure-affected"));
   observation.bundle.claims.find(claim => claim.id === "sole")!.value = false;
@@ -90,4 +91,24 @@ test("independent surviving support remains visible and an erased-only rival can
   const conflict = projectAccumulation([observation], authority, f.query("sole"));
   assert.equal(conflict.outcome, "contested");
   assert.deepEqual(conflict.candidateClaimIds, ["independent", "sole"]);
+});
+
+test("erased-only stale or disputed claims cannot establish independent standing", () => {
+  for (const status of ["stale", "disputed"] as const) {
+    const f = fixture();
+    const observation = structuredClone(f.observation);
+    const other = observation.bundle.claims.find(claim => claim.id === "other")!;
+    observation.bundle.claims.push({ ...other, id: "independent", fieldOrBehavior: "sole" });
+    observation.bundle.events.find(event => event.claimId === "sole")!.status = status;
+    observation.contentDigest = accumulationDigest(observation.bundle);
+    const authority = structuredClone(f.authority); (authority.ownerByClaimId as Record<string,string>).independent = "host";
+    const event = observation.bundle.events.find(item => item.claimId === "sole")!;
+    authority.eventDecisions.find(item => item.eventId === event.id)!.eventDigest = accumulationDigest(event);
+    const { integrityRef: _, ...fields } = authority; authority.integrityRef = accumulationDigest(fields);
+    const result = projectAccumulation([observation], authority, f.query("sole"));
+    assert.equal(result.outcome, "current"); assert.equal(result.status, "unknown");
+    assert.equal(result.statusByClaimId.sole, status);
+    assert.deepEqual(result.independentSupportClaimIds, []);
+    assert.deepEqual(result.erasureUnsupportedClaimIds, ["sole"]);
+  }
 });

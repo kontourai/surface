@@ -107,3 +107,13 @@ test("Survey split must point back to the superseded outcome", () => {
   split.supersedes = "unrelated";
   assert.throws(() => surveySplitIdentityAdmission({ accepted: f.accepted, superseded, split, publisher: "survey-host", recordsDigest: accumulationDigest([f.accepted, superseded, split]), identityAdmitted: true }), /invalid Survey split/);
 });
+
+test("an accepted record cannot already be superseded, and a split must be named by its predecessor", () => {
+  const f = setup();
+  const contradictory = { ...f.accepted, supersededBy: "forged" };
+  assert.throws(() => surveyIdentityAdmission(contradictory, { publisher: "survey-host", recordDigest: accumulationDigest(contradictory), eventAdmitted: true, identityAdmitted: true }), /invalid Survey identity/);
+  const superseded = survey.afterSplit.find((r: SurveyIdentityRecord) => r.outcomeId === f.accepted.outcomeId) as SurveyIdentityRecord;
+  const split = structuredClone(survey.afterSplit.find((r: SurveyIdentityRecord) => r.outcomeId === superseded.supersededBy)) as SurveyIdentityRecord;
+  split.outcomeId = "rival-split";
+  assert.throws(() => surveySplitIdentityAdmission({ accepted: f.accepted, superseded, split, publisher: "survey-host", recordsDigest: accumulationDigest([f.accepted, superseded, split]), identityAdmitted: true }), /invalid Survey split/);
+});

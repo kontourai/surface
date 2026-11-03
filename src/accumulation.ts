@@ -208,7 +208,7 @@ export function projectAccumulation(observations: readonly BundleObservation[], 
   const standings = independentSupportClaimIds.map(id => statusByClaimId[id] ?? "unknown");
   const established = standings.filter(status => status === "verified" || status === "stale" || status === "disputed");
   const status = (established.length ? established : standings).sort((a,b) => compareStatusStrength(b,a))[0] ?? "unknown";
-  return { ...result, outcome: "current" as const, reason: undefined, value: candidates[0].value, status, supportingClaimIds: candidates.map(c => c.id) };
+  return { ...result, outcome: "current" as const, reason: undefined, value: candidates[0].value, status, supportingClaimIds: candidates.filter(c => !erasureUnsupported.has(c.id)).map(c => c.id) };
 }
 
 /** Append an observation without mutating prior state. Replaying the state uses the same projection path. */
