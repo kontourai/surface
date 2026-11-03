@@ -207,8 +207,8 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
   const waiverValidityByClaimId: Record<string, WaiverValidity> = Object.create(null);
   const staleReasonByClaimId: Record<string, StaleReason> = Object.create(null);
   const hasDeletedClaims = input.claims.some(isDeletedClaim);
-  const survivingInputIds = hasDeletedClaims ? survivingDerivationInputs(claimsById) : undefined;
   const deletionAffectedInputIds = hasDeletedClaims ? derivationInputsAffectedByDeletion(claimsById) : undefined;
+  const survivingInputIds = hasDeletedClaims ? survivingDerivationInputs(claimsById, deletionAffectedInputIds) : undefined;
   const claims = foldedClaims.map((folded) => {
     const outcome = applyDerivation({
       claim: folded.claim,

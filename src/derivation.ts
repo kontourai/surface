@@ -88,13 +88,17 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
     pending.push(...derivationInputIds(candidate));
   }
 
-  const surviving = deletedInputs.size > 0
-    ? input.survivingInputIds ?? survivingDerivationInputs(claimsById)
-    : undefined;
   const deletionAffected = deletedInputs.size > 0
     ? input.deletionAffectedInputIds ?? derivationInputsAffectedByDeletion(claimsById)
     : undefined;
-  const unsupportedInputs = new Set<string>();
+  const surviving = deletedInputs.size > 0
+    ? input.survivingInputIds ?? survivingDerivationInputs(claimsById, deletionAffected)
+    : undefined;
+  const directInputIds = new Set(inputIds);
+  const unsupportedDirectInputs = new Set<string>();
+  let firstUnsupportedTransitive: string | undefined;
+  const directInputStatuses = new Map<string, TrustStatus>();
+  let hasUnsupportedInput = false;
 
   // Explicit DFS frames preserve the existing visit order without growing the
   // JavaScript call stack for deep provenance chains.
@@ -112,13 +116,17 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
       continue;
     }
     if (isDeletedClaim(inputClaim)) continue;
-    let inputStatus = ownStatusByClaimId.get(currentId) ?? "unknown";
-    if (surviving && deletionAffected?.has(currentId) && !surviving.has(currentId)) {
-      unsupportedInputs.add(currentId);
-      inputStatus = weakerStatus(inputStatus, "unknown");
-    }
+    const inputStatus = ownStatusByClaimId.get(currentId) ?? "unknown";
     statusesByInputId.set(currentId, inputStatus);
-    ceiling = weakerStatus(ceiling, inputStatus);
+    let ceilingStatus = inputStatus;
+    if (surviving && deletionAffected?.has(currentId) && !surviving.has(currentId)) {
+      hasUnsupportedInput = true;
+      if (directInputIds.has(currentId)) unsupportedDirectInputs.add(currentId);
+      else firstUnsupportedTransitive ??= currentId;
+      ceilingStatus = weakerStatus(inputStatus, "unknown");
+    }
+    if (unsupportedDirectInputs.has(currentId)) directInputStatuses.set(currentId, ceilingStatus);
+    ceiling = weakerStatus(ceiling, ceilingStatus);
     collectWeakEdges(inputClaim);
     const children = derivationInputIds(inputClaim);
     if (children.length > 0) frames.push({ ids: children, index: 0 });
@@ -126,7 +134,10 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
 
   if (deletedInputs.size > 0) {
     const erased = [...deletedInputs].sort();
-    const unsupported = unsupportedInputs.size > 0 || !inputIds.some((id) => {
+    const unsupportedInputs = unsupportedDirectInputs.size > 0
+      ? [...unsupportedDirectInputs].sort()
+      : firstUnsupportedTransitive === undefined ? [] : [firstUnsupportedTransitive];
+    const unsupported = hasUnsupportedInput || !inputIds.some((id) => {
       const candidate = claimsById.get(id);
       return !candidate || (!isDeletedClaim(candidate) &&
         (!deletionAffected!.has(id) || surviving!.has(id)));
@@ -137,10 +148,10 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
         id: `${claim.id}.gap.deleted-input`, claimId: claim.id,
         type: "unsupported_inference", severity: claim.impactLevel ?? "medium",
         ...materialityFromClaim(claim),
-        message: unsupportedInputs.size > 0
+        message: hasUnsupportedInput
           ? `Claim ${claim.id} depends on inputs with no surviving support.`
           : `Claim ${claim.id} has no surviving derivation input.`, createdAt,
-        metadata: { source: "derivation.deleted", deletedInputs: erased, unsupportedInputs: [...unsupportedInputs].sort() },
+        metadata: { source: "derivation.deleted", deletedInputs: erased, unsupportedInputs },
       });
     } else {
       transparencyGaps.push({
@@ -155,8 +166,8 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
       id: `${claim.id}.change.input-deleted`, claimId: claim.id,
       inputClaimIds: erased, reason: "input-deleted", action: "review", createdAt,
       message: `Claim ${claim.id} depends on deleted input; review derived content for removal.`,
-      inputStatuses: Object.fromEntries(statusesByInputId),
-      metadata: { source: "derivation.deleted", unsupportedInputs: [...unsupportedInputs].sort() },
+      ...(directInputStatuses.size > 0 ? { inputStatuses: Object.fromEntries(directInputStatuses) } : {}),
+      metadata: { source: "derivation.deleted", unsupportedInputs },
     });
   }
 
@@ -312,14 +323,17 @@ export function isDeletedClaim(claim: Claim): boolean {
     Object.hasOwn(retention, "state") && (retention as Record<string, unknown>).state === "deleted";
 }
 
-/** Index branches that reach a non-deleted leaf or missing input in O(V + E). */
-export function survivingDerivationInputs(claimsById: ReadonlyMap<string, Claim>): ReadonlySet<string> {
+/** Index branches with support remaining after deletion in O(V + E). */
+export function survivingDerivationInputs(
+  claimsById: ReadonlyMap<string, Claim>,
+  deletionAffected: ReadonlySet<string> = derivationInputsAffectedByDeletion(claimsById),
+): ReadonlySet<string> {
   const parents = new Map<string, string[]>();
   const queue: string[] = [];
   for (const [id, candidate] of claimsById) {
     if (isDeletedClaim(candidate)) continue;
     const children = derivationInputIds(candidate);
-    if (children.length === 0) queue.push(id);
+    if (!deletionAffected.has(id) || children.length === 0) queue.push(id);
     for (const child of children) {
       const owners = parents.get(child) ?? [];
       owners.push(id);

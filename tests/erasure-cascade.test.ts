@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import type { TrustBundle } from "../src/types.js";
+import type { Claim, TrustBundle } from "../src/types.js";
 import { analyzeCounterfactual, isDeletedClaim, buildDerivationDrilldown, buildTrustReport, recomputeChangeRecords, traceDependents, validateTrustBundle } from "../src/index.js";
 
 const now = new Date("2026-04-26T00:00:00.000Z");
@@ -231,12 +231,15 @@ test("erasure does not weaken an unrelated live cycle", () => {
   const template = next.claims.find((claim) => claim.id === "survivor")!;
   const source = next.claims.find((claim) => claim.id === "source")!;
   const claims = [source, { ...template, id: "c1", derivedFrom: ["c2"] },
-    { ...template, id: "c2", derivedFrom: ["c1"] }, { ...template, id: "target", derivedFrom: ["source", "c1"] }];
-  const evidence = ["c1", "c2", "target"].map((id) => ({ ...next.evidence.find((item) => item.claimId === "survivor")!, id: `e-${id}`, claimId: id }));
-  const events = ["c1", "c2", "target"].map((id) => ({ ...next.events.find((item) => item.claimId === "survivor")!, id: `ev-${id}`, claimId: id }));
+    { ...template, id: "c2", derivedFrom: ["c1"] }, { ...template, id: "target", derivedFrom: ["source", "c1"] },
+    { ...template, id: "downstream", derivedFrom: ["target"] }];
+  const evidence = ["c1", "c2", "target", "downstream"].map((id) => ({ ...next.evidence.find((item) => item.claimId === "survivor")!, id: `e-${id}`, claimId: id }));
+  const events = ["c1", "c2", "target", "downstream"].map((id) => ({ ...next.events.find((item) => item.claimId === "survivor")!, id: `ev-${id}`, claimId: id }));
   const derived = buildTrustReport(validateTrustBundle({ schemaVersion: 3, source: "independent-cycle", claims, evidence, events, policies: next.policies }), { now });
   assert.equal(derived.claims.find((claim) => claim.id === "target")?.status, "verified");
+  assert.equal(derived.claims.find((claim) => claim.id === "downstream")?.status, "verified");
   assert.ok(derived.transparencyGaps.some((gap) => gap.claimId === "target" && gap.metadata?.source === "derivation.cycle"));
+  assert.ok(!derived.transparencyGaps.some((gap) => gap.claimId === "downstream" && gap.type === "unsupported_inference" && gap.metadata?.source === "derivation.deleted"));
 });
 
 test("counterfactuals never recalculate a deleted dependent", () => {
@@ -263,5 +266,50 @@ test("inherited retention declarations are not treated as tombstones", () => {
   assert.equal(isDeletedClaim(validateTrustBundle(bundle).claims.find((claim) => claim.id === "source")!), false);
   assert.equal(isDeletedClaim(buildTrustReport(bundle, { now }).claims.find((claim) => claim.id === "source")!), false);
   const inheritedState = Object.assign(Object.create({ state: "deleted" }), { erasedAt: timestamp, actor: "owner", rationale: "request" });
+  assert.equal(isDeletedClaim({ ...source, metadata: { surfaceRetention: inheritedState } }), false);
   assert.throws(() => validateTrustBundle({ ...bundle, claims: [{ ...source, metadata: { surfaceRetention: inheritedState } }, ...next.claims.filter((claim) => claim.id !== "source")] }), /surfaceRetention/);
+});
+
+
+test("erasure retains input-assumed review records with their own statuses", () => {
+  const next = report(true);
+  const source = next.claims.find((claim) => claim.id === "source")!;
+  const other = next.claims.find((claim) => claim.id === "other")!;
+  const template = next.claims.find((claim) => claim.id === "survivor")!;
+  const claims = [source, other, { ...template, id: "assumed", derivedFrom: ["source"] },
+    { ...template, id: "target", derivedFrom: ["assumed", "other"] }];
+  const evidence = ["other", "assumed", "target"].map((id) => ({ ...next.evidence.find((item) => item.claimId === "survivor")!, id: `e-${id}`, claimId: id }));
+  const events = ["other", "assumed", "target"].map((id) => ({ ...next.events.find((item) => item.claimId === "survivor")!, id: `v-${id}`, claimId: id, status: id === "assumed" ? "assumed" : "verified" }));
+  const derived = buildTrustReport(validateTrustBundle({ schemaVersion: 3, source: "assumed", claims, evidence, events, policies: next.policies }), { now });
+  const review = derived.changeRecords.find((record) => record.claimId === "target" && record.reason === "input-assumed");
+  assert.ok(review);
+  assert.equal(review.inputStatuses?.assumed, "assumed");
+  const deletion = derived.changeRecords.find((record) => record.claimId === "target" && record.reason === "input-deleted");
+  assert.equal(deletion?.inputStatuses?.assumed, "unknown");
+});
+
+test("deletion records bound trace size on long chains", () => {
+  const time = timestamp;
+  const base = { subjectType: "repo", subjectId: "x", claimType: "fact", fieldOrBehavior: "fact", value: true, createdAt: time, updatedAt: time };
+  const claims: Claim[] = [{ ...base, id: "root", value: null, metadata: { surfaceRetention: { state: "deleted", erasedAt: time, actor: "owner", rationale: "request" } } }];
+  for (let i = 0; i < 750; i++) claims.push({ ...base, id: `c${i}`, derivedFrom: [i ? `c${i - 1}` : "root"] });
+  const bundle = validateTrustBundle({ schemaVersion: 3, source: "bounded-trace", claims, evidence: [], events: [], policies: [] });
+  const result = buildTrustReport(bundle, { now });
+  const record = result.changeRecords.find((item) => item.claimId === "c749" && item.reason === "input-deleted");
+  assert.deepEqual(Object.keys(record!.inputStatuses!), ["c748"]);
+  assert.deepEqual(record!.metadata?.unsupportedInputs, ["c748"]);
+  assert.ok(JSON.stringify(result).length < 3_000_000, "long-chain deletion trace should stay bounded by direct input count");
+});
+
+
+test("deletion records do not label an intermediate verified when a deeper input is unsupported", () => {
+  const next = report(true);
+  const claims = next.claims.map((claim) => claim.id === "survivor" ? { ...claim, derivedFrom: ["sole", "other"] } : claim);
+  const derived = buildTrustReport(validateTrustBundle({ schemaVersion: 3, source: "transitive-status", claims,
+    evidence: next.evidence, events: next.events, policies: next.policies }), { now });
+  assert.equal(derived.claims.find((claim) => claim.id === "survivor")?.status, "unknown");
+  assert.equal(derived.claims.find((claim) => claim.id === "downstream")?.status, "unknown");
+  const record = derived.changeRecords.find((item) => item.claimId === "downstream" && item.reason === "input-deleted");
+  assert.notEqual(record?.inputStatuses?.survivor, "verified");
+  assert.deepEqual(record?.metadata?.unsupportedInputs, ["sole"]);
 });
