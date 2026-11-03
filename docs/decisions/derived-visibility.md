@@ -89,6 +89,8 @@ replacement edges, and a viewer, and returns that viewer's view:
   successor sees the predecessor as current, with no edge, id or count that
   reveals a newer value exists.
 - A chain through a hidden claim collapses to the nearest visible one.
+  A path that returns to a visible claim only through hidden claims adds nothing
+  and is dropped, so a hidden cycle cannot change the viewer's view.
 - A visible replacement cycle has no current value and is reported as
   unresolved, never resolved by guesswork.
 - A visible replacement cycle, a claim that replaces itself included, has no
