@@ -62,6 +62,8 @@ export function visibilityAllows(visibility: Visibility | undefined, viewer: Vie
   if (visibility.kind === "public") return true;
   // Anything that is not a well-formed restricted value is not visible.
   if (visibility.kind !== "restricted" || !Array.isArray(visibility.audiences)) return false;
+  // One unreadable audience makes the whole value unreadable, not merely that entry.
+  if (!visibility.audiences.every((audience) => typeof audience === "string" && audience.length > 0)) return false;
   const held = viewer?.audiences;
   if (!Array.isArray(held) || held.length === 0) return false;
   return visibility.audiences.some((audience) => held.includes(audience));
@@ -205,22 +207,20 @@ function evaluateSupersession(input: ViewerSupersessionInput): SupersessionEvalu
     successorsOf.set(edge.predecessorId, list);
   }
 
-  // Everything reachable from a node by one or more followable edges, hidden
-  // claims included. Used only to refuse a collapsed edge that lies on a cycle.
-  const reachCache = new Map<string, Set<string>>();
-  const reachable = (from: string): Set<string> => {
-    const cached = reachCache.get(from);
-    if (cached !== undefined) return cached;
-    const reached = new Set<string>();
+  // Whether `to` can be reached from `from` by one or more followable edges,
+  // hidden claims included. Used only to refuse a collapsed edge that lies on a
+  // cycle. No memo: a reachability set per node is quadratic in memory.
+  const canReach = (from: string, to: string): boolean => {
+    const seen = new Set<string>();
     const pending = [...(successorsOf.get(from) ?? [])];
     while (pending.length > 0) {
       const next = pending.pop() as string;
-      if (reached.has(next)) continue;
-      reached.add(next);
+      if (next === to) return true;
+      if (seen.has(next)) continue;
+      seen.add(next);
       pending.push(...(successorsOf.get(next) ?? []));
     }
-    reachCache.set(from, reached);
-    return reached;
+    return false;
   };
 
   const visibleClaimIds = [...visible].sort(compareStrings);
@@ -236,7 +236,7 @@ function evaluateSupersession(input: ViewerSupersessionInput): SupersessionEvalu
         // edge (one that passed through a hidden claim) is kept only when it is
         // not on a cycle: a cycle that exists only through hidden claims must
         // not change what the viewer sees.
-        if (!throughHidden || !reachable(next).has(claimId)) found.add(next);
+        if (!throughHidden || !canReach(next, claimId)) found.add(next);
       } else {
         // A hidden hop: do not surface it, and look through it.
         recompute.add(claimId);
@@ -291,7 +291,10 @@ function evaluateSupersession(input: ViewerSupersessionInput): SupersessionEvalu
     },
     recomputeStatusClaimIds: [...recompute].sort(compareStrings),
     edgeDecisions: edgeDecisions.sort((left, right) =>
-      compareStrings(`${left.predecessorId}\u0000${left.successorId}`, `${right.predecessorId}\u0000${right.successorId}`)),
+      compareStrings(
+        `${left.predecessorId}\u0000${left.successorId}\u0000${left.outcome}`,
+        `${right.predecessorId}\u0000${right.successorId}\u0000${right.outcome}`,
+      )),
   };
 }
 

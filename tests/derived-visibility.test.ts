@@ -623,3 +623,58 @@ test("fuzz: hidden sinks and hidden sources never change the viewer's view", () 
   }
   assert.equal(compared, 300);
 });
+
+// ---- delta-review 3 regressions ----
+
+test("an edge decision with any unreadable audience is visible to no one, not merely that audience", () => {
+  const visibilityByClaimId = new Map<string, Visibility>([["a", PUBLIC], ["b", PUBLIC]]);
+  const viewer = { audiences: ["staff"] };
+  for (const bad of [{ kind: "restricted", audiences: ["staff", 42] }, { kind: "restricted", audiences: ["staff", ""] }, { kind: "restricted", audiences: ["staff", null] }]) {
+    assert.equal(visibilityAllows(bad as unknown as Visibility, viewer), false, JSON.stringify(bad));
+    const view = viewerSupersessionView({ visibilityByClaimId, edges: [edge("a", "b", bad as unknown as Visibility)], viewer });
+    assert.deepEqual(view.currentClaimIds, ["a", "b"], JSON.stringify(bad));
+  }
+});
+
+test("a collapse that enters a visible cycle pulls the claim into the unresolved set", () => {
+  const view = viewerSupersessionView({
+    visibilityByClaimId: new Map<string, Visibility>([["a", PUBLIC], ["z", PUBLIC], ["h", restricted("staff")]]),
+    edges: [edge("a", "a"), edge("z", "h"), edge("h", "a")],
+    viewer: { audiences: [] },
+  });
+  assert.deepEqual({ ...view.supersededBy }, { a: ["a"], z: ["a"] });
+  assert.deepEqual(view.unresolvedClaimIds, ["a", "z"]);
+  assert.deepEqual(view.currentClaimIds, []);
+});
+
+test("the host-only edge trace calls an edge with no decision restricted, not endpoint-hidden", () => {
+  const omitted = { predecessorId: "a", successorId: "b" } as unknown as ReturnType<typeof edge>;
+  const decisions = supersessionEdgeDecisions({
+    visibilityByClaimId: new Map<string, Visibility>([["a", PUBLIC], ["b", PUBLIC]]),
+    edges: [omitted],
+    viewer: { audiences: [] },
+  });
+  assert.deepEqual(decisions, [{ predecessorId: "a", successorId: "b", outcome: "edge-restricted" }]);
+});
+
+test("the host-only edge trace is canonical for duplicate edges with different decisions", () => {
+  const visibilityByClaimId = new Map<string, Visibility>([["a", PUBLIC], ["b", PUBLIC]]);
+  const open = edge("a", "b");
+  const closed = edge("a", "b", restricted("staff"));
+  const forward = supersessionEdgeDecisions({ visibilityByClaimId, edges: [open, closed], viewer: { audiences: [] } });
+  const reverse = supersessionEdgeDecisions({ visibilityByClaimId, edges: [closed, open], viewer: { audiences: [] } });
+  assert.deepEqual(forward, reverse);
+});
+
+test("a long alternating chain of visible and hidden claims stays cheap", () => {
+  const size = 4000;
+  const visibilityByClaimId = new Map<string, Visibility>();
+  const edges: ReturnType<typeof edge>[] = [];
+  for (let index = 0; index < size; index++) visibilityByClaimId.set(`c${index}`, index % 2 === 0 ? PUBLIC : restricted("staff"));
+  for (let index = 0; index < size - 1; index++) edges.push(edge(`c${index}`, `c${index + 1}`));
+  const started = Date.now();
+  const view = viewerSupersessionView({ visibilityByClaimId, edges, viewer: { audiences: [] } });
+  assert.equal(view.visibleClaimIds.length, size / 2);
+  assert.deepEqual(view.currentClaimIds, [`c${size - 2}`]);
+  assert.ok(Date.now() - started < 5000, "supersession on a few thousand claims must not blow up");
+});

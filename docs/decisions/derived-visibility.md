@@ -98,7 +98,8 @@ replacement edges, and a viewer, and returns that viewer's view:
   sees, so the view can be served to the viewer as is. What a viewer can learn is
   bounded to claims they can already see: when a chain runs through a hidden claim
   to a visible later claim, the viewer sees that the later claim wins, which is
-  the rule above, and nothing names the hidden claim. That one signal is
+  the rule above (unless the claims sit in or beside a cycle, where nothing wins),
+  and nothing names the hidden claim. That one signal is
   deliberate. Without it a viewer who may see a claim and its far successor would
   be shown two competing current values.
 - `supersessionStatusRecomputeClaimIds` is a **separate, host-only** function. A
