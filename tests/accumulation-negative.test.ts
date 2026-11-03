@@ -31,6 +31,8 @@ test("non-admitted terminal events do not suppress either conflicting candidate"
   assert.deepEqual(result.candidateClaimIds, ["producer-a.acme.hq.1", "producer-b.acme.hq.1"]);
   assert.equal(result.statusByClaimId["producer-b.acme.hq.1"], "verified");
   assert.ok(result.gapCodes.includes("event-authority-pending"));
+  const pendingId = result.pendingEventIds[0];
+  assert.deepEqual(result.eventProvenance[pendingId].map(p => p.admitted), [false]);
 });
 
 test("contradictory values remain visible despite recency", () => {

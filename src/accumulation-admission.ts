@@ -35,12 +35,13 @@ export interface AccumulationAuthority {
   replacementGrants?: readonly { successorId: string; predecessorId: string }[];
 }
 export interface RecordProvenance { observationId: string; observedAt: string; publisher: string }
+export interface EventProvenance extends RecordProvenance { admitted: boolean }
 export interface AdmittedObservations {
   observations: BundleObservation[];
   events: VerificationEvent[];
   pendingEvents: VerificationEvent[];
   claimProvenance: Record<string, RecordProvenance[]>;
-  eventProvenance: Record<string, RecordProvenance[]>;
+  eventProvenance: Record<string, EventProvenance[]>;
 }
 export function accumulationDigest(value: unknown): string {
   return `sha256:${sha256Hex(canonicalJson(value))}`;
@@ -77,7 +78,7 @@ export function admitAccumulationObservations(
     decisions.set(key, decision);
   }
   const claimProvenance: Record<string, RecordProvenance[]> = Object.create(null);
-  const eventProvenance: Record<string, RecordProvenance[]> = Object.create(null);
+  const eventProvenance: Record<string, EventProvenance[]> = Object.create(null);
   const eventContents = new Map<string, string>();
   const events = new Map<string, VerificationEvent>();
   const pending = new Map<string, VerificationEvent>();
@@ -89,9 +90,10 @@ export function admitAccumulationObservations(
       const prior = eventContents.get(event.id);
       if (prior !== undefined && prior !== content) throw new Error(`conflicting event ${event.id}`);
       eventContents.set(event.id, content);
-      (eventProvenance[event.id] ??= []).push(provenance);
       const decision = decisions.get(canonicalJson([event.id, observation.authenticatedPublisher]));
-      if (decision?.admitted && decision.eventDigest === accumulationDigest(event)) events.set(event.id, event);
+      const isAdmitted = decision?.admitted === true && decision.eventDigest === accumulationDigest(event);
+      (eventProvenance[event.id] ??= []).push({ ...provenance, admitted: isAdmitted });
+      if (isAdmitted) events.set(event.id, event);
       else pending.set(event.id, event);
     }
   }
