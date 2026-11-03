@@ -20,6 +20,11 @@
  *     widen: that is the direction that is safe to be wrong in.
  *   - Anything Surface cannot read as a declared visibility is sealed, never
  *     public. Omission must not grant access.
+ *
+ * Values are plain data (what JSON can carry). Executable objects (Proxies,
+ * accessors, arrays with custom iterators) are outside the contract: this module
+ * reads arrays by index and never consults an iterator, but it does not defend
+ * against an object that lies or throws when read.
  */
 
 export type Visibility =
@@ -45,8 +50,13 @@ export function sealedVisibility(): Visibility {
 export function meetVisibility(...visibilities: readonly Visibility[]): Visibility {
   let audiences: Set<string> | undefined;
   for (const visibility of visibilities) {
-    if (visibility.kind === "public") continue;
-    const next = new Set(visibility.audiences);
+    if (visibility !== undefined && visibility !== null && visibility.kind === "public") continue;
+    // Total and fail-closed: a value that is not a well-formed restricted
+    // visibility contributes sealed, so an unvalidated host value cannot widen.
+    const named = visibility !== undefined && visibility !== null && visibility.kind === "restricted"
+      ? readAudienceList(visibility.audiences)
+      : undefined;
+    const next = new Set(named ?? []);
     if (audiences === undefined) {
       audiences = next;
     } else {
@@ -65,8 +75,12 @@ export function visibilityAllows(visibility: Visibility | undefined, viewer: Vie
   // One unreadable audience makes the whole value unreadable, not merely that entry.
   const named = readAudienceList(visibility.audiences);
   if (named === undefined) return false;
-  const held = new Set<unknown>(Array.isArray(viewer?.audiences) ? viewer.audiences : []);
-  return named.some((audience) => held.has(audience));
+  // Read by index with a length bound, so neither an overridden method nor a
+  // huge sparse list can change the answer or stall the caller. A viewer list
+  // that is over the bound or has anything unreadable in it holds no audience.
+  const held = readAudienceList(viewer?.audiences);
+  if (held === undefined) return false;
+  return named.some((audience) => held.includes(audience));
 }
 
 export type VisibilityDeclaration =
@@ -75,6 +89,9 @@ export type VisibilityDeclaration =
   | { state: "undeclared" }
   /** Something was written that Surface cannot read as a visibility. */
   | { state: "unrecognized" };
+
+/** Longest audience list read. Over it, the list is unreadable (so denied), not cut short. */
+export const MAX_AUDIENCES = 1024;
 
 /** Restriction labels already in the Evidence Visibility vocabulary. None names an audience. */
 const LEGACY_RESTRICTED_LABELS: ReadonlySet<string> = new Set(["private", "permissioned", "redacted", "unavailable"]);
@@ -325,6 +342,8 @@ export function supersessionStatusRecomputeClaimIds(input: ViewerSupersessionInp
  */
 function readAudienceList(value: unknown): string[] | undefined {
   if (!Array.isArray(value)) return undefined;
+  // Refuse, never truncate: a list over the bound is unreadable as a whole.
+  if (value.length > MAX_AUDIENCES) return undefined;
   const audiences: string[] = [];
   for (let index = 0; index < value.length; index++) {
     if (!Object.hasOwn(value, index)) return undefined;

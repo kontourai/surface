@@ -6,6 +6,7 @@ import {
   deriveTrustSnapshot,
   supersessionEdgeDecisions,
   supersessionStatusRecomputeClaimIds,
+  MAX_AUDIENCES,
   meetVisibility,
   readDeclaredVisibility,
   validateTrustBundle,
@@ -706,7 +707,8 @@ test("a sparse or method-overriding audience list is unreadable as a whole", () 
 
 test("viewer audiences that are not strings never match", () => {
   assert.equal(visibilityAllows(restricted("42"), { audiences: [42 as unknown as string] }), false);
-  assert.equal(visibilityAllows(restricted("staff"), { audiences: [42 as unknown as string, "staff"] }), true);
+  // A viewer list with anything unreadable in it holds no audience at all.
+  assert.equal(visibilityAllows(restricted("staff"), { audiences: [42 as unknown as string, "staff"] }), false);
 });
 
 test("a hole in an audience list is not filled from the prototype chain", () => {
@@ -720,4 +722,62 @@ test("a hole in an audience list is not filled from the prototype chain", () => 
   } finally {
     delete prototype[1];
   }
+});
+
+// ---- delta-review 5 regressions ----
+
+test("a viewer audience list is read by index: a custom iterator grants nothing", () => {
+  class Sneaky extends Array<string> {
+    override [Symbol.iterator](): ArrayIterator<string> { return ["staff"][Symbol.iterator](); }
+  }
+  const viewer = { audiences: Sneaky.of("private") };
+  assert.equal(visibilityAllows(restricted("staff"), viewer), false);
+  const view = viewerSupersessionView({
+    visibilityByClaimId: new Map<string, Visibility>([["old", PUBLIC], ["new", restricted("staff")]]),
+    edges: [edge("old", "new")],
+    viewer,
+  });
+  assert.deepEqual(view.currentClaimIds, ["old"]);
+});
+
+test("a maximum-length sparse list is refused at once, never scanned", () => {
+  const huge = Object.assign(new Array(2 ** 32 - 1), { 0: "staff" }) as string[];
+  const started = Date.now();
+  // As the viewer's list.
+  assert.equal(visibilityAllows(restricted("staff"), { audiences: huge }), false);
+  assert.equal(visibilityAllows(PUBLIC, { audiences: huge }), true, "public needs no audience");
+  // As a visibility's list, through every consumer.
+  assert.equal(visibilityAllows({ kind: "restricted", audiences: huge }, { audiences: ["staff"] }), false);
+  assert.deepEqual(readDeclaredVisibility({ metadata: { visibility: { audiences: huge } } }), { state: "unrecognized" });
+  assert.deepEqual(meetVisibility({ kind: "restricted", audiences: huge }), SEALED);
+  assert.ok(Date.now() - started < 2000, "an over-long list was scanned element by element");
+});
+
+test("the audience bound refuses max + 1 and accepts max", () => {
+  const atMax = Array.from({ length: MAX_AUDIENCES }, (_, index) => `a${index}`);
+  assert.equal(visibilityAllows({ kind: "restricted", audiences: atMax }, { audiences: ["a0"] }), true);
+  assert.equal(visibilityAllows(restricted("a0"), { audiences: atMax }), true);
+  const over = [...atMax, "extra"];
+  assert.equal(visibilityAllows({ kind: "restricted", audiences: over }, { audiences: ["a0"] }), false);
+  assert.equal(visibilityAllows(restricted("a0"), { audiences: over }), false);
+});
+
+test("meetVisibility is total: an unvalidated restricted value contributes sealed, never wider", () => {
+  const sneaky = Object.assign(["private"], { [Symbol.iterator]: () => ["staff"][Symbol.iterator]() }) as unknown as string[];
+  const sparse = Object.assign(new Array(2), { 0: "staff" }) as string[];
+  for (const bad of [
+    { kind: "restricted", audiences: ["staff", 42] },
+    { kind: "restricted", audiences: sparse },
+    { kind: "restricted", audiences: "staff" },
+    { kind: "restricted" },
+    { kind: "everyone" },
+    null,
+    undefined,
+    {},
+  ]) {
+    assert.deepEqual(meetVisibility(bad as unknown as Visibility), SEALED, JSON.stringify(bad));
+    assert.deepEqual(meetVisibility(PUBLIC, bad as unknown as Visibility), SEALED);
+  }
+  assert.deepEqual(meetVisibility({ kind: "restricted", audiences: sneaky }), restricted("private"));
+  assert.deepEqual(meetVisibility({ kind: "restricted", audiences: ["staff"] }, { kind: "restricted", audiences: ["staff", 42] } as unknown as Visibility), SEALED);
 });

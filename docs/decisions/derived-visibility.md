@@ -147,6 +147,13 @@ context, omission failing closed, no disclosure of hidden successors. The mappin
   disclosure of the evidence item, and a public claim may rest on private
   evidence. A producer that wants evidence to bound a claim declares that on the
   claim.
+- It does not defend against executable objects. Visibility values and viewer
+  audiences are plain data; a Proxy, an accessor or a custom iterator that lies or
+  throws when read is outside the contract. Lists are read by index, never by
+  iterator, and a malformed one is unreadable as a whole. A list longer than
+  `MAX_AUDIENCES` (1024) is refused rather than truncated or scanned, so a hostile
+  sparse array cannot stall the host. A viewer whose list is unreadable holds no
+  audience and sees only public.
 - It does not change status, freshness or any existing report field.
 - Erasure and cascade (#351) is separate: an erased input is an unavailable
   input, not a visibility value.
