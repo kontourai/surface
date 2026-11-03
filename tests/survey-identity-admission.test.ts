@@ -75,3 +75,35 @@ test("a malformed inactive decision fails closed", () => {
   const { integrityRef: _, ...fields } = policy; policy.integrityRef = accumulationDigest(fields);
   assert.throws(() => projectAccumulation([...f.claims, f.review], policy, f.query), /invalid identity admission state/);
 });
+
+test("Survey's actual conflicting-review split and a forged ambiguous acceptance are never admitted", () => {
+  const f = setup();
+  const superseded = survey.ambiguousAfterSplit.find((r: SurveyIdentityRecord) => r.outcomeId === f.accepted.outcomeId) as SurveyIdentityRecord;
+  const split = survey.ambiguousAfterSplit.find((r: SurveyIdentityRecord) => r.outcomeId === superseded.supersededBy) as SurveyIdentityRecord;
+  assert.equal(split.ambiguity, "conflicting-reviews");
+  assert.throws(() => surveySplitIdentityAdmission({ accepted: f.accepted, superseded, split, publisher: "survey-host", recordsDigest: accumulationDigest([f.accepted, superseded, split]), identityAdmitted: true }), /invalid Survey split/);
+  const forged = { ...f.accepted, ambiguity: "conflicting-reviews" };
+  assert.throws(() => surveyIdentityAdmission(forged, { publisher: "survey-host", recordDigest: accumulationDigest(forged), eventAdmitted: true, identityAdmitted: true }), /invalid Survey identity/);
+});
+
+test("Survey decisions bind the carried mapping claim and every evidence item", () => {
+  const f = setup();
+  for (const change of ["claim", "evidence", "extra-evidence"] as const) {
+    const review = structuredClone(f.review);
+    if (change === "claim") (review.bundle.claims[0].value as { subjects: { subjectId: string }[] }).subjects[1].subjectId = "someone-else";
+    else if (change === "evidence") review.bundle.evidence[0].excerptOrSummary = "forged";
+    else review.bundle.evidence.push({ ...review.bundle.evidence[0], id: "extra-evidence" });
+    review.contentDigest = accumulationDigest(review.bundle);
+    const result = projectAccumulation([...f.claims, review], f.authority, f.query);
+    assert.equal(result.outcome, "invalid", change);
+    assert.deepEqual(result.identityLinkIds, [], change);
+  }
+});
+
+test("Survey split must point back to the superseded outcome", () => {
+  const f = setup();
+  const superseded = survey.afterSplit.find((r: SurveyIdentityRecord) => r.outcomeId === f.accepted.outcomeId) as SurveyIdentityRecord;
+  const split = structuredClone(survey.afterSplit.find((r: SurveyIdentityRecord) => r.outcomeId === superseded.supersededBy)) as SurveyIdentityRecord;
+  split.supersedes = "unrelated";
+  assert.throws(() => surveySplitIdentityAdmission({ accepted: f.accepted, superseded, split, publisher: "survey-host", recordsDigest: accumulationDigest([f.accepted, superseded, split]), identityAdmitted: true }), /invalid Survey split/);
+});

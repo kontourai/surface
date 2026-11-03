@@ -164,7 +164,9 @@ rejected and retracted assertions are excluded. A proposed conflicting value
 can prevent a unique answer without overruling stronger evidence. Equal values
 collect individually labeled support; the answer status is the strongest
 independently eligible supporting status, never a promotion of weaker claims.
-Derived copies retain their input trace and cannot count as independent
+Unknown claims do not count as independent support. When verified, stale or
+disputed independent support exists, proposed or assumed claims cannot elevate
+that standing; their own status remains visible. Derived copies retain their input trace and cannot count as independent
 corroboration of their own inputs.
 Incomparable or policy-undefined standings produce ambiguity. Cardinality and
 value equality must be explicit versioned inputs; vectors assume a declared
@@ -203,8 +205,9 @@ status-change records do not capture this projected disposition.
   derives claim visibility; `accumulationViewerSupersessionInput` supplies only
   effective admitted edges to its viewer evaluator and seals omitted edge
   decisions. This handoff is host-only and names hidden claims. Hosts must filter
-  the entire traversal and recompute in viewer context before disclosure; a raw
-  global projection is not safe to expose directly to an arbitrary viewer.
+  the entire traversal, including identity joins and mapping-claim visibility,
+  and recompute in viewer context before disclosure; a raw global projection is
+  not safe to expose directly to an arbitrary viewer.
 * **Retention and erasure (#351):** accept retention/tombstone and dependency
   recomputation results as inputs to the same fold. An unavailable input cannot
   silently support a derived answer; retain permitted audit references and
@@ -228,8 +231,10 @@ valid-time cuts and a declared single-valued JSON policy. `appendAccumulationObs
 assembles inputs for replay. The admission adapter requires the host to authenticate
 publishers and protect the policy digest, owner bindings, observation time, and
 per-event admission decisions, and identity-link decisions that bind the exact
-link, mapping claim and authenticated publisher. Hosts must verify that the
-mapping actually supports those subjects before admitting the link. For every
+link, mapping claim and authenticated publisher, including the exact mapping
+claim and evidence digests. Changed or additional evidence requires a new host
+decision. Hosts must verify that the mapping actually supports those subjects
+before admitting the link. For every
 `knownAt` query, the host must supply and protect the authority snapshot in force
 at that knowledge cut, including owner bindings, event and identity decisions,
 and replacement grants. A later snapshot is not evidence of earlier authority;

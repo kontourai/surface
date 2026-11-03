@@ -1,14 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { accumulationDigest, accumulationReplacementVisibilityKey, accumulationViewerSupersessionInput, advanceAccumulation, projectAccumulation, viewerSupersessionView, type AccumulationAuthority, type AccumulationBundle, type BundleObservation } from "../src/index.js";
+import { accumulationDigest, identityEvidenceDigests, accumulationReplacementVisibilityKey, accumulationViewerSupersessionInput, advanceAccumulation, projectAccumulation, viewerSupersessionView, type AccumulationAuthority, type AccumulationBundle, type BundleObservation } from "../src/index.js";
 
 const vectors = JSON.parse(readFileSync("tests/fixtures/knowledge-accumulation/vectors.json", "utf8"));
 function fixture(id: string) {
   const c = vectors.cases.find((v: { id: string }) => v.id === id);
   const observations: BundleObservation[] = Object.entries(c.bundles as Record<string, AccumulationBundle>).map(([key, bundle]) => ({ id: key, bundle, observedAt: c.observedAtByBundle[key], authenticatedPublisher: bundle.producerId!, contentDigest: accumulationDigest(bundle) }));
   const eventDecisions = observations.flatMap(o => o.bundle.events.map(e => ({ eventId: e.id, eventDigest: accumulationDigest(e), publisher: o.authenticatedPublisher, admitted: c.fixtureAuthority.admittedEventIds.includes(e.id) })));
-  const identityDecisions = observations.flatMap(o => (o.bundle.identityLinks ?? []).filter(link => link.id && link.mappingClaimId && c.fixtureAuthority.admittedIdentityLinkIds?.includes(link.id)).map(link => ({ linkDigest: accumulationDigest(link), publisher: o.authenticatedPublisher, mappingClaimId: link.mappingClaimId!, admitted: true })));
+  const identityDecisions = observations.flatMap(o => (o.bundle.identityLinks ?? []).filter(link => link.id && link.mappingClaimId && c.fixtureAuthority.admittedIdentityLinkIds?.includes(link.id)).map(link => ({ linkDigest: accumulationDigest(link), publisher: o.authenticatedPublisher, mappingClaimId: link.mappingClaimId!, mappingClaimDigest: accumulationDigest(o.bundle.claims.find(claim => claim.id === link.mappingClaimId)!), evidenceDigests: identityEvidenceDigests(o.bundle.evidence.filter(item => item.claimId === link.mappingClaimId)), admitted: true })));
   const policy = { version: "1" as const, ownerByClaimId: c.fixtureAuthority.authenticatedOwnerByClaimId as Record<string,string>, eventDecisions, identityDecisions };
   const authority: AccumulationAuthority = { ...policy, integrityRef: accumulationDigest(policy) };
   const query = { slot: c.queries[0].slot, now: c.now, valuePolicy: "single-json-v1" as const };
@@ -547,4 +547,32 @@ test("visibility handoff excludes pending replacement proposals", () => {
   assert.deepEqual(result.effectiveSupersessions, []);
   const input = accumulationViewerSupersessionInput({ ...result, edgeVisibilityByKey: new Map(), viewer: { audiences: [] } });
   assert.deepEqual(input.edges, []);
+});
+
+test("owned unsupported equal claims cannot strengthen stale or disputed standing", () => {
+  const f = fixture("freshness-without-retraction");
+  const rival = structuredClone(f.observations[0]); rival.id = "rival"; rival.authenticatedPublisher = "rival"; rival.bundle.producerId = "rival";
+  rival.bundle.claims = [{ ...rival.bundle.claims[0], id: "rival.hq", expiresAt: undefined }];
+  rival.bundle.events = []; rival.bundle.evidence = [];
+  rival.contentDigest = accumulationDigest(rival.bundle);
+  const policy = structuredClone(f.authority); (policy.ownerByClaimId as Record<string,string>)["rival.hq"] = "rival";
+  let { integrityRef: _, ...fields } = policy; policy.integrityRef = accumulationDigest(fields);
+  let result = projectAccumulation([f.observations[0], rival], policy, f.query);
+  assert.equal(result.outcome, "current"); assert.equal(result.status, "stale");
+  assert.deepEqual(result.independentSupportClaimIds, ["producer-a.acme.hq.1"]);
+  rival.bundle.evidence = [{ ...f.observations[0].bundle.evidence[0], id: "rival.evidence", claimId: "rival.hq" }];
+  const event = { ...f.observations[0].bundle.events[0], id: "rival.event", claimId: "rival.hq", evidenceIds: ["rival.evidence"] };
+  rival.bundle.events = [event]; rival.contentDigest = accumulationDigest(rival.bundle);
+  (policy.eventDecisions as typeof policy.eventDecisions[number][]).push({ eventId: event.id, eventDigest: accumulationDigest(event), publisher: "rival", admitted: false });
+  ({ integrityRef: _, ...fields } = policy); policy.integrityRef = accumulationDigest(fields);
+  result = projectAccumulation([f.observations[0], rival], policy, f.query);
+  assert.equal(result.statusByClaimId["rival.hq"], "proposed");
+  assert.equal(result.outcome, "current"); assert.equal(result.status, "stale");
+  const disputed = structuredClone(f.observations[0]);
+  const dispute = { ...disputed.bundle.events[0], id: "dispute", status: "disputed" as const, createdAt: "2026-05-01T00:00:00Z" };
+  disputed.bundle.events.push(dispute); disputed.contentDigest = accumulationDigest(disputed.bundle);
+  (policy.eventDecisions as typeof policy.eventDecisions[number][]).push({ eventId: dispute.id, eventDigest: accumulationDigest(dispute), publisher: disputed.authenticatedPublisher, admitted: true });
+  ({ integrityRef: _, ...fields } = policy); policy.integrityRef = accumulationDigest(fields);
+  result = projectAccumulation([disputed, rival], policy, f.query);
+  assert.equal(result.outcome, "current"); assert.equal(result.status, "disputed");
 });

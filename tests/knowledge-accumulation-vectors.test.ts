@@ -5,7 +5,7 @@ import { readFile } from "node:fs/promises";
 import { buildIdentityIndex, buildTrustReport, canonicalClaimKey, mergeBundles, parseTimestamp, validateTrustBundle } from "../src/index.js";
 import type { TrustBundle } from "../src/index.js";
 import { projectAccumulation } from "../src/accumulation.js";
-import { accumulationDigest, type AccumulationBundle, type AccumulationAuthority, type BundleObservation } from "../src/accumulation-admission.js";
+import { accumulationDigest, identityEvidenceDigests, type AccumulationBundle, type AccumulationAuthority, type BundleObservation } from "../src/accumulation-admission.js";
 
 interface SupersessionEdge { claimId: string; kind: string; reason: string }
 interface VectorClaim { id: string; supersedes?: SupersessionEdge[]; validTime?: { from?: string; until?: string }; [key: string]: unknown }
@@ -103,7 +103,7 @@ for (const vectorCase of vectors.cases) {
           return { id: key, observedAt: vectorCase.observedAtByBundle[key], contentDigest: accumulationDigest(bundle), authenticatedPublisher: bundle.producerId!, bundle };
         });
         const eventDecisions = Object.values(vectorCase.bundles).flatMap((bundle) => bundle.events.map((event) => ({ eventId: event.id, eventDigest: accumulationDigest(event), publisher: bundle.producerId!, admitted: vectorCase.fixtureAuthority.admittedEventIds.includes(event.id) })));
-        const identityDecisions = Object.values(vectorCase.bundles).flatMap(bundle => (bundle.identityLinks ?? []).filter(link => link.id && link.mappingClaimId && vectorCase.fixtureAuthority.admittedIdentityLinkIds?.includes(link.id)).map(link => ({ linkDigest: accumulationDigest(link), publisher: bundle.producerId!, mappingClaimId: link.mappingClaimId!, admitted: true })));
+        const identityDecisions = Object.values(vectorCase.bundles).flatMap(bundle => (bundle.identityLinks ?? []).filter(link => link.id && link.mappingClaimId && vectorCase.fixtureAuthority.admittedIdentityLinkIds?.includes(link.id)).map(link => ({ linkDigest: accumulationDigest(link), publisher: bundle.producerId!, mappingClaimId: link.mappingClaimId!, mappingClaimDigest: accumulationDigest(bundle.claims.find(claim => claim.id === link.mappingClaimId)!), evidenceDigests: identityEvidenceDigests(bundle.evidence.filter(item => item.claimId === link.mappingClaimId)), admitted: true })));
         const policy = { version: "1" as const, ownerByClaimId: vectorCase.fixtureAuthority.authenticatedOwnerByClaimId, eventDecisions, identityDecisions };
         const authority: AccumulationAuthority = { ...policy, integrityRef: accumulationDigest(policy) };
         return projectAccumulation(observations, authority, { slot: q.slot, now: vectorCase.now, knownAt: q.knownAt, validAt: q.validAt, valuePolicy: "single-json-v1" });

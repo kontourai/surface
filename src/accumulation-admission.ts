@@ -1,6 +1,6 @@
 import { canonicalJson, sha256Hex } from "./canonical-digest.js";
 import { compareTimestamps, parseTimestamp } from "./timestamp.js";
-import type { Claim, TrustBundle, VerificationEvent } from "./types.js";
+import type { Claim, Evidence, TrustBundle, VerificationEvent } from "./types.js";
 
 /** Surface-local provisional fields; these are not Hachure bundle fields. */
 export interface AccumulationClaim extends Claim {
@@ -29,6 +29,8 @@ export interface IdentityAdmission {
   linkDigest: string;
   publisher: string;
   mappingClaimId: string;
+  mappingClaimDigest: string;
+  evidenceDigests: readonly { id: string; digest: string }[];
   admitted: boolean;
   /** A host-admitted reviewed split or replacement withdraws the earlier link. */
   reviewedInactive?: true;
@@ -60,6 +62,10 @@ export function accumulationDigest(value: unknown): string {
   return `sha256:${sha256Hex(canonicalJson(value))}`;
 }
 const cmp = (a: string, b: string): number => a < b ? -1 : a > b ? 1 : 0;
+/** Canonical content references for the evidence bound to a mapping decision. */
+export function identityEvidenceDigests(evidence: readonly Evidence[]): { id: string; digest: string }[] {
+  return evidence.map(item => ({ id: item.id, digest: accumulationDigest(item) })).sort((a,b) => cmp(a.id, b.id));
+}
 
 /** Validate custody before filtering; malformed or contradictory records fail closed. */
 export function admitAccumulationObservations(

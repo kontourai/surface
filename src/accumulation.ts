@@ -1,4 +1,4 @@
-import { accumulationDigest, admitAccumulationObservations, type AccumulationAuthority, type AccumulationClaim, type BundleObservation } from "./accumulation-admission.js";
+import { accumulationDigest, admitAccumulationObservations, identityEvidenceDigests, type AccumulationAuthority, type AccumulationClaim, type BundleObservation } from "./accumulation-admission.js";
 import { canonicalJson } from "./canonical-digest.js";
 import { canonicalClaimKey, type CanonicalClaimTarget } from "./canonical.js";
 import { buildIdentityIndex } from "./identity.js";
@@ -105,7 +105,7 @@ export function projectAccumulation(observations: readonly BundleObservation[], 
     visibilityByClaimId.set(claim.id, derived.visibility.visibility);
     visibilityTraceByClaimId.set(claim.id, derived.visibility);
   }
-  const hasIdentityDecision = (link: typeof links[number], inactive: boolean): boolean => admitted.observations.some(observation => (observation.bundle.identityLinks ?? []).some(candidate => canonicalJson(candidate) === canonicalJson(link)) && authority.identityDecisions?.some(decision => decision.admitted === true && (decision.reviewedInactive === true) === inactive && decision.mappingClaimId === link.mappingClaimId && decision.linkDigest === accumulationDigest(link) && decision.publisher === observation.authenticatedPublisher));
+  const hasIdentityDecision = (link: typeof links[number], inactive: boolean): boolean => admitted.observations.some(observation => (observation.bundle.identityLinks ?? []).some(candidate => canonicalJson(candidate) === canonicalJson(link)) && authority.identityDecisions?.some(decision => decision.admitted === true && (decision.reviewedInactive === true) === inactive && decision.mappingClaimId === link.mappingClaimId && decision.linkDigest === accumulationDigest(link) && decision.publisher === observation.authenticatedPublisher && (inactive || (claims.has(decision.mappingClaimId) && decision.mappingClaimDigest === accumulationDigest(claims.get(decision.mappingClaimId)) && Array.isArray(decision.evidenceDigests) && canonicalJson(decision.evidenceDigests) === canonicalJson(identityEvidenceDigests(merged.bundle.evidence.filter(item => item.claimId === decision.mappingClaimId)))))));
   const activeLinks = links.filter(link => (link.relation ?? "equivalent") === "equivalent" && link.mappingClaimId && statusByClaimId[link.mappingClaimId] === "verified" && owner(link.mappingClaimId) && hasIdentityDecision(link, false));
   const normalizeSubject = (ref: SubjectRef): SubjectRef => ({ subjectType: ref.subjectType.trim().toLowerCase(), subjectId: ref.subjectId.trim() });
   const identity = buildIdentityIndex({ ...merged.bundle, claims: merged.bundle.claims.map(claim => ({ ...claim, ...normalizeSubject(claim) })), identityLinks: activeLinks.map(link => ({ ...link, subjects: link.subjects.map(normalizeSubject) })) });
@@ -185,13 +185,15 @@ export function projectAccumulation(observations: readonly BundleObservation[], 
     };
     return [...(claim.derivedFrom ?? []), ...(claim.derivationEdges ?? []).map(e => e.inputClaimId)].some(visit);
   };
-  const independentSupportClaimIds = candidates.filter(c => owner(c.id) && !missingLineage.has(c.id) && !dependsOnCandidate(c)).map(c => c.id);
+  const independentSupportClaimIds = candidates.filter(c => owner(c.id) && !missingLineage.has(c.id) && statusByClaimId[c.id] !== "unknown" && !dependsOnCandidate(c)).map(c => c.id);
   const result = { ...empty, inputTrace, viewerClaimIds, effectiveSupersessions, lineageMissingClaimIds: sort(missingLineage), supersessions: edges, gapCodes: sort(gapCodes), identityLinkIds, inertIdentityLinkIds, derivationEdges, independentSupportClaimIds };
   if (unresolvedIdentity) return { ...result, outcome: "invalid" as const, reason: "identity-unresolved", candidateClaimIds: candidates.map(c => c.id) };
   if (values.size > 1) return { ...result, outcome: "contested" as const, reason: undefined, candidateClaimIds: candidates.map(c => c.id) };
   if (candidates.length && candidates.every(claim => missingLineage.has(claim.id))) return { ...result, outcome: "invalid" as const, reason: "lineage-missing", candidateClaimIds: candidates.map(c => c.id) };
   if (!candidates.length) return { ...result, reason: relevant.length === 0 ? "empty" : Object.keys(excluded).length ? "withdrawn" : "not-valid-at" };
-  const status = independentSupportClaimIds.map(id => statusByClaimId[id] ?? "unknown").sort((a,b) => compareStatusStrength(b,a))[0] ?? "unknown";
+  const standings = independentSupportClaimIds.map(id => statusByClaimId[id] ?? "unknown");
+  const established = standings.filter(status => status === "verified" || status === "stale" || status === "disputed");
+  const status = (established.length ? established : standings).sort((a,b) => compareStatusStrength(b,a))[0] ?? "unknown";
   return { ...result, outcome: "current" as const, reason: undefined, value: candidates[0].value, status, supportingClaimIds: candidates.map(c => c.id) };
 }
 
