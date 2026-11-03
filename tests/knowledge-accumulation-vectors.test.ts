@@ -18,7 +18,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { buildTrustReport, mergeBundles, validateTrustBundle } from "../src/index.js";
+import { buildIdentityIndex, buildTrustReport, mergeBundles, validateTrustBundle } from "../src/index.js";
 import type { TrustBundle } from "../src/index.js";
 
 interface SupersessionEdge { claimId: string; kind: string; reason: string }
@@ -26,6 +26,9 @@ interface VectorClaim { id: string; supersedes?: SupersessionEdge[]; validTime?:
 interface VectorBundle extends Omit<TrustBundle, "claims"> { claims: VectorClaim[] }
 interface VectorExpect {
   outcome: "current" | "contested" | "none" | "invalid";
+  value?: unknown;
+  status?: string;
+  reason?: string;
   supportingClaimIds?: string[];
   candidateClaimIds?: string[];
   excluded?: Record<string, string>;
@@ -43,6 +46,30 @@ const expectedFails = JSON.parse(await readFile("tests/knowledge-accumulation-ex
 const OUTCOMES = new Set(["current", "contested", "none", "invalid"]);
 const EDGE_KINDS = new Set(["correction", "succession"]);
 const EDGE_STATES = new Set(["accepted", "pending", "inert", "withdrawn"]);
+const STATUSES = new Set(["unknown", "proposed", "assumed", "verified", "stale", "disputed", "superseded", "rejected", "revoked"]);
+
+test("duplicate delivery reaches the real merge and deduplicates events", () => {
+  const c = vectors.cases.find((entry) => entry.id === "duplicate-delivery-and-agreement")!;
+  const merged = mergeBundles(["b1", "b1", "b2"].map((key) => withoutProposedFields(c.bundles[key])));
+  assert.equal(merged.events.length, c.bundles.b1.events.length + c.bundles.b2.events.length);
+  assert.equal(new Set(merged.events.map((event) => event.id)).size, merged.events.length);
+});
+
+test("subsumes fixture reaches the identity index without joining its subjects", () => {
+  const c = vectors.cases.find((entry) => entry.id === "identity-merge-split")!;
+  const bundle = withoutProposedFields(c.bundles.b5);
+  assert.equal(bundle.identityLinks?.[0]?.relation, "subsumes");
+  const index = buildIdentityIndex(bundle);
+  const [a, b] = bundle.identityLinks![0].subjects;
+  assert.notEqual(index.canonicalKey(a), index.canonicalKey(b));
+});
+
+test("lineage fixture carries the stated source and method", () => {
+  const c = vectors.cases.find((entry) => entry.id === "derivation-lineage")!;
+  const claim = c.bundles.b1.claims.find((item) => item.id === "producer-a.acme.hq.derived")!;
+  assert.deepEqual(claim.derivedFrom, ["producer-a.acme.hq.1"]);
+  assert.deepEqual(claim.derivationEdges, [{ inputClaimId: "producer-a.acme.hq.1", method: "copy", role: "source" }]);
+});
 
 function withoutProposedFields(bundle: VectorBundle): TrustBundle {
   const copy = structuredClone(bundle) as VectorBundle;
@@ -93,6 +120,12 @@ for (const vectorCase of vectors.cases) {
           assert.ok(EDGE_KINDS.has(edge.kind), `edge kind ${edge.kind}`);
           assert.ok(edge.reason.trim().length > 0, `edge ${claim.id} -> ${edge.claimId} has no reason`);
         }
+        if (claim.validTime) {
+          const { from, until } = claim.validTime;
+          if (from) assert.ok(Number.isFinite(Date.parse(from)), `invalid validTime.from for ${claim.id}`);
+          if (until) assert.ok(Number.isFinite(Date.parse(until)), `invalid validTime.until for ${claim.id}`);
+          if (from && until) assert.ok(Date.parse(from) < Date.parse(until), `invalid validTime interval for ${claim.id}`);
+        }
       }
     }
   });
@@ -110,12 +143,31 @@ for (const vectorCase of vectors.cases) {
     const queryIds = new Set(vectorCase.queries.map((query) => query.id));
     for (const query of vectorCase.queries) {
       for (const key of query.bundles) assert.ok(vectorCase.bundles[key], `query ${query.id} names unknown bundle ${key}`);
+      for (const time of [query.knownAt, query.validAt]) if (time !== undefined) assert.ok(Number.isFinite(Date.parse(time)), `query ${query.id} invalid time`);
+      assert.ok(query.slot.subjectType && query.slot.subjectId && query.slot.fieldOrBehavior && query.slot.claimType, `query ${query.id} incomplete slot`);
       if (query.sameAs !== undefined) {
         assert.ok(queryIds.has(query.sameAs) && query.expect === undefined, `query ${query.id} sameAs`);
+        const other = vectorCase.queries.find((item) => item.id === query.sameAs)!;
+        assert.deepEqual(query.slot, other.slot, `query ${query.id} sameAs slot`);
+        assert.equal(query.knownAt, other.knownAt, `query ${query.id} sameAs knownAt`);
+        assert.equal(query.validAt, other.validAt, `query ${query.id} sameAs validAt`);
         continue;
       }
       const expect = query.expect;
       assert.ok(expect && OUTCOMES.has(expect.outcome), `query ${query.id} outcome`);
+      if (expect.outcome === "current") {
+        assert.ok(Object.hasOwn(expect, "value"), `query ${query.id} current value missing`);
+        assert.ok(expect.status && STATUSES.has(expect.status), `query ${query.id} invalid status`);
+        assert.ok(expect.supportingClaimIds?.length, `query ${query.id} lacks support`);
+        for (const id of expect.supportingClaimIds) {
+          const claim = query.bundles.flatMap((key) => vectorCase.bundles[key].claims).find((item) => item.id === id)!;
+          assert.ok(claim, `query ${query.id} missing supporting claim ${id}`);
+          assert.equal(claim.fieldOrBehavior, query.slot.fieldOrBehavior, `query ${query.id} support field`);
+          assert.equal(claim.claimType, query.slot.claimType, `query ${query.id} support type`);
+          assert.deepEqual(claim.value, expect.value, `query ${query.id} support value`);
+        }
+      }
+      if (expect.outcome === "none" || expect.outcome === "invalid") assert.ok(expect.reason, `query ${query.id} reason missing`);
       const present = new Set(query.bundles.flatMap((key) => vectorCase.bundles[key].claims.map((claim) => claim.id)));
       const named = [
         ...(expect.supportingClaimIds ?? []),
@@ -125,7 +177,10 @@ for (const vectorCase of vectors.cases) {
         ...expect.supersessions.flatMap((edge) => [edge.claimId, edge.byClaimId]),
       ];
       for (const claimId of named) assert.ok(present.has(claimId), `query ${query.id} names ${claimId}, absent from its inputs`);
-      for (const edge of expect.supersessions) assert.ok(EDGE_STATES.has(edge.state), `query ${query.id} edge state ${edge.state}`);
+      for (const edge of expect.supersessions) {
+        assert.ok(EDGE_STATES.has(edge.state), `query ${query.id} edge state ${edge.state}`);
+        assert.ok(EDGE_KINDS.has(edge.kind), `query ${query.id} edge kind ${edge.kind}`);
+      }
       assert.equal(expect.outcome === "contested", (expect.candidateClaimIds?.length ?? 0) >= 2, `query ${query.id}: contested iff two or more candidates`);
       assert.equal(expect.outcome === "contested", expect.gapCodes.includes("contested-value"), `query ${query.id}: contested iff contested-value gap`);
     }

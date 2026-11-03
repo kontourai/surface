@@ -181,7 +181,8 @@
           "slot": {
             "subjectType": "org",
             "subjectId": "acme",
-            "fieldOrBehavior": "headquarters"
+            "fieldOrBehavior": "headquarters",
+            "claimType": "fact"
           },
           "knownAt": "2026-02-01T00:00:00Z",
           "expect": {
@@ -204,7 +205,8 @@
           "slot": {
             "subjectType": "org",
             "subjectId": "acme",
-            "fieldOrBehavior": "headquarters"
+            "fieldOrBehavior": "headquarters",
+            "claimType": "fact"
           },
           "expect": {
             "outcome": "current",
@@ -237,7 +239,8 @@
           "slot": {
             "subjectType": "org",
             "subjectId": "acme",
-            "fieldOrBehavior": "headquarters"
+            "fieldOrBehavior": "headquarters",
+            "claimType": "fact"
           },
           "sameAs": "latest"
         },
@@ -249,7 +252,8 @@
           "slot": {
             "subjectType": "org",
             "subjectId": "acme",
-            "fieldOrBehavior": "headquarters"
+            "fieldOrBehavior": "headquarters",
+            "claimType": "fact"
           },
           "expect": {
             "outcome": "current",
@@ -408,7 +412,8 @@
           "slot": {
             "subjectType": "org",
             "subjectId": "acme",
-            "fieldOrBehavior": "headquarters"
+            "fieldOrBehavior": "headquarters",
+            "claimType": "fact"
           },
           "expect": {
             "outcome": "current",
@@ -583,7 +588,8 @@
           "slot": {
             "subjectType": "org",
             "subjectId": "acme",
-            "fieldOrBehavior": "headquarters"
+            "fieldOrBehavior": "headquarters",
+            "claimType": "fact"
           },
           "expect": {
             "outcome": "contested",
@@ -606,7 +612,8 @@
           "slot": {
             "subjectType": "org",
             "subjectId": "acme",
-            "fieldOrBehavior": "headquarters"
+            "fieldOrBehavior": "headquarters",
+            "claimType": "fact"
           },
           "sameAs": "contested"
         }
@@ -809,7 +816,8 @@
           "slot": {
             "subjectType": "org",
             "subjectId": "acme",
-            "fieldOrBehavior": "headquarters"
+            "fieldOrBehavior": "headquarters",
+            "claimType": "fact"
           },
           "expect": {
             "outcome": "contested",
@@ -832,7 +840,8 @@
           "slot": {
             "subjectType": "org",
             "subjectId": "acme",
-            "fieldOrBehavior": "headquarters"
+            "fieldOrBehavior": "headquarters",
+            "claimType": "fact"
           },
           "expect": {
             "outcome": "contested",
@@ -1169,7 +1178,8 @@
           "slot": {
             "subjectType": "org",
             "subjectId": "acme",
-            "fieldOrBehavior": "headquarters"
+            "fieldOrBehavior": "headquarters",
+            "claimType": "fact"
           },
           "expect": {
             "outcome": "current",
@@ -1194,7 +1204,8 @@
           "slot": {
             "subjectType": "org",
             "subjectId": "acme",
-            "fieldOrBehavior": "headquarters"
+            "fieldOrBehavior": "headquarters",
+            "claimType": "fact"
           },
           "expect": {
             "outcome": "contested",
@@ -1407,7 +1418,8 @@
           "slot": {
             "subjectType": "org",
             "subjectId": "acme",
-            "fieldOrBehavior": "headquarters"
+            "fieldOrBehavior": "headquarters",
+            "claimType": "fact"
           },
           "validAt": "2023-01-01T00:00:00Z",
           "expect": {
@@ -1437,7 +1449,8 @@
           "slot": {
             "subjectType": "org",
             "subjectId": "acme",
-            "fieldOrBehavior": "headquarters"
+            "fieldOrBehavior": "headquarters",
+            "claimType": "fact"
           },
           "expect": {
             "outcome": "current",
@@ -1470,7 +1483,8 @@
           "slot": {
             "subjectType": "org",
             "subjectId": "acme",
-            "fieldOrBehavior": "headquarters"
+            "fieldOrBehavior": "headquarters",
+            "claimType": "fact"
           },
           "validAt": "2019-06-01T00:00:00Z",
           "expect": {
@@ -1496,7 +1510,8 @@
           "slot": {
             "subjectType": "org",
             "subjectId": "acme",
-            "fieldOrBehavior": "headquarters"
+            "fieldOrBehavior": "headquarters",
+            "claimType": "fact"
           },
           "validAt": "2026-02-15T00:00:00Z",
           "knownAt": "2026-02-20T00:00:00Z",
@@ -1520,7 +1535,8 @@
           "slot": {
             "subjectType": "org",
             "subjectId": "acme",
-            "fieldOrBehavior": "headquarters"
+            "fieldOrBehavior": "headquarters",
+            "claimType": "fact"
           },
           "validAt": "2026-02-15T00:00:00Z",
           "expect": {
@@ -1842,7 +1858,8 @@
           "slot": {
             "subjectType": "org",
             "subjectId": "acme",
-            "fieldOrBehavior": "headquarters"
+            "fieldOrBehavior": "headquarters",
+            "claimType": "fact"
           },
           "expect": {
             "outcome": "current",
@@ -1872,7 +1889,8 @@
           "slot": {
             "subjectType": "org",
             "subjectId": "acme",
-            "fieldOrBehavior": "headquarters"
+            "fieldOrBehavior": "headquarters",
+            "claimType": "fact"
           },
           "expect": {
             "outcome": "current",
@@ -1906,7 +1924,8 @@
           "slot": {
             "subjectType": "org",
             "subjectId": "acme",
-            "fieldOrBehavior": "headquarters"
+            "fieldOrBehavior": "headquarters",
+            "claimType": "fact"
           },
           "expect": {
             "outcome": "current",
@@ -1928,7 +1947,8 @@
           "slot": {
             "subjectType": "org",
             "subjectId": "acme",
-            "fieldOrBehavior": "headquarters"
+            "fieldOrBehavior": "headquarters",
+            "claimType": "fact"
           },
           "expect": {
             "outcome": "none",
@@ -1948,7 +1968,8 @@
           "slot": {
             "subjectType": "org",
             "subjectId": "acme",
-            "fieldOrBehavior": "chief-executive"
+            "fieldOrBehavior": "chief-executive",
+            "claimType": "fact"
           },
           "expect": {
             "outcome": "none",
@@ -2333,7 +2354,8 @@
           "slot": {
             "subjectType": "org",
             "subjectId": "acme",
-            "fieldOrBehavior": "headquarters"
+            "fieldOrBehavior": "headquarters",
+            "claimType": "fact"
           },
           "expect": {
             "outcome": "current",
@@ -2356,7 +2378,8 @@
           "slot": {
             "subjectType": "org",
             "subjectId": "acme",
-            "fieldOrBehavior": "headquarters"
+            "fieldOrBehavior": "headquarters",
+            "claimType": "fact"
           },
           "expect": {
             "outcome": "contested",
@@ -2384,7 +2407,8 @@
           "slot": {
             "subjectType": "org",
             "subjectId": "acme",
-            "fieldOrBehavior": "headquarters"
+            "fieldOrBehavior": "headquarters",
+            "claimType": "fact"
           },
           "expect": {
             "outcome": "current",
@@ -2410,7 +2434,8 @@
           "slot": {
             "subjectType": "org",
             "subjectId": "acme",
-            "fieldOrBehavior": "headquarters"
+            "fieldOrBehavior": "headquarters",
+            "claimType": "fact"
           },
           "expect": {
             "outcome": "current",
@@ -2675,7 +2700,8 @@
           "slot": {
             "subjectType": "org",
             "subjectId": "acme",
-            "fieldOrBehavior": "headquarters"
+            "fieldOrBehavior": "headquarters",
+            "claimType": "fact"
           },
           "expect": {
             "outcome": "invalid",
@@ -2707,7 +2733,8 @@
           "slot": {
             "subjectType": "org",
             "subjectId": "globex",
-            "fieldOrBehavior": "headquarters"
+            "fieldOrBehavior": "headquarters",
+            "claimType": "fact"
           },
           "expect": {
             "outcome": "current",
@@ -2737,7 +2764,8 @@
           "slot": {
             "subjectType": "org",
             "subjectId": "globex",
-            "fieldOrBehavior": "chief-executive"
+            "fieldOrBehavior": "chief-executive",
+            "claimType": "fact"
           },
           "expect": {
             "outcome": "current",
@@ -2763,6 +2791,694 @@
       "observedAtByBundle": {
         "b1": "2026-01-10T00:00:00Z",
         "b2": "2026-03-10T00:00:00Z"
+      }
+    },
+    {
+      "id": "late-observation",
+      "covers": [
+        "out-of-order arrival",
+        "knowledge-time as-of"
+      ],
+      "now": "2026-06-01T00:00:00Z",
+      "bundles": {
+        "b1": {
+          "schemaVersion": 5,
+          "source": "producer-a:run-1",
+          "producerId": "producer-a",
+          "claims": [
+            {
+              "id": "producer-a.acme.hq.1",
+              "subjectType": "org",
+              "subjectId": "acme",
+              "claimType": "fact",
+              "fieldOrBehavior": "headquarters",
+              "value": "Berlin",
+              "createdAt": "2026-01-10T00:00:00Z",
+              "updatedAt": "2026-01-10T00:00:00Z",
+              "verificationPolicyId": "policy.fact"
+            }
+          ],
+          "evidence": [
+            {
+              "id": "producer-a.acme.hq.1.evidence",
+              "claimId": "producer-a.acme.hq.1",
+              "evidenceType": "source_excerpt",
+              "method": "extraction",
+              "sourceRef": "source:producer-a.acme.hq.1",
+              "excerptOrSummary": "Source states headquarters = \"Berlin\".",
+              "observedAt": "2026-01-10T00:00:00Z",
+              "collectedBy": "collector",
+              "passing": true
+            }
+          ],
+          "policies": [
+            {
+              "id": "policy.fact",
+              "claimType": "fact",
+              "requiredEvidence": [
+                "source_excerpt"
+              ],
+              "acceptanceCriteria": [
+                "the cited source states the value"
+              ],
+              "reviewAuthority": "producer review",
+              "validityRule": {
+                "kind": "historical"
+              },
+              "stalenessTriggers": [],
+              "conflictRules": [],
+              "impactLevel": "medium"
+            }
+          ],
+          "events": [
+            {
+              "id": "producer-a.acme.hq.1.verified",
+              "claimId": "producer-a.acme.hq.1",
+              "status": "verified",
+              "actor": "producer-review",
+              "method": "review",
+              "evidenceIds": [
+                "producer-a.acme.hq.1.evidence"
+              ],
+              "createdAt": "2026-01-10T00:00:00Z"
+            }
+          ]
+        },
+        "b2": {
+          "schemaVersion": 5,
+          "source": "producer-b:run-1",
+          "producerId": "producer-b",
+          "claims": [
+            {
+              "id": "producer-b.acme.hq.1",
+              "subjectType": "org",
+              "subjectId": "acme",
+              "claimType": "fact",
+              "fieldOrBehavior": "headquarters",
+              "value": "Munich",
+              "createdAt": "2026-01-10T00:00:00Z",
+              "updatedAt": "2026-01-10T00:00:00Z",
+              "verificationPolicyId": "policy.fact"
+            }
+          ],
+          "evidence": [
+            {
+              "id": "producer-b.acme.hq.1.evidence",
+              "claimId": "producer-b.acme.hq.1",
+              "evidenceType": "source_excerpt",
+              "method": "extraction",
+              "sourceRef": "source:producer-b.acme.hq.1",
+              "excerptOrSummary": "Source states headquarters = \"Munich\".",
+              "observedAt": "2026-01-10T00:00:00Z",
+              "collectedBy": "collector",
+              "passing": true
+            }
+          ],
+          "policies": [
+            {
+              "id": "policy.fact",
+              "claimType": "fact",
+              "requiredEvidence": [
+                "source_excerpt"
+              ],
+              "acceptanceCriteria": [
+                "the cited source states the value"
+              ],
+              "reviewAuthority": "producer review",
+              "validityRule": {
+                "kind": "historical"
+              },
+              "stalenessTriggers": [],
+              "conflictRules": [],
+              "impactLevel": "medium"
+            }
+          ],
+          "events": [
+            {
+              "id": "producer-b.acme.hq.1.verified",
+              "claimId": "producer-b.acme.hq.1",
+              "status": "verified",
+              "actor": "producer-review",
+              "method": "review",
+              "evidenceIds": [
+                "producer-b.acme.hq.1.evidence"
+              ],
+              "createdAt": "2026-01-10T00:00:00Z"
+            }
+          ]
+        }
+      },
+      "premise": {
+        "bundles": [
+          "b1",
+          "b2"
+        ],
+        "statusByClaimId": {
+          "producer-a.acme.hq.1": "verified",
+          "producer-b.acme.hq.1": "verified"
+        }
+      },
+      "queries": [
+        {
+          "id": "before-late-bundle",
+          "bundles": [
+            "b1",
+            "b2"
+          ],
+          "slot": {
+            "subjectType": "org",
+            "subjectId": "acme",
+            "fieldOrBehavior": "headquarters",
+            "claimType": "fact"
+          },
+          "knownAt": "2026-03-01T00:00:00Z",
+          "expect": {
+            "outcome": "current",
+            "value": "Munich",
+            "status": "verified",
+            "supportingClaimIds": [
+              "producer-b.acme.hq.1"
+            ],
+            "supersessions": [],
+            "gapCodes": []
+          }
+        },
+        {
+          "id": "after-late-bundle",
+          "bundles": [
+            "b1",
+            "b2"
+          ],
+          "slot": {
+            "subjectType": "org",
+            "subjectId": "acme",
+            "fieldOrBehavior": "headquarters",
+            "claimType": "fact"
+          },
+          "expect": {
+            "outcome": "contested",
+            "candidateClaimIds": [
+              "producer-a.acme.hq.1",
+              "producer-b.acme.hq.1"
+            ],
+            "supersessions": [],
+            "gapCodes": [
+              "contested-value"
+            ]
+          }
+        }
+      ],
+      "observedAtByBundle": {
+        "b1": "2026-04-01T00:00:00Z",
+        "b2": "2026-02-01T00:00:00Z"
+      }
+    },
+    {
+      "id": "untrusted-terminal-event",
+      "covers": [
+        "unauthorized status event",
+        "authority admission"
+      ],
+      "now": "2026-06-01T00:00:00Z",
+      "bundles": {
+        "b1": {
+          "schemaVersion": 5,
+          "source": "producer-a:run-1",
+          "producerId": "producer-a",
+          "claims": [
+            {
+              "id": "producer-a.acme.hq.1",
+              "subjectType": "org",
+              "subjectId": "acme",
+              "claimType": "fact",
+              "fieldOrBehavior": "headquarters",
+              "value": "Berlin",
+              "createdAt": "2026-01-10T00:00:00Z",
+              "updatedAt": "2026-01-10T00:00:00Z",
+              "verificationPolicyId": "policy.fact"
+            }
+          ],
+          "evidence": [
+            {
+              "id": "producer-a.acme.hq.1.evidence",
+              "claimId": "producer-a.acme.hq.1",
+              "evidenceType": "source_excerpt",
+              "method": "extraction",
+              "sourceRef": "source:producer-a.acme.hq.1",
+              "excerptOrSummary": "Source states headquarters = \"Berlin\".",
+              "observedAt": "2026-01-10T00:00:00Z",
+              "collectedBy": "collector",
+              "passing": true
+            }
+          ],
+          "policies": [
+            {
+              "id": "policy.fact",
+              "claimType": "fact",
+              "requiredEvidence": [
+                "source_excerpt"
+              ],
+              "acceptanceCriteria": [
+                "the cited source states the value"
+              ],
+              "reviewAuthority": "producer review",
+              "validityRule": {
+                "kind": "historical"
+              },
+              "stalenessTriggers": [],
+              "conflictRules": [],
+              "impactLevel": "medium"
+            }
+          ],
+          "events": [
+            {
+              "id": "producer-a.acme.hq.1.verified",
+              "claimId": "producer-a.acme.hq.1",
+              "status": "verified",
+              "actor": "producer-review",
+              "method": "review",
+              "evidenceIds": [
+                "producer-a.acme.hq.1.evidence"
+              ],
+              "createdAt": "2026-01-10T00:00:00Z"
+            }
+          ]
+        },
+        "b2": {
+          "schemaVersion": 5,
+          "source": "producer-b:run-1",
+          "producerId": "producer-b",
+          "claims": [
+            {
+              "id": "producer-b.acme.hq.1",
+              "subjectType": "org",
+              "subjectId": "acme",
+              "claimType": "fact",
+              "fieldOrBehavior": "headquarters",
+              "value": "Munich",
+              "createdAt": "2026-01-10T00:00:00Z",
+              "updatedAt": "2026-01-10T00:00:00Z",
+              "verificationPolicyId": "policy.fact"
+            }
+          ],
+          "evidence": [
+            {
+              "id": "producer-b.acme.hq.1.evidence",
+              "claimId": "producer-b.acme.hq.1",
+              "evidenceType": "source_excerpt",
+              "method": "extraction",
+              "sourceRef": "source:producer-b.acme.hq.1",
+              "excerptOrSummary": "Source states headquarters = \"Munich\".",
+              "observedAt": "2026-01-10T00:00:00Z",
+              "collectedBy": "collector",
+              "passing": true
+            }
+          ],
+          "policies": [
+            {
+              "id": "policy.fact",
+              "claimType": "fact",
+              "requiredEvidence": [
+                "source_excerpt"
+              ],
+              "acceptanceCriteria": [
+                "the cited source states the value"
+              ],
+              "reviewAuthority": "producer review",
+              "validityRule": {
+                "kind": "historical"
+              },
+              "stalenessTriggers": [],
+              "conflictRules": [],
+              "impactLevel": "medium"
+            }
+          ],
+          "events": [
+            {
+              "id": "producer-b.acme.hq.1.verified",
+              "claimId": "producer-b.acme.hq.1",
+              "status": "verified",
+              "actor": "producer-review",
+              "method": "review",
+              "evidenceIds": [
+                "producer-b.acme.hq.1.evidence"
+              ],
+              "createdAt": "2026-01-10T00:00:00Z"
+            }
+          ]
+        },
+        "b3": {
+          "schemaVersion": 5,
+          "source": "registry-desk:review-1",
+          "producerId": "producer-a",
+          "claims": [
+            {
+              "id": "producer-b.acme.hq.1",
+              "subjectType": "org",
+              "subjectId": "acme",
+              "claimType": "fact",
+              "fieldOrBehavior": "headquarters",
+              "value": "Munich",
+              "createdAt": "2026-01-10T00:00:00Z",
+              "updatedAt": "2026-01-10T00:00:00Z",
+              "verificationPolicyId": "policy.fact"
+            }
+          ],
+          "evidence": [],
+          "policies": [
+            {
+              "id": "policy.fact",
+              "claimType": "fact",
+              "requiredEvidence": [
+                "source_excerpt"
+              ],
+              "acceptanceCriteria": [
+                "the cited source states the value"
+              ],
+              "reviewAuthority": "producer review",
+              "validityRule": {
+                "kind": "historical"
+              },
+              "stalenessTriggers": [],
+              "conflictRules": [],
+              "impactLevel": "medium"
+            }
+          ],
+          "events": [
+            {
+              "id": "registry-desk.resolve.producer-b.acme.hq.1",
+              "claimId": "producer-b.acme.hq.1",
+              "status": "rejected",
+              "actor": "producer-a",
+              "method": "dispute-resolution",
+              "evidenceIds": [],
+              "createdAt": "2026-03-10T00:00:00Z",
+              "resolvesDispute": true,
+              "notes": "The cited page describes a branch office, not the headquarters."
+            }
+          ],
+          "authorityTrace": [
+            {
+              "id": "trace.registry-desk",
+              "subject": {
+                "subjectType": "org",
+                "subjectId": "acme"
+              },
+              "actorRef": "reviewer:registry-desk",
+              "authorityType": "role",
+              "authorityRef": "role:registry-reviewer",
+              "sourceRef": "roles:registry-desk",
+              "observedAt": "2026-01-10T00:00:00Z",
+              "validFrom": "2026-01-10T00:00:00Z"
+            }
+          ]
+        },
+        "b4": {
+          "schemaVersion": 5,
+          "source": "producer-b:run-2",
+          "producerId": "producer-b",
+          "claims": [
+            {
+              "id": "producer-a.acme.hq.1",
+              "subjectType": "org",
+              "subjectId": "acme",
+              "claimType": "fact",
+              "fieldOrBehavior": "headquarters",
+              "value": "Berlin",
+              "createdAt": "2026-01-10T00:00:00Z",
+              "updatedAt": "2026-01-10T00:00:00Z",
+              "verificationPolicyId": "policy.fact"
+            },
+            {
+              "id": "producer-b.acme.hq.2",
+              "subjectType": "org",
+              "subjectId": "acme",
+              "claimType": "fact",
+              "fieldOrBehavior": "headquarters",
+              "value": "Hamburg",
+              "createdAt": "2026-05-10T00:00:00Z",
+              "updatedAt": "2026-05-10T00:00:00Z",
+              "verificationPolicyId": "policy.fact",
+              "supersedes": [
+                {
+                  "claimId": "producer-a.acme.hq.1",
+                  "kind": "correction",
+                  "reason": "Register extract dated 2026-05-01 lists Hamburg."
+                }
+              ]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "producer-b.acme.hq.2.evidence",
+              "claimId": "producer-b.acme.hq.2",
+              "evidenceType": "source_excerpt",
+              "method": "extraction",
+              "sourceRef": "source:producer-b.acme.hq.2",
+              "excerptOrSummary": "Source states headquarters = \"Hamburg\".",
+              "observedAt": "2026-05-10T00:00:00Z",
+              "collectedBy": "collector",
+              "passing": true
+            }
+          ],
+          "policies": [
+            {
+              "id": "policy.fact",
+              "claimType": "fact",
+              "requiredEvidence": [
+                "source_excerpt"
+              ],
+              "acceptanceCriteria": [
+                "the cited source states the value"
+              ],
+              "reviewAuthority": "producer review",
+              "validityRule": {
+                "kind": "historical"
+              },
+              "stalenessTriggers": [],
+              "conflictRules": [],
+              "impactLevel": "medium"
+            }
+          ],
+          "events": [
+            {
+              "id": "producer-b.acme.hq.2.verified",
+              "claimId": "producer-b.acme.hq.2",
+              "status": "verified",
+              "actor": "producer-review",
+              "method": "review",
+              "evidenceIds": [
+                "producer-b.acme.hq.2.evidence"
+              ],
+              "createdAt": "2026-05-10T00:00:00Z"
+            }
+          ]
+        }
+      },
+      "premise": {
+        "bundles": [
+          "b1",
+          "b2"
+        ],
+        "statusByClaimId": {
+          "producer-a.acme.hq.1": "verified",
+          "producer-b.acme.hq.1": "verified"
+        }
+      },
+      "queries": [
+        {
+          "id": "rival-rejection-pending",
+          "bundles": [
+            "b1",
+            "b2",
+            "b3"
+          ],
+          "slot": {
+            "subjectType": "org",
+            "subjectId": "acme",
+            "fieldOrBehavior": "headquarters",
+            "claimType": "fact"
+          },
+          "expect": {
+            "outcome": "contested",
+            "candidateClaimIds": [
+              "producer-a.acme.hq.1",
+              "producer-b.acme.hq.1"
+            ],
+            "supersessions": [],
+            "gapCodes": [
+              "contested-value",
+              "event-authority-pending"
+            ]
+          }
+        }
+      ],
+      "observedAtByBundle": {
+        "b1": "2026-01-10T00:00:00Z",
+        "b2": "2026-01-10T00:00:00Z",
+        "b3": "2026-03-10T00:00:00Z",
+        "b4": "2026-05-10T00:00:00Z"
+      }
+    },
+    {
+      "id": "derivation-lineage",
+      "covers": [
+        "derivedFrom lineage",
+        "derivation ceiling"
+      ],
+      "now": "2026-06-01T00:00:00Z",
+      "bundles": {
+        "b1": {
+          "schemaVersion": 5,
+          "source": "producer-a:run-1",
+          "producerId": "producer-a",
+          "claims": [
+            {
+              "id": "producer-a.acme.hq.1",
+              "subjectType": "org",
+              "subjectId": "acme",
+              "claimType": "fact",
+              "fieldOrBehavior": "headquarters",
+              "value": "Berlin",
+              "createdAt": "2026-01-10T00:00:00Z",
+              "updatedAt": "2026-01-10T00:00:00Z",
+              "verificationPolicyId": "policy.fact"
+            },
+            {
+              "id": "producer-a.acme.hq.derived",
+              "subjectType": "org",
+              "subjectId": "acme",
+              "claimType": "fact",
+              "fieldOrBehavior": "headquarters",
+              "value": "Berlin",
+              "createdAt": "2026-01-10T00:00:00Z",
+              "updatedAt": "2026-01-10T00:00:00Z",
+              "verificationPolicyId": "policy.fact",
+              "derivedFrom": [
+                "producer-a.acme.hq.1"
+              ],
+              "derivationEdges": [
+                {
+                  "inputClaimId": "producer-a.acme.hq.1",
+                  "method": "copy",
+                  "role": "source"
+                }
+              ]
+            }
+          ],
+          "evidence": [
+            {
+              "id": "producer-a.acme.hq.1.evidence",
+              "claimId": "producer-a.acme.hq.1",
+              "evidenceType": "source_excerpt",
+              "method": "extraction",
+              "sourceRef": "source:producer-a.acme.hq.1",
+              "excerptOrSummary": "Source states headquarters = \"Berlin\".",
+              "observedAt": "2026-01-10T00:00:00Z",
+              "collectedBy": "collector",
+              "passing": true
+            },
+            {
+              "id": "producer-a.acme.hq.derived.evidence",
+              "claimId": "producer-a.acme.hq.derived",
+              "evidenceType": "source_excerpt",
+              "method": "extraction",
+              "sourceRef": "source:producer-a.acme.hq.1",
+              "excerptOrSummary": "Source states headquarters = \"Berlin\".",
+              "observedAt": "2026-01-10T00:00:00Z",
+              "collectedBy": "collector",
+              "passing": true
+            }
+          ],
+          "policies": [
+            {
+              "id": "policy.fact",
+              "claimType": "fact",
+              "requiredEvidence": [
+                "source_excerpt"
+              ],
+              "acceptanceCriteria": [
+                "the cited source states the value"
+              ],
+              "reviewAuthority": "producer review",
+              "validityRule": {
+                "kind": "historical"
+              },
+              "stalenessTriggers": [],
+              "conflictRules": [],
+              "impactLevel": "medium"
+            }
+          ],
+          "events": [
+            {
+              "id": "producer-a.acme.hq.1.verified",
+              "claimId": "producer-a.acme.hq.1",
+              "status": "verified",
+              "actor": "producer-review",
+              "method": "review",
+              "evidenceIds": [
+                "producer-a.acme.hq.1.evidence"
+              ],
+              "createdAt": "2026-01-10T00:00:00Z"
+            },
+            {
+              "id": "producer-a.acme.hq.derived.verified",
+              "claimId": "producer-a.acme.hq.derived",
+              "status": "verified",
+              "actor": "producer-review",
+              "method": "review",
+              "evidenceIds": [
+                "producer-a.acme.hq.derived.evidence"
+              ],
+              "createdAt": "2026-01-10T00:00:00Z"
+            }
+          ]
+        }
+      },
+      "premise": {
+        "bundles": [
+          "b1"
+        ],
+        "statusByClaimId": {
+          "producer-a.acme.hq.1": "verified",
+          "producer-a.acme.hq.derived": "verified"
+        }
+      },
+      "queries": [
+        {
+          "id": "derived-support-trace",
+          "bundles": [
+            "b1"
+          ],
+          "slot": {
+            "subjectType": "org",
+            "subjectId": "acme",
+            "fieldOrBehavior": "headquarters",
+            "claimType": "fact"
+          },
+          "expect": {
+            "outcome": "current",
+            "value": "Berlin",
+            "status": "verified",
+            "supportingClaimIds": [
+              "producer-a.acme.hq.1",
+              "producer-a.acme.hq.derived"
+            ],
+            "supersessions": [],
+            "gapCodes": [],
+            "derivationEdges": [
+              {
+                "claimId": "producer-a.acme.hq.derived",
+                "inputClaimId": "producer-a.acme.hq.1",
+                "method": "copy",
+                "role": "source"
+              }
+            ]
+          }
+        }
+      ],
+      "observedAtByBundle": {
+        "b1": "2026-01-10T00:00:00Z"
       }
     }
   ]

@@ -27,7 +27,9 @@ A **claim** is an immutable, identified assertion, including its value and
 provenance. A revision gets a new ID; carrying the same ID means carrying the
 same content. A subject is a `(subjectType, subjectId)` reference. A property
 slot is an equivalence class of subjects plus `claimType` and
-`fieldOrBehavior`; facet is not a cross-producer identity key. A slot's value
+`fieldOrBehavior` and canonical qualifiers; facet is not a cross-producer identity key.
+Surface `canonicalClaimKey` includes qualifiers but omits claimType; accumulation
+adds claimType deliberately without changing inquiry matching. Queries supply it. A slot's value
 semantics and cardinality must be declared by its domain; these vectors use a
 single-valued property and structural JSON value equality. Unknown cardinality
 or comparison semantics cannot yield a unique answer. Do not discard aliases,
@@ -41,7 +43,10 @@ trace. For accumulation, a mapping claim must be verified and admissible at
 the knowledge cut to join through that link; absent, disputed, rejected, or
 unassessable mappings cannot silently join. An unbacked alias or equivalent
 link is an assertion, not proof of reviewed identity: expose its provenance
-and uncertainty rather than promote it to reviewed identity. A split is a later
+and uncertainty; it does not join accumulation classes. Today `buildIdentityIndex`
+joins equivalent links regardless of mapping status. The future projection must
+pass it an admitted set of links and aliases and retain excluded links in its
+trace; that admission does not exist yet. A split is a later
 reviewed rejection or replacement of a mapping; rebuild the classes from the
 remaining active links, not from a destructive union-find history. Survey owns
 reviewed merge and split decisions ([Survey #243](https://github.com/kontourai/survey/issues/243)).
@@ -90,7 +95,9 @@ instant without rewriting the predecessor. A correction instead says the old
 assertion was wrong for the corrected interval, not that the world changed.
 The two axes allow a later observation to change an answer about a past V while
 leaving the earlier K answer reproducible. Intervals and observation envelopes
-are proposed pending Hachure, not fields accepted by today's validator.
+are proposed pending Hachure, not fields accepted by today's validator. This
+half-open interval differs from the existing authority trace's inclusive
+`validUntil`. `expiresAt` and TTL govern freshness, not world validity.
 
 ## Revision, authority, and projection
 
@@ -107,7 +114,8 @@ examples assume the fixture producer identities are established for self
 revisions; production must supply that custody input.
 
 At fixed `(K,V,now)` the pure projection validates inputs and identity, merges
-and deduplicates, folds each claim's events and derivation ceiling, evaluates
+and deduplicates, admits only events whose provenance and authority permit the
+asserted action, folds the admitted events and derivation ceiling, evaluates
 admissible replacement edges, then groups eligible values by slot. A valid
 accepted correction excludes its predecessor in the corrected interval and
 reports it as superseded in this projection; a succession applies at its valid
@@ -115,10 +123,28 @@ boundary and retains both historical statuses. Retracting a successor (a
 revoked terminal event in these vectors) withdraws its outgoing replacement
 edge; recomputation may restore an independently eligible predecessor. Removing
 an entire observation recomputes from the remaining inputs and cannot retain an
-orphaned edge. Retraction is not physical erasure. A terminal rejection or
-revocation excludes that assertion; a disputed claim stays visible as disputed,
+orphaned edge. Retraction is not physical erasure. The existing fold maps revoked
+to `stale`, which also describes expiry. The projection must retain the admitted
+governing event and distinguish retraction from expiry; vector `retracted` is an
+exclusion reason, not a TrustStatus. Ordinary stale claims remain visible but
+cannot establish verified standing. A terminal rejection or admitted retraction
+excludes that assertion; a disputed claim stays visible as disputed,
 not a verified answer. Existing authority-gated event resolution is applied by
-the status fold, never replaced by a timestamp ranking.
+the status fold, never replaced by a timestamp ranking. The existing fold does
+not authenticate ordinary terminal events: a later rival rejection can change
+status without authority. The new admission step must hold such events pending
+before folding, preserving them and a gap; missing custody or authority fails
+closed. This is an unimplemented extension, not a property of today's fold.
+
+Verified, proposed, assumed, stale, disputed and unknown assertions remain
+visible candidates when their valid interval and admitted lineage permit them;
+rejected and retracted assertions are excluded. A proposed conflicting value
+can prevent a unique answer without overruling stronger evidence. Equal values
+collect individually labeled support; the answer status is the strongest
+independently eligible supporting status, never a promotion of weaker claims.
+Incomparable or policy-undefined standings produce ambiguity. Cardinality and
+value equality must be explicit versioned inputs; vectors assume a declared
+single-valued JSON property.
 
 Distinct simultaneous eligible values are a contradiction with all candidates,
 support and provenance visible. Equal values may aggregate support, but cannot
@@ -140,6 +166,9 @@ gap on both slots, without suppressing otherwise valid claims. Missing mapping
 or evidence and conflicting identity decisions remain visible as ambiguity.
 Unknown status or unsupported policy cannot be promoted into verified. A
 projection cannot advertise completeness when its custody or inputs are missing.
+Projection-local `superseded` is a replacement disposition, not a mutation of
+the source fold status. Recompute and traversal must expose both; existing
+status-change records do not capture this projected disposition.
 
 ## Extension points and ownership
 
