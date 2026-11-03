@@ -576,3 +576,21 @@ test("owned unsupported equal claims cannot strengthen stale or disputed standin
   result = projectAccumulation([disputed, rival], policy, f.query);
   assert.equal(result.outcome, "current"); assert.equal(result.status, "disputed");
 });
+
+test("incomplete stale claims do not count as independent support", () => {
+  const f = fixture("freshness-without-retraction");
+  const rival = structuredClone(f.observations[0]); rival.id = "rival"; rival.authenticatedPublisher = "rival"; rival.bundle.producerId = "rival";
+  rival.bundle.claims = [{ ...rival.bundle.claims[0], id: "rival.hq", derivedFrom: ["missing"] }];
+  rival.bundle.evidence = rival.bundle.evidence.map(item => ({ ...item, id: "rival.evidence", claimId: "rival.hq" }));
+  rival.bundle.events = rival.bundle.events.map(event => ({ ...event, id: "rival.event", claimId: "rival.hq", evidenceIds: ["rival.evidence"] }));
+  rival.contentDigest = accumulationDigest(rival.bundle);
+  const policy = structuredClone(f.authority); (policy.ownerByClaimId as Record<string,string>)["rival.hq"] = "rival";
+  const event = rival.bundle.events[0];
+  (policy.eventDecisions as typeof policy.eventDecisions[number][]).push({ eventId: event.id, eventDigest: accumulationDigest(event), publisher: "rival", admitted: true });
+  const { integrityRef: _, ...fields } = policy; policy.integrityRef = accumulationDigest(fields);
+  const result = projectAccumulation([f.observations[0], rival], policy, f.query);
+  assert.equal(result.outcome, "current"); assert.equal(result.status, "stale");
+  assert.equal(result.statusByClaimId["rival.hq"], "stale");
+  assert.deepEqual(result.independentSupportClaimIds, ["producer-a.acme.hq.1"]);
+  assert.deepEqual(result.lineageMissingClaimIds, ["rival.hq"]);
+});
