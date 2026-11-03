@@ -678,3 +678,33 @@ test("a long alternating chain of visible and hidden claims stays cheap", () => 
   assert.deepEqual(view.currentClaimIds, [`c${size - 2}`]);
   assert.ok(Date.now() - started < 5000, "supersession on a few thousand claims must not blow up");
 });
+
+// ---- delta-review 4 regressions ----
+
+test("a sparse or method-overriding audience list is unreadable as a whole", () => {
+  // Methods that always answer "yes" would let a malformed list pass if they were trusted.
+  const lying = Object.assign(["staff", 42], { every: () => true, some: () => true }) as unknown[];
+  const sparse = Object.assign(new Array(2), { 0: "staff" }) as unknown[];
+  const viewer = { audiences: ["staff"] };
+  for (const audiences of [sparse, lying]) {
+    const bad = { kind: "restricted", audiences } as unknown as Visibility;
+    assert.equal(visibilityAllows(bad, viewer), false);
+    assert.deepEqual(viewerSupersessionView({ visibilityByClaimId: new Map([["secret", bad]]), edges: [], viewer }).visibleClaimIds, []);
+    const view = viewerSupersessionView({
+      visibilityByClaimId: new Map<string, Visibility>([["a", PUBLIC], ["b", PUBLIC]]),
+      edges: [edge("a", "b", bad)],
+      viewer,
+    });
+    assert.deepEqual(view.currentClaimIds, ["a", "b"]);
+  }
+  // The declaration parser rejects the same shapes.
+  assert.deepEqual(readDeclaredVisibility({ metadata: { visibility: { audiences: sparse } } }), { state: "unrecognized" });
+  assert.deepEqual(readDeclaredVisibility({ metadata: { visibility: { audiences: lying } } }), { state: "unrecognized" });
+  // A well-formed list from a subclass is still fine.
+  assert.equal(visibilityAllows({ kind: "restricted", audiences: Array.from(["staff"]) }, viewer), true);
+});
+
+test("viewer audiences that are not strings never match", () => {
+  assert.equal(visibilityAllows(restricted("42"), { audiences: [42 as unknown as string] }), false);
+  assert.equal(visibilityAllows(restricted("staff"), { audiences: [42 as unknown as string, "staff"] }), true);
+});

@@ -61,12 +61,12 @@ export function visibilityAllows(visibility: Visibility | undefined, viewer: Vie
   if (visibility === undefined || visibility === null) return false;
   if (visibility.kind === "public") return true;
   // Anything that is not a well-formed restricted value is not visible.
-  if (visibility.kind !== "restricted" || !Array.isArray(visibility.audiences)) return false;
+  if (visibility.kind !== "restricted") return false;
   // One unreadable audience makes the whole value unreadable, not merely that entry.
-  if (!visibility.audiences.every((audience) => typeof audience === "string" && audience.length > 0)) return false;
-  const held = viewer?.audiences;
-  if (!Array.isArray(held) || held.length === 0) return false;
-  return visibility.audiences.some((audience) => held.includes(audience));
+  const named = readAudienceList(visibility.audiences);
+  if (named === undefined) return false;
+  const held = new Set(Array.isArray(viewer?.audiences) ? viewer.audiences.filter((audience) => typeof audience === "string") : []);
+  return named.some((audience) => held.has(audience));
 }
 
 export type VisibilityDeclaration =
@@ -118,10 +118,9 @@ function parseVisibility(raw: unknown): Visibility | undefined {
   if (raw === "public") return { kind: "public" };
   if (typeof raw === "string" && LEGACY_RESTRICTED_LABELS.has(raw)) return sealedVisibility();
   if (isRecord(raw)) {
-    const audiences = ownValue(raw, "audiences");
-    if (!Array.isArray(audiences)) return undefined;
-    if (!audiences.every((audience) => typeof audience === "string" && audience.length > 0)) return undefined;
-    return { kind: "restricted", audiences: [...new Set(audiences as string[])].sort(compareStrings) };
+    const audiences = readAudienceList(ownValue(raw, "audiences"));
+    if (audiences === undefined) return undefined;
+    return { kind: "restricted", audiences: [...new Set(audiences)].sort(compareStrings) };
   }
   return undefined;
 }
@@ -317,6 +316,23 @@ export function viewerSupersessionView(input: ViewerSupersessionInput): ViewerSu
  */
 export function supersessionStatusRecomputeClaimIds(input: ViewerSupersessionInput): string[] {
   return evaluateSupersession(input).recomputeStatusClaimIds;
+}
+
+/**
+ * Audiences as a plain string array, or `undefined` when anything about the list
+ * is unreadable. Index-based on purpose: `every`/`some` skip holes and a subclass
+ * can override them, and either would let a malformed list pass as valid.
+ */
+function readAudienceList(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const audiences: string[] = [];
+  for (let index = 0; index < value.length; index++) {
+    if (!Object.hasOwn(value, index)) return undefined;
+    const audience: unknown = value[index];
+    if (typeof audience !== "string" || audience.length === 0) return undefined;
+    audiences.push(audience);
+  }
+  return audiences;
 }
 
 function ownValue(record: Record<string, unknown>, key: string): unknown {
