@@ -411,3 +411,34 @@ test("two claims carrying one id seal everything built on that id, in either ord
     assert.deepEqual(derived.trace.find((entry) => entry.claimId === "dup")?.basis, "duplicate-claim");
   }
 });
+
+// ---- edge-level visibility (accumulation extension point) ----
+
+test("a restricted edge is not followed for a viewer who may not see it, even when both endpoints are visible", () => {
+  const visibilityByClaimId = new Map<string, Visibility>([["old", PUBLIC], ["new", PUBLIC]]);
+  const edges = [{ predecessorId: "old", successorId: "new", visibility: restricted("staff") }];
+  const outsider = { visibilityByClaimId, edges, viewer: { audiences: ["client"] } };
+  assert.deepEqual(viewerSupersessionView(outsider).currentClaimIds, ["new", "old"]);
+  assert.deepEqual({ ...viewerSupersessionView(outsider).supersededBy }, {});
+  assert.deepEqual(supersessionStatusRecomputeClaimIds(outsider), ["old"]);
+  const insider = { visibilityByClaimId, edges, viewer: { audiences: ["staff"] } };
+  assert.deepEqual(viewerSupersessionView(insider).currentClaimIds, ["new"]);
+  assert.deepEqual(supersessionStatusRecomputeClaimIds(insider), []);
+});
+
+test("an edge visibility can only narrow: a public edge does not reveal hidden endpoints", () => {
+  const visibilityByClaimId = new Map<string, Visibility>([["old", PUBLIC], ["new", restricted("staff")]]);
+  const view = viewerSupersessionView({
+    visibilityByClaimId,
+    edges: [{ predecessorId: "old", successorId: "new", visibility: PUBLIC }],
+    viewer: { audiences: [] },
+  });
+  assert.deepEqual(view.currentClaimIds, ["old"]);
+  assert.ok(!JSON.stringify(view).includes("new"));
+});
+
+test("a malformed visibility value is visible to no one", () => {
+  for (const bad of [null, {}, { kind: "restricted" }, { kind: "restricted", audiences: "staff" }, { kind: "everyone" }]) {
+    assert.equal(visibilityAllows(bad as unknown as Visibility, { audiences: ["staff"] }), false, JSON.stringify(bad));
+  }
+});

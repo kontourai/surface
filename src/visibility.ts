@@ -58,8 +58,10 @@ export function meetVisibility(...visibilities: readonly Visibility[]): Visibili
 
 /** Whether `viewer` may see something carrying `visibility`. A missing visibility is not visible. */
 export function visibilityAllows(visibility: Visibility | undefined, viewer: ViewerContext | undefined): boolean {
-  if (visibility === undefined) return false;
+  if (visibility === undefined || visibility === null) return false;
   if (visibility.kind === "public") return true;
+  // Anything that is not a well-formed restricted value is not visible.
+  if (visibility.kind !== "restricted" || !Array.isArray(visibility.audiences)) return false;
   const held = viewer?.audiences;
   if (!Array.isArray(held) || held.length === 0) return false;
   return visibility.audiences.some((audience) => held.includes(audience));
@@ -121,10 +123,21 @@ function parseVisibility(raw: unknown): Visibility | undefined {
   return undefined;
 }
 
-/** A directed replacement: `successorId` replaces `predecessorId`. */
+/**
+ * A directed replacement: `successorId` replaces `predecessorId`. In the
+ * accumulation record's terms, a claim carrying `supersedes: [{claimId}]` is the
+ * successor and `claimId` is the predecessor.
+ */
 export interface SupersessionEdge {
   predecessorId: string;
   successorId: string;
+  /**
+   * Visibility of the edge itself, for an edge whose reason or provenance is
+   * more restricted than its endpoints. It can only narrow: an edge a viewer may
+   * not see is never followed for that viewer, whatever its endpoints allow.
+   * Absent means the edge adds no restriction of its own.
+   */
+  visibility?: Visibility;
 }
 
 export interface ViewerSupersessionInput {
@@ -167,14 +180,20 @@ function evaluateSupersession(input: ViewerSupersessionInput): SupersessionEvalu
   }
 
   const successorsOf = new Map<string, string[]>();
+  const recompute = new Set<string>();
   for (const edge of input.edges) {
+    if (edge.visibility !== undefined && !visibilityAllows(edge.visibility, input.viewer)) {
+      // A restricted edge is not followed, but a visible predecessor's stored
+      // status may still encode it.
+      if (visible.has(edge.predecessorId)) recompute.add(edge.predecessorId);
+      continue;
+    }
     const list = successorsOf.get(edge.predecessorId) ?? [];
     list.push(edge.successorId);
     successorsOf.set(edge.predecessorId, list);
   }
 
   const supersededBy: Record<string, string[]> = Object.create(null);
-  const recompute = new Set<string>();
   for (const claimId of visible) {
     const found = new Set<string>();
     const seen = new Set<string>();

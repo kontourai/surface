@@ -103,11 +103,27 @@ replacement edges, and a viewer, and returns that viewer's view:
   exists" and "none does", so it is never part of the viewer view.
 
 The edges are an input. Which edges are admissible (authority, same slot, valid
-interval) belongs to the accumulation design
-(#204, on `design/204-accumulation` at the time of writing, not yet on main), whose
-visibility extension point this implements: a context-specific visibility decision over each
-input and edge, filtering and supersession inside that context, omission
-failing closed, no disclosure of hidden successors.
+interval, pending versus active) belongs to the accumulation design
+([Knowledge Accumulation](knowledge-accumulation.md), #204), and this implements
+its "Visibility context (#350)" extension point: a context-specific visibility
+decision over each input and edge, filtering and supersession inside that
+context, omission failing closed, no disclosure of hidden successors. The mapping:
+
+- A claim carrying `supersedes: [{claimId}]` is the successor; `claimId` is the
+  predecessor. Pass only edges the projection has admitted as active. Pending,
+  inert and withdrawn edges stay the projection's to report.
+- The decision over each **input** is the derivation trace above, per claim. The
+  decision over each **edge** is the viewer test on both endpoints, plus an
+  optional `visibility` on the edge for a reason or provenance more restricted
+  than its endpoints. It can only narrow. A restricted edge is never followed for
+  a viewer who may not see it, and its visible predecessor is listed for status
+  recompute.
+- The projection's traversal result (supporting and excluded claim ids, edges,
+  gaps) must be filtered to the viewer in the same way before it is exposed. A
+  gap or an excluded-claim entry that names a hidden claim is the same leak as a
+  hidden successor.
+- A cycle or self-edge selects no winner, as in the accumulation record; here it
+  is reported as unresolved for the viewer.
 
 ## What this does not do
 
