@@ -31,6 +31,7 @@ import {
   VALIDITY_KINDS,
 } from "./constants.js";
 import {
+  isObject,
   rejectUnknownKeys,
   requireArray,
   requireDateTime,
@@ -42,6 +43,22 @@ import {
   requireString,
   requireStringArray,
 } from "./primitives.js";
+
+/** Validate the Surface-specific tombstone envelope, not physical deletion. */
+export function validateDeletedRetention(claim: Record<string, unknown>): void {
+  if (!isObject(claim.metadata) || !Object.hasOwn(claim.metadata, "surfaceRetention")) return;
+  const retention = claim.metadata.surfaceRetention;
+  if (!isObject(retention) || !Object.hasOwn(retention, "state") || retention.state !== "deleted" ||
+      typeof retention.actor !== "string" || retention.actor.trim().length === 0 ||
+      typeof retention.rationale !== "string" || retention.rationale.trim().length === 0) {
+    throw new Error("claim metadata.surfaceRetention must be a deleted tombstone with erasedAt, actor and rationale");
+  }
+  requireDateTime(retention, "erasedAt");
+  rejectUnknownKeys(retention, new Set(["state", "erasedAt", "actor", "rationale"]), "claim metadata.surfaceRetention");
+  if (claim.value !== null || claim.currentIntegrityRef !== undefined || claim.currentIntegrityAnchor !== undefined) {
+    throw new Error("deleted claim must have null value and no content integrity reference or anchor");
+  }
+}
 
 export function validateAuthorityTrace(trace: unknown): void {
   requireObject(trace, "authorityTrace");

@@ -14,11 +14,12 @@ import type {
   VerificationEvent,
   VerificationPolicy,
 } from "./types.js";
+import { validateDeletedRetention } from "./validation/records.js";
 import { assertBasisInvariants } from "./provenance-annotations.js";
 import { foldClaim } from "./claim-fold.js";
 import { deriveClaimGroupRollups } from "./claim-groups.js";
 import { deriveConflictTransparencyGaps } from "./conflict-derivation.js";
-import { applyDerivation, type DerivedVisibility } from "./derivation.js";
+import { applyDerivation, assertDeletedClaimsHaveNoEvidence, derivationInputsAffectedByDeletion, isDeletedClaim, survivingDerivationInputs, type DerivedVisibility } from "./derivation.js";
 import { buildIdentityIndex } from "./identity.js";
 import { canonicalJson, sha256Hex } from "./canonical-digest.js";
 import { resolvePolicyForClaim } from "./policy-resolver.js";
@@ -111,6 +112,8 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
   // of such a caller (status-function.md, "Fields that are not inputs"). A
   // bundle without schemaVersion 9 evidence fields always passes.
   assertBasisInvariants(input);
+  for (const claim of input.claims) validateDeletedRetention(claim as unknown as Record<string, unknown>);
+  assertDeletedClaimsHaveNoEvidence(input.claims, input.evidence);
   // Null-prototype map: a claim id of `__proto__`, `toString`, or `constructor`
   // must become an ordinary own key, never resolve through the prototype chain
   // (mirrors `waiverValidityByClaimId` below; #127).
@@ -211,6 +214,9 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
   // guard — #127.)
   const waiverValidityByClaimId: Record<string, WaiverValidity> = Object.create(null);
   const staleReasonByClaimId: Record<string, StaleReason> = Object.create(null);
+  const hasDeletedClaims = input.claims.some(isDeletedClaim);
+  const deletionAffectedInputIds = hasDeletedClaims ? derivationInputsAffectedByDeletion(claimsById) : undefined;
+  const survivingInputIds = hasDeletedClaims ? survivingDerivationInputs(claimsById, deletionAffectedInputIds) : undefined;
   const visibilityByClaimId: Record<string, DerivedVisibility> = Object.create(null);
   const claims = foldedClaims.map((folded) => {
     const outcome = applyDerivation({
@@ -218,6 +224,8 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
       ownStatus: folded.ownStatus,
       ownStatusByClaimId,
       claimsById,
+      survivingInputIds,
+      deletionAffectedInputIds,
       now,
       ambiguousClaimIds,
     });

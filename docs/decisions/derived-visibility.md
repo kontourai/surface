@@ -66,7 +66,9 @@ public. Omission cannot grant access. This covers an input that declares nothing
 one that declares a value outside the forms above, a `derivedFrom` id with
 no claim in the bundle, and a claim id that more than one claim carries. So removing the visibility field from any input can only
 leave the derived visibility equal or narrower, and in fact seals it. A claim
-with no inputs and no declaration is sealed.
+with no inputs and no declaration is sealed. A deleted claim with no declared
+visibility is also sealed even when it retains derivation links; its visibility
+continues to narrow dependent claims. See [Erasure Cascade](erasure-cascade.md).
 
 ### Trace
 
