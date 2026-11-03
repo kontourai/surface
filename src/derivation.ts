@@ -231,6 +231,9 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
  *   point of deriving it. A claim with no inputs has nothing else to be bounded
  *   by, so it must declare, and one that declares nothing is sealed. A
  *   declaration on the claim that cannot be read is sealed either way.
+ * - `claimsById` holds one claim per id. A caller whose map already discarded a
+ *   duplicate must pass that id in `ambiguousClaimIds`, or the survivor is
+ *   trusted; `deriveTrustSnapshot` does this itself.
  * - Cycles are harmless here: the meet is idempotent, and each claim is visited once.
  */
 export function deriveClaimVisibility(

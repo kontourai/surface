@@ -442,3 +442,65 @@ test("a malformed visibility value is visible to no one", () => {
     assert.equal(visibilityAllows(bad as unknown as Visibility, { audiences: ["staff"] }), false, JSON.stringify(bad));
   }
 });
+
+// ---- delta-review regressions ----
+
+test("a path that returns to a visible claim only through hidden claims changes nothing the viewer sees", () => {
+  const viewer = { audiences: [] };
+  const plain = new Map<string, Visibility>([["old", PUBLIC], ["other", PUBLIC]]);
+  const hidden = new Map<string, Visibility>([...plain, ["secret", restricted("staff")], ["sealed", SEALED]]);
+  const baseline = JSON.stringify(viewerSupersessionView({ visibilityByClaimId: plain, edges: [], viewer }));
+  for (const edges of [
+    [{ predecessorId: "old", successorId: "secret" }, { predecessorId: "secret", successorId: "old" }],
+    [{ predecessorId: "old", successorId: "secret" }, { predecessorId: "secret", successorId: "sealed" }, { predecessorId: "sealed", successorId: "old" }],
+  ]) {
+    assert.equal(JSON.stringify(viewerSupersessionView({ visibilityByClaimId: hidden, edges, viewer })), baseline);
+  }
+  // Beside a real visible successor the hidden return branch adds no extra self entry.
+  const withNew = new Map<string, Visibility>([["old", PUBLIC], ["new", PUBLIC]]);
+  const hiddenToo = new Map<string, Visibility>([...withNew, ["secret", restricted("staff")]]);
+  const clean = viewerSupersessionView({ visibilityByClaimId: withNew, edges: [{ predecessorId: "old", successorId: "new" }], viewer });
+  const noisy = viewerSupersessionView({
+    visibilityByClaimId: hiddenToo,
+    edges: [{ predecessorId: "old", successorId: "new" }, { predecessorId: "old", successorId: "secret" }, { predecessorId: "secret", successorId: "old" }],
+    viewer,
+  });
+  assert.equal(JSON.stringify(noisy), JSON.stringify(clean));
+});
+
+test("a direct visible self-replacement stays an unresolved cycle even beside a hidden return path", () => {
+  const view = viewerSupersessionView({
+    visibilityByClaimId: new Map<string, Visibility>([["old", PUBLIC], ["secret", restricted("staff")]]),
+    edges: [{ predecessorId: "old", successorId: "secret" }, { predecessorId: "secret", successorId: "old" }, { predecessorId: "old", successorId: "old" }],
+    viewer: { audiences: [] },
+  });
+  assert.deepEqual(view.unresolvedClaimIds, ["old"]);
+  assert.deepEqual({ ...view.supersededBy }, { old: ["old"] });
+});
+
+test("a metadata object inherited through a prototype is not the claim's declaration", () => {
+  const prototype = { metadata: { visibility: "public" } };
+  const own = Object.assign(Object.create(prototype) as object, claim("c", withVisibility({ audiences: ["staff"] })));
+  assert.deepEqual(readDeclaredVisibility(own as Claim), { state: "declared", visibility: restricted("staff") });
+  delete (own as { metadata?: unknown }).metadata;
+  assert.deepEqual(readDeclaredVisibility(own as Claim), { state: "undeclared" });
+  const derived = Object.assign(Object.create(prototype) as object, claim("d", { derivedFrom: ["in"] }));
+  delete (derived as { metadata?: unknown }).metadata;
+  const input = claim("in", withVisibility({ audiences: ["staff"] }));
+  assert.deepEqual(deriveClaimVisibility(derived as Claim, new Map([["in", input]])).visibility, restricted("staff"));
+});
+
+test("a nested disclosure.visibility inherited through a prototype is not a declaration", () => {
+  const disclosure = Object.create({ visibility: "public" }) as Record<string, unknown>;
+  assert.deepEqual(readDeclaredVisibility({ metadata: { disclosure } }), { state: "undeclared" });
+});
+
+test("a duplicated claim id is sealed in the snapshot's own entry for that id, in either order", () => {
+  const priv = claim("dup", withVisibility({ audiences: ["staff"] }));
+  const pub = claim("dup", withVisibility("public"));
+  for (const order of [[priv, pub], [pub, priv]]) {
+    const snapshot = deriveTrustSnapshot({ schemaVersion: 3, source: "t", claims: order, evidence: [], policies: [], events: [] }, { now: NOW });
+    assert.deepEqual(snapshot.visibilityByClaimId["dup"]?.visibility, SEALED);
+    assert.equal(snapshot.visibilityByClaimId["dup"]?.trace[0]?.basis, "duplicate-claim");
+  }
+});

@@ -89,7 +89,8 @@ const LEGACY_RESTRICTED_LABELS: ReadonlySet<string> = new Set(["private", "permi
  * not one of the forms above is `unrecognized`.
  */
 export function readDeclaredVisibility(source: { metadata?: Record<string, unknown> } | undefined): VisibilityDeclaration {
-  const metadata = source?.metadata;
+  // Own property: a `metadata` inherited through a prototype is not the claim's.
+  const metadata = isRecord(source) ? ownValue(source, "metadata") : undefined;
   if (!isRecord(metadata)) return { state: "undeclared" };
   const written: unknown[] = [];
   // Own properties only: a value inherited through a prototype is not something
@@ -196,19 +197,22 @@ function evaluateSupersession(input: ViewerSupersessionInput): SupersessionEvalu
   const supersededBy: Record<string, string[]> = Object.create(null);
   for (const claimId of visible) {
     const found = new Set<string>();
-    const seen = new Set<string>();
-    const pending = [...(successorsOf.get(claimId) ?? [])];
+    const expanded = new Set<string>();
+    const pending = (successorsOf.get(claimId) ?? []).map((id) => ({ id, throughHidden: false }));
     while (pending.length > 0) {
-      const next = pending.pop() as string;
-      if (seen.has(next)) continue;
-      seen.add(next);
+      const { id: next, throughHidden } = pending.pop() as { id: string; throughHidden: boolean };
       if (visible.has(next)) {
-        // Reaching the claim itself is a replacement cycle; it is kept, not dropped.
+        // A direct edge back to the claim itself is a visible replacement cycle
+        // and is kept. A path that only returns to it through hidden claims adds
+        // no visible value, so it is dropped: it would otherwise reveal them.
+        if (next === claimId && throughHidden) continue;
         found.add(next);
       } else {
         // A hidden hop: do not surface it, and look through it.
         recompute.add(claimId);
-        pending.push(...(successorsOf.get(next) ?? []));
+        if (expanded.has(next)) continue;
+        expanded.add(next);
+        for (const after of successorsOf.get(next) ?? []) pending.push({ id: after, throughHidden: true });
       }
     }
     if (found.size > 0) supersededBy[claimId] = [...found].sort(compareStrings);
