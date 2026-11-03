@@ -67,6 +67,7 @@
     { "source": "docs/maintenance/generated-artifacts.md", "section": "Contribute" },
     { "source": "docs/decisions/index.md", "section": "Contribute" },
     { "source": "docs/decisions/conclusion-confidence.md", "section": "Contribute" },
+    { "source": "docs/decisions/derived-visibility.md", "section": "Contribute", "covers": ["src/visibility.ts"] },
     { "source": "docs/decisions/inquiry.md", "section": "Contribute" },
     { "source": "docs/decisions/knowledge-accumulation.md", "section": "Contribute" },
     { "source": "docs/decisions/mcp-input-ingestion.md", "section": "Contribute" },

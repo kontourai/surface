@@ -2,6 +2,7 @@ import type { Claim, DerivationChangeRecord, TransparencyGap, TrustStatus } from
 import type { DerivationEdge } from "./types.js";
 export { compareStatusStrength, weakerStatus } from "./status-taxonomy.js";
 import { weakerStatus } from "./status-taxonomy.js";
+import { meetVisibility, readDeclaredVisibility, sealedVisibility, type Visibility } from "./visibility.js";
 
 /**
  * A derived claim cannot be more confident than the weakest claim it is built
@@ -24,6 +25,43 @@ export interface DerivationOutcome {
   transparencyGaps: TransparencyGap[];
   /** Change records explaining recompute/review pressure from derivation inputs. */
   changeRecords: DerivationChangeRecord[];
+  /**
+   * The claim's effective visibility: no wider than the intersection of its own
+   * and every transitive input's visibility, sealed wherever one is missing.
+   * Surface represents this; the store that serves the claim enforces it. See
+   * {@link deriveClaimVisibility}.
+   */
+  visibility: DerivedVisibility;
+}
+
+/** Why one claim contributed the visibility it did to a derived claim. */
+export type VisibilityContributionBasis =
+  /** The claim declares a visibility Surface could read. */
+  | "declared"
+  /** The claim declares none. It contributes sealed: omission never widens. */
+  | "undeclared"
+  /** The claim declares something unreadable. It contributes sealed. */
+  | "unrecognized"
+  /** A `derivedFrom` id has no claim in the bundle. It contributes sealed. */
+  | "missing-claim"
+  /** Two claims share this id, so which one is meant is unknowable. It contributes sealed. */
+  | "duplicate-claim";
+
+export interface VisibilityTraceEntry {
+  claimId: string;
+  /** `self` is the claim being derived; `input` is one of its transitive derivation inputs. */
+  role: "self" | "input";
+  basis: VisibilityContributionBasis;
+  /** What this claim contributed to the intersection. */
+  visibility: Visibility;
+  /** True when the contribution is narrower than public, so this claim bounds the result. */
+  restricts: boolean;
+}
+
+export interface DerivedVisibility {
+  visibility: Visibility;
+  /** Every claim that contributed, `self` first then inputs by id. Names the restricting input(s) via `restricts`. */
+  trace: VisibilityTraceEntry[];
 }
 
 export type DerivationInputSource = "derivedFrom" | "derivationEdges";
@@ -42,6 +80,12 @@ interface DerivationInputs {
   /** Map from claimId to claim, used to walk derivedFrom chains. */
   claimsById: Map<string, Claim>;
   now: Date;
+  /**
+   * Claim ids that more than one claim in the source bundle carries (a bundle
+   * `validateTrustBundle` rejects). `claimsById` can hold only one of them, so
+   * visibility treats each as sealed rather than trust the survivor.
+   */
+  ambiguousClaimIds?: ReadonlySet<string>;
 }
 
 /**
@@ -49,10 +93,11 @@ interface DerivationInputs {
  * transitively with cycle detection, collecting the weakest input status seen.
  */
 export function applyDerivation(input: DerivationInputs): DerivationOutcome {
-  const { claim, ownStatus, ownStatusByClaimId, claimsById, now } = input;
+  const { claim, ownStatus, ownStatusByClaimId, claimsById, now, ambiguousClaimIds } = input;
   const inputIds = derivationInputIds(claim);
+  const visibility = deriveClaimVisibility(claim, claimsById, ambiguousClaimIds);
   if (inputIds.length === 0) {
-    return { status: ownStatus, transparencyGaps: [], changeRecords: [] };
+    return { status: ownStatus, transparencyGaps: [], changeRecords: [], visibility };
   }
 
   const transparencyGaps: TransparencyGap[] = [];
@@ -168,7 +213,74 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
   }
 
   const finalStatus = weakerStatus(ownStatus, ceiling);
-  return { status: finalStatus, transparencyGaps, changeRecords };
+  return { status: finalStatus, transparencyGaps, changeRecords, visibility };
+}
+
+/**
+ * Effective visibility of a claim, derived the way the status ceiling is: from
+ * the claim and everything it is transitively built on (`derivedFrom` and
+ * `derivationEdges`).
+ *
+ * - The result is the intersection (meet) of every contribution, so it is never
+ *   wider than any input.
+ * - Every input must declare its own visibility. An input that declares none,
+ *   one that declares something unreadable, and a `derivedFrom` id with no claim
+ *   all contribute sealed (no viewer). Omission never widens; it can only narrow.
+ * - The claim itself may narrow what its inputs allow but need not declare: a
+ *   derived claim that declares nothing is bounded by its inputs, which is the
+ *   point of deriving it. A claim with no inputs has nothing else to be bounded
+ *   by, so it must declare, and one that declares nothing is sealed. A
+ *   declaration on the claim that cannot be read is sealed either way.
+ * - `claimsById` holds one claim per id. A caller whose map already discarded a
+ *   duplicate must pass that id in `ambiguousClaimIds`, or the survivor is
+ *   trusted; `deriveTrustSnapshot` does this itself.
+ * - Cycles are harmless here: the meet is idempotent, and each claim is visited once.
+ */
+export function deriveClaimVisibility(
+  claim: Claim,
+  claimsById: ReadonlyMap<string, Claim>,
+  ambiguousClaimIds?: ReadonlySet<string>,
+): DerivedVisibility {
+  const trace: VisibilityTraceEntry[] = [];
+  const contribute = (claimId: string, role: VisibilityTraceEntry["role"], source: Claim | undefined): void => {
+    let basis: VisibilityContributionBasis;
+    let visibility: Visibility;
+    if (ambiguousClaimIds?.has(claimId) === true) {
+      basis = "duplicate-claim";
+      visibility = sealedVisibility();
+    } else if (source === undefined) {
+      basis = "missing-claim";
+      visibility = sealedVisibility();
+    } else {
+      const declaration = readDeclaredVisibility(source);
+      basis = declaration.state;
+      // A derived claim that declares nothing is bounded by its inputs (the
+      // identity of the meet). Every other gap is sealed.
+      // Listing itself as an input is no input at all.
+      const boundedByInputs = role === "self" && derivationInputIds(source).some((id) => id !== source.id);
+      if (declaration.state === "declared") visibility = declaration.visibility;
+      else if (declaration.state === "undeclared" && boundedByInputs) visibility = { kind: "public" };
+      else visibility = sealedVisibility();
+    }
+    trace.push({ claimId, role, basis, visibility, restricts: visibility.kind !== "public" });
+  };
+
+  contribute(claim.id, "self", claim);
+  const visited = new Set<string>([claim.id]);
+  const pending = derivationInputIds(claim);
+  while (pending.length > 0) {
+    const id = pending.pop() as string;
+    if (visited.has(id)) continue;
+    visited.add(id);
+    const input = claimsById.get(id);
+    contribute(id, "input", input);
+    if (input !== undefined) pending.push(...derivationInputIds(input));
+  }
+
+  const [self, ...inputs] = trace;
+  inputs.sort((left, right) => (left.claimId < right.claimId ? -1 : left.claimId > right.claimId ? 1 : 0));
+  const ordered = [self as VisibilityTraceEntry, ...inputs];
+  return { visibility: meetVisibility(...ordered.map((entry) => entry.visibility)), trace: ordered };
 }
 
 export function derivationInputIds(claim: Claim): string[] {
