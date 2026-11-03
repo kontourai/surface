@@ -65,7 +65,7 @@ export function visibilityAllows(visibility: Visibility | undefined, viewer: Vie
   // One unreadable audience makes the whole value unreadable, not merely that entry.
   const named = readAudienceList(visibility.audiences);
   if (named === undefined) return false;
-  const held = new Set(Array.isArray(viewer?.audiences) ? viewer.audiences.filter((audience) => typeof audience === "string") : []);
+  const held = new Set<unknown>(Array.isArray(viewer?.audiences) ? viewer.audiences : []);
   return named.some((audience) => held.has(audience));
 }
 

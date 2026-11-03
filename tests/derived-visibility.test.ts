@@ -708,3 +708,16 @@ test("viewer audiences that are not strings never match", () => {
   assert.equal(visibilityAllows(restricted("42"), { audiences: [42 as unknown as string] }), false);
   assert.equal(visibilityAllows(restricted("staff"), { audiences: [42 as unknown as string, "staff"] }), true);
 });
+
+test("a hole in an audience list is not filled from the prototype chain", () => {
+  const sparse = Object.assign(new Array(2), { 0: "staff" }) as unknown[];
+  const prototype = Array.prototype as unknown as Record<number, unknown>;
+  prototype[1] = "staff";
+  try {
+    assert.equal(sparse[1], "staff", "the inherited index fills the hole when read");
+    assert.equal(visibilityAllows({ kind: "restricted", audiences: sparse as string[] }, { audiences: ["staff"] }), false);
+    assert.deepEqual(readDeclaredVisibility({ metadata: { visibility: { audiences: sparse } } }), { state: "unrecognized" });
+  } finally {
+    delete prototype[1];
+  }
+});
