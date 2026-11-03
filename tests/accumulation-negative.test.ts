@@ -179,3 +179,42 @@ test("a support claim matches through an admitted identity class, then stops mat
   assert.deepEqual(split.supportingClaimIds, []);
   assert.deepEqual(split.inertIdentityLinkIds, ["identity-desk.link.acme"]);
 });
+
+test("missing input custody caps derived status", () => {
+  const f = fixture("derivation-lineage");
+  const policy = structuredClone(f.authority);
+  delete (policy.ownerByClaimId as Record<string, string>)["producer-a.acme.hq.1"];
+  const { integrityRef: _, ...fields } = policy;
+  policy.integrityRef = accumulationDigest(fields);
+  const result = projectAccumulation(f.observations, policy, f.query);
+  assert.equal(result.statusByClaimId["producer-a.acme.hq.1"], "unknown");
+  assert.equal(result.statusByClaimId["producer-a.acme.hq.derived"], "unknown");
+  assert.equal(result.outcome, "current");
+  assert.equal(result.status, "unknown");
+  assert.ok(result.gapCodes.includes("owner-unverified"));
+});
+
+test("missing lineage is reported and cannot support verified status", () => {
+  const f = fixture("derivation-lineage");
+  const observations = structuredClone(f.observations);
+  const bundle = observations[0].bundle;
+  bundle.claims = bundle.claims.filter(c => c.id !== "producer-a.acme.hq.1");
+  bundle.evidence = bundle.evidence.filter(e => e.claimId !== "producer-a.acme.hq.1");
+  bundle.events = bundle.events.filter(e => e.claimId !== "producer-a.acme.hq.1");
+  observations[0].contentDigest = accumulationDigest(bundle);
+  const result = projectAccumulation(observations, f.authority, f.query);
+  assert.equal(result.outcome, "current");
+  assert.equal(result.status, "unknown");
+  assert.ok(result.gapCodes.includes("lineage-missing"));
+});
+
+test("redelivery preserves the first recorded knowledge instant", () => {
+  const f = fixture("self-revision-correction");
+  const first = f.observations[0];
+  const redelivery = { ...structuredClone(first), id: "redelivery", observedAt: "2026-04-01T00:00:00Z" };
+  const query = { ...f.query, knownAt: "2026-02-01T00:00:00Z" };
+  const result = projectAccumulation([redelivery, first], f.authority, query);
+  assert.equal(result.outcome, "current");
+  assert.equal(result.value, "Berlin");
+  assert.deepEqual(result.claimProvenance["producer-a.acme.hq.1"].map(p => p.observationId), [first.id]);
+});

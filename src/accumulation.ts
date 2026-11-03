@@ -2,6 +2,8 @@ import { admitAccumulationObservations, type AccumulationAuthority, type Accumul
 import { canonicalJson } from "./canonical-digest.js";
 import { canonicalClaimKey, type CanonicalClaimTarget } from "./canonical.js";
 import { buildIdentityIndex } from "./identity.js";
+import { applyDerivation } from "./derivation.js";
+import { validateClaim, validateEvent } from "./validation/records.js";
 import { mergeBundlesDetailed } from "./merge.js";
 import { buildTrustReport } from "./report.js";
 import { compareStatusStrength } from "./status-taxonomy.js";
@@ -34,6 +36,7 @@ function time(value: string) {
   return parsed;
 }
 function boundContains(claim: AccumulationClaim, at: ReturnType<typeof time>): boolean {
+  if (claim.validTime !== undefined && (claim.validTime === null || typeof claim.validTime !== "object" || Array.isArray(claim.validTime) || Object.keys(claim.validTime).some(k => k !== "from" && k !== "until"))) throw new Error(`invalid interval: ${claim.id}`);
   const from = claim.validTime?.from === undefined ? undefined : time(claim.validTime.from);
   const until = claim.validTime?.until === undefined ? undefined : time(claim.validTime.until);
   if (from && until && compareTimestamps(from, until) >= 0) throw new Error(`invalid interval: ${claim.id}`);
@@ -68,11 +71,14 @@ export function projectAccumulation(observations: readonly BundleObservation[], 
   if (admitted.observations.length === 0) return empty;
   const bundles: TrustBundle[] = admitted.observations.map(({ bundle }) => {
     const portable = { ...bundle, claims: bundle.claims.map(({ validTime: _v, supersedes: _s, ...claim }) => claim), events: [] };
-    validateTrustBundle(portable);
+    const carried = new Set(portable.claims.map(claim => claim.id));
+    for (const claim of portable.claims) validateClaim(claim);
+    validateTrustBundle({ ...portable, claims: portable.claims.map(claim => ({ ...claim, derivedFrom: claim.derivedFrom?.filter(id => carried.has(id)), derivationEdges: claim.derivationEdges?.filter(edge => carried.has(edge.inputClaimId)) })) });
     return { ...portable, claims: portable.claims.map(({ subjectAliases: _a, ...claim }) => claim) };
   });
   const merged = mergeBundlesDetailed(bundles);
   if (merged.collisions.length) throw new Error("conflicting duplicate records");
+  for (const event of admitted.events) validateEvent(event);
   merged.bundle.events = admitted.events;
   // The first fold cannot assume an identity link is active before its mapping is evaluated.
   const links = merged.bundle.identityLinks ?? [];
@@ -86,6 +92,9 @@ export function projectAccumulation(observations: readonly BundleObservation[], 
   merged.bundle.identityLinks = [];
   const report = buildTrustReport(merged.bundle, { now: new Date(now.epochMilliseconds) });
   for (const claim of report.claims) statusByClaimId[claim.id] = owner(claim.id) ? claim.status : "unknown";
+  const ownStatuses = new Map(Object.entries(statusByClaimId));
+  const claimsById = new Map(merged.bundle.claims.map(claim => [claim.id, claim]));
+  for (const claim of merged.bundle.claims) statusByClaimId[claim.id] = applyDerivation({ claim, ownStatus: ownStatuses.get(claim.id) ?? "unknown", ownStatusByClaimId: ownStatuses, claimsById, now: new Date(now.epochMilliseconds) }).status;
   const activeLinks = links.filter(link => (link.relation ?? "equivalent") === "equivalent" && link.mappingClaimId && statusByClaimId[link.mappingClaimId] === "verified" && owner(link.mappingClaimId));
   const identity = buildIdentityIndex({ ...merged.bundle, identityLinks: activeLinks });
   const identityLinkIds = sort(new Set(activeLinks.flatMap(link => link.id ? [link.id] : [])));
