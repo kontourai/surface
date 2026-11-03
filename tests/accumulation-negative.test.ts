@@ -426,3 +426,56 @@ test("malformed qualifiers and padded subject IDs fail closed", () => {
   }
   assert.throws(() => projectAccumulation(f.observations, f.authority, { ...f.query, slot: { ...f.query.slot, subjectId: " acme" } }), /invalid accumulation slot/);
 });
+
+test("an owned out-of-order derived claim cannot suppress independent support or hide a conflict", () => {
+  const f = fixture("self-revision-correction");
+  const rival = structuredClone(f.observations[0]); rival.id = "rival"; rival.observedAt = "2026-02-01T00:00:00Z"; rival.authenticatedPublisher = "rival"; rival.bundle.producerId = "rival";
+  rival.bundle.events = []; rival.bundle.evidence = [];
+  rival.bundle.claims = [{ ...rival.bundle.claims[0], id: "rival.hq", derivedFrom: ["rival.input"] }];
+  rival.contentDigest = accumulationDigest(rival.bundle);
+  const policy = structuredClone(f.authority);
+  (policy.ownerByClaimId as Record<string,string>)["rival.hq"] = "rival";
+  (policy.ownerByClaimId as Record<string,string>)["rival.input"] = "rival";
+  const { integrityRef: _, ...fields } = policy; policy.integrityRef = accumulationDigest(fields);
+  const late = structuredClone(rival); late.id = "late-input"; late.observedAt = "2026-03-01T00:00:00Z";
+  late.bundle.claims = [{ ...rival.bundle.claims[0], id: "rival.input", fieldOrBehavior: "other", derivedFrom: undefined }];
+  late.contentDigest = accumulationDigest(late.bundle);
+  const observations = [f.observations[0], rival, late];
+  const before = projectAccumulation(observations, policy, { ...f.query, knownAt: "2026-01-15T00:00:00Z" });
+  assert.equal(before.outcome, "current");
+  const during = projectAccumulation(observations, policy, { ...f.query, knownAt: "2026-02-15T00:00:00Z" });
+  assert.equal(during.outcome, "current");
+  assert.equal(during.status, "verified");
+  assert.deepEqual(during.independentSupportClaimIds, ["producer-a.acme.hq.1"]);
+  assert.ok(during.gapCodes.includes("lineage-missing"));
+  const after = projectAccumulation(observations, policy, { ...f.query, knownAt: "2026-03-15T00:00:00Z" });
+  assert.equal(after.outcome, "current");
+  assert.ok(!after.gapCodes.includes("lineage-missing"));
+  rival.bundle.claims[0].value = "Munich"; rival.contentDigest = accumulationDigest(rival.bundle);
+  const conflict = projectAccumulation(observations, policy, { ...f.query, knownAt: "2026-02-15T00:00:00Z" });
+  assert.equal(conflict.outcome, "contested");
+  assert.deepEqual(conflict.candidateClaimIds, ["producer-a.acme.hq.1", "rival.hq"]);
+});
+
+test("noncanonical subject types, claim types, and non-record qualifiers fail closed", () => {
+  const f = fixture("qualified-property");
+  for (const slot of [{ ...f.query.slot, subjectType: " ORG" }, { ...f.query.slot, subjectType: "ORG" }, { ...f.query.slot, claimType: " fact" }, { ...f.query.slot, qualifiers: new Map([["division", "retail"]]) }]) {
+    assert.throws(() => projectAccumulation(f.observations, f.authority, { ...f.query, slot: slot as typeof f.query.slot }), /invalid accumulation slot/);
+  }
+});
+
+test("an incomplete unknown claim cannot strengthen an independently stale answer", () => {
+  const f = fixture("freshness-without-retraction");
+  const rival = structuredClone(f.observations[0]); rival.id = "rival"; rival.authenticatedPublisher = "rival"; rival.bundle.producerId = "rival";
+  rival.bundle.events = []; rival.bundle.evidence = [];
+  rival.bundle.claims = [{ ...rival.bundle.claims[0], id: "rival.hq", derivedFrom: ["missing"] }];
+  rival.contentDigest = accumulationDigest(rival.bundle);
+  const policy = structuredClone(f.authority);
+  (policy.ownerByClaimId as Record<string,string>)["rival.hq"] = "rival";
+  const { integrityRef: _, ...fields } = policy; policy.integrityRef = accumulationDigest(fields);
+  const result = projectAccumulation([f.observations[0], rival], policy, f.query);
+  assert.equal(result.outcome, "current");
+  assert.equal(result.status, "stale");
+  assert.equal(result.statusByClaimId["rival.hq"], "unknown");
+  assert.deepEqual(result.independentSupportClaimIds, ["producer-a.acme.hq.1"]);
+});
