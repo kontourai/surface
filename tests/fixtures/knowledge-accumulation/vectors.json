@@ -1982,7 +1982,8 @@
               }
             ],
             "statusByClaimId": {
-              "producer-a.acme.hq.1": "verified"
+              "producer-a.acme.hq.1": "verified",
+              "producer-a.acme.hq.2": "stale"
             },
             "gapCodes": []
           }

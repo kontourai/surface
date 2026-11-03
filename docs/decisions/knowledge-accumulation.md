@@ -16,8 +16,8 @@ evidence:
 ---
 # Knowledge Accumulation
 
-This is a design decision, not a claim that Surface implements the projection.
-The implementation and the portable contract are follow-up work. The existing
+Surface implements a provisional local projection of this decision. The portable
+contract remains follow-up work. The existing
 [Trust Bundle record](trust-bundle.md) remains a needs-decision record; the
 frozen ADRs are historical context, not amended here.
 
@@ -43,10 +43,9 @@ trace. For accumulation, a mapping claim must be verified and admissible at
 the knowledge cut to join through that link; absent, disputed, rejected, or
 unassessable mappings cannot silently join. An unbacked alias or equivalent
 link is an assertion, not proof of reviewed identity: expose its provenance
-and uncertainty; it does not join accumulation classes. Today `buildIdentityIndex`
-joins equivalent links regardless of mapping status. The future projection must
-pass it an admitted set of links and aliases and retain excluded links in its
-trace; that admission does not exist yet. A split is a later
+and uncertainty; it does not join accumulation classes. `buildIdentityIndex` joins equivalent links regardless of mapping status. The
+projection passes it admitted links and retains excluded links and aliases in its
+trace. A split is a later
 reviewed rejection or replacement of a mapping; rebuild the classes from the
 remaining active links, not from a destructive union-find history. Survey owns
 reviewed merge and split decisions ([Survey #243](https://github.com/kontourai/survey/issues/243)).
@@ -153,7 +152,8 @@ the status fold, never replaced by a timestamp ranking. The existing fold does
 not authenticate ordinary terminal events: a later rival rejection can change
 status without authority. The new admission step must hold such events pending
 before folding, preserving them and a gap; missing custody or authority fails
-closed. This is an unimplemented extension, not a property of today's fold.
+closed. The admission boundary is a Surface-local extension, not a property of
+the underlying fold.
 
 Verified, proposed, assumed, stale, disputed and unknown assertions remain
 visible candidates when their valid interval and admitted lineage permit them;
@@ -217,14 +217,21 @@ out of scope. Consumers own their derived indexes and hosts enforce access.
 
 ## Executable status
 
-[Vectors](../../tests/fixtures/knowledge-accumulation/vectors.json) cover the
-proposed cases. The test suite validates their existing-bundle premises and
-references after removing proposed fields; it does not execute a projection.
-Every query appears in the explicit [expected-fail list](../../tests/knowledge-accumulation-expected-fails.json)
-and is reported as TODO, not as passing conformance. A follow-up must connect
-these queries to the real projection, compare complete expected results, and
-remove entries only as behavior passes; tests of validation alone do not prove
-these acceptance criteria. In particular, public traversal, deterministic
-rebuild, identity split, authority, temporal, and removal semantics remain
-unimplemented and unverified. The retraction bundle carries both ends of its
-replacement edge so it can be evaluated without an orphan.
+`projectAccumulation` evaluates receiver observations with explicit knowledge and
+valid-time cuts and a declared single-valued JSON policy. `appendAccumulationObservation`
+assembles inputs for replay. The admission adapter requires the host to authenticate
+publishers and protect the policy digest, owner bindings, observation time, and
+per-event admission decisions. The digest detects changes relative to a trusted
+reference; it is not a signature or independent authorization. Callers must not
+construct those decisions from unsigned bundle fields. Unadmitted events are kept
+in the trace but excluded from the fold. The resulting global projection must not
+be exposed directly to an arbitrary viewer; visibility and erasure remain separate
+work ([#350](https://github.com/kontourai/surface/issues/350),
+[#351](https://github.com/kontourai/surface/issues/351)).
+
+The [vectors](../../tests/fixtures/knowledge-accumulation/vectors.json) execute
+against the projection, and the local shapes do not claim Hachure portability.
+[Hachure #34](https://github.com/hachure-org/spec/issues/34) remains the upstream
+contract dependency. Source status and projected replacement disposition are
+separate; traces include the contributing observations and publishers. Missing
+custody or lineage cannot establish verified standing.

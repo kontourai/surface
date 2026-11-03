@@ -68,7 +68,7 @@
     { "source": "docs/decisions/index.md", "section": "Contribute" },
     { "source": "docs/decisions/conclusion-confidence.md", "section": "Contribute" },
     { "source": "docs/decisions/inquiry.md", "section": "Contribute" },
-    { "source": "docs/decisions/knowledge-accumulation.md", "section": "Contribute" },
+    { "source": "docs/decisions/knowledge-accumulation.md", "section": "Contribute", "covers": ["src/accumulation.ts", "src/accumulation-admission.ts"] },
     { "source": "docs/decisions/mcp-input-ingestion.md", "section": "Contribute" },
     { "source": "docs/decisions/product-vocabulary.md", "section": "Contribute" },
     { "source": "docs/decisions/reviewed-extraction-evidence.md", "section": "Contribute" },

@@ -47,3 +47,5 @@ export * from "./dispute.js";
 export * from "./interop/in-toto.js";
 export * from "./verification-endpoint.js";
 export * from "./signing/sigstore.js";
+export * from "./accumulation-admission.js";
+export * from "./accumulation.js";
