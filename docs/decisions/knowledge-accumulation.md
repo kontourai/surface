@@ -243,5 +243,8 @@ The [vectors](../../tests/fixtures/knowledge-accumulation/vectors.json) execute
 against the projection, and the local shapes do not claim Hachure portability.
 [Hachure #34](https://github.com/hachure-org/spec/issues/34) remains the upstream
 contract dependency. Source status and projected replacement disposition are
-separate; traces include the contributing observations and publishers. Missing
-custody or lineage cannot establish verified standing.
+separate; traces include the contributing observations and publishers, and name
+claims whose lineage is missing. Status comes from independent eligible support;
+an unowned claim cannot strengthen it. Subject types are normalized for identity
+matching while the trace retains the original spelling. Missing custody or lineage
+cannot establish verified standing.

@@ -457,9 +457,9 @@ test("an owned out-of-order derived claim cannot suppress independent support or
   assert.deepEqual(conflict.candidateClaimIds, ["producer-a.acme.hq.1", "rival.hq"]);
 });
 
-test("noncanonical subject types, claim types, and non-record qualifiers fail closed", () => {
+test("claim types and non-record qualifiers fail closed", () => {
   const f = fixture("qualified-property");
-  for (const slot of [{ ...f.query.slot, subjectType: " ORG" }, { ...f.query.slot, subjectType: "ORG" }, { ...f.query.slot, claimType: " fact" }, { ...f.query.slot, qualifiers: new Map([["division", "retail"]]) }]) {
+  for (const slot of [{ ...f.query.slot, claimType: " fact" }, { ...f.query.slot, qualifiers: new Map([["division", "retail"]]) }]) {
     assert.throws(() => projectAccumulation(f.observations, f.authority, { ...f.query, slot: slot as typeof f.query.slot }), /invalid accumulation slot/);
   }
 });
@@ -478,4 +478,39 @@ test("an incomplete unknown claim cannot strengthen an independently stale answe
   assert.equal(result.status, "stale");
   assert.equal(result.statusByClaimId["rival.hq"], "unknown");
   assert.deepEqual(result.independentSupportClaimIds, ["producer-a.acme.hq.1"]);
+});
+
+test("unowned equal claims do not strengthen independent stale support", () => {
+  const f = fixture("freshness-without-retraction");
+  const rival = structuredClone(f.observations[0]); rival.id = "rival"; rival.authenticatedPublisher = "rival"; rival.bundle.producerId = "rival";
+  rival.bundle.events = []; rival.bundle.evidence = [];
+  rival.bundle.claims = [{ ...rival.bundle.claims[0], id: "unowned.hq", expiresAt: undefined }];
+  rival.contentDigest = accumulationDigest(rival.bundle);
+  const result = projectAccumulation([f.observations[0], rival], f.authority, f.query);
+  assert.equal(result.outcome, "current");
+  assert.equal(result.status, "stale");
+  assert.deepEqual(result.independentSupportClaimIds, ["producer-a.acme.hq.1"]);
+});
+
+test("conflicting incomplete claims remain contested with per-claim gaps", () => {
+  const f = fixture("self-revision-correction");
+  const a = structuredClone(f.observations[0]); a.bundle.claims[0].derivedFrom = ["missing-a"]; a.contentDigest = accumulationDigest(a.bundle);
+  const b = structuredClone(a); b.id = "b"; b.authenticatedPublisher = "b"; b.bundle.producerId = "b"; b.bundle.events = []; b.bundle.evidence = [];
+  b.bundle.claims[0].id = "b.hq"; b.bundle.claims[0].value = "Munich"; b.bundle.claims[0].derivedFrom = ["missing-b"]; b.contentDigest = accumulationDigest(b.bundle);
+  const policy = structuredClone(f.authority); (policy.ownerByClaimId as Record<string,string>)["b.hq"] = "b";
+  const { integrityRef: _, ...fields } = policy; policy.integrityRef = accumulationDigest(fields);
+  const result = projectAccumulation([a,b], policy, f.query);
+  assert.equal(result.outcome, "contested");
+  assert.deepEqual(result.lineageMissingClaimIds, ["b.hq", "producer-a.acme.hq.1"]);
+  assert.deepEqual(result.independentSupportClaimIds, []);
+});
+
+test("subject type matching uses the canonical spelling without changing provenance", () => {
+  const f = fixture("self-revision-correction");
+  const observation = structuredClone(f.observations[0]);
+  observation.bundle.claims[0].subjectType = "Org"; observation.contentDigest = accumulationDigest(observation.bundle);
+  const result = projectAccumulation([observation], f.authority, { ...f.query, slot: { ...f.query.slot, subjectType: " ORG " } });
+  assert.equal(result.outcome, "current");
+  assert.equal(result.value, "Berlin");
+  assert.equal(result.inputTrace?.[0].claims[0].subjectType, "Org");
 });

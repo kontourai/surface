@@ -11,7 +11,7 @@ import { sortEventsMostRecentFirstV4 } from "./status.js";
 import { findLatestResolutionEvent } from "./status-rules.js";
 import { validateTrustBundle } from "./validate.js";
 import { compareTimestamps, parseTimestamp } from "./timestamp.js";
-import type { TrustBundle, TrustStatus } from "./types.js";
+import type { SubjectRef, TrustBundle, TrustStatus } from "./types.js";
 
 export interface AccumulationSlot extends CanonicalClaimTarget { claimType: string }
 export interface AccumulationQuery {
@@ -46,7 +46,7 @@ function boundContains(claim: AccumulationClaim, at: ReturnType<typeof time>): b
 /** Rebuilds from receiver observations. Hosts must enforce visibility before exposing this raw view. */
 export function projectAccumulation(observations: readonly BundleObservation[], authority: AccumulationAuthority, query: AccumulationQuery) {
   if (query.valuePolicy !== "single-json-v1") throw new Error("unsupported value policy");
-  if (!query.slot || [query.slot.subjectType, query.slot.subjectId, query.slot.fieldOrBehavior, query.slot.claimType].some(part => typeof part !== "string" || !part.trim()) || query.slot.subjectId !== query.slot.subjectId.trim() || query.slot.subjectType !== query.slot.subjectType.trim().toLowerCase() || query.slot.claimType !== query.slot.claimType.trim() || (query.slot.qualifiers !== undefined && (query.slot.qualifiers === null || typeof query.slot.qualifiers !== "object" || Array.isArray(query.slot.qualifiers) || ![Object.prototype, null].includes(Object.getPrototypeOf(query.slot.qualifiers)) || Object.values(query.slot.qualifiers).some(value => typeof value !== "string")))) throw new Error("invalid accumulation slot");
+  if (!query.slot || [query.slot.subjectType, query.slot.subjectId, query.slot.fieldOrBehavior, query.slot.claimType].some(part => typeof part !== "string" || !part.trim()) || query.slot.subjectId !== query.slot.subjectId.trim() || query.slot.claimType !== query.slot.claimType.trim() || (query.slot.qualifiers !== undefined && (query.slot.qualifiers === null || typeof query.slot.qualifiers !== "object" || Array.isArray(query.slot.qualifiers) || ![Object.prototype, null].includes(Object.getPrototypeOf(query.slot.qualifiers)) || Object.values(query.slot.qualifiers).some(value => typeof value !== "string")))) throw new Error("invalid accumulation slot");
   const now = time(query.now);
   const validAt = time(query.validAt ?? query.now);
   const admitted = admitAccumulationObservations(observations, authority, query.knownAt ?? query.now);
@@ -98,10 +98,12 @@ export function projectAccumulation(observations: readonly BundleObservation[], 
   const claimsById = new Map(merged.bundle.claims.map(claim => [claim.id, claim]));
   for (const claim of merged.bundle.claims) statusByClaimId[claim.id] = applyDerivation({ claim, ownStatus: ownStatuses.get(claim.id) ?? "unknown", ownStatusByClaimId: ownStatuses, claimsById, now: new Date(now.epochMilliseconds) }).status;
   const activeLinks = links.filter(link => (link.relation ?? "equivalent") === "equivalent" && link.mappingClaimId && statusByClaimId[link.mappingClaimId] === "verified" && owner(link.mappingClaimId) && admitted.observations.some(observation => (observation.bundle.identityLinks ?? []).some(candidate => canonicalJson(candidate) === canonicalJson(link)) && authority.identityDecisions?.some(decision => decision.admitted === true && decision.mappingClaimId === link.mappingClaimId && decision.linkDigest === accumulationDigest(link) && decision.publisher === observation.authenticatedPublisher)));
-  const identity = buildIdentityIndex({ ...merged.bundle, identityLinks: activeLinks });
+  const normalizeSubject = (ref: SubjectRef): SubjectRef => ({ subjectType: ref.subjectType.trim().toLowerCase(), subjectId: ref.subjectId.trim() });
+  const identity = buildIdentityIndex({ ...merged.bundle, claims: merged.bundle.claims.map(claim => ({ ...claim, ...normalizeSubject(claim) })), identityLinks: activeLinks.map(link => ({ ...link, subjects: link.subjects.map(normalizeSubject) })) });
+  const identityKey = (ref: SubjectRef): string => identity.canonicalKey(normalizeSubject(ref));
   const identityLinkIds = sort(new Set(activeLinks.flatMap(link => link.id ? [link.id] : [])));
   const inertIdentityLinkIds = sort(new Set(links.filter(link => (link.relation ?? "equivalent") === "equivalent" && !activeLinks.includes(link)).flatMap(link => link.id ? [link.id] : [])));
-  const key = (claim: AccumulationClaim | AccumulationSlot): string => canonicalJson([identity.canonicalKey(claim), claim.claimType, canonicalClaimKey({ ...claim, subjectType: "_", subjectId: "_" })]);
+  const key = (claim: AccumulationClaim | AccumulationSlot): string => canonicalJson([identityKey(claim), claim.claimType, canonicalClaimKey({ ...claim, subjectType: "_", subjectId: "_" })]);
   const queryKey = key(query.slot);
   const relevant = [...claims.values()].filter(claim => key(claim) === queryKey).sort((a, b) => cmp(a.id, b.id));
   const missingLineage = new Set<string>();
@@ -113,8 +115,8 @@ export function projectAccumulation(observations: readonly BundleObservation[], 
       gapCodes.add("lineage-missing");
     }
   }
-  const unresolvedAlias = [...claims.values()].some(claim => claim.claimType === query.slot.claimType && canonicalClaimKey({ ...claim, subjectType: "_", subjectId: "_" }) === canonicalClaimKey({ ...query.slot, subjectType: "_", subjectId: "_" }) && (claim.subjectAliases ?? []).some(alias => identity.canonicalKey(alias) === identity.canonicalKey(query.slot) || identity.canonicalKey(claim) === identity.canonicalKey(query.slot)));
-  const unresolvedIdentity = unresolvedAlias || links.some(link => (link.relation ?? "equivalent") === "equivalent" && !activeLinks.includes(link) && (!link.mappingClaimId || !["rejected", "revoked"].includes(statusByClaimId[link.mappingClaimId] ?? "unknown")) && link.subjects.some(subject => identity.canonicalKey(subject) === identity.canonicalKey(query.slot)));
+  const unresolvedAlias = [...claims.values()].some(claim => claim.claimType === query.slot.claimType && canonicalClaimKey({ ...claim, subjectType: "_", subjectId: "_" }) === canonicalClaimKey({ ...query.slot, subjectType: "_", subjectId: "_" }) && (claim.subjectAliases ?? []).some(alias => identityKey(alias) === identityKey(query.slot) || identityKey(claim) === identityKey(query.slot)));
+  const unresolvedIdentity = unresolvedAlias || links.some(link => (link.relation ?? "equivalent") === "equivalent" && !activeLinks.includes(link) && (!link.mappingClaimId || !["rejected", "revoked"].includes(statusByClaimId[link.mappingClaimId] ?? "unknown")) && link.subjects.some(subject => identityKey(subject) === identityKey(query.slot)));
   if (unresolvedIdentity) gapCodes.add("identity-unresolved");
   const retracted = new Set<string>();
   for (const claim of claims.values()) {
@@ -176,12 +178,12 @@ export function projectAccumulation(observations: readonly BundleObservation[], 
     return [...(claim.derivedFrom ?? []), ...(claim.derivationEdges ?? []).map(e => e.inputClaimId)].some(visit);
   };
   const independentSupportClaimIds = candidates.filter(c => owner(c.id) && !missingLineage.has(c.id) && !dependsOnCandidate(c)).map(c => c.id);
-  const result = { ...empty, inputTrace, supersessions: edges, gapCodes: sort(gapCodes), identityLinkIds, inertIdentityLinkIds, derivationEdges, independentSupportClaimIds };
+  const result = { ...empty, inputTrace, lineageMissingClaimIds: sort(missingLineage), supersessions: edges, gapCodes: sort(gapCodes), identityLinkIds, inertIdentityLinkIds, derivationEdges, independentSupportClaimIds };
   if (unresolvedIdentity) return { ...result, outcome: "invalid" as const, reason: "identity-unresolved", candidateClaimIds: candidates.map(c => c.id) };
   if (values.size > 1) return { ...result, outcome: "contested" as const, reason: undefined, candidateClaimIds: candidates.map(c => c.id) };
   if (candidates.length && candidates.every(claim => missingLineage.has(claim.id))) return { ...result, outcome: "invalid" as const, reason: "lineage-missing", candidateClaimIds: candidates.map(c => c.id) };
   if (!candidates.length) return { ...result, reason: relevant.length === 0 ? "empty" : Object.keys(excluded).length ? "withdrawn" : "not-valid-at" };
-  const status = candidates.filter(c => !missingLineage.has(c.id)).map(c => statusByClaimId[c.id] ?? "unknown").sort((a,b) => compareStatusStrength(b,a))[0];
+  const status = independentSupportClaimIds.map(id => statusByClaimId[id] ?? "unknown").sort((a,b) => compareStatusStrength(b,a))[0] ?? "unknown";
   return { ...result, outcome: "current" as const, reason: undefined, value: candidates[0].value, status, supportingClaimIds: candidates.map(c => c.id) };
 }
 
