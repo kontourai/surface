@@ -69,6 +69,7 @@
     { "source": "docs/decisions/conclusion-confidence.md", "section": "Contribute" },
     { "source": "docs/decisions/erasure-cascade.md", "section": "Contribute" },
     { "source": "docs/decisions/inquiry.md", "section": "Contribute" },
+    { "source": "docs/decisions/knowledge-accumulation.md", "section": "Contribute" },
     { "source": "docs/decisions/mcp-input-ingestion.md", "section": "Contribute" },
     { "source": "docs/decisions/product-vocabulary.md", "section": "Contribute" },
     { "source": "docs/decisions/reviewed-extraction-evidence.md", "section": "Contribute" },
