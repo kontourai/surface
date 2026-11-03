@@ -740,6 +740,26 @@ test("a viewer audience list is read by index: a custom iterator grants nothing"
   assert.deepEqual(view.currentClaimIds, ["old"]);
 });
 
+test("meetVisibility is total: an unvalidated restricted value contributes sealed, never wider", () => {
+  const sneaky = Object.assign(["private"], { [Symbol.iterator]: () => ["staff"][Symbol.iterator]() }) as unknown as string[];
+  const sparse = Object.assign(new Array(2), { 0: "staff" }) as string[];
+  for (const bad of [
+    { kind: "restricted", audiences: ["staff", 42] },
+    { kind: "restricted", audiences: sparse },
+    { kind: "restricted", audiences: "staff" },
+    { kind: "restricted" },
+    { kind: "everyone" },
+    null,
+    undefined,
+    {},
+  ]) {
+    assert.deepEqual(meetVisibility(bad as unknown as Visibility), SEALED, JSON.stringify(bad));
+    assert.deepEqual(meetVisibility(PUBLIC, bad as unknown as Visibility), SEALED);
+  }
+  assert.deepEqual(meetVisibility({ kind: "restricted", audiences: sneaky }), restricted("private"));
+  assert.deepEqual(meetVisibility({ kind: "restricted", audiences: ["staff"] }, { kind: "restricted", audiences: ["staff", 42] } as unknown as Visibility), SEALED);
+});
+
 test("a maximum-length sparse list is refused at once, never scanned", () => {
   const huge = Object.assign(new Array(2 ** 32 - 1), { 0: "staff" }) as string[];
   const started = Date.now();
@@ -762,22 +782,3 @@ test("the audience bound refuses max + 1 and accepts max", () => {
   assert.equal(visibilityAllows(restricted("a0"), { audiences: over }), false);
 });
 
-test("meetVisibility is total: an unvalidated restricted value contributes sealed, never wider", () => {
-  const sneaky = Object.assign(["private"], { [Symbol.iterator]: () => ["staff"][Symbol.iterator]() }) as unknown as string[];
-  const sparse = Object.assign(new Array(2), { 0: "staff" }) as string[];
-  for (const bad of [
-    { kind: "restricted", audiences: ["staff", 42] },
-    { kind: "restricted", audiences: sparse },
-    { kind: "restricted", audiences: "staff" },
-    { kind: "restricted" },
-    { kind: "everyone" },
-    null,
-    undefined,
-    {},
-  ]) {
-    assert.deepEqual(meetVisibility(bad as unknown as Visibility), SEALED, JSON.stringify(bad));
-    assert.deepEqual(meetVisibility(PUBLIC, bad as unknown as Visibility), SEALED);
-  }
-  assert.deepEqual(meetVisibility({ kind: "restricted", audiences: sneaky }), restricted("private"));
-  assert.deepEqual(meetVisibility({ kind: "restricted", audiences: ["staff"] }, { kind: "restricted", audiences: ["staff", 42] } as unknown as Visibility), SEALED);
-});
