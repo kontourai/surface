@@ -447,6 +447,8 @@ test("an owned out-of-order derived claim cannot suppress independent support or
   assert.equal(during.outcome, "current");
   assert.equal(during.status, "verified");
   assert.deepEqual(during.independentSupportClaimIds, ["producer-a.acme.hq.1"]);
+  assert.deepEqual(during.supportingClaimIds, ["producer-a.acme.hq.1"]);
+  assert.deepEqual(during.lineageMissingClaimIds, ["rival.hq"]);
   assert.ok(during.gapCodes.includes("lineage-missing"));
   const after = projectAccumulation(observations, policy, { ...f.query, knownAt: "2026-03-15T00:00:00Z" });
   assert.equal(after.outcome, "current");
@@ -593,4 +595,15 @@ test("incomplete stale claims do not count as independent support", () => {
   assert.equal(result.statusByClaimId["rival.hq"], "stale");
   assert.deepEqual(result.independentSupportClaimIds, ["producer-a.acme.hq.1"]);
   assert.deepEqual(result.lineageMissingClaimIds, ["rival.hq"]);
+});
+
+test("visibility handoff refuses edges with an ineligible endpoint", () => {
+  const edge = { claimId: "visible", byClaimId: "not-eligible", kind: "correction" as const, state: "accepted" as const };
+  const input = accumulationViewerSupersessionInput({
+    effectiveSupersessions: [edge], viewerClaimIds: ["visible"],
+    visibilityByClaimId: new Map([["visible", { kind: "public" }], ["not-eligible", { kind: "public" }]]),
+    edgeVisibilityByKey: new Map([[accumulationReplacementVisibilityKey(edge), { kind: "public" }]]), viewer: { audiences: [] },
+  });
+  assert.deepEqual(input.edges, []);
+  assert.deepEqual(viewerSupersessionView(input).visibleClaimIds, ["visible"]);
 });

@@ -54,7 +54,7 @@ Claim Dependencies express prerequisites and their status effect; `derivedFrom`
 and `derivationEdges` express lineage and impose the existing derivation ceiling.
 Neither means that a claim replaces another. Preserve the input IDs, methods,
 evidence and authority traces; missing lineage inputs produce an explicit gap
-and cannot strengthen the result or count as independent support. An incomplete
+and cannot strengthen the result or count as support or independent support. An incomplete
 claim does not suppress independently eligible support for the same value, and a
 conflicting value remains visible as a contradiction. If every candidate has
 missing lineage, the slot cannot select a current answer. Use Surface's existing merge, identity,

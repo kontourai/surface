@@ -114,6 +114,8 @@ test("an accepted record cannot already be superseded, and a split must be named
   assert.throws(() => surveyIdentityAdmission(contradictory, { publisher: "survey-host", recordDigest: accumulationDigest(contradictory), eventAdmitted: true, identityAdmitted: true }), /invalid Survey identity/);
   const superseded = survey.afterSplit.find((r: SurveyIdentityRecord) => r.outcomeId === f.accepted.outcomeId) as SurveyIdentityRecord;
   const split = structuredClone(survey.afterSplit.find((r: SurveyIdentityRecord) => r.outcomeId === superseded.supersededBy)) as SurveyIdentityRecord;
+  const supersededSplit = { ...split, supersededBy: "later-remerge" };
+  assert.throws(() => surveySplitIdentityAdmission({ accepted: f.accepted, superseded, split: supersededSplit, publisher: "survey-host", recordsDigest: accumulationDigest([f.accepted, superseded, supersededSplit]), identityAdmitted: true }), /invalid Survey split/);
   split.outcomeId = "rival-split";
   assert.throws(() => surveySplitIdentityAdmission({ accepted: f.accepted, superseded, split, publisher: "survey-host", recordsDigest: accumulationDigest([f.accepted, superseded, split]), identityAdmitted: true }), /invalid Survey split/);
 });
