@@ -1,0 +1,923 @@
+{
+  "source": "kontourai/survey@da1e74c60f96cd8f77dceaacc8ca1a3bbfb84d47 src/entity-review.ts and tests/entity-review.test.ts",
+  "merge": {
+    "id": "sha256:5145b41c591fc67abee9c42f12752185c475fe6562814f02320750c6999e21ff",
+    "apiVersion": "survey.kontourai.io/v1alpha1",
+    "metadata": {
+      "name": "sha256:5145b41c591fc67abee9c42f12752185c475fe6562814f02320750c6999e21ff"
+    },
+    "kind": "EntityProposal",
+    "spec": {
+      "revision": "1",
+      "proposer": {
+        "id": "extractor",
+        "model": "model-v1",
+        "rule": "name"
+      },
+      "policy": {
+        "id": "identity-policy",
+        "revision": "7"
+      },
+      "alternatives": [
+        {
+          "subjects": [
+            {
+              "subjectType": "person",
+              "subjectId": "alex-1"
+            },
+            {
+              "subjectType": "person",
+              "subjectId": "alex-2"
+            }
+          ],
+          "operation": "merge",
+          "evidence": [
+            {
+              "id": "a",
+              "sourceId": "s1",
+              "sourceRef": "urn:source:1",
+              "checksum": "sha256:abc",
+              "observedAt": "2026-10-01T00:00:00Z",
+              "locatorScheme": "text-span",
+              "locator": "chars:0-10",
+              "excerpt": "Alex Smith",
+              "stance": "supports"
+            },
+            {
+              "id": "b",
+              "sourceId": "s2",
+              "sourceRef": "urn:source:2",
+              "checksum": "sha256:def",
+              "observedAt": "2026-10-01T00:00:00Z",
+              "locatorScheme": "text-span",
+              "locator": "chars:30-48",
+              "excerpt": "different employer",
+              "stance": "contradicts"
+            }
+          ],
+          "confidenceComponents": {
+            "name": 0.99,
+            "context": 0.1
+          }
+        }
+      ]
+    }
+  },
+  "accepted": {
+    "id": "sha256:0ec7258f46ea046529808aa04eac9991ce153c5765693ff241c08e5f19f24c54",
+    "apiVersion": "survey.kontourai.io/v1alpha1",
+    "metadata": {
+      "name": "sha256:0ec7258f46ea046529808aa04eac9991ce153c5765693ff241c08e5f19f24c54"
+    },
+    "kind": "EntityReviewOutcome",
+    "spec": {
+      "proposal": {
+        "id": "sha256:5145b41c591fc67abee9c42f12752185c475fe6562814f02320750c6999e21ff",
+        "apiVersion": "survey.kontourai.io/v1alpha1",
+        "metadata": {
+          "name": "sha256:5145b41c591fc67abee9c42f12752185c475fe6562814f02320750c6999e21ff"
+        },
+        "kind": "EntityProposal",
+        "spec": {
+          "revision": "1",
+          "proposer": {
+            "id": "extractor",
+            "model": "model-v1",
+            "rule": "name"
+          },
+          "policy": {
+            "id": "identity-policy",
+            "revision": "7"
+          },
+          "alternatives": [
+            {
+              "subjects": [
+                {
+                  "subjectType": "person",
+                  "subjectId": "alex-1"
+                },
+                {
+                  "subjectType": "person",
+                  "subjectId": "alex-2"
+                }
+              ],
+              "operation": "merge",
+              "evidence": [
+                {
+                  "id": "a",
+                  "sourceId": "s1",
+                  "sourceRef": "urn:source:1",
+                  "checksum": "sha256:abc",
+                  "observedAt": "2026-10-01T00:00:00Z",
+                  "locatorScheme": "text-span",
+                  "locator": "chars:0-10",
+                  "excerpt": "Alex Smith",
+                  "stance": "supports"
+                },
+                {
+                  "id": "b",
+                  "sourceId": "s2",
+                  "sourceRef": "urn:source:2",
+                  "checksum": "sha256:def",
+                  "observedAt": "2026-10-01T00:00:00Z",
+                  "locatorScheme": "text-span",
+                  "locator": "chars:30-48",
+                  "excerpt": "different employer",
+                  "stance": "contradicts"
+                }
+              ],
+              "confidenceComponents": {
+                "name": 0.99,
+                "context": 0.1
+              }
+            }
+          ]
+        }
+      },
+      "decision": {
+        "apiVersion": "survey.kontourai.io/v1alpha1",
+        "kind": "ReviewDecision",
+        "metadata": {
+          "name": "sha256:5145b41c591fc67abee9c42f12752185c475fe6562814f02320750c6999e21ff-accept-proposed"
+        },
+        "spec": {
+          "reviewItemName": "sha256:5145b41c591fc67abee9c42f12752185c475fe6562814f02320750c6999e21ff",
+          "candidateId": "sha256:152b1218a944855d17daf027e099437f32c955285d8f2769c35c386baf4ebb89",
+          "status": "verified",
+          "actor": {
+            "id": "reviewer"
+          },
+          "reviewedAt": "2026-11-02T00:00:00Z",
+          "rationale": "reviewed source",
+          "authorizing": {
+            "kind": "authorized-action",
+            "promptRef": "review-workbench/decision-card@v1",
+            "renderedPrompt": "For Entity Relationship, decide whether {\n  \"operation\": \"merge\",\n  \"subjects\": [\n    {\n      \"subjectType\": \"person\",\n      \"subjectId\": \"alex-1\"\n    },\n    {\n      \"subjectType\": \"person\",\n      \"subjectId\": \"alex-2\"\n    }\n  ],\n  \"evidence\": [\n    {\n      \"id\": \"a\",\n      \"sourceId\": \"s1\",\n      \"sourceRef\": \"urn:source:1\",\n      \"checksum\": \"sha256:abc\",\n      \"observedAt\": \"2026-10-01T00:00:00Z\",\n      \"locatorScheme\": \"text-span\",\n      \"locator\": \"chars:0-10\",\n      \"excerpt\": \"Alex Smith\",\n      \"stance\": \"supports\"\n    },\n    {\n      \"id\": \"b\",\n      \"sourceId\": \"s2\",\n      \"sourceRef\": \"urn:source:2\",\n      \"checksum\": \"sha256:def\",\n      \"observedAt\": \"2026-10-01T00:00:00Z\",\n      \"locatorScheme\": \"text-span\",\n      \"locator\": \"chars:30-48\",\n      \"excerpt\": \"different employer\",\n      \"stance\": \"contradicts\"\n    }\n  ],\n  \"proposer\": {\n    \"id\": \"extractor\",\n    \"model\": \"model-v1\",\n    \"rule\": \"name\"\n  }\n} should replace . Selected decision: Accept proposed.",
+            "action": "typed",
+            "authorityRef": "actor:reviewer"
+          },
+          "projection": {
+            "reviewOutcomeId": "sha256:5145b41c591fc67abee9c42f12752185c475fe6562814f02320750c6999e21ff:accept-proposed:review-outcome"
+          }
+        },
+        "status": {}
+      },
+      "disposition": "accepted",
+      "candidateId": "sha256:152b1218a944855d17daf027e099437f32c955285d8f2769c35c386baf4ebb89"
+    }
+  },
+  "beforeSplit": [
+    {
+      "proposalId": "sha256:5145b41c591fc67abee9c42f12752185c475fe6562814f02320750c6999e21ff",
+      "candidateId": "sha256:152b1218a944855d17daf027e099437f32c955285d8f2769c35c386baf4ebb89",
+      "status": "accepted",
+      "outcomeId": "sha256:0ec7258f46ea046529808aa04eac9991ce153c5765693ff241c08e5f19f24c54",
+      "identityLink": {
+        "id": "entity-link:sha256:0ec7258f46ea046529808aa04eac9991ce153c5765693ff241c08e5f19f24c54",
+        "subjects": [
+          {
+            "subjectType": "person",
+            "subjectId": "alex-1"
+          },
+          {
+            "subjectType": "person",
+            "subjectId": "alex-2"
+          }
+        ],
+        "relation": "equivalent",
+        "mappingClaimId": "entity-claim:sha256:0ec7258f46ea046529808aa04eac9991ce153c5765693ff241c08e5f19f24c54",
+        "attestedBy": "reviewer",
+        "reason": "reviewed source"
+      },
+      "mappingClaim": {
+        "id": "entity-claim:sha256:0ec7258f46ea046529808aa04eac9991ce153c5765693ff241c08e5f19f24c54",
+        "subjectType": "person",
+        "subjectId": "alex-1",
+        "facet": "identity-review",
+        "claimType": "entity-relationship",
+        "fieldOrBehavior": "merge",
+        "value": {
+          "subjects": [
+            {
+              "subjectType": "person",
+              "subjectId": "alex-1"
+            },
+            {
+              "subjectType": "person",
+              "subjectId": "alex-2"
+            }
+          ],
+          "relation": "equivalent"
+        },
+        "status": "verified",
+        "createdAt": "2026-11-02T00:00:00Z",
+        "updatedAt": "2026-11-02T00:00:00Z",
+        "metadata": {
+          "survey": {
+            "proposalId": "sha256:5145b41c591fc67abee9c42f12752185c475fe6562814f02320750c6999e21ff",
+            "outcomeId": "sha256:0ec7258f46ea046529808aa04eac9991ce153c5765693ff241c08e5f19f24c54",
+            "evidence": [
+              {
+                "id": "a",
+                "sourceId": "s1",
+                "sourceRef": "urn:source:1",
+                "checksum": "sha256:abc",
+                "observedAt": "2026-10-01T00:00:00Z",
+                "locatorScheme": "text-span",
+                "locator": "chars:0-10",
+                "excerpt": "Alex Smith",
+                "stance": "supports"
+              },
+              {
+                "id": "b",
+                "sourceId": "s2",
+                "sourceRef": "urn:source:2",
+                "checksum": "sha256:def",
+                "observedAt": "2026-10-01T00:00:00Z",
+                "locatorScheme": "text-span",
+                "locator": "chars:30-48",
+                "excerpt": "different employer",
+                "stance": "contradicts"
+              }
+            ],
+            "policy": {
+              "id": "identity-policy",
+              "revision": "7"
+            },
+            "reviewer": {
+              "id": "reviewer"
+            }
+          }
+        }
+      },
+      "mappingEvidence": [
+        {
+          "id": "entity-evidence:sha256:0ec7258f46ea046529808aa04eac9991ce153c5765693ff241c08e5f19f24c54:a",
+          "claimId": "entity-claim:sha256:0ec7258f46ea046529808aa04eac9991ce153c5765693ff241c08e5f19f24c54",
+          "evidenceType": "source_excerpt",
+          "method": "extraction",
+          "sourceRef": "urn:source:1",
+          "sourceLocator": "chars:0-10",
+          "excerptOrSummary": "Alex Smith",
+          "observedAt": "2026-10-01T00:00:00Z",
+          "collectedBy": "extractor",
+          "integrityRef": "sha256:abc",
+          "metadata": {
+            "sourceId": "s1",
+            "locatorScheme": "text-span",
+            "stance": "supports"
+          }
+        },
+        {
+          "id": "entity-evidence:sha256:0ec7258f46ea046529808aa04eac9991ce153c5765693ff241c08e5f19f24c54:b",
+          "claimId": "entity-claim:sha256:0ec7258f46ea046529808aa04eac9991ce153c5765693ff241c08e5f19f24c54",
+          "evidenceType": "source_excerpt",
+          "method": "extraction",
+          "sourceRef": "urn:source:2",
+          "sourceLocator": "chars:30-48",
+          "excerptOrSummary": "different employer",
+          "observedAt": "2026-10-01T00:00:00Z",
+          "collectedBy": "extractor",
+          "integrityRef": "sha256:def",
+          "metadata": {
+            "sourceId": "s2",
+            "locatorScheme": "text-span",
+            "stance": "contradicts"
+          }
+        }
+      ],
+      "mappingEvent": {
+        "id": "entity-event:sha256:0ec7258f46ea046529808aa04eac9991ce153c5765693ff241c08e5f19f24c54",
+        "claimId": "entity-claim:sha256:0ec7258f46ea046529808aa04eac9991ce153c5765693ff241c08e5f19f24c54",
+        "status": "verified",
+        "actor": "reviewer",
+        "method": "survey-entity-review",
+        "evidenceIds": [
+          "entity-evidence:sha256:0ec7258f46ea046529808aa04eac9991ce153c5765693ff241c08e5f19f24c54:a",
+          "entity-evidence:sha256:0ec7258f46ea046529808aa04eac9991ce153c5765693ff241c08e5f19f24c54:b"
+        ],
+        "createdAt": "2026-11-02T00:00:00Z",
+        "verifiedAt": "2026-11-02T00:00:00Z",
+        "notes": "reviewed source"
+      },
+      "alternative": {
+        "subjects": [
+          {
+            "subjectType": "person",
+            "subjectId": "alex-1"
+          },
+          {
+            "subjectType": "person",
+            "subjectId": "alex-2"
+          }
+        ],
+        "operation": "merge",
+        "evidence": [
+          {
+            "id": "a",
+            "sourceId": "s1",
+            "sourceRef": "urn:source:1",
+            "checksum": "sha256:abc",
+            "observedAt": "2026-10-01T00:00:00Z",
+            "locatorScheme": "text-span",
+            "locator": "chars:0-10",
+            "excerpt": "Alex Smith",
+            "stance": "supports"
+          },
+          {
+            "id": "b",
+            "sourceId": "s2",
+            "sourceRef": "urn:source:2",
+            "checksum": "sha256:def",
+            "observedAt": "2026-10-01T00:00:00Z",
+            "locatorScheme": "text-span",
+            "locator": "chars:30-48",
+            "excerpt": "different employer",
+            "stance": "contradicts"
+          }
+        ],
+        "confidenceComponents": {
+          "name": 0.99,
+          "context": 0.1
+        }
+      }
+    }
+  ],
+  "split": {
+    "id": "sha256:8ad9b22c62bedb1a0ac46dfce02511867f79aec4c621362a40ba5c260385f2ab",
+    "apiVersion": "survey.kontourai.io/v1alpha1",
+    "metadata": {
+      "name": "sha256:8ad9b22c62bedb1a0ac46dfce02511867f79aec4c621362a40ba5c260385f2ab"
+    },
+    "kind": "EntityProposal",
+    "spec": {
+      "revision": "1",
+      "proposer": {
+        "id": "extractor",
+        "model": "model-v1",
+        "rule": "name"
+      },
+      "policy": {
+        "id": "identity-policy",
+        "revision": "7"
+      },
+      "alternatives": [
+        {
+          "subjects": [
+            {
+              "subjectType": "person",
+              "subjectId": "alex-1"
+            },
+            {
+              "subjectType": "person",
+              "subjectId": "alex-2"
+            }
+          ],
+          "operation": "split",
+          "evidence": [
+            {
+              "id": "a",
+              "sourceId": "s1",
+              "sourceRef": "urn:source:1",
+              "checksum": "sha256:abc",
+              "observedAt": "2026-10-01T00:00:00Z",
+              "locatorScheme": "text-span",
+              "locator": "chars:0-10",
+              "excerpt": "Alex Smith",
+              "stance": "supports"
+            },
+            {
+              "id": "b",
+              "sourceId": "s2",
+              "sourceRef": "urn:source:2",
+              "checksum": "sha256:def",
+              "observedAt": "2026-10-01T00:00:00Z",
+              "locatorScheme": "text-span",
+              "locator": "chars:30-48",
+              "excerpt": "different employer",
+              "stance": "contradicts"
+            }
+          ],
+          "confidenceComponents": {
+            "name": 0.99,
+            "context": 0.1
+          }
+        }
+      ]
+    }
+  },
+  "splitOutcome": {
+    "id": "sha256:c1bf83f101dfa2f72b1ab98c6713dc96fcae0a2c0d7362e24f7500c1045fca36",
+    "apiVersion": "survey.kontourai.io/v1alpha1",
+    "metadata": {
+      "name": "sha256:c1bf83f101dfa2f72b1ab98c6713dc96fcae0a2c0d7362e24f7500c1045fca36"
+    },
+    "kind": "EntityReviewOutcome",
+    "spec": {
+      "proposal": {
+        "id": "sha256:8ad9b22c62bedb1a0ac46dfce02511867f79aec4c621362a40ba5c260385f2ab",
+        "apiVersion": "survey.kontourai.io/v1alpha1",
+        "metadata": {
+          "name": "sha256:8ad9b22c62bedb1a0ac46dfce02511867f79aec4c621362a40ba5c260385f2ab"
+        },
+        "kind": "EntityProposal",
+        "spec": {
+          "revision": "1",
+          "proposer": {
+            "id": "extractor",
+            "model": "model-v1",
+            "rule": "name"
+          },
+          "policy": {
+            "id": "identity-policy",
+            "revision": "7"
+          },
+          "alternatives": [
+            {
+              "subjects": [
+                {
+                  "subjectType": "person",
+                  "subjectId": "alex-1"
+                },
+                {
+                  "subjectType": "person",
+                  "subjectId": "alex-2"
+                }
+              ],
+              "operation": "split",
+              "evidence": [
+                {
+                  "id": "a",
+                  "sourceId": "s1",
+                  "sourceRef": "urn:source:1",
+                  "checksum": "sha256:abc",
+                  "observedAt": "2026-10-01T00:00:00Z",
+                  "locatorScheme": "text-span",
+                  "locator": "chars:0-10",
+                  "excerpt": "Alex Smith",
+                  "stance": "supports"
+                },
+                {
+                  "id": "b",
+                  "sourceId": "s2",
+                  "sourceRef": "urn:source:2",
+                  "checksum": "sha256:def",
+                  "observedAt": "2026-10-01T00:00:00Z",
+                  "locatorScheme": "text-span",
+                  "locator": "chars:30-48",
+                  "excerpt": "different employer",
+                  "stance": "contradicts"
+                }
+              ],
+              "confidenceComponents": {
+                "name": 0.99,
+                "context": 0.1
+              }
+            }
+          ]
+        }
+      },
+      "decision": {
+        "apiVersion": "survey.kontourai.io/v1alpha1",
+        "kind": "ReviewDecision",
+        "metadata": {
+          "name": "sha256:8ad9b22c62bedb1a0ac46dfce02511867f79aec4c621362a40ba5c260385f2ab-accept-proposed"
+        },
+        "spec": {
+          "reviewItemName": "sha256:8ad9b22c62bedb1a0ac46dfce02511867f79aec4c621362a40ba5c260385f2ab",
+          "candidateId": "sha256:7751a245a624065ffe4ff88e5366d2a6e7d521cdad059b58d2d45b88b45f1db5",
+          "status": "verified",
+          "actor": {
+            "id": "reviewer"
+          },
+          "reviewedAt": "2026-11-04T00:00:00Z",
+          "rationale": "reviewed source",
+          "authorizing": {
+            "kind": "authorized-action",
+            "promptRef": "review-workbench/decision-card@v1",
+            "renderedPrompt": "For Entity Relationship, decide whether {\n  \"operation\": \"split\",\n  \"subjects\": [\n    {\n      \"subjectType\": \"person\",\n      \"subjectId\": \"alex-1\"\n    },\n    {\n      \"subjectType\": \"person\",\n      \"subjectId\": \"alex-2\"\n    }\n  ],\n  \"evidence\": [\n    {\n      \"id\": \"a\",\n      \"sourceId\": \"s1\",\n      \"sourceRef\": \"urn:source:1\",\n      \"checksum\": \"sha256:abc\",\n      \"observedAt\": \"2026-10-01T00:00:00Z\",\n      \"locatorScheme\": \"text-span\",\n      \"locator\": \"chars:0-10\",\n      \"excerpt\": \"Alex Smith\",\n      \"stance\": \"supports\"\n    },\n    {\n      \"id\": \"b\",\n      \"sourceId\": \"s2\",\n      \"sourceRef\": \"urn:source:2\",\n      \"checksum\": \"sha256:def\",\n      \"observedAt\": \"2026-10-01T00:00:00Z\",\n      \"locatorScheme\": \"text-span\",\n      \"locator\": \"chars:30-48\",\n      \"excerpt\": \"different employer\",\n      \"stance\": \"contradicts\"\n    }\n  ],\n  \"proposer\": {\n    \"id\": \"extractor\",\n    \"model\": \"model-v1\",\n    \"rule\": \"name\"\n  }\n} should replace . Selected decision: Accept proposed.",
+            "action": "typed",
+            "authorityRef": "actor:reviewer"
+          },
+          "projection": {
+            "reviewOutcomeId": "sha256:8ad9b22c62bedb1a0ac46dfce02511867f79aec4c621362a40ba5c260385f2ab:accept-proposed:review-outcome"
+          }
+        },
+        "status": {}
+      },
+      "disposition": "accepted",
+      "candidateId": "sha256:7751a245a624065ffe4ff88e5366d2a6e7d521cdad059b58d2d45b88b45f1db5",
+      "supersedes": "sha256:0ec7258f46ea046529808aa04eac9991ce153c5765693ff241c08e5f19f24c54"
+    }
+  },
+  "afterSplit": [
+    {
+      "proposalId": "sha256:5145b41c591fc67abee9c42f12752185c475fe6562814f02320750c6999e21ff",
+      "candidateId": "sha256:152b1218a944855d17daf027e099437f32c955285d8f2769c35c386baf4ebb89",
+      "status": "superseded",
+      "outcomeId": "sha256:0ec7258f46ea046529808aa04eac9991ce153c5765693ff241c08e5f19f24c54",
+      "supersededBy": "sha256:c1bf83f101dfa2f72b1ab98c6713dc96fcae0a2c0d7362e24f7500c1045fca36",
+      "alternative": {
+        "subjects": [
+          {
+            "subjectType": "person",
+            "subjectId": "alex-1"
+          },
+          {
+            "subjectType": "person",
+            "subjectId": "alex-2"
+          }
+        ],
+        "operation": "merge",
+        "evidence": [
+          {
+            "id": "a",
+            "sourceId": "s1",
+            "sourceRef": "urn:source:1",
+            "checksum": "sha256:abc",
+            "observedAt": "2026-10-01T00:00:00Z",
+            "locatorScheme": "text-span",
+            "locator": "chars:0-10",
+            "excerpt": "Alex Smith",
+            "stance": "supports"
+          },
+          {
+            "id": "b",
+            "sourceId": "s2",
+            "sourceRef": "urn:source:2",
+            "checksum": "sha256:def",
+            "observedAt": "2026-10-01T00:00:00Z",
+            "locatorScheme": "text-span",
+            "locator": "chars:30-48",
+            "excerpt": "different employer",
+            "stance": "contradicts"
+          }
+        ],
+        "confidenceComponents": {
+          "name": 0.99,
+          "context": 0.1
+        }
+      }
+    },
+    {
+      "proposalId": "sha256:8ad9b22c62bedb1a0ac46dfce02511867f79aec4c621362a40ba5c260385f2ab",
+      "candidateId": "sha256:7751a245a624065ffe4ff88e5366d2a6e7d521cdad059b58d2d45b88b45f1db5",
+      "status": "accepted",
+      "outcomeId": "sha256:c1bf83f101dfa2f72b1ab98c6713dc96fcae0a2c0d7362e24f7500c1045fca36",
+      "supersedes": "sha256:0ec7258f46ea046529808aa04eac9991ce153c5765693ff241c08e5f19f24c54",
+      "alternative": {
+        "subjects": [
+          {
+            "subjectType": "person",
+            "subjectId": "alex-1"
+          },
+          {
+            "subjectType": "person",
+            "subjectId": "alex-2"
+          }
+        ],
+        "operation": "split",
+        "evidence": [
+          {
+            "id": "a",
+            "sourceId": "s1",
+            "sourceRef": "urn:source:1",
+            "checksum": "sha256:abc",
+            "observedAt": "2026-10-01T00:00:00Z",
+            "locatorScheme": "text-span",
+            "locator": "chars:0-10",
+            "excerpt": "Alex Smith",
+            "stance": "supports"
+          },
+          {
+            "id": "b",
+            "sourceId": "s2",
+            "sourceRef": "urn:source:2",
+            "checksum": "sha256:def",
+            "observedAt": "2026-10-01T00:00:00Z",
+            "locatorScheme": "text-span",
+            "locator": "chars:30-48",
+            "excerpt": "different employer",
+            "stance": "contradicts"
+          }
+        ],
+        "confidenceComponents": {
+          "name": 0.99,
+          "context": 0.1
+        }
+      }
+    }
+  ],
+  "ambiguousSplitProposal": {
+    "id": "sha256:41d1dc4fae5f17cc498211fba10036f0a0d466360a7c9bb1c0b86504d686d120",
+    "apiVersion": "survey.kontourai.io/v1alpha1",
+    "metadata": {
+      "name": "sha256:41d1dc4fae5f17cc498211fba10036f0a0d466360a7c9bb1c0b86504d686d120"
+    },
+    "kind": "EntityProposal",
+    "spec": {
+      "revision": "2",
+      "proposer": {
+        "id": "extractor",
+        "model": "model-v1",
+        "rule": "name"
+      },
+      "policy": {
+        "id": "identity-policy",
+        "revision": "7"
+      },
+      "alternatives": [
+        {
+          "subjects": [
+            {
+              "subjectType": "person",
+              "subjectId": "alex-1"
+            },
+            {
+              "subjectType": "person",
+              "subjectId": "alex-2"
+            }
+          ],
+          "operation": "split",
+          "evidence": [
+            {
+              "id": "a",
+              "sourceId": "s1",
+              "sourceRef": "urn:source:1",
+              "checksum": "sha256:abc",
+              "observedAt": "2026-10-01T00:00:00Z",
+              "locatorScheme": "text-span",
+              "locator": "chars:0-10",
+              "excerpt": "Alex Smith",
+              "stance": "supports"
+            },
+            {
+              "id": "b",
+              "sourceId": "s2",
+              "sourceRef": "urn:source:2",
+              "checksum": "sha256:def",
+              "observedAt": "2026-10-01T00:00:00Z",
+              "locatorScheme": "text-span",
+              "locator": "chars:30-48",
+              "excerpt": "different employer",
+              "stance": "contradicts"
+            }
+          ],
+          "confidenceComponents": {
+            "name": 0.99,
+            "context": 0.1
+          }
+        }
+      ]
+    }
+  },
+  "ambiguousSplitRejection": {
+    "id": "sha256:e431b53a1f79b3a6361b616516774560b97cdc3514d58027b4f0dc360cea43e7",
+    "apiVersion": "survey.kontourai.io/v1alpha1",
+    "metadata": {
+      "name": "sha256:e431b53a1f79b3a6361b616516774560b97cdc3514d58027b4f0dc360cea43e7"
+    },
+    "kind": "EntityReviewOutcome",
+    "spec": {
+      "proposal": {
+        "id": "sha256:41d1dc4fae5f17cc498211fba10036f0a0d466360a7c9bb1c0b86504d686d120",
+        "apiVersion": "survey.kontourai.io/v1alpha1",
+        "metadata": {
+          "name": "sha256:41d1dc4fae5f17cc498211fba10036f0a0d466360a7c9bb1c0b86504d686d120"
+        },
+        "kind": "EntityProposal",
+        "spec": {
+          "revision": "2",
+          "proposer": {
+            "id": "extractor",
+            "model": "model-v1",
+            "rule": "name"
+          },
+          "policy": {
+            "id": "identity-policy",
+            "revision": "7"
+          },
+          "alternatives": [
+            {
+              "subjects": [
+                {
+                  "subjectType": "person",
+                  "subjectId": "alex-1"
+                },
+                {
+                  "subjectType": "person",
+                  "subjectId": "alex-2"
+                }
+              ],
+              "operation": "split",
+              "evidence": [
+                {
+                  "id": "a",
+                  "sourceId": "s1",
+                  "sourceRef": "urn:source:1",
+                  "checksum": "sha256:abc",
+                  "observedAt": "2026-10-01T00:00:00Z",
+                  "locatorScheme": "text-span",
+                  "locator": "chars:0-10",
+                  "excerpt": "Alex Smith",
+                  "stance": "supports"
+                },
+                {
+                  "id": "b",
+                  "sourceId": "s2",
+                  "sourceRef": "urn:source:2",
+                  "checksum": "sha256:def",
+                  "observedAt": "2026-10-01T00:00:00Z",
+                  "locatorScheme": "text-span",
+                  "locator": "chars:30-48",
+                  "excerpt": "different employer",
+                  "stance": "contradicts"
+                }
+              ],
+              "confidenceComponents": {
+                "name": 0.99,
+                "context": 0.1
+              }
+            }
+          ]
+        }
+      },
+      "decision": {
+        "apiVersion": "survey.kontourai.io/v1alpha1",
+        "kind": "ReviewDecision",
+        "metadata": {
+          "name": "sha256:41d1dc4fae5f17cc498211fba10036f0a0d466360a7c9bb1c0b86504d686d120-reject-proposed"
+        },
+        "spec": {
+          "reviewItemName": "sha256:41d1dc4fae5f17cc498211fba10036f0a0d466360a7c9bb1c0b86504d686d120",
+          "candidateId": "sha256:7751a245a624065ffe4ff88e5366d2a6e7d521cdad059b58d2d45b88b45f1db5",
+          "status": "rejected",
+          "actor": {
+            "id": "reviewer"
+          },
+          "reviewedAt": "2026-11-04T00:00:00Z",
+          "rationale": "reviewed source",
+          "authorizing": {
+            "kind": "authorized-action",
+            "promptRef": "review-workbench/decision-card@v1",
+            "renderedPrompt": "For Entity Relationship, decide whether {\n  \"operation\": \"split\",\n  \"subjects\": [\n    {\n      \"subjectType\": \"person\",\n      \"subjectId\": \"alex-1\"\n    },\n    {\n      \"subjectType\": \"person\",\n      \"subjectId\": \"alex-2\"\n    }\n  ],\n  \"evidence\": [\n    {\n      \"id\": \"a\",\n      \"sourceId\": \"s1\",\n      \"sourceRef\": \"urn:source:1\",\n      \"checksum\": \"sha256:abc\",\n      \"observedAt\": \"2026-10-01T00:00:00Z\",\n      \"locatorScheme\": \"text-span\",\n      \"locator\": \"chars:0-10\",\n      \"excerpt\": \"Alex Smith\",\n      \"stance\": \"supports\"\n    },\n    {\n      \"id\": \"b\",\n      \"sourceId\": \"s2\",\n      \"sourceRef\": \"urn:source:2\",\n      \"checksum\": \"sha256:def\",\n      \"observedAt\": \"2026-10-01T00:00:00Z\",\n      \"locatorScheme\": \"text-span\",\n      \"locator\": \"chars:30-48\",\n      \"excerpt\": \"different employer\",\n      \"stance\": \"contradicts\"\n    }\n  ],\n  \"proposer\": {\n    \"id\": \"extractor\",\n    \"model\": \"model-v1\",\n    \"rule\": \"name\"\n  }\n} should replace . Selected decision: Reject proposed.",
+            "action": "typed",
+            "authorityRef": "actor:reviewer"
+          },
+          "projection": {
+            "reviewOutcomeId": "sha256:41d1dc4fae5f17cc498211fba10036f0a0d466360a7c9bb1c0b86504d686d120:reject-proposed:review-outcome"
+          }
+        },
+        "status": {}
+      },
+      "disposition": "rejected",
+      "candidateId": "sha256:7751a245a624065ffe4ff88e5366d2a6e7d521cdad059b58d2d45b88b45f1db5"
+    }
+  },
+  "ambiguousAfterSplit": [
+    {
+      "proposalId": "sha256:41d1dc4fae5f17cc498211fba10036f0a0d466360a7c9bb1c0b86504d686d120",
+      "candidateId": "sha256:7751a245a624065ffe4ff88e5366d2a6e7d521cdad059b58d2d45b88b45f1db5",
+      "status": "rejected",
+      "outcomeId": "sha256:e431b53a1f79b3a6361b616516774560b97cdc3514d58027b4f0dc360cea43e7",
+      "alternative": {
+        "subjects": [
+          {
+            "subjectType": "person",
+            "subjectId": "alex-1"
+          },
+          {
+            "subjectType": "person",
+            "subjectId": "alex-2"
+          }
+        ],
+        "operation": "split",
+        "evidence": [
+          {
+            "id": "a",
+            "sourceId": "s1",
+            "sourceRef": "urn:source:1",
+            "checksum": "sha256:abc",
+            "observedAt": "2026-10-01T00:00:00Z",
+            "locatorScheme": "text-span",
+            "locator": "chars:0-10",
+            "excerpt": "Alex Smith",
+            "stance": "supports"
+          },
+          {
+            "id": "b",
+            "sourceId": "s2",
+            "sourceRef": "urn:source:2",
+            "checksum": "sha256:def",
+            "observedAt": "2026-10-01T00:00:00Z",
+            "locatorScheme": "text-span",
+            "locator": "chars:30-48",
+            "excerpt": "different employer",
+            "stance": "contradicts"
+          }
+        ],
+        "confidenceComponents": {
+          "name": 0.99,
+          "context": 0.1
+        }
+      }
+    },
+    {
+      "proposalId": "sha256:5145b41c591fc67abee9c42f12752185c475fe6562814f02320750c6999e21ff",
+      "candidateId": "sha256:152b1218a944855d17daf027e099437f32c955285d8f2769c35c386baf4ebb89",
+      "status": "superseded",
+      "outcomeId": "sha256:0ec7258f46ea046529808aa04eac9991ce153c5765693ff241c08e5f19f24c54",
+      "supersededBy": "sha256:c1bf83f101dfa2f72b1ab98c6713dc96fcae0a2c0d7362e24f7500c1045fca36",
+      "alternative": {
+        "subjects": [
+          {
+            "subjectType": "person",
+            "subjectId": "alex-1"
+          },
+          {
+            "subjectType": "person",
+            "subjectId": "alex-2"
+          }
+        ],
+        "operation": "merge",
+        "evidence": [
+          {
+            "id": "a",
+            "sourceId": "s1",
+            "sourceRef": "urn:source:1",
+            "checksum": "sha256:abc",
+            "observedAt": "2026-10-01T00:00:00Z",
+            "locatorScheme": "text-span",
+            "locator": "chars:0-10",
+            "excerpt": "Alex Smith",
+            "stance": "supports"
+          },
+          {
+            "id": "b",
+            "sourceId": "s2",
+            "sourceRef": "urn:source:2",
+            "checksum": "sha256:def",
+            "observedAt": "2026-10-01T00:00:00Z",
+            "locatorScheme": "text-span",
+            "locator": "chars:30-48",
+            "excerpt": "different employer",
+            "stance": "contradicts"
+          }
+        ],
+        "confidenceComponents": {
+          "name": 0.99,
+          "context": 0.1
+        }
+      }
+    },
+    {
+      "proposalId": "sha256:8ad9b22c62bedb1a0ac46dfce02511867f79aec4c621362a40ba5c260385f2ab",
+      "candidateId": "sha256:7751a245a624065ffe4ff88e5366d2a6e7d521cdad059b58d2d45b88b45f1db5",
+      "status": "accepted",
+      "outcomeId": "sha256:c1bf83f101dfa2f72b1ab98c6713dc96fcae0a2c0d7362e24f7500c1045fca36",
+      "supersedes": "sha256:0ec7258f46ea046529808aa04eac9991ce153c5765693ff241c08e5f19f24c54",
+      "ambiguity": "conflicting-reviews",
+      "alternative": {
+        "subjects": [
+          {
+            "subjectType": "person",
+            "subjectId": "alex-1"
+          },
+          {
+            "subjectType": "person",
+            "subjectId": "alex-2"
+          }
+        ],
+        "operation": "split",
+        "evidence": [
+          {
+            "id": "a",
+            "sourceId": "s1",
+            "sourceRef": "urn:source:1",
+            "checksum": "sha256:abc",
+            "observedAt": "2026-10-01T00:00:00Z",
+            "locatorScheme": "text-span",
+            "locator": "chars:0-10",
+            "excerpt": "Alex Smith",
+            "stance": "supports"
+          },
+          {
+            "id": "b",
+            "sourceId": "s2",
+            "sourceRef": "urn:source:2",
+            "checksum": "sha256:def",
+            "observedAt": "2026-10-01T00:00:00Z",
+            "locatorScheme": "text-span",
+            "locator": "chars:30-48",
+            "excerpt": "different employer",
+            "stance": "contradicts"
+          }
+        ],
+        "confidenceComponents": {
+          "name": 0.99,
+          "context": 0.1
+        }
+      }
+    }
+  ]
+}

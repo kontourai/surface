@@ -16,8 +16,8 @@ evidence:
 ---
 # Knowledge Accumulation
 
-This is a design decision, not a claim that Surface implements the projection.
-The implementation and the portable contract are follow-up work. The existing
+Surface implements a provisional local projection of this decision. The portable
+contract remains follow-up work. The existing
 [Trust Bundle record](trust-bundle.md) remains a needs-decision record; the
 frozen ADRs are historical context, not amended here.
 
@@ -43,10 +43,9 @@ trace. For accumulation, a mapping claim must be verified and admissible at
 the knowledge cut to join through that link; absent, disputed, rejected, or
 unassessable mappings cannot silently join. An unbacked alias or equivalent
 link is an assertion, not proof of reviewed identity: expose its provenance
-and uncertainty; it does not join accumulation classes. Today `buildIdentityIndex`
-joins equivalent links regardless of mapping status. The future projection must
-pass it an admitted set of links and aliases and retain excluded links in its
-trace; that admission does not exist yet. A split is a later
+and uncertainty; it does not join accumulation classes. `buildIdentityIndex` joins equivalent links regardless of mapping status. The
+projection passes it admitted links and retains excluded links and aliases in its
+trace. A split is a later
 reviewed rejection or replacement of a mapping; rebuild the classes from the
 remaining active links, not from a destructive union-find history. Survey owns
 reviewed merge and split decisions ([Survey #243](https://github.com/kontourai/survey/issues/243)).
@@ -55,7 +54,10 @@ Claim Dependencies express prerequisites and their status effect; `derivedFrom`
 and `derivationEdges` express lineage and impose the existing derivation ceiling.
 Neither means that a claim replaces another. Preserve the input IDs, methods,
 evidence and authority traces; missing lineage inputs produce an explicit gap
-and cannot strengthen the result. Use Surface's existing merge, identity,
+and cannot strengthen the result or count as support or independent support. An incomplete
+claim does not suppress independently eligible support for the same value, and a
+conflicting value remains visible as a contradiction. If every candidate has
+missing lineage, the slot cannot select a current answer. Use Surface's existing merge, identity,
 status fold, conflict/dispute derivation and recompute machinery, extended as
 needed; do not create a second independent trust derivation. Retention State
 is evidence availability, not a claim revision or permission to erase history.
@@ -153,7 +155,8 @@ the status fold, never replaced by a timestamp ranking. The existing fold does
 not authenticate ordinary terminal events: a later rival rejection can change
 status without authority. The new admission step must hold such events pending
 before folding, preserving them and a gap; missing custody or authority fails
-closed. This is an unimplemented extension, not a property of today's fold.
+closed. The admission boundary is a Surface-local extension, not a property of
+the underlying fold.
 
 Verified, proposed, assumed, stale, disputed and unknown assertions remain
 visible candidates when their valid interval and admitted lineage permit them;
@@ -161,7 +164,9 @@ rejected and retracted assertions are excluded. A proposed conflicting value
 can prevent a unique answer without overruling stronger evidence. Equal values
 collect individually labeled support; the answer status is the strongest
 independently eligible supporting status, never a promotion of weaker claims.
-Derived copies retain their input trace and cannot count as independent
+Unknown claims do not count as independent support. When verified, stale or
+disputed independent support exists, proposed or assumed claims cannot elevate
+that standing; their own status remains visible. Derived copies retain their input trace and cannot count as independent
 corroboration of their own inputs.
 Incomparable or policy-undefined standings produce ambiguity. Cardinality and
 value equality must be explicit versioned inputs; vectors assume a declared
@@ -196,15 +201,22 @@ status-change records do not capture this projected disposition.
 * **Visibility context (#350):** before exposing a projection, accept a
   context-specific visibility decision and trace over each input and edge;
   filtering and supersession must occur within that context, with omission
-  failing closed and no disclosure of hidden successors. The lattice, derived
-  visibility and enforcement are #350 work, not implemented here. A raw global
-  projection is not safe to expose directly to an arbitrary viewer.
-* **Retention and erasure (#351):** accept retention/tombstone and dependency
-  recomputation results as inputs to the same fold. An unavailable input cannot
-  silently support a derived answer; retain permitted audit references and
-  expose affected dependencies. Tombstone shape, surviving independent support,
-  purge and blast-radius semantics belong to #351. Immutable logical history
-  does not require retaining erased content.
+  failing closed and no disclosure of hidden successors. The merged #350 API
+  derives claim visibility; `accumulationViewerSupersessionInput` supplies only
+  effective admitted edges to its viewer evaluator and seals omitted edge
+  decisions. This handoff is host-only and names hidden claims. Hosts must filter
+  the entire traversal, including identity joins and mapping-claim visibility,
+  and recompute in viewer context before disclosure; a raw global projection is
+  not safe to expose directly to an arbitrary viewer.
+* **Retention and erasure (#351):** consume the merged Surface tombstone and
+  derivation APIs in the same fold. A deleted claim is excluded as a value;
+  a claim with only erased support cannot supply a current answer. Surviving
+  support retains its status, with affected claims, deleted input IDs and
+  review change records in the host trace. An erased-only claim is not listed
+  as support, but a conflicting value remains visible to the host as a
+  contradiction until the producer resolves or removes it. Tombstone visibility still bounds
+  derivations. Hosts and producers remove old content and enforce deletion;
+  immutable logical history does not require retaining erased content.
 
 Hachure 0.18 defines Claim, IdentityLink, status events and lineage, but not
 the proposed typed replacement edges, valid interval, or receiver observation
@@ -217,14 +229,42 @@ out of scope. Consumers own their derived indexes and hosts enforce access.
 
 ## Executable status
 
-[Vectors](../../tests/fixtures/knowledge-accumulation/vectors.json) cover the
-proposed cases. The test suite validates their existing-bundle premises and
-references after removing proposed fields; it does not execute a projection.
-Every query appears in the explicit [expected-fail list](../../tests/knowledge-accumulation-expected-fails.json)
-and is reported as TODO, not as passing conformance. A follow-up must connect
-these queries to the real projection, compare complete expected results, and
-remove entries only as behavior passes; tests of validation alone do not prove
-these acceptance criteria. In particular, public traversal, deterministic
-rebuild, identity split, authority, temporal, and removal semantics remain
-unimplemented and unverified. The retraction bundle carries both ends of its
-replacement edge so it can be evaluated without an orphan.
+`projectAccumulation` evaluates receiver observations with explicit knowledge and
+valid-time cuts and a declared single-valued JSON policy. `appendAccumulationObservation`
+assembles inputs for replay. The admission adapter requires the host to authenticate
+publishers and protect the policy digest, owner bindings, observation time, and
+per-event admission decisions, and identity-link decisions that bind the exact
+link, mapping claim and authenticated publisher, including the exact mapping
+claim and evidence digests. Changed or additional evidence requires a new host
+decision. Hosts must verify that the mapping actually supports those subjects
+before admitting the link. For every
+`knownAt` query, the host must supply and protect the authority snapshot in force
+at that knowledge cut, including owner bindings, event and identity decisions,
+and replacement grants. A later snapshot is not evidence of earlier authority;
+Surface cannot reconstruct prior policy decisions from an untimed snapshot. The digest
+detects changes relative to a trusted
+reference; it is not a signature or independent authorization. Callers must not
+construct those decisions from unsigned bundle fields. Unadmitted events are kept
+in the trace but excluded from the fold. The resulting global projection must not
+be exposed directly to an arbitrary viewer; per-viewer disclosure enforcement and
+physical erasure remain host and producer responsibilities.
+
+Survey's reviewed entity projection ([Survey #358](https://github.com/kontourai/survey/pull/358))
+produces candidate links, mapping claims, evidence and events. The Surface-local
+`surveyIdentityAdmission` adapter binds an exact accepted record to separate host
+verification and identity decisions; a reviewed split can withdraw the prior link
+through `surveySplitIdentityAdmission`. The host authenticates custody, validates
+the Survey outcome and provides the applicable verification policy and authority
+snapshot. The adapter does not authenticate a digest, evaluate Survey ancestry,
+or make an unsigned review authoritative. The fixture is generated from the merged
+Survey source at `da1e74c60f96cd8f77dceaacc8ca1a3bbfb84d47`.
+
+The [vectors](../../tests/fixtures/knowledge-accumulation/vectors.json) execute
+against the projection, and the local shapes do not claim Hachure portability.
+[Hachure #34](https://github.com/hachure-org/spec/issues/34) remains the upstream
+contract dependency. Source status and projected replacement disposition are
+separate; traces include the contributing observations and publishers, and name
+claims whose lineage is missing. Status comes from independent eligible support;
+an unowned claim cannot strengthen it. Subject types are normalized for identity
+matching while the trace retains the original spelling. Missing custody or lineage
+cannot establish verified standing.

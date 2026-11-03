@@ -1982,7 +1982,8 @@
               }
             ],
             "statusByClaimId": {
-              "producer-a.acme.hq.1": "verified"
+              "producer-a.acme.hq.1": "verified",
+              "producer-a.acme.hq.2": "stale"
             },
             "gapCodes": []
           }
@@ -2552,7 +2553,10 @@
           "identity-desk.acme.same-entity.verified",
           "identity-desk.acme.same-entity.split"
         ],
-        "note": "Synthetic admission inputs for this vector only; not implied by bundle producerId."
+        "note": "Synthetic admission inputs for this vector only; not implied by bundle producerId.",
+        "admittedIdentityLinkIds": [
+          "identity-desk.link.acme"
+        ]
       }
     },
     {

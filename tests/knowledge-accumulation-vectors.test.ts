@@ -1,25 +1,11 @@
-/**
- * Premise checks for the knowledge-accumulation design vectors
- * (docs/decisions/knowledge-accumulation.md, issue #204).
- *
- * No current-state projection exists yet, so nothing here executes a query's
- * `expect` block. What this suite does prove is that the vectors are built on
- * true premises about today's code, so a future implementation is checked
- * against cases whose inputs mean what the record says they mean:
- *
- * - every bundle validates once the proposed claim fields are removed;
- * - a claim id that appears in several bundles has identical content in each
- *   (the record's verbatim-carry rule; merge would throw otherwise);
- * - every supersession edge targets a claim carried in the same bundle;
- * - the statuses each case states as its premise are the statuses today's
- *   status fold derives (before any supersession pass);
- * - every claim id an expectation names is present in that query's inputs.
- */
+/** Execute the accumulation vectors against admission and the projection. */
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { buildIdentityIndex, buildTrustReport, canonicalClaimKey, mergeBundles, parseTimestamp, validateTrustBundle } from "../src/index.js";
 import type { TrustBundle } from "../src/index.js";
+import { projectAccumulation } from "../src/accumulation.js";
+import { accumulationDigest, identityEvidenceDigests, type AccumulationBundle, type AccumulationAuthority, type BundleObservation } from "../src/accumulation-admission.js";
 
 interface SupersessionEdge { claimId: string; kind: string; reason: string }
 interface VectorClaim { id: string; supersedes?: SupersessionEdge[]; validTime?: { from?: string; until?: string }; [key: string]: unknown }
@@ -38,7 +24,7 @@ interface VectorExpect {
 }
 interface VectorSlot { subjectType: string; subjectId: string; fieldOrBehavior: string; claimType: string; qualifiers?: Record<string, string> }
 interface VectorQuery { id: string; bundles: string[]; slot: VectorSlot; validAt?: string; knownAt?: string; expect?: VectorExpect; sameAs?: string }
-interface VectorCase { id: string; now: string; bundles: Record<string, VectorBundle>; observedAtByBundle: Record<string, string>; fixtureAuthority: { authenticatedOwnerByClaimId: Record<string, string>; admittedEventIds: string[] }; premise: { bundles: string[]; statusByClaimId: Record<string, string> }; queries: VectorQuery[] }
+interface VectorCase { id: string; now: string; bundles: Record<string, VectorBundle>; observedAtByBundle: Record<string, string>; fixtureAuthority: { authenticatedOwnerByClaimId: Record<string, string>; admittedEventIds: string[]; admittedIdentityLinkIds?: string[] }; premise: { bundles: string[]; statusByClaimId: Record<string, string> }; queries: VectorQuery[] }
 interface Vectors { proposedClaimFields: string[]; cases: VectorCase[] }
 
 const vectors = JSON.parse(await readFile("tests/fixtures/knowledge-accumulation/vectors.json", "utf8")) as Vectors;
@@ -100,17 +86,45 @@ test("vectors name exactly the two proposed claim fields", () => {
   assert.ok(vectors.cases.length >= 9, "the vector set must not silently shrink");
 });
 
-test("every unimplemented projection query is explicitly listed", () => {
+test("expected-fail entries refer to known projection queries", () => {
   const ids = vectors.cases.flatMap((entry) => entry.queries.map((query) => `${entry.id}/${query.id}`));
   assert.equal(new Set(ids).size, ids.length, "query ids must be unique");
   assert.equal(new Set(expectedFails.cases).size, expectedFails.cases.length, "expected failures must be unique");
-  assert.deepEqual([...expectedFails.cases].sort(), ids.sort());
+  assert.ok(expectedFails.cases.every((id) => ids.includes(id)));
   assert.ok(expectedFails.reason);
 });
 
 for (const vectorCase of vectors.cases) {
   for (const query of vectorCase.queries) {
-    test.todo(`projection expected failure: ${vectorCase.id}/${query.id} — ${expectedFails.reason}`);
+    test(`projection: ${vectorCase.id}/${query.id}`, () => {
+      const run = (q: VectorQuery) => {
+        const observations: BundleObservation[] = q.bundles.map((key) => {
+          const bundle = vectorCase.bundles[key] as unknown as AccumulationBundle;
+          return { id: key, observedAt: vectorCase.observedAtByBundle[key], contentDigest: accumulationDigest(bundle), authenticatedPublisher: bundle.producerId!, bundle };
+        });
+        const eventDecisions = Object.values(vectorCase.bundles).flatMap((bundle) => bundle.events.map((event) => ({ eventId: event.id, eventDigest: accumulationDigest(event), publisher: bundle.producerId!, admitted: vectorCase.fixtureAuthority.admittedEventIds.includes(event.id) })));
+        const identityDecisions = Object.values(vectorCase.bundles).flatMap(bundle => (bundle.identityLinks ?? []).filter(link => link.id && link.mappingClaimId && vectorCase.fixtureAuthority.admittedIdentityLinkIds?.includes(link.id)).map(link => ({ linkDigest: accumulationDigest(link), publisher: bundle.producerId!, mappingClaimId: link.mappingClaimId!, mappingClaimDigest: accumulationDigest(bundle.claims.find(claim => claim.id === link.mappingClaimId)!), evidenceDigests: identityEvidenceDigests(bundle.evidence.filter(item => item.claimId === link.mappingClaimId)), admitted: true })));
+        const policy = { version: "1" as const, ownerByClaimId: vectorCase.fixtureAuthority.authenticatedOwnerByClaimId, eventDecisions, identityDecisions };
+        const authority: AccumulationAuthority = { ...policy, integrityRef: accumulationDigest(policy) };
+        return projectAccumulation(observations, authority, { slot: q.slot, now: vectorCase.now, knownAt: q.knownAt, validAt: q.validAt, valuePolicy: "single-json-v1" });
+      };
+      const result = run(query);
+      const comparison = () => {
+        if (query.sameAs) {
+          assert.deepEqual(result, run(vectorCase.queries.find((q) => q.id === query.sameAs)!));
+        } else {
+          for (const [key, value] of Object.entries(query.expect!)) {
+            const actual = (result as unknown as Record<string, unknown>)[key];
+            if (["statusByClaimId", "dispositionByClaimId", "excluded"].includes(key)) {
+              assert.deepEqual({ ...(actual as Record<string, string>) }, value, key);
+            } else assert.deepEqual(actual, value, key);
+          }
+        }
+      };
+      if (expectedFails.cases.includes(`${vectorCase.id}/${query.id}`)) {
+        assert.throws(comparison, { code: "ERR_ASSERTION" }, "unexpected pass in expected-fail list");
+      } else comparison();
+    });
   }
   test(`${vectorCase.id}: each bundle has a recorded knowledge time`, () => {
     assert.deepEqual(Object.keys(vectorCase.observedAtByBundle).sort(), Object.keys(vectorCase.bundles).sort());
@@ -122,6 +136,8 @@ for (const vectorCase of vectors.cases) {
     assert.deepEqual(Object.keys(vectorCase.fixtureAuthority.authenticatedOwnerByClaimId).sort(), [...claims].sort());
     for (const owner of Object.values(vectorCase.fixtureAuthority.authenticatedOwnerByClaimId)) assert.ok(owner);
     for (const id of vectorCase.fixtureAuthority.admittedEventIds) assert.ok(events.has(id), `admitted event ${id} missing`);
+    const links = new Set(Object.values(vectorCase.bundles).flatMap(bundle => (bundle.identityLinks ?? []).flatMap(link => link.id ? [link.id] : [])));
+    for (const id of vectorCase.fixtureAuthority.admittedIdentityLinkIds ?? []) assert.ok(links.has(id), `admitted identity link ${id} missing`);
   });
   test(`${vectorCase.id}: bundles validate without the proposed fields`, () => {
     for (const [key, bundle] of Object.entries(vectorCase.bundles)) {
