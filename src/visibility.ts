@@ -133,12 +133,13 @@ export interface SupersessionEdge {
   predecessorId: string;
   successorId: string;
   /**
-   * Visibility of the edge itself, for an edge whose reason or provenance is
-   * more restricted than its endpoints. It can only narrow: an edge a viewer may
-   * not see is never followed for that viewer, whatever its endpoints allow.
-   * Absent means the edge adds no restriction of its own.
+   * The visibility decision for the edge itself (its existence, reason and
+   * provenance), required so that a host must make one. An edge a viewer may not
+   * see is never followed for that viewer, whatever its endpoints allow. A
+   * missing or malformed decision is visible to no one: omission never reveals
+   * a supersession.
    */
-  visibility?: Visibility;
+  visibility: Visibility;
 }
 
 export interface ViewerSupersessionInput {
@@ -165,13 +166,18 @@ export interface ViewerSupersessionView {
   currentClaimIds: string[];
   /** Visible replacements per visible predecessor, sorted. Chains through hidden claims collapse to the nearest visible one. */
   supersededBy: Record<string, string[]>;
-  /** Visible claims that sit in a visible replacement cycle (a self-replacement included) and so reach no current value. */
+  /**
+   * Visible claims linked to a visible replacement cycle (a self-replacement
+   * included), in either direction. A cycle selects no winner, so none of them
+   * is current.
+   */
   unresolvedClaimIds: string[];
 }
 
 interface SupersessionEvaluation {
   view: ViewerSupersessionView;
   recomputeStatusClaimIds: string[];
+  edgeDecisions: SupersessionEdgeDecision[];
 }
 
 function evaluateSupersession(input: ViewerSupersessionInput): SupersessionEvaluation {
@@ -182,31 +188,55 @@ function evaluateSupersession(input: ViewerSupersessionInput): SupersessionEvalu
 
   const successorsOf = new Map<string, string[]>();
   const recompute = new Set<string>();
+  const edgeDecisions: SupersessionEdgeDecision[] = [];
   for (const edge of input.edges) {
-    if (edge.visibility !== undefined && !visibilityAllows(edge.visibility, input.viewer)) {
+    const decision = { predecessorId: edge.predecessorId, successorId: edge.successorId };
+    if (!visibilityAllows(edge.visibility, input.viewer)) {
       // A restricted edge is not followed, but a visible predecessor's stored
       // status may still encode it.
       if (visible.has(edge.predecessorId)) recompute.add(edge.predecessorId);
+      edgeDecisions.push({ ...decision, outcome: "edge-restricted" });
       continue;
     }
+    const bothVisible = visible.has(edge.predecessorId) && visible.has(edge.successorId);
+    edgeDecisions.push({ ...decision, outcome: bothVisible ? "followed" : "endpoint-hidden" });
     const list = successorsOf.get(edge.predecessorId) ?? [];
     list.push(edge.successorId);
     successorsOf.set(edge.predecessorId, list);
   }
 
+  // Everything reachable from a node by one or more followable edges, hidden
+  // claims included. Used only to refuse a collapsed edge that lies on a cycle.
+  const reachCache = new Map<string, Set<string>>();
+  const reachable = (from: string): Set<string> => {
+    const cached = reachCache.get(from);
+    if (cached !== undefined) return cached;
+    const reached = new Set<string>();
+    const pending = [...(successorsOf.get(from) ?? [])];
+    while (pending.length > 0) {
+      const next = pending.pop() as string;
+      if (reached.has(next)) continue;
+      reached.add(next);
+      pending.push(...(successorsOf.get(next) ?? []));
+    }
+    reachCache.set(from, reached);
+    return reached;
+  };
+
+  const visibleClaimIds = [...visible].sort(compareStrings);
   const supersededBy: Record<string, string[]> = Object.create(null);
-  for (const claimId of visible) {
+  for (const claimId of visibleClaimIds) {
     const found = new Set<string>();
     const expanded = new Set<string>();
     const pending = (successorsOf.get(claimId) ?? []).map((id) => ({ id, throughHidden: false }));
     while (pending.length > 0) {
       const { id: next, throughHidden } = pending.pop() as { id: string; throughHidden: boolean };
       if (visible.has(next)) {
-        // A direct edge back to the claim itself is a visible replacement cycle
-        // and is kept. A path that only returns to it through hidden claims adds
-        // no visible value, so it is dropped: it would otherwise reveal them.
-        if (next === claimId && throughHidden) continue;
-        found.add(next);
+        // A direct visible edge is visible truth, a cycle included. A collapsed
+        // edge (one that passed through a hidden claim) is kept only when it is
+        // not on a cycle: a cycle that exists only through hidden claims must
+        // not change what the viewer sees.
+        if (!throughHidden || !reachable(next).has(claimId)) found.add(next);
       } else {
         // A hidden hop: do not surface it, and look through it.
         recompute.add(claimId);
@@ -218,30 +248,50 @@ function evaluateSupersession(input: ViewerSupersessionInput): SupersessionEvalu
     if (found.size > 0) supersededBy[claimId] = [...found].sort(compareStrings);
   }
 
-  const visibleClaimIds = [...visible].sort(compareStrings);
-  const currentClaimIds = visibleClaimIds.filter((claimId) => supersededBy[claimId] === undefined);
-
-  // A visible claim that cannot reach a current value is part of a cycle.
-  const resolved = new Set<string>(currentClaimIds);
-  for (let changed = true; changed;) {
-    changed = false;
-    for (const claimId of visibleClaimIds) {
-      if (resolved.has(claimId)) continue;
-      if (supersededBy[claimId]?.some((successor) => resolved.has(successor))) {
-        resolved.add(claimId);
-        changed = true;
-      }
+  // A cycle selects no winner and invalidates the connected set it sits in: every
+  // claim linked to it, in either direction, is unresolved rather than current.
+  const linked = new Map<string, Set<string>>();
+  const link = (left: string, right: string): void => {
+    if (!linked.has(left)) linked.set(left, new Set());
+    if (!linked.has(right)) linked.set(right, new Set());
+    linked.get(left)!.add(right);
+    linked.get(right)!.add(left);
+  };
+  for (const claimId of visibleClaimIds) for (const successor of supersededBy[claimId] ?? []) link(claimId, successor);
+  const reachesItself = (claimId: string): boolean => {
+    const seen = new Set<string>();
+    const pending = [...(supersededBy[claimId] ?? [])];
+    while (pending.length > 0) {
+      const next = pending.pop() as string;
+      if (next === claimId) return true;
+      if (seen.has(next)) continue;
+      seen.add(next);
+      pending.push(...(supersededBy[next] ?? []));
+    }
+    return false;
+  };
+  const unresolved = new Set<string>();
+  for (const claimId of visibleClaimIds) {
+    if (unresolved.has(claimId) || !reachesItself(claimId)) continue;
+    const pending = [claimId];
+    while (pending.length > 0) {
+      const next = pending.pop() as string;
+      if (unresolved.has(next)) continue;
+      unresolved.add(next);
+      pending.push(...(linked.get(next) ?? []));
     }
   }
 
   return {
     view: {
       visibleClaimIds,
-      currentClaimIds,
+      currentClaimIds: visibleClaimIds.filter((claimId) => supersededBy[claimId] === undefined && !unresolved.has(claimId)),
       supersededBy,
-      unresolvedClaimIds: visibleClaimIds.filter((claimId) => !resolved.has(claimId)),
+      unresolvedClaimIds: visibleClaimIds.filter((claimId) => unresolved.has(claimId)),
     },
     recomputeStatusClaimIds: [...recompute].sort(compareStrings),
+    edgeDecisions: edgeDecisions.sort((left, right) =>
+      compareStrings(`${left.predecessorId}\u0000${left.successorId}`, `${right.predecessorId}\u0000${right.successorId}`)),
   };
 }
 
@@ -276,4 +326,26 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function compareStrings(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
+}
+
+/** Why one supplied edge did or did not apply for a viewer. HOST-ONLY: it names hidden claims. */
+export interface SupersessionEdgeDecision {
+  predecessorId: string;
+  successorId: string;
+  /**
+   * - `followed`: both endpoints are visible and the edge is not restricted.
+   * - `edge-restricted`: the edge's own visibility excludes the viewer; it is not followed.
+   * - `endpoint-hidden`: an endpoint is hidden. The edge is not shown, but it may still
+   *   collapse into a visible edge through the hidden claim.
+   * A missing edge `visibility` is `edge-restricted`.
+   */
+  outcome: "followed" | "edge-restricted" | "endpoint-hidden";
+}
+
+/**
+ * HOST-ONLY. The per-edge decision for one viewer, sorted. It names hidden
+ * claims and so must never be sent to the viewer.
+ */
+export function supersessionEdgeDecisions(input: ViewerSupersessionInput): SupersessionEdgeDecision[] {
+  return evaluateSupersession(input).edgeDecisions;
 }

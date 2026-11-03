@@ -4,6 +4,7 @@ import {
   applyDerivation,
   deriveClaimVisibility,
   deriveTrustSnapshot,
+  supersessionEdgeDecisions,
   supersessionStatusRecomputeClaimIds,
   meetVisibility,
   readDeclaredVisibility,
@@ -282,7 +283,7 @@ test("a viewer without access to the newer value sees the prior value as current
   ];
   const snapshot = deriveTrustSnapshot(bundle(claims), { now: NOW });
   const visibilityByClaimId = new Map(Object.entries(snapshot.visibilityByClaimId).map(([id, derived]) => [id, derived.visibility]));
-  const edges = [{ predecessorId: "v1", successorId: "v2" }];
+  const edges = [{ predecessorId: "v1", successorId: "v2", visibility: PUBLIC }];
 
   const outsider = viewerSupersessionView({ visibilityByClaimId, edges, viewer: { audiences: ["client"] } });
   assert.deepEqual(outsider.currentClaimIds.filter((id) => id.startsWith("v")), ["v1"]);
@@ -314,9 +315,9 @@ test("supersession chains collapse through hidden claims and a claim with no vis
     // v4 has no entry at all.
   ]);
   const edges = [
-    { predecessorId: "v1", successorId: "v2" },
-    { predecessorId: "v2", successorId: "v3" },
-    { predecessorId: "v3", successorId: "v4" },
+    { predecessorId: "v1", successorId: "v2", visibility: PUBLIC },
+    { predecessorId: "v2", successorId: "v3", visibility: PUBLIC },
+    { predecessorId: "v3", successorId: "v4", visibility: PUBLIC },
   ];
   const outsider = viewerSupersessionView({ visibilityByClaimId, edges, viewer: { audiences: [] } });
   assert.deepEqual(outsider.visibleClaimIds, ["v1", "v3"]);
@@ -333,7 +334,7 @@ test("a visible replacement cycle reaches no current value and is reported, not 
   const visibilityByClaimId = new Map<string, Visibility>([["a", PUBLIC], ["b", PUBLIC], ["c", PUBLIC]]);
   const view = viewerSupersessionView({
     visibilityByClaimId,
-    edges: [{ predecessorId: "a", successorId: "b" }, { predecessorId: "b", successorId: "a" }, { predecessorId: "c", successorId: "a" }],
+    edges: [{ predecessorId: "a", successorId: "b", visibility: PUBLIC }, { predecessorId: "b", successorId: "a", visibility: PUBLIC }, { predecessorId: "c", successorId: "a", visibility: PUBLIC }],
     viewer: { audiences: [] },
   });
   assert.deepEqual(view.currentClaimIds, []);
@@ -347,7 +348,7 @@ test("the viewer view is byte-identical whether or not a hidden successor exists
   const a = viewerSupersessionView({ visibilityByClaimId: without, edges: [], viewer });
   const b = viewerSupersessionView({
     visibilityByClaimId: withHidden,
-    edges: [{ predecessorId: "old", successorId: "secret" }, { predecessorId: "secret", successorId: "sealed" }, { predecessorId: "other", successorId: "sealed" }],
+    edges: [{ predecessorId: "old", successorId: "secret", visibility: PUBLIC }, { predecessorId: "secret", successorId: "sealed", visibility: PUBLIC }, { predecessorId: "other", successorId: "sealed", visibility: PUBLIC }],
     viewer,
   });
   assert.equal(JSON.stringify(b), JSON.stringify(a));
@@ -365,7 +366,7 @@ test("a sealed claim is visible to no viewer, whatever audiences the viewer hold
 test("a claim that replaces itself reaches no current value", () => {
   const view = viewerSupersessionView({
     visibilityByClaimId: new Map<string, Visibility>([["old", PUBLIC]]),
-    edges: [{ predecessorId: "old", successorId: "old" }],
+    edges: [{ predecessorId: "old", successorId: "old", visibility: PUBLIC }],
     viewer: { audiences: [] },
   });
   assert.deepEqual(view.currentClaimIds, []);
@@ -451,18 +452,18 @@ test("a path that returns to a visible claim only through hidden claims changes 
   const hidden = new Map<string, Visibility>([...plain, ["secret", restricted("staff")], ["sealed", SEALED]]);
   const baseline = JSON.stringify(viewerSupersessionView({ visibilityByClaimId: plain, edges: [], viewer }));
   for (const edges of [
-    [{ predecessorId: "old", successorId: "secret" }, { predecessorId: "secret", successorId: "old" }],
-    [{ predecessorId: "old", successorId: "secret" }, { predecessorId: "secret", successorId: "sealed" }, { predecessorId: "sealed", successorId: "old" }],
+    [{ predecessorId: "old", successorId: "secret", visibility: PUBLIC }, { predecessorId: "secret", successorId: "old", visibility: PUBLIC }],
+    [{ predecessorId: "old", successorId: "secret", visibility: PUBLIC }, { predecessorId: "secret", successorId: "sealed", visibility: PUBLIC }, { predecessorId: "sealed", successorId: "old", visibility: PUBLIC }],
   ]) {
     assert.equal(JSON.stringify(viewerSupersessionView({ visibilityByClaimId: hidden, edges, viewer })), baseline);
   }
   // Beside a real visible successor the hidden return branch adds no extra self entry.
   const withNew = new Map<string, Visibility>([["old", PUBLIC], ["new", PUBLIC]]);
   const hiddenToo = new Map<string, Visibility>([...withNew, ["secret", restricted("staff")]]);
-  const clean = viewerSupersessionView({ visibilityByClaimId: withNew, edges: [{ predecessorId: "old", successorId: "new" }], viewer });
+  const clean = viewerSupersessionView({ visibilityByClaimId: withNew, edges: [{ predecessorId: "old", successorId: "new", visibility: PUBLIC }], viewer });
   const noisy = viewerSupersessionView({
     visibilityByClaimId: hiddenToo,
-    edges: [{ predecessorId: "old", successorId: "new" }, { predecessorId: "old", successorId: "secret" }, { predecessorId: "secret", successorId: "old" }],
+    edges: [{ predecessorId: "old", successorId: "new", visibility: PUBLIC }, { predecessorId: "old", successorId: "secret", visibility: PUBLIC }, { predecessorId: "secret", successorId: "old", visibility: PUBLIC }],
     viewer,
   });
   assert.equal(JSON.stringify(noisy), JSON.stringify(clean));
@@ -471,7 +472,7 @@ test("a path that returns to a visible claim only through hidden claims changes 
 test("a direct visible self-replacement stays an unresolved cycle even beside a hidden return path", () => {
   const view = viewerSupersessionView({
     visibilityByClaimId: new Map<string, Visibility>([["old", PUBLIC], ["secret", restricted("staff")]]),
-    edges: [{ predecessorId: "old", successorId: "secret" }, { predecessorId: "secret", successorId: "old" }, { predecessorId: "old", successorId: "old" }],
+    edges: [{ predecessorId: "old", successorId: "secret", visibility: PUBLIC }, { predecessorId: "secret", successorId: "old", visibility: PUBLIC }, { predecessorId: "old", successorId: "old", visibility: PUBLIC }],
     viewer: { audiences: [] },
   });
   assert.deepEqual(view.unresolvedClaimIds, ["old"]);
@@ -503,4 +504,84 @@ test("a duplicated claim id is sealed in the snapshot's own entry for that id, i
     assert.deepEqual(snapshot.visibilityByClaimId["dup"]?.visibility, SEALED);
     assert.equal(snapshot.visibilityByClaimId["dup"]?.trace[0]?.basis, "duplicate-claim");
   }
+});
+
+// ---- delta-review 2 regressions ----
+
+const edge = (predecessorId: string, successorId: string, visibility: Visibility = PUBLIC) => ({ predecessorId, successorId, visibility });
+
+function permutations<T>(items: readonly T[]): T[][] {
+  if (items.length <= 1) return [[...items]];
+  return items.flatMap((item, index) => permutations([...items.slice(0, index), ...items.slice(index + 1)]).map((rest) => [item, ...rest]));
+}
+
+test("a cycle that exists only through hidden claims changes nothing the viewer sees, in every edge and map order", () => {
+  const viewer = { audiences: [] };
+  const plain = JSON.stringify(viewerSupersessionView({ visibilityByClaimId: new Map<string, Visibility>([["a", PUBLIC], ["b", PUBLIC]]), edges: [], viewer }));
+  const entries: Array<[string, Visibility]> = [["a", PUBLIC], ["b", PUBLIC], ["h1", restricted("staff")], ["h2", SEALED]];
+  const edges = [edge("a", "h1"), edge("h1", "b"), edge("b", "h2"), edge("h2", "a")];
+  for (const edgeOrder of permutations(edges)) {
+    for (const entryOrder of permutations(entries)) {
+      assert.equal(JSON.stringify(viewerSupersessionView({ visibilityByClaimId: new Map(entryOrder), edges: edgeOrder, viewer })), plain);
+    }
+  }
+});
+
+test("acyclic collapse through a hidden claim is kept: the viewer sees the visible far successor win", () => {
+  const view = viewerSupersessionView({
+    visibilityByClaimId: new Map<string, Visibility>([["a", PUBLIC], ["h", restricted("staff")], ["c", PUBLIC]]),
+    edges: [edge("a", "h"), edge("h", "c")],
+    viewer: { audiences: [] },
+  });
+  assert.deepEqual({ ...view.supersededBy }, { a: ["c"] });
+  assert.deepEqual(view.currentClaimIds, ["c"]);
+});
+
+test("a cycle with an escape selects no winner: everything linked to it is unresolved", () => {
+  const abc = new Map<string, Visibility>([["a", PUBLIC], ["b", PUBLIC], ["c", PUBLIC], ["z", PUBLIC]]);
+  const viewer = { audiences: [] };
+  const escape = viewerSupersessionView({ visibilityByClaimId: abc, edges: [edge("a", "b"), edge("b", "a"), edge("b", "c")], viewer });
+  assert.deepEqual(escape.currentClaimIds, ["z"], "z is unrelated and stays current");
+  assert.deepEqual(escape.unresolvedClaimIds, ["a", "b", "c"]);
+  const selfEscape = viewerSupersessionView({ visibilityByClaimId: abc, edges: [edge("a", "a"), edge("a", "b")], viewer });
+  assert.deepEqual(selfEscape.currentClaimIds, ["c", "z"]);
+  assert.deepEqual(selfEscape.unresolvedClaimIds, ["a", "b"]);
+});
+
+test("the serialized view does not depend on edge order or map insertion order", () => {
+  const entries: Array<[string, Visibility]> = [["x", PUBLIC], ["y", PUBLIC], ["z", PUBLIC], ["w", PUBLIC]];
+  const edges = [edge("x", "z"), edge("x", "y"), edge("w", "x"), edge("w", "z")];
+  const seen = new Set<string>();
+  for (const edgeOrder of permutations(edges)) {
+    for (const entryOrder of permutations(entries)) {
+      seen.add(JSON.stringify(viewerSupersessionView({ visibilityByClaimId: new Map(entryOrder), edges: edgeOrder, viewer: { audiences: [] } })));
+    }
+  }
+  assert.equal(seen.size, 1, `view depends on input order: ${[...seen].join("\n")}`);
+});
+
+test("an edge with no visibility decision is not followed: omission never reveals a supersession", () => {
+  const visibilityByClaimId = new Map<string, Visibility>([["a", PUBLIC], ["b", PUBLIC]]);
+  const viewer = { audiences: ["staff"] };
+  const omitted = { predecessorId: "a", successorId: "b" } as unknown as { predecessorId: string; successorId: string; visibility: Visibility };
+  for (const edges of [[omitted], [{ ...omitted, visibility: {} as Visibility }], [{ ...omitted, visibility: null as unknown as Visibility }]]) {
+    const view = viewerSupersessionView({ visibilityByClaimId, edges, viewer });
+    assert.deepEqual(view.currentClaimIds, ["a", "b"]);
+    assert.deepEqual({ ...view.supersededBy }, {});
+    assert.deepEqual(supersessionStatusRecomputeClaimIds({ visibilityByClaimId, edges, viewer }), ["a"]);
+  }
+});
+
+test("the host-only edge trace names why each edge did or did not apply", () => {
+  const visibilityByClaimId = new Map<string, Visibility>([["a", PUBLIC], ["b", PUBLIC], ["h", restricted("staff")]]);
+  const decisions = supersessionEdgeDecisions({
+    visibilityByClaimId,
+    edges: [edge("a", "b"), edge("b", "a", restricted("staff")), edge("a", "h")],
+    viewer: { audiences: [] },
+  });
+  assert.deepEqual(decisions, [
+    { predecessorId: "a", successorId: "b", outcome: "followed" },
+    { predecessorId: "a", successorId: "h", outcome: "endpoint-hidden" },
+    { predecessorId: "b", successorId: "a", outcome: "edge-restricted" },
+  ]);
 });

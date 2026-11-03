@@ -89,14 +89,18 @@ replacement edges, and a viewer, and returns that viewer's view:
   successor sees the predecessor as current, with no edge, id or count that
   reveals a newer value exists.
 - A chain through a hidden claim collapses to the nearest visible one.
-  A path that returns to a visible claim only through hidden claims adds nothing
-  and is dropped, so a hidden cycle cannot change the viewer's view.
-- A visible replacement cycle has no current value and is reported as
-  unresolved, never resolved by guesswork.
-- A visible replacement cycle, a claim that replaces itself included, has no
-  current value and is reported as unresolved, never resolved by guesswork.
-- The viewer view is identical whether or not a hidden successor exists, so it
-  can be served to the viewer as is.
+  A collapsed edge is kept only when it is not on a cycle in the graph the viewer
+  may follow: a cycle that exists only through hidden claims (`a -> hidden -> b ->
+  hidden -> a`) is dropped, so it cannot change the viewer's view. A cycle made of
+  direct visible edges is visible truth and is reported.
+- The view is independent of the order edges and claims are supplied in.
+- A hidden successor with no visible continuation changes nothing the viewer
+  sees, so the view can be served to the viewer as is. What a viewer can learn is
+  bounded to claims they can already see: when a chain runs through a hidden claim
+  to a visible later claim, the viewer sees that the later claim wins, which is
+  the rule above, and nothing names the hidden claim. That one signal is
+  deliberate. Without it a viewer who may see a claim and its far successor would
+  be shown two competing current values.
 - `supersessionStatusRecomputeClaimIds` is a **separate, host-only** function. A
   visible predecessor whose successor is hidden may carry a stored `superseded`
   status, or a stale `supersededBy`, that encodes the hidden successor. The host
@@ -115,17 +119,23 @@ context, omission failing closed, no disclosure of hidden successors. The mappin
   predecessor. Pass only edges the projection has admitted as active. Pending,
   inert and withdrawn edges stay the projection's to report.
 - The decision over each **input** is the derivation trace above, per claim. The
-  decision over each **edge** is the viewer test on both endpoints, plus an
-  optional `visibility` on the edge for a reason or provenance more restricted
-  than its endpoints. It can only narrow. A restricted edge is never followed for
-  a viewer who may not see it, and its visible predecessor is listed for status
-  recompute.
+  decision over each **edge** is required on every edge (`SupersessionEdge.visibility`)
+  and applies in addition to the viewer test on both endpoints. An edge is a new
+  assertion, not something derived from its endpoints, so a missing or malformed
+  edge decision is visible to no one: omission never reveals a supersession. A
+  host that has no finer decision passes the meet of the endpoints' visibility.
+  A restricted edge is never followed for a viewer who may not see it, and its
+  visible predecessor is listed for status recompute. The host-only
+  `supersessionEdgeDecisions` returns the per-edge outcome (`followed`,
+  `edge-restricted`, `endpoint-hidden`); it names hidden claims, so it never goes
+  to the viewer.
 - The projection's traversal result (supporting and excluded claim ids, edges,
   gaps) must be filtered to the viewer in the same way before it is exposed. A
   gap or an excluded-claim entry that names a hidden claim is the same leak as a
   hidden successor.
-- A cycle or self-edge selects no winner, as in the accumulation record; here it
-  is reported as unresolved for the viewer.
+- A cycle or self-edge selects no winner, as in the accumulation record. Here the
+  claims linked to a visible cycle, in either direction, are reported as
+  unresolved and none is current; a claim unrelated to the cycle is unaffected.
 
 ## What this does not do
 
