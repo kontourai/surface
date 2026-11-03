@@ -46,7 +46,7 @@ function boundContains(claim: AccumulationClaim, at: ReturnType<typeof time>): b
 /** Rebuilds from receiver observations. Hosts must enforce visibility before exposing this raw view. */
 export function projectAccumulation(observations: readonly BundleObservation[], authority: AccumulationAuthority, query: AccumulationQuery) {
   if (query.valuePolicy !== "single-json-v1") throw new Error("unsupported value policy");
-  if (!query.slot || [query.slot.subjectType, query.slot.subjectId, query.slot.fieldOrBehavior, query.slot.claimType].some(part => typeof part !== "string" || !part.trim())) throw new Error("invalid accumulation slot");
+  if (!query.slot || [query.slot.subjectType, query.slot.subjectId, query.slot.fieldOrBehavior, query.slot.claimType].some(part => typeof part !== "string" || !part.trim()) || query.slot.subjectId !== query.slot.subjectId.trim() || (query.slot.qualifiers !== undefined && (query.slot.qualifiers === null || typeof query.slot.qualifiers !== "object" || Array.isArray(query.slot.qualifiers) || Object.values(query.slot.qualifiers).some(value => typeof value !== "string")))) throw new Error("invalid accumulation slot");
   const now = time(query.now);
   const validAt = time(query.validAt ?? query.now);
   const admitted = admitAccumulationObservations(observations, authority, query.knownAt ?? query.now);
@@ -97,7 +97,7 @@ export function projectAccumulation(observations: readonly BundleObservation[], 
   const ownStatuses = new Map(Object.entries(statusByClaimId));
   const claimsById = new Map(merged.bundle.claims.map(claim => [claim.id, claim]));
   for (const claim of merged.bundle.claims) statusByClaimId[claim.id] = applyDerivation({ claim, ownStatus: ownStatuses.get(claim.id) ?? "unknown", ownStatusByClaimId: ownStatuses, claimsById, now: new Date(now.epochMilliseconds) }).status;
-  const activeLinks = links.filter(link => (link.relation ?? "equivalent") === "equivalent" && link.mappingClaimId && statusByClaimId[link.mappingClaimId] === "verified" && owner(link.mappingClaimId) && admitted.observations.some(observation => (observation.bundle.identityLinks ?? []).some(candidate => canonicalJson(candidate) === canonicalJson(link)) && authority.identityDecisions?.some(decision => decision.admitted && decision.mappingClaimId === link.mappingClaimId && decision.linkDigest === accumulationDigest(link) && decision.publisher === observation.authenticatedPublisher)));
+  const activeLinks = links.filter(link => (link.relation ?? "equivalent") === "equivalent" && link.mappingClaimId && statusByClaimId[link.mappingClaimId] === "verified" && owner(link.mappingClaimId) && admitted.observations.some(observation => (observation.bundle.identityLinks ?? []).some(candidate => canonicalJson(candidate) === canonicalJson(link)) && authority.identityDecisions?.some(decision => decision.admitted === true && decision.mappingClaimId === link.mappingClaimId && decision.linkDigest === accumulationDigest(link) && decision.publisher === observation.authenticatedPublisher)));
   const identity = buildIdentityIndex({ ...merged.bundle, identityLinks: activeLinks });
   const identityLinkIds = sort(new Set(activeLinks.flatMap(link => link.id ? [link.id] : [])));
   const inertIdentityLinkIds = sort(new Set(links.filter(link => (link.relation ?? "equivalent") === "equivalent" && !activeLinks.includes(link)).flatMap(link => link.id ? [link.id] : [])));
@@ -178,7 +178,7 @@ export function projectAccumulation(observations: readonly BundleObservation[], 
   const independentSupportClaimIds = candidates.filter(c => !dependsOnCandidate(c)).map(c => c.id);
   const result = { ...empty, inputTrace, supersessions: edges, gapCodes: sort(gapCodes), identityLinkIds, inertIdentityLinkIds, derivationEdges, independentSupportClaimIds };
   if (unresolvedIdentity) return { ...result, outcome: "invalid" as const, reason: "identity-unresolved", candidateClaimIds: candidates.map(c => c.id) };
-  if (candidates.some(claim => missingLineage.has(claim.id))) return { ...result, outcome: "invalid" as const, reason: "lineage-missing", candidateClaimIds: candidates.map(c => c.id) };
+  if (candidates.some(claim => owner(claim.id) && missingLineage.has(claim.id))) return { ...result, outcome: "invalid" as const, reason: "lineage-missing", candidateClaimIds: candidates.map(c => c.id) };
   if (values.size > 1) return { ...result, outcome: "contested" as const, reason: undefined, candidateClaimIds: candidates.map(c => c.id) };
   if (!candidates.length) return { ...result, reason: relevant.length === 0 ? "empty" : Object.keys(excluded).length ? "withdrawn" : "not-valid-at" };
   const status = candidates.map(c => statusByClaimId[c.id] ?? "unknown").sort((a,b) => compareStatusStrength(b,a))[0];

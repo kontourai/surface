@@ -223,7 +223,11 @@ assembles inputs for replay. The admission adapter requires the host to authenti
 publishers and protect the policy digest, owner bindings, observation time, and
 per-event admission decisions, and identity-link decisions that bind the exact
 link, mapping claim and authenticated publisher. Hosts must verify that the
-mapping actually supports those subjects before admitting the link. The digest
+mapping actually supports those subjects before admitting the link. For every
+`knownAt` query, the host must supply and protect the authority snapshot in force
+at that knowledge cut, including owner bindings, event and identity decisions,
+and replacement grants. A later snapshot is not evidence of earlier authority;
+Surface cannot reconstruct prior policy decisions from an untimed snapshot. The digest
 detects changes relative to a trusted
 reference; it is not a signature or independent authorization. Callers must not
 construct those decisions from unsigned bundle fields. Unadmitted events are kept

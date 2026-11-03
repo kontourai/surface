@@ -333,7 +333,15 @@ test("an explicit third-party grant admits only its exact replacement edge", () 
   assert.equal(before.outcome, "contested");
   assert.equal(before.supersessions[0].state, "pending");
   const policy = structuredClone(f.authority);
-  policy.replacementGrants = [{ successorId: before.supersessions[0].byClaimId, predecessorId: before.supersessions[0].claimId }];
+  const successorId = before.supersessions[0].byClaimId;
+  const predecessorId = before.supersessions[0].claimId;
+  for (const grant of [{ successorId: "other", predecessorId }, { successorId, predecessorId: "other" }]) {
+    policy.replacementGrants = [grant];
+    const { integrityRef: ignored, ...wrongFields } = policy;
+    policy.integrityRef = accumulationDigest(wrongFields);
+    assert.equal(projectAccumulation(observations, policy, f.query).supersessions[0].state, "pending");
+  }
+  policy.replacementGrants = [{ successorId, predecessorId }];
   const { integrityRef: _, ...fields } = policy;
   policy.integrityRef = accumulationDigest(fields);
   const after = projectAccumulation(observations, policy, f.query);
@@ -347,4 +355,74 @@ test("identical observation redelivery retains one provenance entry", () => {
   const result = projectAccumulation([f.observations[0], f.observations[0]], f.authority, f.query);
   assert.equal(result.claimProvenance["producer-a.acme.hq.1"].length, 1);
   assert.equal(result.eventProvenance["producer-a.acme.hq.1.verified"].length, 1);
+});
+
+test("a rival publisher cannot reuse a link decision even when its mapping event is admitted", () => {
+  const f = fixture("identity-merge-split");
+  const rival = structuredClone(f.observations[2]);
+  rival.id = "rival-copy"; rival.authenticatedPublisher = "rival";
+  const policy = structuredClone(f.authority);
+  for (const event of rival.bundle.events) (policy.eventDecisions as typeof policy.eventDecisions[number][]).push({ eventId: event.id, eventDigest: accumulationDigest(event), publisher: "rival", admitted: true });
+  const { integrityRef: _, ...fields } = policy;
+  policy.integrityRef = accumulationDigest(fields);
+  const result = projectAccumulation([f.observations[0], f.observations[1], rival], policy, f.query);
+  assert.equal(result.statusByClaimId["identity-desk.acme.same-entity"], "verified");
+  assert.deepEqual(result.identityLinkIds, []);
+  assert.equal(result.outcome, "invalid");
+});
+
+test("only boolean true admits an identity decision, and conflicting decisions fail closed", () => {
+  const f = fixture("identity-merge-split");
+  const policy = structuredClone(f.authority);
+  (policy.identityDecisions![0] as unknown as { admitted: unknown }).admitted = "false";
+  let { integrityRef: _, ...fields } = policy;
+  policy.integrityRef = accumulationDigest(fields);
+  const result = projectAccumulation(f.observations.slice(0, 3), policy, f.query);
+  assert.deepEqual(result.identityLinkIds, []);
+  const conflicting = structuredClone(f.authority);
+  (conflicting.identityDecisions as NonNullable<typeof conflicting.identityDecisions>[number][]).push({ ...conflicting.identityDecisions![0], admitted: false });
+  const { integrityRef: ignored, ...conflictingFields } = conflicting;
+  conflicting.integrityRef = accumulationDigest(conflictingFields);
+  assert.throws(() => projectAccumulation(f.observations, conflicting, f.query), /conflicting identity admission/);
+});
+
+test("an unowned missing-lineage claim cannot suppress an independently verified value", () => {
+  const f = fixture("self-revision-correction");
+  const rival = structuredClone(f.observations[0]); rival.id = "rival"; rival.authenticatedPublisher = "rival"; rival.bundle.producerId = "rival";
+  rival.bundle.events = []; rival.bundle.evidence = [];
+  rival.bundle.claims = [{ ...rival.bundle.claims[0], id: "rival.hq", derivedFrom: ["missing"] }];
+  rival.contentDigest = accumulationDigest(rival.bundle);
+  const equal = projectAccumulation([f.observations[0], rival], f.authority, f.query);
+  assert.equal(equal.outcome, "current");
+  assert.equal(equal.status, "verified");
+  assert.ok(equal.gapCodes.includes("lineage-missing"));
+  rival.bundle.claims[0].value = "Munich";
+  rival.contentDigest = accumulationDigest(rival.bundle);
+  const conflicting = projectAccumulation([f.observations[0], rival], f.authority, f.query);
+  assert.equal(conflicting.outcome, "contested");
+});
+
+test("a rejected successor withdraws its edge despite missing owner binding", () => {
+  const f = fixture("self-revision-correction");
+  const observations = structuredClone(f.observations);
+  const event = { ...observations[1].bundle.events[0], id: "reject-successor", status: "rejected" as const, createdAt: "2026-05-01T00:00:00Z" };
+  observations[1].bundle.events.push(event);
+  observations[1].contentDigest = accumulationDigest(observations[1].bundle);
+  const policy = structuredClone(f.authority);
+  delete (policy.ownerByClaimId as Record<string, string>)[event.claimId];
+  (policy.eventDecisions as typeof policy.eventDecisions[number][]).push({ eventId: event.id, eventDigest: accumulationDigest(event), publisher: observations[1].authenticatedPublisher, admitted: true });
+  const { integrityRef: _, ...fields } = policy; policy.integrityRef = accumulationDigest(fields);
+  const result = projectAccumulation(observations, policy, f.query);
+  assert.equal(result.outcome, "current");
+  assert.equal(result.value, "Berlin");
+  assert.equal(result.supersessions[0].state, "withdrawn");
+});
+
+test("malformed qualifiers and padded subject IDs fail closed", () => {
+  const f = fixture("qualified-property");
+  for (const qualifiers of [["x"], { division: 1 }, null]) {
+    const slot = { ...f.query.slot, qualifiers } as typeof f.query.slot;
+    assert.throws(() => projectAccumulation(f.observations, f.authority, { ...f.query, slot }), /invalid accumulation slot/);
+  }
+  assert.throws(() => projectAccumulation(f.observations, f.authority, { ...f.query, slot: { ...f.query.slot, subjectId: " acme" } }), /invalid accumulation slot/);
 });

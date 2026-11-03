@@ -25,6 +25,7 @@ export interface EventAdmission {
   publisher: string;
   admitted: boolean;
 }
+/** The host supplies the protected authority snapshot in force at the query's knowledge cut. */
 export interface AccumulationAuthority {
   version: "1";
   /** Digest protected by host custody, covering all decisions and bindings. */
