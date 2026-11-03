@@ -10,6 +10,7 @@ import { validateReferences } from "./validation/references.js";
 import {
   validateAuthorityTrace,
   validateClaim,
+  validateDeletedRetention,
   validateConclusionConfidence,
   validateClaimGroup,
   validateEvent,
@@ -18,6 +19,7 @@ import {
   validateIntegrityAnchor,
   validatePolicy,
 } from "./validation/records.js";
+import { assertDeletedClaimsHaveNoEvidence } from "./derivation.js";
 import { resolvePolicyForClaim } from "./policy-resolver.js";
 import { deriveTrustStatus } from "./status.js";
 import { resolveStatusFunctionVersion, type StatusFunctionVersion } from "./status-function-version.js";
@@ -109,10 +111,12 @@ export function validateTrustBundle(input: unknown, options?: ValidateTrustBundl
 
   for (const claim of claims) {
     validateClaim(claim);
+    validateDeletedRetention(claim as Record<string, unknown>);
     validateConclusionConfidence(claim as Record<string, unknown>, schemaVersion);
   }
 
   for (const item of evidence) validateEvidence(item, schemaVersion);
+  assertDeletedClaimsHaveNoEvidence(claims as TrustBundle["claims"], evidence as TrustBundle["evidence"]);
 
   for (const policy of policies) validatePolicy(policy);
 

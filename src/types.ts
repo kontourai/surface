@@ -228,6 +228,7 @@ export type DerivationChangeReason =
   | "input-rejected"
   | "input-assumed"
   | "input-missing"
+  | "input-deleted"
   | "derivation-cycle";
 
 export type DerivationChangeAction = "recompute" | "review" | "blocked";
@@ -242,6 +243,16 @@ export interface DerivationChangeRecord {
   message: string;
   inputStatuses?: Record<string, TrustStatus>;
   metadata?: Record<string, unknown>;
+}
+
+/** Producer-authored retention fact carried in `Claim.metadata.surfaceRetention`.
+ * Identifiers and provenance must be free of erased content; this does not
+ * perform or prove physical deletion. */
+export interface DeletedRetentionState {
+  state: "deleted";
+  erasedAt: string;
+  actor: string;
+  rationale: string;
 }
 
 export interface Claim {

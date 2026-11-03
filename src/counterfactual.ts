@@ -1,5 +1,5 @@
 import type { TrustReport, TrustStatus } from "./types.js";
-import { derivationInputIds } from "./derivation.js";
+import { derivationInputIds, isDeletedClaim } from "./derivation.js";
 import { weakerStatus } from "./status-taxonomy.js";
 
 /**
@@ -92,6 +92,7 @@ export function analyzeCounterfactual(
   assertKnownClaim(report, targetClaimId);
   const baseline = buildStatusMap(report);
   const directInputs = buildDirectInputsMap(report);
+  const deleted = new Set(report.claims.filter(isDeletedClaim).map((claim) => claim.id));
 
   const depthByDependent = new Map<string, number>();
   for (const dependent of traceDependents(report, targetClaimId)) {
@@ -99,7 +100,7 @@ export function analyzeCounterfactual(
   }
 
   // Only claims downstream of the target can have their ceiling move.
-  const reachable = [...depthByDependent.keys()];
+  const reachable = [...depthByDependent.keys()].filter((id) => !deleted.has(id));
 
   const projected = new Map<string, TrustStatus>(baseline);
   projected.set(targetClaimId, hypotheticalStatus);
@@ -115,6 +116,7 @@ export function analyzeCounterfactual(
       if (base === undefined) continue;
       let ceiling: TrustStatus | undefined;
       for (const inputId of directInputs.get(claimId) ?? []) {
+        if (deleted.has(inputId)) continue;
         const inputStatus = projected.get(inputId);
         if (inputStatus === undefined) continue; // missing input contributes no bound here
         ceiling = ceiling === undefined ? inputStatus : weakerStatus(ceiling, inputStatus);
