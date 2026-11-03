@@ -7,7 +7,7 @@ import { analyzeCounterfactual, isDeletedClaim, buildDerivationDrilldown, buildT
 const now = new Date("2026-04-26T00:00:00.000Z");
 const timestamp = "2026-04-25T00:00:00.000Z";
 
-function report(erased: boolean) {
+function erasureBundle(erased: boolean) {
   const ids = ["source", "other", "sole", "survivor", "downstream"];
   const bundle = validateTrustBundle({
     schemaVersion: 3, source: "erasure-test",
@@ -33,7 +33,11 @@ function report(erased: boolean) {
       id: `event-${id}`, claimId: id, status: "verified", actor: "owner", method: "attestation", evidenceIds: [], createdAt: timestamp,
     })),
   });
-  return buildTrustReport(bundle, { now });
+  return bundle;
+}
+
+function report(erased: boolean) {
+  return buildTrustReport(erasureBundle(erased), { now });
 }
 
 test("erasing the sole input removes derived support", () => {
@@ -316,7 +320,7 @@ test("deletion records do not label an intermediate verified when a deeper input
 
 
 function snapshotAfterErasure(visibility?: unknown, retainedInputs?: string[]) {
-  const erased = report(true);
+  const erased = erasureBundle(true);
   const claims = erased.claims.map((claim) => {
     const metadata = claim.id === "source"
       ? { ...claim.metadata, ...(visibility === undefined ? {} : { visibility }) }
