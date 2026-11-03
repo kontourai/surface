@@ -72,17 +72,6 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
   collectWeakEdges(claim);
   const statusesByInputId = new Map<string, TrustStatus>();
   const deletedInputs = new Set<string>();
-  // A branch with no surviving leaf cannot support a conclusion. Missing or
-  // cyclic branches remain in the normal conservative derivation path.
-  const hasSurvivor = (id: string, path: Set<string>): boolean => {
-    const candidate = claimsById.get(id);
-    if (!candidate || path.has(id)) return true;
-    if (isDeletedClaim(candidate)) return false;
-    const children = derivationInputIds(candidate);
-    if (children.length === 0) return true;
-    const nextPath = new Set(path).add(id);
-    return children.some((child) => hasSurvivor(child, nextPath));
-  };
   const collectDeleted = (id: string, seen: Set<string>): void => {
     if (seen.has(id)) return;
     seen.add(id);
@@ -93,6 +82,33 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
   };
   for (const id of inputIds) collectDeleted(id, new Set([claim.id]));
 
+  // Propagate survival backwards from non-deleted leaves and missing inputs.
+  // Unlike recursive path enumeration this visits each node and edge once per
+  // derivation, including diamond-shaped graphs. Cycles without an exit do not
+  // manufacture surviving support; missing inputs remain conservative unknowns.
+  const surviving = new Set<string>();
+  if (deletedInputs.size > 0) {
+    const parents = new Map<string, string[]>();
+    const queue: string[] = [];
+    for (const [id, candidate] of claimsById) {
+      if (isDeletedClaim(candidate)) continue;
+      const children = derivationInputIds(candidate);
+      if (children.length === 0) queue.push(id);
+      for (const child of children) {
+        const owners = parents.get(child) ?? [];
+        owners.push(id);
+        parents.set(child, owners);
+        if (!claimsById.has(child)) queue.push(child);
+      }
+    }
+    for (let index = 0; index < queue.length; index++) {
+      const id = queue[index];
+      if (surviving.has(id)) continue;
+      surviving.add(id);
+      for (const parent of parents.get(id) ?? []) queue.push(parent);
+    }
+  }
+
   const walk = (currentId: string): void => {
     const inputClaim = claimsById.get(currentId);
     if (!inputClaim) {
@@ -100,10 +116,12 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
       ceiling = weakerStatus(ceiling, "unknown");
       return;
     }
-    if (deletedInputs.size > 0 && !hasSurvivor(currentId, new Set([claim.id]))) return;
-    const inputStatus = ownStatusByClaimId.get(currentId) ?? "unknown";
-    statusesByInputId.set(currentId, inputStatus);
-    ceiling = weakerStatus(ceiling, inputStatus);
+    if (isDeletedClaim(inputClaim)) return;
+    if (deletedInputs.size === 0 || surviving.has(currentId)) {
+      const inputStatus = ownStatusByClaimId.get(currentId) ?? "unknown";
+      statusesByInputId.set(currentId, inputStatus);
+      ceiling = weakerStatus(ceiling, inputStatus);
+    }
     const nextInputs = derivationInputIds(inputClaim);
     collectWeakEdges(inputClaim);
     if (nextInputs.length === 0) return;
@@ -128,7 +146,7 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
 
   if (deletedInputs.size > 0) {
     const erased = [...deletedInputs].sort();
-    const unsupported = !inputIds.some((id) => hasSurvivor(id, new Set([claim.id])));
+    const unsupported = !inputIds.some((id) => surviving.has(id));
     if (unsupported) {
       ceiling = weakerStatus(ceiling, "unknown");
       transparencyGaps.push({
@@ -136,6 +154,14 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
         type: "unsupported_inference", severity: claim.impactLevel ?? "medium",
         ...materialityFromClaim(claim),
         message: `Claim ${claim.id} has no surviving derivation input.`, createdAt,
+        metadata: { source: "derivation.deleted", deletedInputs: erased },
+      });
+    } else {
+      transparencyGaps.push({
+        id: `${claim.id}.gap.deleted-input`, claimId: claim.id,
+        type: "provenance_gap", severity: claim.impactLevel ?? "medium",
+        ...materialityFromClaim(claim),
+        message: `Claim ${claim.id} has a deleted derivation input; review its content and support.`, createdAt,
         metadata: { source: "derivation.deleted", deletedInputs: erased },
       });
     }
