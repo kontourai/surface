@@ -1,5 +1,19 @@
 # Changelog
 
+## [6.3.0](https://github.com/kontourai/surface/compare/v6.2.1...v6.3.0) (2026-11-03)
+
+
+### Features
+
+* **accumulation:** project admitted knowledge accumulation ([#359](https://github.com/kontourai/surface/issues/359)) ([b7d932b](https://github.com/kontourai/surface/commit/b7d932b8b496bb01af7437df5325f0e0b1fecd51))
+* recompute claims after input erasure ([#355](https://github.com/kontourai/surface/issues/355)) ([c3921b6](https://github.com/kontourai/surface/commit/c3921b6b9a09baaa22a494de66fad53901f3db07))
+* **visibility:** derive visibility for derived claims ([#356](https://github.com/kontourai/surface/issues/356)) ([18e3570](https://github.com/kontourai/surface/commit/18e3570636cdb5f9e73d38d9274a2bcd1dc04b9f))
+
+
+### Fixes
+
+* restrict identity grouping to equivalence links and design knowledge accumulation ([#354](https://github.com/kontourai/surface/issues/354)) ([7486c6d](https://github.com/kontourai/surface/commit/7486c6d8b3d942b1b2aa11e4cdd958f8b1b8aa9f))
+
 ## [6.2.1](https://github.com/kontourai/surface/compare/v6.2.0...v6.2.1) (2026-10-19)
 
 
