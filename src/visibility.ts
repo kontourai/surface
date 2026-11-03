@@ -90,12 +90,14 @@ export function readDeclaredVisibility(source: { metadata?: Record<string, unkno
   const metadata = source?.metadata;
   if (!isRecord(metadata)) return { state: "undeclared" };
   const written: unknown[] = [];
-  if (metadata.visibility !== undefined) written.push(metadata.visibility);
-  const disclosure = metadata.disclosure;
+  // Own properties only: a value inherited through a prototype is not something
+  // the claim wrote, and deleting the own one must not fall back to it.
+  if (ownValue(metadata, "visibility") !== undefined) written.push(ownValue(metadata, "visibility"));
+  const disclosure = ownValue(metadata, "disclosure");
   if (disclosure !== undefined) {
     // A `disclosure` that is not an object cannot hold a visibility we can read.
     if (!isRecord(disclosure)) return { state: "unrecognized" };
-    if (disclosure.visibility !== undefined) written.push(disclosure.visibility);
+    if (ownValue(disclosure, "visibility") !== undefined) written.push(ownValue(disclosure, "visibility"));
   }
   if (written.length === 0) return { state: "undeclared" };
   const parsed: Visibility[] = [];
@@ -110,9 +112,11 @@ export function readDeclaredVisibility(source: { metadata?: Record<string, unkno
 function parseVisibility(raw: unknown): Visibility | undefined {
   if (raw === "public") return { kind: "public" };
   if (typeof raw === "string" && LEGACY_RESTRICTED_LABELS.has(raw)) return sealedVisibility();
-  if (isRecord(raw) && Array.isArray(raw.audiences)) {
-    if (!raw.audiences.every((audience) => typeof audience === "string" && audience.length > 0)) return undefined;
-    return { kind: "restricted", audiences: [...new Set(raw.audiences as string[])].sort(compareStrings) };
+  if (isRecord(raw)) {
+    const audiences = ownValue(raw, "audiences");
+    if (!Array.isArray(audiences)) return undefined;
+    if (!audiences.every((audience) => typeof audience === "string" && audience.length > 0)) return undefined;
+    return { kind: "restricted", audiences: [...new Set(audiences as string[])].sort(compareStrings) };
   }
   return undefined;
 }
@@ -136,8 +140,9 @@ export interface ViewerSupersessionInput {
 
 /**
  * One viewer's view of a set of supersession chains. Every id it contains is a
- * claim this viewer may see: the view never names a claim or an edge the viewer
- * cannot see, so it cannot leak that a newer value exists.
+ * claim this viewer may see, and its content is identical whether or not a
+ * hidden successor exists, so it can be served to the viewer as is. It carries
+ * nothing about claims the viewer cannot see.
  */
 export interface ViewerSupersessionView {
   /** Claims the viewer may see, sorted. */
@@ -146,23 +151,16 @@ export interface ViewerSupersessionView {
   currentClaimIds: string[];
   /** Visible replacements per visible predecessor, sorted. Chains through hidden claims collapse to the nearest visible one. */
   supersededBy: Record<string, string[]>;
-  /**
-   * Visible claims that some hidden claim replaces. A stored `superseded`
-   * status on one of these may encode that hidden successor, so the host must
-   * recompute or withhold the status for this viewer. Showing it would leak.
-   */
-  recomputeStatusClaimIds: string[];
-  /** Visible claims that sit in a visible replacement cycle and so reach no current value. */
+  /** Visible claims that sit in a visible replacement cycle (a self-replacement included) and so reach no current value. */
   unresolvedClaimIds: string[];
 }
 
-/**
- * Evaluate supersession for one viewer. An edge only applies for viewers who may
- * see its successor; a viewer who cannot sees the predecessor as current, with
- * no trace of the hidden successor. Chains through hidden claims collapse, so a
- * viewer who sees a claim and its far successor still sees the successor win.
- */
-export function viewerSupersessionView(input: ViewerSupersessionInput): ViewerSupersessionView {
+interface SupersessionEvaluation {
+  view: ViewerSupersessionView;
+  recomputeStatusClaimIds: string[];
+}
+
+function evaluateSupersession(input: ViewerSupersessionInput): SupersessionEvaluation {
   const visible = new Set<string>();
   for (const [claimId, visibility] of input.visibilityByClaimId) {
     if (visibilityAllows(visibility, input.viewer)) visible.add(claimId);
@@ -179,13 +177,14 @@ export function viewerSupersessionView(input: ViewerSupersessionInput): ViewerSu
   const recompute = new Set<string>();
   for (const claimId of visible) {
     const found = new Set<string>();
-    const seen = new Set<string>([claimId]);
+    const seen = new Set<string>();
     const pending = [...(successorsOf.get(claimId) ?? [])];
     while (pending.length > 0) {
       const next = pending.pop() as string;
       if (seen.has(next)) continue;
       seen.add(next);
       if (visible.has(next)) {
+        // Reaching the claim itself is a replacement cycle; it is kept, not dropped.
         found.add(next);
       } else {
         // A hidden hop: do not surface it, and look through it.
@@ -213,12 +212,39 @@ export function viewerSupersessionView(input: ViewerSupersessionInput): ViewerSu
   }
 
   return {
-    visibleClaimIds,
-    currentClaimIds,
-    supersededBy,
+    view: {
+      visibleClaimIds,
+      currentClaimIds,
+      supersededBy,
+      unresolvedClaimIds: visibleClaimIds.filter((claimId) => !resolved.has(claimId)),
+    },
     recomputeStatusClaimIds: [...recompute].sort(compareStrings),
-    unresolvedClaimIds: visibleClaimIds.filter((claimId) => !resolved.has(claimId)),
   };
+}
+
+/**
+ * Evaluate supersession for one viewer. An edge only applies for viewers who may
+ * see its successor; a viewer who cannot sees the predecessor as current, with
+ * no trace of the hidden successor. Chains through hidden claims collapse, so a
+ * viewer who sees a claim and its far successor still sees the successor win.
+ */
+export function viewerSupersessionView(input: ViewerSupersessionInput): ViewerSupersessionView {
+  return evaluateSupersession(input).view;
+}
+
+/**
+ * HOST-ONLY. Visible claims some hidden claim replaces. A stored `superseded`
+ * status (or a stored successor pointer) on one of these may encode that hidden
+ * successor, so the host must recompute the status without the hidden edge, or
+ * withhold it, before serving the viewer. This list differs between "a hidden
+ * successor exists" and "none does", so it must never be sent to the viewer.
+ */
+export function supersessionStatusRecomputeClaimIds(input: ViewerSupersessionInput): string[] {
+  return evaluateSupersession(input).recomputeStatusClaimIds;
+}
+
+function ownValue(record: Record<string, unknown>, key: string): unknown {
+  return Object.hasOwn(record, key) ? record[key] : undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

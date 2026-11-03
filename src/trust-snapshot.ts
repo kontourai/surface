@@ -156,7 +156,9 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
 
   const ownStatusByClaimId = new Map<string, TrustStatus>();
   const claimsById = new Map<string, Claim>();
+  const ambiguousClaimIds = new Set<string>();
   const foldedClaims = input.claims.map((claim) => {
+    if (claimsById.has(claim.id)) ambiguousClaimIds.add(claim.id);
     claimsById.set(claim.id, claim);
     const evidence = input.evidence.filter((item) => item.claimId === claim.id);
     const claimEvents = eventsByClaimId.get(claim.id) ?? [];
@@ -217,6 +219,7 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
       ownStatusByClaimId,
       claimsById,
       now,
+      ambiguousClaimIds,
     });
     transparencyGaps.push(...outcome.transparencyGaps);
     changeRecords.push(...outcome.changeRecords);

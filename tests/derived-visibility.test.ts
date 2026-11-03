@@ -4,6 +4,7 @@ import {
   applyDerivation,
   deriveClaimVisibility,
   deriveTrustSnapshot,
+  supersessionStatusRecomputeClaimIds,
   meetVisibility,
   readDeclaredVisibility,
   validateTrustBundle,
@@ -286,14 +287,19 @@ test("a viewer without access to the newer value sees the prior value as current
   const outsider = viewerSupersessionView({ visibilityByClaimId, edges, viewer: { audiences: ["client"] } });
   assert.deepEqual(outsider.currentClaimIds.filter((id) => id.startsWith("v")), ["v1"]);
   assert.deepEqual({ ...outsider.supersededBy }, {});
-  assert.deepEqual(outsider.recomputeStatusClaimIds, ["v1"], "v1's stored status may encode v2; the host must not serve it as is");
-  const leaked = JSON.stringify({ ...outsider, recomputeStatusClaimIds: undefined });
+  assert.deepEqual(
+    supersessionStatusRecomputeClaimIds({ visibilityByClaimId, edges, viewer: { audiences: ["client"] } }),
+    ["v1"],
+    "v1's stored status may encode v2; the host must not serve it as is",
+  );
+  const leaked = JSON.stringify(outsider);
   assert.ok(!leaked.includes("v2") && !leaked.includes("conversation"), `view leaks a hidden claim: ${leaked}`);
+  assert.ok(!("recomputeStatusClaimIds" in outsider), "the host-only list is not part of the viewer view");
 
   const insider = viewerSupersessionView({ visibilityByClaimId, edges, viewer: { audiences: ["staff"] } });
   assert.deepEqual(insider.currentClaimIds.filter((id) => id.startsWith("v")), ["v2"]);
   assert.deepEqual({ ...insider.supersededBy }, { v1: ["v2"] });
-  assert.deepEqual(insider.recomputeStatusClaimIds, []);
+  assert.deepEqual(supersessionStatusRecomputeClaimIds({ visibilityByClaimId, edges, viewer: { audiences: ["staff"] } }), []);
 
   // Anonymous viewer: public-only.
   const anonymous = viewerSupersessionView({ visibilityByClaimId, edges, viewer: { audiences: [] } });
@@ -316,7 +322,7 @@ test("supersession chains collapse through hidden claims and a claim with no vis
   assert.deepEqual(outsider.visibleClaimIds, ["v1", "v3"]);
   assert.deepEqual({ ...outsider.supersededBy }, { v1: ["v3"] });
   assert.deepEqual(outsider.currentClaimIds, ["v3"]);
-  assert.deepEqual(outsider.recomputeStatusClaimIds, ["v1", "v3"]);
+  assert.deepEqual(supersessionStatusRecomputeClaimIds({ visibilityByClaimId, edges, viewer: { audiences: [] } }), ["v1", "v3"]);
   assert.ok(!JSON.stringify(outsider).includes("v4"));
   const insider = viewerSupersessionView({ visibilityByClaimId, edges, viewer: { audiences: ["staff"] } });
   assert.deepEqual(insider.currentClaimIds, ["v3"]);
@@ -332,4 +338,76 @@ test("a visible replacement cycle reaches no current value and is reported, not 
   });
   assert.deepEqual(view.currentClaimIds, []);
   assert.deepEqual(view.unresolvedClaimIds, ["a", "b", "c"]);
+});
+
+test("the viewer view is byte-identical whether or not a hidden successor exists", () => {
+  const without = new Map<string, Visibility>([["old", PUBLIC], ["other", PUBLIC]]);
+  const withHidden = new Map<string, Visibility>([...without, ["secret", restricted("staff")], ["sealed", SEALED]]);
+  const viewer = { audiences: ["client"] };
+  const a = viewerSupersessionView({ visibilityByClaimId: without, edges: [], viewer });
+  const b = viewerSupersessionView({
+    visibilityByClaimId: withHidden,
+    edges: [{ predecessorId: "old", successorId: "secret" }, { predecessorId: "secret", successorId: "sealed" }, { predecessorId: "other", successorId: "sealed" }],
+    viewer,
+  });
+  assert.equal(JSON.stringify(b), JSON.stringify(a));
+});
+
+test("a sealed claim is visible to no viewer, whatever audiences the viewer holds", () => {
+  const visibilityByClaimId = new Map<string, Visibility>([["open", PUBLIC], ["sealed", SEALED], ["staff-only", restricted("staff")]]);
+  for (const audiences of [[], ["staff"], ["staff", "client", "x"]]) {
+    const view = viewerSupersessionView({ visibilityByClaimId, edges: [], viewer: { audiences } });
+    assert.ok(!view.visibleClaimIds.includes("sealed"), `sealed visible to ${JSON.stringify(audiences)}`);
+    assert.ok(!view.currentClaimIds.includes("sealed"));
+  }
+});
+
+test("a claim that replaces itself reaches no current value", () => {
+  const view = viewerSupersessionView({
+    visibilityByClaimId: new Map<string, Visibility>([["old", PUBLIC]]),
+    edges: [{ predecessorId: "old", successorId: "old" }],
+    viewer: { audiences: [] },
+  });
+  assert.deepEqual(view.currentClaimIds, []);
+  assert.deepEqual(view.unresolvedClaimIds, ["old"]);
+});
+
+// ---- hardening: shapes a validated bundle cannot reach but a direct caller can ----
+
+test("a declaration inherited through a prototype is not a declaration", () => {
+  const inherited = Object.create({ visibility: "public", disclosure: { visibility: "public" } }) as Record<string, unknown>;
+  assert.deepEqual(readDeclaredVisibility({ metadata: inherited }), { state: "undeclared" });
+  const own = Object.create({ visibility: "public" }) as Record<string, unknown>;
+  own.visibility = { audiences: ["staff"] };
+  assert.deepEqual(readDeclaredVisibility({ metadata: own }), { state: "declared", visibility: restricted("staff") });
+  // Deleting the own restriction must not fall back to the inherited public one.
+  delete own.visibility;
+  assert.deepEqual(readDeclaredVisibility({ metadata: own }), { state: "undeclared" });
+  const inheritedAudiences = { visibility: Object.create({ audiences: ["staff"] }) as Record<string, unknown> };
+  assert.deepEqual(readDeclaredVisibility({ metadata: inheritedAudiences }), { state: "unrecognized" });
+});
+
+test("a claim that lists only itself as an input has no input to be bounded by", () => {
+  const self = claim("d", { derivedFrom: ["d"] });
+  assert.deepEqual(deriveClaimVisibility(self, new Map()).visibility, SEALED);
+});
+
+test("an unreadable declaration on a derived claim itself is sealed, not bounded by its inputs", () => {
+  const inputs = [claim("in", withVisibility("public"))];
+  const unreadable = [...inputs, claim("d", { derivedFrom: ["in"], ...withVisibility("everyone") })];
+  const derived = visibilityOf(unreadable, "d");
+  assert.deepEqual(derived.visibility, SEALED);
+  assert.equal(derived.trace[0]?.basis, "unrecognized");
+});
+
+test("two claims carrying one id seal everything built on that id, in either order", () => {
+  const priv = claim("dup", withVisibility({ audiences: ["staff"] }));
+  const pub = claim("dup", withVisibility("public"));
+  for (const order of [[priv, pub], [pub, priv]]) {
+    // Not validated: duplicate ids are rejected by validateTrustBundle, but deriveTrustSnapshot accepts unvalidated bundles.
+    const snapshot = deriveTrustSnapshot({ schemaVersion: 3, source: "t", claims: [...order, claim("d", { derivedFrom: ["dup"], ...withVisibility("public") })], evidence: [], policies: [], events: [] }, { now: NOW });
+    const derived = snapshot.visibilityByClaimId["d"]!;
+    assert.deepEqual(derived.visibility, SEALED);
+    assert.deepEqual(derived.trace.find((entry) => entry.claimId === "dup")?.basis, "duplicate-claim");
+  }
 });

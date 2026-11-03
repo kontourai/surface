@@ -53,16 +53,18 @@ wider than any input. Intersecting audience labels is deliberately conservative
 (a viewer reaching an input through a different label than another input is not
 admitted); it can fail to admit someone, never admit someone it should not.
 
-The claim being derived may narrow what its inputs allow. It need not declare:
-a derived claim that declares nothing is bounded by its inputs. A claim with no
+Only own properties of `metadata` are read; one inherited through a prototype is
+not something the claim wrote. The claim being derived may narrow what its
+inputs allow. It need not declare: a derived claim that declares nothing is
+bounded by its inputs (a claim that lists only itself has no inputs). A claim with no
 inputs has nothing to be bounded by, so it must declare.
 
 ### Fail-closed rule
 
 Anything Surface cannot read as a declared visibility is **sealed**, never
 public. Omission cannot grant access. This covers an input that declares nothing,
-one that declares a value outside the forms above, and a `derivedFrom` id with
-no claim in the bundle. So removing the visibility field from any input can only
+one that declares a value outside the forms above, a `derivedFrom` id with
+no claim in the bundle, and a claim id that more than one claim carries. So removing the visibility field from any input can only
 leave the derived visibility equal or narrower, and in fact seals it. A claim
 with no inputs and no declaration is sealed.
 
@@ -70,7 +72,7 @@ with no inputs and no declaration is sealed.
 
 `deriveClaimVisibility` returns the visibility with a trace, one entry per
 contributing claim (the claim itself first, then transitive inputs by id): its
-`basis` (`declared`, `undeclared`, `unrecognized`, `missing-claim`), what it
+`basis` (`declared`, `undeclared`, `unrecognized`, `missing-claim`, `duplicate-claim`), what it
 contributed, and `restricts` when that is narrower than public. The restricting
 inputs are the entries with `restricts: true`. `applyDerivation` returns it on
 its outcome and `deriveTrustSnapshot` returns it as `visibilityByClaimId`. The
@@ -89,11 +91,16 @@ replacement edges, and a viewer, and returns that viewer's view:
 - A chain through a hidden claim collapses to the nearest visible one.
 - A visible replacement cycle has no current value and is reported as
   unresolved, never resolved by guesswork.
-- `recomputeStatusClaimIds` is **host-facing only**. A visible predecessor whose
-  successor is hidden may carry a stored `superseded` status, or a stale
-  `supersededBy`, that encodes the hidden successor. The host must recompute that
-  claim's status without the hidden edge, or withhold it, before serving the
-  viewer. Do not forward this field to the viewer.
+- A visible replacement cycle, a claim that replaces itself included, has no
+  current value and is reported as unresolved, never resolved by guesswork.
+- The viewer view is identical whether or not a hidden successor exists, so it
+  can be served to the viewer as is.
+- `supersessionStatusRecomputeClaimIds` is a **separate, host-only** function. A
+  visible predecessor whose successor is hidden may carry a stored `superseded`
+  status, or a stale `supersededBy`, that encodes the hidden successor. The host
+  must recompute that claim's status without the hidden edge, or withhold it,
+  before serving the viewer. Its result differs between "a hidden successor
+  exists" and "none does", so it is never part of the viewer view.
 
 The edges are an input. Which edges are admissible (authority, same slot, valid
 interval) belongs to the accumulation design
