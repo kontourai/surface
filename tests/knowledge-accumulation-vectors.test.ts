@@ -34,10 +34,11 @@ interface VectorExpect {
   gapCodes: string[];
 }
 interface VectorQuery { id: string; bundles: string[]; slot: Record<string, string>; validAt?: string; knownAt?: string; expect?: VectorExpect; sameAs?: string }
-interface VectorCase { id: string; now: string; bundles: Record<string, VectorBundle>; premise: { bundles: string[]; statusByClaimId: Record<string, string> }; queries: VectorQuery[] }
+interface VectorCase { id: string; now: string; bundles: Record<string, VectorBundle>; observedAtByBundle: Record<string, string>; premise: { bundles: string[]; statusByClaimId: Record<string, string> }; queries: VectorQuery[] }
 interface Vectors { proposedClaimFields: string[]; cases: VectorCase[] }
 
 const vectors = JSON.parse(await readFile("tests/fixtures/knowledge-accumulation/vectors.json", "utf8")) as Vectors;
+const expectedFails = JSON.parse(await readFile("tests/knowledge-accumulation-expected-fails.json", "utf8")) as { reason: string; cases: string[] };
 
 const OUTCOMES = new Set(["current", "contested", "none", "invalid"]);
 const EDGE_KINDS = new Set(["correction", "succession"]);
@@ -56,7 +57,22 @@ test("vectors name exactly the two proposed claim fields", () => {
   assert.ok(vectors.cases.length >= 9, "the vector set must not silently shrink");
 });
 
+test("every unimplemented projection query is explicitly listed", () => {
+  const ids = vectors.cases.flatMap((entry) => entry.queries.map((query) => `${entry.id}/${query.id}`));
+  assert.equal(new Set(ids).size, ids.length, "query ids must be unique");
+  assert.equal(new Set(expectedFails.cases).size, expectedFails.cases.length, "expected failures must be unique");
+  assert.deepEqual([...expectedFails.cases].sort(), ids.sort());
+  assert.ok(expectedFails.reason);
+});
+
 for (const vectorCase of vectors.cases) {
+  for (const query of vectorCase.queries) {
+    test.todo(`projection expected failure: ${vectorCase.id}/${query.id} — ${expectedFails.reason}`);
+  }
+  test(`${vectorCase.id}: each bundle has a recorded knowledge time`, () => {
+    assert.deepEqual(Object.keys(vectorCase.observedAtByBundle).sort(), Object.keys(vectorCase.bundles).sort());
+    for (const value of Object.values(vectorCase.observedAtByBundle)) assert.ok(Number.isFinite(Date.parse(value)));
+  });
   test(`${vectorCase.id}: bundles validate without the proposed fields`, () => {
     for (const [key, bundle] of Object.entries(vectorCase.bundles)) {
       assert.doesNotThrow(() => validateTrustBundle(withoutProposedFields(bundle)), `bundle ${key}`);

@@ -12,6 +12,7 @@ Numbered ADRs under `docs/adr/` are frozen history and are not listed here.
 | --- | --- | --- |
 | [conclusion-confidence](./conclusion-confidence.md) | current | Conclusion Confidence |
 | [inquiry](./inquiry.md) | needs-decision | Inquiry |
+| [knowledge-accumulation](./knowledge-accumulation.md) | current | Knowledge Accumulation |
 | [mcp-input-ingestion](./mcp-input-ingestion.md) | current | MCP Trust-Input Ingestion |
 | [product-vocabulary](./product-vocabulary.md) | needs-decision | Product Vocabulary |
 | [reviewed-extraction-evidence](./reviewed-extraction-evidence.md) | current | Reviewed Extraction Evidence |

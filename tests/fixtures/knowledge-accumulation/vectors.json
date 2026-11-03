@@ -269,7 +269,11 @@
             "gapCodes": []
           }
         }
-      ]
+      ],
+      "observedAtByBundle": {
+        "b1": "2026-01-10T00:00:00Z",
+        "b2": "2026-03-10T00:00:00Z"
+      }
     },
     {
       "id": "duplicate-delivery-and-agreement",
@@ -418,7 +422,11 @@
             "gapCodes": []
           }
         }
-      ]
+      ],
+      "observedAtByBundle": {
+        "b1": "2026-01-10T00:00:00Z",
+        "b2": "2026-03-10T00:00:00Z"
+      }
     },
     {
       "id": "simultaneous-conflict",
@@ -602,7 +610,11 @@
           },
           "sameAs": "contested"
         }
-      ]
+      ],
+      "observedAtByBundle": {
+        "b1": "2026-01-10T00:00:00Z",
+        "b2": "2026-01-10T00:00:00Z"
+      }
     },
     {
       "id": "recency-does-not-override",
@@ -842,7 +854,12 @@
             ]
           }
         }
-      ]
+      ],
+      "observedAtByBundle": {
+        "b1": "2026-01-10T00:00:00Z",
+        "b2": "2026-05-10T00:00:00Z",
+        "b3": "2026-05-10T00:00:00Z"
+      }
     },
     {
       "id": "competing-authority-resolution",
@@ -1180,10 +1197,9 @@
             "fieldOrBehavior": "headquarters"
           },
           "expect": {
-            "outcome": "current",
-            "value": "Hamburg",
-            "status": "verified",
-            "supportingClaimIds": [
+            "outcome": "contested",
+            "candidateClaimIds": [
+              "producer-a.acme.hq.1",
               "producer-b.acme.hq.2"
             ],
             "supersessions": [
@@ -1191,13 +1207,22 @@
                 "claimId": "producer-a.acme.hq.1",
                 "byClaimId": "producer-b.acme.hq.2",
                 "kind": "correction",
-                "state": "accepted"
+                "state": "pending"
               }
             ],
-            "gapCodes": []
+            "gapCodes": [
+              "contested-value",
+              "supersession-pending"
+            ]
           }
         }
-      ]
+      ],
+      "observedAtByBundle": {
+        "b1": "2026-01-10T00:00:00Z",
+        "b2": "2026-01-10T00:00:00Z",
+        "b3": "2026-03-10T00:00:00Z",
+        "b4": "2026-05-10T00:00:00Z"
+      }
     },
     {
       "id": "succession-bitemporal",
@@ -1516,7 +1541,11 @@
             "gapCodes": []
           }
         }
-      ]
+      ],
+      "observedAtByBundle": {
+        "b1": "2026-01-10T00:00:00Z",
+        "b2": "2026-03-10T00:00:00Z"
+      }
     },
     {
       "id": "retraction-and-no-current-answer",
@@ -1928,7 +1957,13 @@
             "gapCodes": []
           }
         }
-      ]
+      ],
+      "observedAtByBundle": {
+        "b1": "2026-01-10T00:00:00Z",
+        "b2": "2026-03-10T00:00:00Z",
+        "b3": "2026-05-10T00:00:00Z",
+        "b4": "2026-05-10T00:00:00Z"
+      }
     },
     {
       "id": "identity-merge-split",
@@ -2388,7 +2423,14 @@
             "gapCodes": []
           }
         }
-      ]
+      ],
+      "observedAtByBundle": {
+        "b1": "2026-01-10T00:00:00Z",
+        "b2": "2026-01-10T00:00:00Z",
+        "b3": "2026-03-10T00:00:00Z",
+        "b4": "2026-05-10T00:00:00Z",
+        "b5": "2026-03-10T00:00:00Z"
+      }
     },
     {
       "id": "invalid-supersession",
@@ -2717,7 +2759,11 @@
             ]
           }
         }
-      ]
+      ],
+      "observedAtByBundle": {
+        "b1": "2026-01-10T00:00:00Z",
+        "b2": "2026-03-10T00:00:00Z"
+      }
     }
   ]
 }
