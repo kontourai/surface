@@ -19,7 +19,7 @@ import { assertBasisInvariants } from "./provenance-annotations.js";
 import { foldClaim } from "./claim-fold.js";
 import { deriveClaimGroupRollups } from "./claim-groups.js";
 import { deriveConflictTransparencyGaps } from "./conflict-derivation.js";
-import { applyDerivation, assertDeletedClaimsHaveNoEvidence, derivationInputsAffectedByDeletion, isDeletedClaim, survivingDerivationInputs } from "./derivation.js";
+import { applyDerivation, assertDeletedClaimsHaveNoEvidence, derivationInputsAffectedByDeletion, isDeletedClaim, survivingDerivationInputs, type DerivedVisibility } from "./derivation.js";
 import { buildIdentityIndex } from "./identity.js";
 import { canonicalJson, sha256Hex } from "./canonical-digest.js";
 import { resolvePolicyForClaim } from "./policy-resolver.js";
@@ -45,6 +45,12 @@ export interface TrustSnapshotDerivation {
    * or `derived-input` when only the derivation ceiling made it stale.
    */
   staleReasonByClaimId: Record<string, StaleReason>;
+  /**
+   * Effective visibility per claim id with the trace naming the restricting
+   * claims (see `deriveClaimVisibility`). Represented, not enforced: the store
+   * that serves a claim applies it. Not a field of the closed report schema.
+   */
+  visibilityByClaimId: Record<string, DerivedVisibility>;
   /** Per-claim checkpoint input digest (see `DerivationCheckpoint.inputDigestByClaimId`). */
   inputDigestByClaimId: Record<string, string>;
   /** Per-claim untimed own status (see `DerivationCheckpoint.untimedOwnStatusByClaimId`). */
@@ -153,7 +159,9 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
 
   const ownStatusByClaimId = new Map<string, TrustStatus>();
   const claimsById = new Map<string, Claim>();
+  const ambiguousClaimIds = new Set<string>();
   const foldedClaims = input.claims.map((claim) => {
+    if (claimsById.has(claim.id)) ambiguousClaimIds.add(claim.id);
     claimsById.set(claim.id, claim);
     const evidence = input.evidence.filter((item) => item.claimId === claim.id);
     const claimEvents = eventsByClaimId.get(claim.id) ?? [];
@@ -209,6 +217,7 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
   const hasDeletedClaims = input.claims.some(isDeletedClaim);
   const deletionAffectedInputIds = hasDeletedClaims ? derivationInputsAffectedByDeletion(claimsById) : undefined;
   const survivingInputIds = hasDeletedClaims ? survivingDerivationInputs(claimsById, deletionAffectedInputIds) : undefined;
+  const visibilityByClaimId: Record<string, DerivedVisibility> = Object.create(null);
   const claims = foldedClaims.map((folded) => {
     const outcome = applyDerivation({
       claim: folded.claim,
@@ -218,9 +227,11 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
       survivingInputIds,
       deletionAffectedInputIds,
       now,
+      ambiguousClaimIds,
     });
     transparencyGaps.push(...outcome.transparencyGaps);
     changeRecords.push(...outcome.changeRecords);
+    visibilityByClaimId[folded.claim.id] = outcome.visibility;
     const derived = outcome.status;
     const output: DerivedReportClaim = {
       ...folded.claim,
@@ -257,6 +268,7 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
     claimGroupRollups: deriveClaimGroupRollups({ claimGroups: input.claimGroups, claims }),
     waiverValidityByClaimId,
     staleReasonByClaimId,
+    visibilityByClaimId,
     inputDigestByClaimId,
     untimedOwnStatusByClaimId,
   };

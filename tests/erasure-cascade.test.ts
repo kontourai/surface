@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import type { Claim, TrustBundle } from "../src/types.js";
-import { analyzeCounterfactual, isDeletedClaim, buildDerivationDrilldown, buildTrustReport, recomputeChangeRecords, traceDependents, validateTrustBundle } from "../src/index.js";
+import { analyzeCounterfactual, isDeletedClaim, buildDerivationDrilldown, buildTrustReport, deriveTrustSnapshot, recomputeChangeRecords, traceDependents, validateTrustBundle } from "../src/index.js";
 
 const now = new Date("2026-04-26T00:00:00.000Z");
 const timestamp = "2026-04-25T00:00:00.000Z";
@@ -312,4 +312,53 @@ test("deletion records do not label an intermediate verified when a deeper input
   const record = derived.changeRecords.find((item) => item.claimId === "downstream" && item.reason === "input-deleted");
   assert.notEqual(record?.inputStatuses?.survivor, "verified");
   assert.deepEqual(record?.metadata?.unsupportedInputs, ["sole"]);
+});
+
+
+function snapshotAfterErasure(visibility?: unknown, retainedInputs?: string[]) {
+  const erased = report(true);
+  const claims = erased.claims.map((claim) => {
+    const metadata = claim.id === "source"
+      ? { ...claim.metadata, ...(visibility === undefined ? {} : { visibility }) }
+      : { ...claim.metadata, visibility: "public" };
+    return { ...claim, metadata, ...(claim.id === "source" && retainedInputs ? { derivedFrom: retainedInputs } : {}) };
+  });
+  const bundle = validateTrustBundle({ schemaVersion: 3, source: "erasure-visibility", claims,
+    evidence: erased.evidence, policies: erased.policies, events: erased.events });
+  return { snapshot: deriveTrustSnapshot(bundle, { now }), report: buildTrustReport(bundle, { now }) };
+}
+
+test("erasure and visibility traces coexist when the tombstone omits visibility", () => {
+  const { snapshot, report: derived } = snapshotAfterErasure();
+  assert.equal(snapshot.claims.find((claim) => claim.id === "sole")?.status, "unknown");
+  assert.equal(snapshot.claims.find((claim) => claim.id === "survivor")?.status, "verified");
+  assert.equal(snapshot.claims.find((claim) => claim.id === "source")?.status, "unknown");
+  assert.ok(snapshot.changeRecords.some((record) => record.claimId === "survivor" && record.reason === "input-deleted" && record.inputClaimIds.includes("source")));
+  assert.equal(buildDerivationDrilldown(derived, "survivor").directInputs.find((input) => input.inputClaimId === "source")?.claim.value, null);
+  assert.deepEqual(snapshot.visibilityByClaimId.survivor.visibility, { kind: "restricted", audiences: [] });
+  assert.deepEqual(snapshot.visibilityByClaimId.source.visibility, { kind: "restricted", audiences: [] });
+  const sourceTrace = snapshot.visibilityByClaimId.survivor.trace.find((entry) => entry.claimId === "source");
+  assert.deepEqual(sourceTrace, { claimId: "source", role: "input", basis: "undeclared", visibility: { kind: "restricted", audiences: [] }, restricts: true });
+});
+
+test("a tombstone's retained restriction narrows the surviving claim and stays in both traces", () => {
+  const { snapshot, report: derived } = snapshotAfterErasure({ audiences: ["staff"] });
+  assert.equal(snapshot.claims.find((claim) => claim.id === "survivor")?.status, "verified");
+  assert.deepEqual(snapshot.visibilityByClaimId.source.visibility, { kind: "restricted", audiences: ["staff"] });
+  assert.deepEqual(snapshot.visibilityByClaimId.survivor.visibility, { kind: "restricted", audiences: ["staff"] });
+  const sourceTrace = snapshot.visibilityByClaimId.survivor.trace.find((entry) => entry.claimId === "source");
+  assert.deepEqual(sourceTrace, { claimId: "source", role: "input", basis: "declared", visibility: { kind: "restricted", audiences: ["staff"] }, restricts: true });
+  assert.ok(snapshot.changeRecords.some((record) => record.claimId === "survivor" && record.reason === "input-deleted" && record.inputClaimIds.includes("source")));
+  assert.deepEqual(buildDerivationDrilldown(derived, "survivor").directInputs.find((input) => input.inputClaimId === "source")?.claim.metadata?.surfaceRetention,
+    { state: "deleted", erasedAt: timestamp, actor: "owner", rationale: "request" });
+});
+
+
+test("a tombstone with retained input links and omitted visibility remains sealed", () => {
+  const { snapshot } = snapshotAfterErasure(undefined, ["other"]);
+  assert.equal(snapshot.claims.find((claim) => claim.id === "source")?.status, "unknown");
+  assert.deepEqual(snapshot.visibilityByClaimId.source.visibility, { kind: "restricted", audiences: [] });
+  assert.deepEqual(snapshot.visibilityByClaimId.survivor.visibility, { kind: "restricted", audiences: [] });
+  assert.deepEqual(snapshot.visibilityByClaimId.source.trace[0], { claimId: "source", role: "self", basis: "undeclared", visibility: { kind: "restricted", audiences: [] }, restricts: true });
+  assert.ok(snapshot.changeRecords.some((record) => record.claimId === "survivor" && record.reason === "input-deleted"));
 });

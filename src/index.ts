@@ -19,8 +19,9 @@ export * from "./answer-assessment-policy.js";
 export * from "./consumer-sdk.js";
 export * from "./attestation.js";
 export {
-  applyDerivation, derivationInputIds, derivationInputsForClaim, isDeletedClaim,
+  applyDerivation, derivationInputIds, derivationInputsForClaim, deriveClaimVisibility, isDeletedClaim,
   type DerivationOutcome, type DerivationInputSource, type NormalizedDerivationInput,
+  type DerivedVisibility, type VisibilityTraceEntry, type VisibilityContributionBasis,
 } from "./derivation.js";
 export * from "./derivation-drilldown.js";
 export * from "./claim-explanation.js";
@@ -50,3 +51,4 @@ export * from "./dispute.js";
 export * from "./interop/in-toto.js";
 export * from "./verification-endpoint.js";
 export * from "./signing/sigstore.js";
+export * from "./visibility.js";

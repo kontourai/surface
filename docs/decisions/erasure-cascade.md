@@ -20,4 +20,4 @@ Hachure bundles and their signatures or digests cover their bytes. Removing cont
 
 ## Visibility coordination
 
-A tombstone may retain a non-content visibility declaration if the producer has verified it is safe to retain. Under the proposed [visibility derivation](https://github.com/kontourai/surface/pull/356), a deleted input remains in the dependency trace and continues to narrow visibility; omission fails closed to sealed. Removing content does not authorize widening access. Whichever change lands second must reconcile the shared derivation return shape and retain both restrictions; the visibility implementation belongs to #356.
+A tombstone may retain a non-content visibility declaration if the producer has verified it is safe to retain. Under [visibility derivation](derived-visibility.md), a deleted input remains in the dependency trace and continues to narrow visibility; omission fails closed to sealed. Removing content does not authorize widening access. Surface derives the visibility trace alongside the erasure result; hosts enforce the resulting restriction.
