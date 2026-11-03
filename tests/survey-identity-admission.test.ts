@@ -40,7 +40,7 @@ test("Survey accepted review and later split feed the real admitted identity pro
   authority.identityDecisions = [identityDecision];
   const { integrityRef: _, ...inputs } = authority; authority.integrityRef = accumulationDigest(inputs);
   const denied = structuredClone(authority);
-  (denied.identityDecisions![0] as { admitted: boolean }).admitted = false;
+  denied.identityDecisions = [surveySplitIdentityAdmission({ accepted: f.accepted, superseded, split, publisher: "survey-host", recordsDigest: accumulationDigest([f.accepted, superseded, split]), identityAdmitted: false })];
   const { integrityRef: deniedRef, ...deniedFields } = denied; denied.integrityRef = accumulationDigest(deniedFields);
   assert.equal(projectAccumulation(observations, denied, f.query).outcome, "invalid", "an unadmitted split cannot deactivate the link");
   const separated = projectAccumulation(observations, authority, f.query);
