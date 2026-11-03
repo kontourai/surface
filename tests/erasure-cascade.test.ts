@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import type { TrustBundle } from "../src/types.js";
-import { buildDerivationDrilldown, buildTrustReport, recomputeChangeRecords, traceDependents, validateTrustBundle } from "../src/index.js";
+import { analyzeCounterfactual, buildDerivationDrilldown, buildTrustReport, recomputeChangeRecords, traceDependents, validateTrustBundle } from "../src/index.js";
 
 const now = new Date("2026-04-26T00:00:00.000Z");
 const timestamp = "2026-04-25T00:00:00.000Z";
@@ -160,6 +160,61 @@ test("many dependents share the survival index within a bounded time", () => {
     for (let i=0;i<12000;i++) claims.push({...base,id:"claim"+i,derivedFrom:["root","live"]});
     const bundle = validateTrustBundle({schemaVersion:3,source:"star",claims,evidence:[],policies:[],events:[]});
     if (buildTrustReport(bundle,{now:new Date(time)}).claims.length !== claims.length) process.exit(2);
+  `;
+  const result = spawnSync(process.execPath, ["--input-type=module", "-e", script], { timeout: 8000, encoding: "utf8" });
+  assert.ifError(result.error);
+  assert.equal(result.status, 0, result.stderr);
+});
+
+
+test("counterfactuals ignore tombstones in surviving input ceilings", () => {
+  const next = report(true);
+  assert.deepEqual(analyzeCounterfactual(next, "other", "verified").affected, []);
+  assert.deepEqual(analyzeCounterfactual(next, "other", "proposed").affected.map((impact) => [impact.claimId, impact.toStatus]), [
+    ["survivor", "proposed"], ["downstream", "proposed"],
+  ]);
+  assert.deepEqual(analyzeCounterfactual(next, "source", "rejected").affected, []);
+});
+
+test("a live unsupported intermediate limits downstream support", () => {
+  const next = report(true);
+  const template = next.claims.find((claim) => claim.id === "survivor")!;
+  const target = { ...template, id: "target", derivedFrom: ["sole", "other"] };
+  const evidence = { ...next.evidence.find((item) => item.claimId === "survivor")!, id: "target-evidence", claimId: "target" };
+  const event = { ...next.events.find((item) => item.claimId === "survivor")!, id: "target-event", claimId: "target" };
+  const bundle = validateTrustBundle({ schemaVersion: 3, source: "live-intermediate", claims: [...next.claims, target],
+    evidence: [...next.evidence, evidence], events: [...next.events, event], policies: next.policies });
+  const derived = buildTrustReport(bundle, { now });
+  assert.equal(derived.claims.find((claim) => claim.id === "sole")?.status, "unknown");
+  assert.equal(derived.claims.find((claim) => claim.id === "target")?.status, "unknown");
+});
+
+test("unvalidated report derivation rejects tombstone content and integrity references", () => {
+  const next = report(true);
+  for (const field of [{ value: "secret" }, { currentIntegrityRef: "sha256:abc" }, { currentIntegrityAnchor: null }]) {
+    const bundle = { schemaVersion: 3, source: "unsafe", claims: next.claims.map((claim) => claim.id === "source" ? { ...claim, ...field } : claim),
+      evidence: next.evidence, events: next.events, policies: next.policies } as TrustBundle;
+    assert.throws(() => buildTrustReport(bundle, { now }), /null value and no content integrity/);
+  }
+});
+
+test("deep erasure traversal and recompute avoid recursive stack exhaustion", () => {
+  const index = new URL("../src/index.js", import.meta.url).href;
+  const script = `
+    import { applyDerivation, recomputeChangeRecords } from ${JSON.stringify(index)};
+    const time = "2026-04-25T00:00:00.000Z";
+    const base = {subjectType:"repo",subjectId:"x",claimType:"fact",fieldOrBehavior:"fact",value:true,createdAt:time,updatedAt:time};
+    const oldRoot = {...base,id:"root",status:"verified"};
+    const root = {...oldRoot,value:null,metadata:{surfaceRetention:{state:"deleted",erasedAt:time,actor:"owner",rationale:"request"}}};
+    const chain = [];
+    for (let i=0;i<12000;i++) chain.push({...base,id:"c"+i,status:"verified",derivedFrom:[i ? "c"+(i-1) : "root"]});
+    const claims = [root,...chain];
+    const byId = new Map(claims.map(c => [c.id,c]));
+    const own = new Map(claims.map(c => [c.id,"verified"]));
+    const result = applyDerivation({claim:chain.at(-1),ownStatus:"verified",ownStatusByClaimId:own,claimsById:byId,now:new Date(time)});
+    if (result.status !== "unknown") process.exit(2);
+    const records = recomputeChangeRecords({claims:[oldRoot,...chain]},{claims});
+    if (records.length !== chain.length || !records.find(r => r.claimId === "c11999")?.changedInputs[0].deletedInputIds.includes("root")) process.exit(3);
   `;
   const result = spawnSync(process.execPath, ["--input-type=module", "-e", script], { timeout: 8000, encoding: "utf8" });
   assert.ifError(result.error);

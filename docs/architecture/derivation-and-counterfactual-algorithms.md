@@ -37,7 +37,7 @@ Two helpers operate on this order:
 finalStatus(x) = weakerStatus( ownStatus(x), ceiling(x) )
 ```
 
-where `ownStatus(x)` is the status the claim earns from its own evidence and events (see [claim evaluation](#claim-evaluation-one-assessment-status-and-gaps-agree)), and `ceiling(x)` is the weakest `ownStatus` across **every claim reachable from `x` through `derivedFrom` and `derivationEdges`**, walked transitively:
+For claims without tombstoned inputs, `ownStatus(x)` is the status the claim earns from its own evidence and events (see [claim evaluation](#claim-evaluation-one-assessment-status-and-gaps-agree)), and `ceiling(x)` is the weakest `ownStatus` across **every claim reachable from `x` through `derivedFrom` and `derivationEdges`**, walked transitively:
 
 ```
 ceiling(x) = min over all transitive inputs i of ownStatus(i)
@@ -51,7 +51,7 @@ An equivalent, more useful way to state the same thing is the **recursive identi
 finalStatus(x) = weakerStatus( ownStatus(x), min over direct inputs y of finalStatus(y) )
 ```
 
-This holds precisely because `min` is associative and idempotent: bounding by the direct inputs' *final* statuses (each of which already folded its own subtree) yields the same value as flattening the whole ancestor set. This identity is what makes counterfactual traversal exact.
+For acyclic graphs without tombstones, this holds because `min` is associative and idempotent: bounding by the direct inputs' *final* statuses (each of which already folded its own subtree) yields the same value as flattening the whole ancestor set. This identity is what makes counterfactual traversal exact.
 
 ```mermaid
 flowchart TD
@@ -124,7 +124,7 @@ Because derivation only bounds *downward*, a *strengthening* hypothetical produc
 
 ### Deleted inputs
 
-Surface's [erasure decision](../decisions/erasure-cascade.md) defines a producer-authored tombstone in claim metadata. The derivation excludes deleted branches from support, emits an unsupported inference gap when none survives, and emits a provenance gap and deletion trace when support remains. Removing a deleted input’s ceiling can strengthen the resulting status, while live intermediate claims still impose their own ceilings. Producers must review affected content and support. The ordinary weakest-input model above applies to surviving inputs; the counterfactual status simulator is not an erasure simulator. Use `traceDependents` to enumerate dependencies before or after deletion and `recomputeChangeRecords` to compare reports, including descendants whose status did not change.
+Surface's [erasure decision](../decisions/erasure-cascade.md) defines a producer-authored tombstone in claim metadata. The derivation excludes tombstones from ceilings, emits an unsupported inference gap when no support survives, and emits a provenance gap and deletion trace when support remains. Live intermediates with no surviving support impose their unsupported status on dependents. Removing a deleted input’s ceiling can strengthen the resulting status, while live intermediate claims still impose their own ceilings. Producers must review affected content and support. For counterfactual status changes, tombstones are excluded from the ceiling and remain visible in dependency traversal; the simulator does not itself simulate erasure. Use `traceDependents` to enumerate dependencies before or after deletion and `recomputeChangeRecords` to compare reports, including descendants whose status did not change.
 
 ## Recompute change records
 

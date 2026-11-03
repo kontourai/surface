@@ -74,51 +74,45 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
   collectWeakEdges(claim);
   const statusesByInputId = new Map<string, TrustStatus>();
   const deletedInputs = new Set<string>();
-  const collectDeleted = (id: string, seen: Set<string>): void => {
-    if (seen.has(id)) return;
-    seen.add(id);
+  const pending = [...inputIds];
+  const seenForDeletion = new Set<string>([claim.id]);
+  while (pending.length > 0) {
+    const id = pending.pop()!;
+    if (seenForDeletion.has(id)) continue;
+    seenForDeletion.add(id);
     const candidate = claimsById.get(id);
-    if (!candidate) return;
-    if (isDeletedClaim(candidate)) { deletedInputs.add(id); return; }
-    for (const child of derivationInputIds(candidate)) collectDeleted(child, seen);
-  };
-  for (const id of inputIds) collectDeleted(id, new Set([claim.id]));
+    if (!candidate) continue;
+    if (isDeletedClaim(candidate)) { deletedInputs.add(id); continue; }
+    pending.push(...derivationInputIds(candidate));
+  }
 
   const surviving = deletedInputs.size > 0
     ? input.survivingInputIds ?? survivingDerivationInputs(claimsById)
     : undefined;
 
-  const walk = (currentId: string): void => {
+  // Explicit DFS frames preserve the existing visit order without growing the
+  // JavaScript call stack for deep provenance chains.
+  const frames: Array<{ ids: string[]; index: number }> = [{ ids: inputIds, index: 0 }];
+  while (frames.length > 0) {
+    const frame = frames[frames.length - 1];
+    if (frame.index === frame.ids.length) { frames.pop(); continue; }
+    const currentId = frame.ids[frame.index++];
+    if (visited.has(currentId)) { cycleDetected = true; continue; }
+    visited.add(currentId);
     const inputClaim = claimsById.get(currentId);
     if (!inputClaim) {
       missingInputs.push(currentId);
       ceiling = weakerStatus(ceiling, "unknown");
-      return;
+      continue;
     }
-    if (isDeletedClaim(inputClaim)) return;
+    if (isDeletedClaim(inputClaim)) continue;
     const inputStatus = ownStatusByClaimId.get(currentId) ?? "unknown";
     statusesByInputId.set(currentId, inputStatus);
     ceiling = weakerStatus(ceiling, inputStatus);
-    const nextInputs = derivationInputIds(inputClaim);
+    if (surviving && !surviving.has(currentId)) ceiling = weakerStatus(ceiling, "unknown");
     collectWeakEdges(inputClaim);
-    if (nextInputs.length === 0) return;
-    for (const next of nextInputs) {
-      if (visited.has(next)) {
-        cycleDetected = true;
-        continue;
-      }
-      visited.add(next);
-      walk(next);
-    }
-  };
-
-  for (const inputId of inputIds) {
-    if (visited.has(inputId)) {
-      cycleDetected = true;
-      continue;
-    }
-    visited.add(inputId);
-    walk(inputId);
+    const children = derivationInputIds(inputClaim);
+    if (children.length > 0) frames.push({ ids: children, index: 0 });
   }
 
   if (deletedInputs.size > 0) {

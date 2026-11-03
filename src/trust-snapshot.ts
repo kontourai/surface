@@ -14,6 +14,7 @@ import type {
   VerificationEvent,
   VerificationPolicy,
 } from "./types.js";
+import { validateDeletedRetention } from "./validation/records.js";
 import { assertBasisInvariants } from "./provenance-annotations.js";
 import { foldClaim } from "./claim-fold.js";
 import { deriveClaimGroupRollups } from "./claim-groups.js";
@@ -105,6 +106,7 @@ export function deriveTrustSnapshot(input: TrustBundle, options: DeriveTrustSnap
   // of such a caller (status-function.md, "Fields that are not inputs"). A
   // bundle without schemaVersion 9 evidence fields always passes.
   assertBasisInvariants(input);
+  for (const claim of input.claims) validateDeletedRetention(claim as unknown as Record<string, unknown>);
   assertDeletedClaimsHaveNoEvidence(input.claims, input.evidence);
   // Null-prototype map: a claim id of `__proto__`, `toString`, or `constructor`
   // must become an ordinary own key, never resolve through the prototype chain

@@ -3,7 +3,6 @@ import {
   isObject,
   rejectUnknownKeys,
   requireArray,
-  requireDateTime,
   requireSchemaVersion,
   requireString,
 } from "./validation/primitives.js";
@@ -11,6 +10,7 @@ import { validateReferences } from "./validation/references.js";
 import {
   validateAuthorityTrace,
   validateClaim,
+  validateDeletedRetention,
   validateConclusionConfidence,
   validateClaimGroup,
   validateEvent,
@@ -150,22 +150,6 @@ export function validateTrustBundle(input: unknown, options?: ValidateTrustBundl
   if (authorityTrace !== undefined) (result as TrustBundle).authorityTrace = authorityTrace as TrustBundle["authorityTrace"];
   if (proof !== undefined) (result as TrustBundle).proof = proof;
   return result;
-}
-
-/** Validate the Surface-specific tombstone envelope, not physical deletion. */
-function validateDeletedRetention(claim: Record<string, unknown>): void {
-  if (!isObject(claim.metadata) || !Object.hasOwn(claim.metadata, "surfaceRetention")) return;
-  const retention = claim.metadata.surfaceRetention;
-  if (!isObject(retention) || retention.state !== "deleted" ||
-      typeof retention.actor !== "string" || retention.actor.trim().length === 0 ||
-      typeof retention.rationale !== "string" || retention.rationale.trim().length === 0) {
-    throw new Error("claim metadata.surfaceRetention must be a deleted tombstone with erasedAt, actor and rationale");
-  }
-  requireDateTime(retention, "erasedAt");
-  rejectUnknownKeys(retention, new Set(["state", "erasedAt", "actor", "rationale"]), "claim metadata.surfaceRetention");
-  if (claim.value !== null || claim.currentIntegrityRef !== undefined || claim.currentIntegrityAnchor !== undefined) {
-    throw new Error("deleted claim must have null value and no content integrity reference or anchor");
-  }
 }
 
 /**

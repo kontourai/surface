@@ -99,19 +99,31 @@ export function recomputeChangeRecords(prior: TrustReport, next: TrustReport): R
 
   const erased = new Set([...nextById].filter(([id, snapshot]) =>
     snapshot.deleted && !priorById.get(id)?.deleted).map(([id]) => id));
-  const reachableErased = (id: string): string[] => {
-    if (erased.size === 0) return [];
+  // Propagate each newly deleted identity forward over the union of the two
+  // dependency graphs. This visits an edge once per erased identity instead of
+  // recursively rescanning every ancestor for each derived claim.
+  const dependents = new Map<string, Set<string>>();
+  for (const snapshots of [priorById, nextById]) {
+    for (const [id, snapshot] of snapshots) for (const inputId of snapshot.inputIds) {
+      const parents = dependents.get(inputId) ?? new Set<string>();
+      parents.add(id);
+      dependents.set(inputId, parents);
+    }
+  }
+  const erasedByInput = new Map<string, string[]>();
+  for (const erasedId of [...erased].sort()) {
+    const queue = [erasedId];
     const seen = new Set<string>();
-    const found = new Set<string>();
-    const visit = (current: string): void => {
-      if (seen.has(current)) return;
-      seen.add(current);
-      if (erased.has(current)) found.add(current);
-      for (const child of new Set([...(priorById.get(current)?.inputIds ?? []), ...(nextById.get(current)?.inputIds ?? [])])) visit(child);
-    };
-    visit(id);
-    return [...found].sort();
-  };
+    for (let index = 0; index < queue.length; index++) {
+      const id = queue[index];
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const origins = erasedByInput.get(id) ?? [];
+      origins.push(erasedId);
+      erasedByInput.set(id, origins);
+      for (const parent of dependents.get(id) ?? []) queue.push(parent);
+    }
+  }
 
   const records: RecomputeChangeRecord[] = [];
   for (const [claimId, nextClaim] of nextById) {
@@ -125,7 +137,7 @@ export function recomputeChangeRecords(prior: TrustReport, next: TrustReport): R
       const nextInput = nextById.get(inputId);
       const statusChanged = priorInput?.status !== nextInput?.status;
       const valueChanged = !valuesEqual(priorInput?.value, nextInput?.value);
-      const deletedInputIds = reachableErased(inputId);
+      const deletedInputIds = erasedByInput.get(inputId) ?? [];
       if (statusChanged || valueChanged || deletedInputIds.length > 0) {
         changedInputs.push({
           inputClaimId: inputId,
