@@ -49,3 +49,4 @@ export * from "./verification-endpoint.js";
 export * from "./signing/sigstore.js";
 export * from "./accumulation-admission.js";
 export * from "./accumulation.js";
+export * from "./visibility.js";
