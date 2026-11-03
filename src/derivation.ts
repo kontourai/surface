@@ -51,6 +51,9 @@ interface DerivationInputs {
 export function applyDerivation(input: DerivationInputs): DerivationOutcome {
   const { claim, ownStatus, ownStatusByClaimId, claimsById, now } = input;
   const inputIds = derivationInputIds(claim);
+  if (isDeletedClaim(claim)) {
+    return { status: "unknown", transparencyGaps: [], changeRecords: [] };
+  }
   if (inputIds.length === 0) {
     return { status: ownStatus, transparencyGaps: [], changeRecords: [] };
   }
@@ -68,6 +71,27 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
   };
   collectWeakEdges(claim);
   const statusesByInputId = new Map<string, TrustStatus>();
+  const deletedInputs = new Set<string>();
+  // A branch with no surviving leaf cannot support a conclusion. Missing or
+  // cyclic branches remain in the normal conservative derivation path.
+  const hasSurvivor = (id: string, path: Set<string>): boolean => {
+    const candidate = claimsById.get(id);
+    if (!candidate || path.has(id)) return true;
+    if (isDeletedClaim(candidate)) return false;
+    const children = derivationInputIds(candidate);
+    if (children.length === 0) return true;
+    const nextPath = new Set(path).add(id);
+    return children.some((child) => hasSurvivor(child, nextPath));
+  };
+  const collectDeleted = (id: string, seen: Set<string>): void => {
+    if (seen.has(id)) return;
+    seen.add(id);
+    const candidate = claimsById.get(id);
+    if (!candidate) return;
+    if (isDeletedClaim(candidate)) { deletedInputs.add(id); return; }
+    for (const child of derivationInputIds(candidate)) collectDeleted(child, seen);
+  };
+  for (const id of inputIds) collectDeleted(id, new Set([claim.id]));
 
   const walk = (currentId: string): void => {
     const inputClaim = claimsById.get(currentId);
@@ -76,6 +100,7 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
       ceiling = weakerStatus(ceiling, "unknown");
       return;
     }
+    if (deletedInputs.size > 0 && !hasSurvivor(currentId, new Set([claim.id]))) return;
     const inputStatus = ownStatusByClaimId.get(currentId) ?? "unknown";
     statusesByInputId.set(currentId, inputStatus);
     ceiling = weakerStatus(ceiling, inputStatus);
@@ -99,6 +124,27 @@ export function applyDerivation(input: DerivationInputs): DerivationOutcome {
     }
     visited.add(inputId);
     walk(inputId);
+  }
+
+  if (deletedInputs.size > 0) {
+    const erased = [...deletedInputs].sort();
+    const unsupported = !inputIds.some((id) => hasSurvivor(id, new Set([claim.id])));
+    if (unsupported) {
+      ceiling = weakerStatus(ceiling, "unknown");
+      transparencyGaps.push({
+        id: `${claim.id}.gap.deleted-input`, claimId: claim.id,
+        type: "unsupported_inference", severity: claim.impactLevel ?? "medium",
+        ...materialityFromClaim(claim),
+        message: `Claim ${claim.id} has no surviving derivation input.`, createdAt,
+        metadata: { source: "derivation.deleted", deletedInputs: erased },
+      });
+    }
+    changeRecords.push({
+      id: `${claim.id}.change.input-deleted`, claimId: claim.id,
+      inputClaimIds: erased, reason: "input-deleted", action: "review", createdAt,
+      message: `Claim ${claim.id} depends on deleted input; review derived content for removal.`,
+      metadata: { source: "derivation.deleted" },
+    });
   }
 
   if (cycleDetected) {
@@ -243,4 +289,11 @@ function changeRecordsForInputStatuses(input: {
   addRecord("input-assumed", ["assumed"], "review", `Claim ${input.claim.id} depends on an assumed derivation input.`);
 
   return records;
+}
+
+/** Surface retention metadata is a producer-authored tombstone, not a content hash. */
+export function isDeletedClaim(claim: Claim): boolean {
+  const retention = claim.metadata?.surfaceRetention;
+  return typeof retention === "object" && retention !== null &&
+    (retention as Record<string, unknown>).state === "deleted";
 }

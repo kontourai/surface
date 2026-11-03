@@ -122,6 +122,10 @@ Because derivation only bounds *downward*, a *strengthening* hypothetical produc
 - **Explainable conclusions.** Reverse drilldown lets any derived `verified` (or `disputed`) claim be traced back to the source evidence and the specific input responsible.
 - **Consume-never-fork.** Both directions are pure read models over an existing `TrustReport`. Producers emit the bundle; Surface answers the impact questions without re-deriving or mutating state.
 
+### Deleted inputs
+
+Surface's [erasure decision](../decisions/erasure-cascade.md) defines a producer-authored tombstone in claim metadata. The derivation excludes deleted branches from support, emits a gap when none survives, and leaves a deletion trace for every affected conclusion. The ordinary weakest-input model above applies to surviving inputs; the counterfactual status simulator is not an erasure simulator. Use `traceDependents` to enumerate dependencies before or after deletion and `recomputeChangeRecords` to compare reports, including descendants whose status did not change.
+
 ## Recompute change records
 
 Surface derives trust *statelessly* — every `buildTrustReport` re-runs the derivation from scratch — so "re-run a derivation method when inputs change" is a **diff between two derivations**, not a live re-execution. `recomputeChangeRecords(prior, next)` (`src/recompute.ts`) compares a prior report against a newer one and emits a before/after record for each derived claim whose direct inputs changed: which inputs moved (status and/or value), and how the derived claim's own status and value moved. An *unchanged recompute* — inputs moved but the derived result did not — is still reported (flagged unchanged), so a consumer can tell "recomputed, no effect" apart from "not recomputed". The cascade across depths is captured directly: in an `A → B → C` chain where `A` flips, `B`'s record cites the `A` change and `C`'s cites the `B` change.

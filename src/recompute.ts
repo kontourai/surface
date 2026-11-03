@@ -1,5 +1,5 @@
 import type { TrustReport, TrustStatus } from "./types.js";
-import { derivationInputIds } from "./derivation.js";
+import { derivationInputIds, isDeletedClaim } from "./derivation.js";
 
 /**
  * Recompute change records for derived claims (issue #16).
@@ -37,6 +37,8 @@ export interface RecomputeInputChange {
   statusChanged: boolean;
   /** True when the input's value differs between the two reports. */
   valueChanged: boolean;
+  /** Deleted inputs reachable through this direct input whose retention changed. */
+  deletedInputIds?: string[];
 }
 
 /**
@@ -70,12 +72,13 @@ interface ClaimSnapshot {
   status?: TrustStatus;
   value: unknown;
   inputIds: string[];
+  deleted: boolean;
 }
 
 /**
  * Diff two derivations and emit a recompute change record for every derived
- * claim (a claim with derivation inputs) whose direct inputs changed between
- * them. A claim absent from either report is skipped. The result is ordered by
+ * claim (a claim with derivation inputs) whose direct inputs changed or whose
+ * transitive inputs were deleted between them. A claim absent from either report is skipped. The result is ordered by
  * claim id for determinism.
  *
  * A derived claim whose inputs changed but whose own status and value did not is
@@ -94,6 +97,22 @@ export function recomputeChangeRecords(prior: TrustReport, next: TrustReport): R
   const priorById = snapshotByClaimId(prior);
   const nextById = snapshotByClaimId(next);
 
+  const erased = new Set([...nextById].filter(([id, snapshot]) =>
+    snapshot.deleted && !priorById.get(id)?.deleted).map(([id]) => id));
+  const reachableErased = (id: string): string[] => {
+    if (erased.size === 0) return [];
+    const seen = new Set<string>();
+    const found = new Set<string>();
+    const visit = (current: string): void => {
+      if (seen.has(current)) return;
+      seen.add(current);
+      if (erased.has(current)) found.add(current);
+      for (const child of new Set([...(priorById.get(current)?.inputIds ?? []), ...(nextById.get(current)?.inputIds ?? [])])) visit(child);
+    };
+    visit(id);
+    return [...found].sort();
+  };
+
   const records: RecomputeChangeRecord[] = [];
   for (const [claimId, nextClaim] of nextById) {
     if (nextClaim.inputIds.length === 0) continue; // not a derived claim
@@ -106,13 +125,15 @@ export function recomputeChangeRecords(prior: TrustReport, next: TrustReport): R
       const nextInput = nextById.get(inputId);
       const statusChanged = priorInput?.status !== nextInput?.status;
       const valueChanged = !valuesEqual(priorInput?.value, nextInput?.value);
-      if (statusChanged || valueChanged) {
+      const deletedInputIds = reachableErased(inputId);
+      if (statusChanged || valueChanged || deletedInputIds.length > 0) {
         changedInputs.push({
           inputClaimId: inputId,
           fromStatus: priorInput?.status,
           toStatus: nextInput?.status,
           statusChanged,
           valueChanged,
+          ...(deletedInputIds.length ? { deletedInputIds } : {}),
         });
       }
     }
@@ -147,6 +168,7 @@ function snapshotByClaimId(report: TrustReport): Map<string, ClaimSnapshot> {
       status: claim.status,
       value: claim.value,
       inputIds: derivationInputIds(claim),
+      deleted: isDeletedClaim(claim),
     });
   }
   return map;
