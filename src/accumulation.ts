@@ -2,7 +2,7 @@ import { accumulationDigest, admitAccumulationObservations, identityEvidenceDige
 import { canonicalJson } from "./canonical-digest.js";
 import { canonicalClaimKey, type CanonicalClaimTarget } from "./canonical.js";
 import { buildIdentityIndex } from "./identity.js";
-import { applyDerivation, type DerivedVisibility } from "./derivation.js";
+import { applyDerivation, derivationInputsAffectedByDeletion, isDeletedClaim, survivingDerivationInputs, type DerivedVisibility } from "./derivation.js";
 import { sealedVisibility, type ViewerContext, type ViewerSupersessionInput, type Visibility } from "./visibility.js";
 import { validateClaim, validateEvent } from "./validation/records.js";
 import { mergeBundlesDetailed } from "./merge.js";
@@ -12,7 +12,7 @@ import { sortEventsMostRecentFirstV4 } from "./status.js";
 import { findLatestResolutionEvent } from "./status-rules.js";
 import { validateTrustBundle } from "./validate.js";
 import { compareTimestamps, parseTimestamp } from "./timestamp.js";
-import type { SubjectRef, TrustBundle, TrustStatus } from "./types.js";
+import type { DerivationChangeRecord, SubjectRef, TrustBundle, TrustStatus } from "./types.js";
 
 export interface AccumulationSlot extends CanonicalClaimTarget { claimType: string }
 export interface AccumulationQuery {
@@ -71,7 +71,7 @@ export function projectAccumulation(observations: readonly BundleObservation[], 
   const gapCodes = new Set<string>();
   const visibilityByClaimId = new Map<string, Visibility>();
   const visibilityTraceByClaimId = new Map<string, DerivedVisibility>();
-  const empty = { outcome: "none" as const, reason: "empty", supersessions: [] as ReplacementTrace[], gapCodes: [] as string[], statusByClaimId, dispositionByClaimId, excluded, supportingClaimIds: [] as string[], candidateClaimIds: [] as string[], independentSupportClaimIds: [] as string[], identityLinkIds: [] as string[], inertIdentityLinkIds: [] as string[], derivationEdges: [] as object[], viewerClaimIds: [] as string[], effectiveSupersessions: [] as ReplacementTrace[], visibilityByClaimId, visibilityTraceByClaimId, claimProvenance: admitted.claimProvenance, eventProvenance: admitted.eventProvenance, pendingEventIds: admitted.pendingEvents.map(e => e.id), identityDecisionTrace: [...(authority.identityDecisions ?? [])].sort((a,b) => cmp(canonicalJson(a), canonicalJson(b))) };
+  const empty = { outcome: "none" as const, reason: "empty", supersessions: [] as ReplacementTrace[], gapCodes: [] as string[], statusByClaimId, dispositionByClaimId, excluded, supportingClaimIds: [] as string[], candidateClaimIds: [] as string[], independentSupportClaimIds: [] as string[], identityLinkIds: [] as string[], inertIdentityLinkIds: [] as string[], derivationEdges: [] as object[], erasureAffectedClaimIds: [] as string[], erasureUnsupportedClaimIds: [] as string[], deletedInputIdsByClaimId: Object.create(null) as Record<string, string[]>, erasureChangeRecords: [] as DerivationChangeRecord[], viewerClaimIds: [] as string[], effectiveSupersessions: [] as ReplacementTrace[], visibilityByClaimId, visibilityTraceByClaimId, claimProvenance: admitted.claimProvenance, eventProvenance: admitted.eventProvenance, pendingEventIds: admitted.pendingEvents.map(e => e.id), identityDecisionTrace: [...(authority.identityDecisions ?? [])].sort((a,b) => cmp(canonicalJson(a), canonicalJson(b))) };
   if (admitted.observations.length === 0) return empty;
   const bundles: TrustBundle[] = admitted.observations.map(({ bundle }) => {
     const portable = { ...bundle, claims: bundle.claims.map(({ validTime: _v, supersedes: _s, ...claim }) => claim), events: [] };
@@ -99,8 +99,10 @@ export function projectAccumulation(observations: readonly BundleObservation[], 
   for (const claim of report.claims) statusByClaimId[claim.id] = owner(claim.id) ? claim.status : "unknown";
   const ownStatuses = new Map(Object.entries(statusByClaimId));
   const claimsById = new Map(merged.bundle.claims.map(claim => [claim.id, claim]));
+  const deletionAffectedInputIds = merged.bundle.claims.some(isDeletedClaim) ? derivationInputsAffectedByDeletion(claimsById) : undefined;
+  const survivingInputIds = deletionAffectedInputIds ? survivingDerivationInputs(claimsById, deletionAffectedInputIds) : undefined;
   for (const claim of merged.bundle.claims) {
-    const derived = applyDerivation({ claim, ownStatus: ownStatuses.get(claim.id) ?? "unknown", ownStatusByClaimId: ownStatuses, claimsById, now: new Date(now.epochMilliseconds) });
+    const derived = applyDerivation({ claim, ownStatus: ownStatuses.get(claim.id) ?? "unknown", ownStatusByClaimId: ownStatuses, claimsById, survivingInputIds, deletionAffectedInputIds, now: new Date(now.epochMilliseconds) });
     statusByClaimId[claim.id] = derived.status;
     visibilityByClaimId.set(claim.id, derived.visibility.visibility);
     visibilityTraceByClaimId.set(claim.id, derived.visibility);
@@ -116,8 +118,18 @@ export function projectAccumulation(observations: readonly BundleObservation[], 
   const queryKey = key(query.slot);
   const relevant = [...claims.values()].filter(claim => key(claim) === queryKey).sort((a, b) => cmp(a.id, b.id));
   const missingLineage = new Set<string>();
+  const erasureAffected = new Set<string>();
+  const erasureUnsupported = new Set<string>();
+  const deletedInputIdsByClaimId: Record<string, string[]> = Object.create(null);
   for (const claim of relevant) {
     if (!owner(claim.id)) gapCodes.add("owner-unverified");
+    const deletionGaps = report.transparencyGaps.filter(g => g.claimId === claim.id && g.metadata?.source === "derivation.deleted");
+    if (deletionGaps.length) {
+      erasureAffected.add(claim.id);
+      gapCodes.add("erasure-affected");
+      if (deletionGaps.some(g => g.type === "unsupported_inference")) erasureUnsupported.add(claim.id);
+      deletedInputIdsByClaimId[claim.id] = sort(new Set(deletionGaps.flatMap(g => Array.isArray(g.metadata?.deletedInputs) ? g.metadata.deletedInputs.filter((id): id is string => typeof id === "string") : [])));
+    }
     if (report.transparencyGaps.some(g => g.claimId === claim.id && g.metadata?.source === "derivation.cycle")) { statusByClaimId[claim.id] = "unknown"; gapCodes.add("lineage-cycle"); }
     if (report.transparencyGaps.some(g => g.claimId === claim.id && g.metadata?.source === "derivation.missing")) {
       missingLineage.add(claim.id);
@@ -162,13 +174,14 @@ export function projectAccumulation(observations: readonly BundleObservation[], 
     return { ...empty, inputTrace, outcome: "invalid" as const, reason: "supersession-cycle", supersessions: edges, gapCodes: sort(gapCodes), identityLinkIds, inertIdentityLinkIds };
   }
   for (const claim of relevant) {
-    if (retracted.has(claim.id)) excluded[claim.id] = "retracted";
+    if (isDeletedClaim(claim)) excluded[claim.id] = "deleted";
+    else if (retracted.has(claim.id)) excluded[claim.id] = "retracted";
     else if (foldStatusByClaimId.get(claim.id) === "rejected") excluded[claim.id] = "rejected";
     else if (!boundContains(claim, validAt)) dispositionByClaimId[claim.id] = "not-valid-at";
   }
   const effectiveSupersessions = edges.filter(edge => edge.state === "accepted" && boundContains(claims.get(edge.byClaimId)!, validAt));
   for (const edge of effectiveSupersessions) dispositionByClaimId[edge.claimId] = "superseded";
-  const viewerClaimIds = relevant.filter(c => !excluded[c.id] && dispositionByClaimId[c.id] !== "not-valid-at").map(c => c.id);
+  const viewerClaimIds = relevant.filter(c => !excluded[c.id] && !erasureUnsupported.has(c.id) && dispositionByClaimId[c.id] !== "not-valid-at").map(c => c.id);
   const candidates = relevant.filter(c => !excluded[c.id] && !dispositionByClaimId[c.id]);
   if (admitted.pendingEvents.some(event => relevant.some(c => c.id === event.claimId))) gapCodes.add("event-authority-pending");
   const values = new Set(candidates.map(c => canonicalJson(c.value)));
@@ -185,12 +198,13 @@ export function projectAccumulation(observations: readonly BundleObservation[], 
     };
     return [...(claim.derivedFrom ?? []), ...(claim.derivationEdges ?? []).map(e => e.inputClaimId)].some(visit);
   };
-  const independentSupportClaimIds = candidates.filter(c => owner(c.id) && !missingLineage.has(c.id) && statusByClaimId[c.id] !== "unknown" && !dependsOnCandidate(c)).map(c => c.id);
-  const result = { ...empty, inputTrace, viewerClaimIds, effectiveSupersessions, lineageMissingClaimIds: sort(missingLineage), supersessions: edges, gapCodes: sort(gapCodes), identityLinkIds, inertIdentityLinkIds, derivationEdges, independentSupportClaimIds };
+  const independentSupportClaimIds = candidates.filter(c => owner(c.id) && !missingLineage.has(c.id) && !erasureUnsupported.has(c.id) && statusByClaimId[c.id] !== "unknown" && !dependsOnCandidate(c)).map(c => c.id);
+  const result = { ...empty, inputTrace, viewerClaimIds, effectiveSupersessions, erasureAffectedClaimIds: sort(erasureAffected), erasureUnsupportedClaimIds: sort(erasureUnsupported), deletedInputIdsByClaimId, erasureChangeRecords: report.changeRecords.filter(record => record.reason === "input-deleted" && erasureAffected.has(record.claimId)).sort((a,b) => cmp(a.claimId,b.claimId) || cmp(a.id,b.id)), lineageMissingClaimIds: sort(missingLineage), supersessions: edges, gapCodes: sort(gapCodes), identityLinkIds, inertIdentityLinkIds, derivationEdges, independentSupportClaimIds };
   if (unresolvedIdentity) return { ...result, outcome: "invalid" as const, reason: "identity-unresolved", candidateClaimIds: candidates.map(c => c.id) };
   if (values.size > 1) return { ...result, outcome: "contested" as const, reason: undefined, candidateClaimIds: candidates.map(c => c.id) };
-  if (candidates.length && candidates.every(claim => missingLineage.has(claim.id))) return { ...result, outcome: "invalid" as const, reason: "lineage-missing", candidateClaimIds: candidates.map(c => c.id) };
-  if (!candidates.length) return { ...result, reason: relevant.length === 0 ? "empty" : Object.keys(excluded).length ? "withdrawn" : "not-valid-at" };
+  if (candidates.length && candidates.every(claim => erasureUnsupported.has(claim.id))) return { ...result, outcome: "none" as const, reason: "erasure-unsupported", candidateClaimIds: candidates.map(c => c.id) };
+  if (candidates.length && candidates.every(claim => missingLineage.has(claim.id) || erasureUnsupported.has(claim.id))) return { ...result, outcome: "invalid" as const, reason: "lineage-missing", candidateClaimIds: candidates.map(c => c.id) };
+  if (!candidates.length) return { ...result, reason: relevant.length === 0 ? "empty" : relevant.every(claim => excluded[claim.id] === "deleted") ? "deleted" : Object.keys(excluded).length ? "withdrawn" : "not-valid-at" };
   const standings = independentSupportClaimIds.map(id => statusByClaimId[id] ?? "unknown");
   const established = standings.filter(status => status === "verified" || status === "stale" || status === "disputed");
   const status = (established.length ? established : standings).sort((a,b) => compareStatusStrength(b,a))[0] ?? "unknown";

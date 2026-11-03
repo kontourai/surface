@@ -208,12 +208,13 @@ status-change records do not capture this projected disposition.
   the entire traversal, including identity joins and mapping-claim visibility,
   and recompute in viewer context before disclosure; a raw global projection is
   not safe to expose directly to an arbitrary viewer.
-* **Retention and erasure (#351):** accept retention/tombstone and dependency
-  recomputation results as inputs to the same fold. An unavailable input cannot
-  silently support a derived answer; retain permitted audit references and
-  expose affected dependencies. Tombstone shape, surviving independent support,
-  purge and blast-radius semantics belong to #351. Immutable logical history
-  does not require retaining erased content.
+* **Retention and erasure (#351):** consume the merged Surface tombstone and
+  derivation APIs in the same fold. A deleted claim is excluded as a value;
+  a claim with only erased support cannot supply a current answer. Surviving
+  support retains its status, with affected claims, deleted input IDs and
+  review change records in the host trace. Tombstone visibility still bounds
+  derivations. Hosts and producers remove old content and enforce deletion;
+  immutable logical history does not require retaining erased content.
 
 Hachure 0.18 defines Claim, IdentityLink, status events and lineage, but not
 the proposed typed replacement edges, valid interval, or receiver observation
@@ -244,8 +245,7 @@ reference; it is not a signature or independent authorization. Callers must not
 construct those decisions from unsigned bundle fields. Unadmitted events are kept
 in the trace but excluded from the fold. The resulting global projection must not
 be exposed directly to an arbitrary viewer; per-viewer disclosure enforcement and
-[erasure](https://github.com/kontourai/surface/issues/351) remain separate
-responsibilities.
+physical erasure remain host and producer responsibilities.
 
 Survey's reviewed entity projection ([Survey #358](https://github.com/kontourai/survey/pull/358))
 produces candidate links, mapping claims, evidence and events. The Surface-local
