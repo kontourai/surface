@@ -585,3 +585,41 @@ test("the host-only edge trace names why each edge did or did not apply", () => 
     { predecessorId: "b", successorId: "a", outcome: "edge-restricted" },
   ]);
 });
+
+test("fuzz: hidden sinks and hidden sources never change the viewer's view", () => {
+  let state = 0x2f6e2b1;
+  const next = (bound: number): number => {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    return state % bound;
+  };
+  const viewer = { audiences: ["client"] };
+  let compared = 0;
+  for (let round = 0; round < 300; round++) {
+    const size = 2 + next(5);
+    const ids = Array.from({ length: size }, (_, index) => `v${index}`);
+    const visibleEdges: ReturnType<typeof edge>[] = [];
+    for (let count = next(size + 2); count > 0; count--) visibleEdges.push(edge(ids[next(size)]!, ids[next(size)]!));
+    const entries: Array<[string, Visibility]> = ids.map((id) => [id, PUBLIC]);
+    const baseline = JSON.stringify(viewerSupersessionView({ visibilityByClaimId: new Map(entries), edges: visibleEdges, viewer }));
+
+    const hiddenEntries: Array<[string, Visibility]> = [...entries];
+    const edges = [...visibleEdges];
+    const hiddenCount = 1 + next(3);
+    for (let index = 0; index < hiddenCount; index++) {
+      const hidden = `h${index}`;
+      hiddenEntries.push([hidden, index % 2 === 0 ? restricted("staff") : SEALED]);
+      // A hidden sink (edges into it) or a hidden source (edges out of it): no path runs through it.
+      for (let count = 1 + next(3); count > 0; count--) {
+        const visibleId = ids[next(size)]!;
+        edges.push(index % 3 === 0 ? edge(visibleId, hidden) : edge(hidden, visibleId));
+      }
+    }
+    assert.equal(
+      JSON.stringify(viewerSupersessionView({ visibilityByClaimId: new Map(hiddenEntries), edges, viewer })),
+      baseline,
+      `round ${round}: a hidden claim with no path through it changed the view`,
+    );
+    compared++;
+  }
+  assert.equal(compared, 300);
+});
