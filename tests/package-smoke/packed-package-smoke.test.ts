@@ -178,8 +178,8 @@ test("packed npm artifact installs, imports, and serves modern plus legacy MCP f
       ),
       "utf8",
     );
-    assert.match(bundledNotices, /@modelcontextprotocol\/server@2\.0\.0 \(MIT\)/);
-    assert.match(bundledNotices, /zod@4\.2\.0 \(MIT\)/);
+    assert.match(bundledNotices, /@modelcontextprotocol\/server@2\.3\.1 \(Apache-2\.0\)/);
+    assert.match(bundledNotices, /zod@4\.6\.7 \(MIT\)/);
     assert.match(
       bundledNotices,
       /Permission is hereby granted, free of charge/,
