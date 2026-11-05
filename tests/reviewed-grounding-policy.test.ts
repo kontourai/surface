@@ -170,13 +170,13 @@ test("builds a content-current state from distinct, owner-resolved captures whil
   assert.equal(decision.outcome, "allowed");
 });
 
-test("accepts published Forage 1.0 and Lookout 0.8.1 304 capture facts without renewing the capture", async () => {
+test("accepts published Forage 1.0.2 and Lookout 0.8.9 304 capture facts without renewing the capture", async () => {
   const [forageManifest, lookoutManifest] = await Promise.all([
     readFile("node_modules/@kontourai/forage/package.json", "utf8"),
     readFile("node_modules/@kontourai/lookout/package.json", "utf8"),
   ]);
-  assert.equal(JSON.parse(forageManifest).version, "1.0.0");
-  assert.equal(JSON.parse(lookoutManifest).version, "0.8.1");
+  assert.equal(JSON.parse(forageManifest).version, "1.0.2");
+  assert.equal(JSON.parse(lookoutManifest).version, "0.8.9");
   assert.equal(canonicalValueKey(publishedLookout304).ok, true);
   const projected = projectReviewedExtractionEvidence(await fixture());
   const captureRef = publishedLookout304.snapshotRef;

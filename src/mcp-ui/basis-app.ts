@@ -1,4 +1,4 @@
-import { App } from "@modelcontextprotocol/ext-apps";
+import { App } from "@modelcontextprotocol/ext-apps/app-with-deps";
 
 interface BasisPanelElement extends HTMLElement { basisProjection: unknown; }
 
