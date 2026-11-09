@@ -59,7 +59,7 @@ importers:
     optionalDependencies:
       '@sigstore/bundle':
         specifier: ^5.0.0
-        version: 5.0.0
+        version: 5.0.1
       '@sigstore/sign':
         specifier: ^5.0.0
         version: 5.0.0
@@ -518,8 +518,8 @@ packages:
     resolution: {integrity: sha512-NwCl5Y0V6Di0NexvkTqdoVfmjTaQwoLM236r89KEojGmq/jMls8S+zb7yOwAPdXvbwfKDlP+lmXgAL4vKSQT+A==}
     engines: {node: ^20.17.0 || >=22.9.0}
 
-  '@sigstore/bundle@5.0.0':
-    resolution: {integrity: sha512-wefjygudENbzbQMks1t5u34EP0fFoD0XvaEP7DOUP/sXKvogzEJYFw5E6pegGyp3onGWzVEYKVa3bNZWyTYX+A==}
+  '@sigstore/bundle@5.0.1':
+    resolution: {integrity: sha512-7q8DOObFzN+/eQrvL2O0cylDp95ssgBCAomQxSYfGAMO9+q4xceRbg0L3L0G2/8NyideoYCs7HuVxWKCdn/maQ==}
     engines: {node: ^22.22.2 || ^24.15.0 || >=26.0.0}
 
   '@sigstore/core@3.2.1':
@@ -532,6 +532,10 @@ packages:
 
   '@sigstore/protobuf-specs@0.5.1':
     resolution: {integrity: sha512-/ScWUhhoFasJsSRGTVBwId1loQjjnjAfE4djL6ZhrXRpNCmPTnUKF5Jokd58ILseOMjzET3UrMOtJPS9sYeI0g==}
+    engines: {node: ^18.17.0 || >=20.5.0}
+
+  '@sigstore/protobuf-specs@0.5.2':
+    resolution: {integrity: sha512-SQqvFMt4V78fdjcDdYX6HbiVSOR4QK3ZgwCa2KOsopAgPIHy1rU5UDUmzLl02r5oyyaYcYHR1hpwDRk/yUe+Mw==}
     engines: {node: ^18.17.0 || >=20.5.0}
 
   '@sigstore/sign@4.1.1':
@@ -1614,7 +1618,7 @@ snapshots:
 
   '@kontourai/surface@4.4.1':
     optionalDependencies:
-      '@sigstore/bundle': 5.0.0
+      '@sigstore/bundle': 5.0.1
       '@sigstore/sign': 5.0.0
       '@sigstore/verify': 4.1.2
     transitivePeerDependencies:
@@ -1623,7 +1627,7 @@ snapshots:
 
   '@kontourai/surface@5.0.0':
     optionalDependencies:
-      '@sigstore/bundle': 5.0.0
+      '@sigstore/bundle': 5.0.1
       '@sigstore/sign': 5.0.0
       '@sigstore/verify': 4.1.2
     transitivePeerDependencies:
@@ -1800,9 +1804,9 @@ snapshots:
       '@sigstore/protobuf-specs': 0.5.1
     optional: true
 
-  '@sigstore/bundle@5.0.0':
+  '@sigstore/bundle@5.0.1':
     dependencies:
-      '@sigstore/protobuf-specs': 0.5.1
+      '@sigstore/protobuf-specs': 0.5.2
     optional: true
 
   '@sigstore/core@3.2.1':
@@ -1812,6 +1816,9 @@ snapshots:
     optional: true
 
   '@sigstore/protobuf-specs@0.5.1':
+    optional: true
+
+  '@sigstore/protobuf-specs@0.5.2':
     optional: true
 
   '@sigstore/sign@4.1.1':
@@ -1829,7 +1836,7 @@ snapshots:
   '@sigstore/sign@5.0.0':
     dependencies:
       '@gar/promise-retry': 1.0.3
-      '@sigstore/bundle': 5.0.0
+      '@sigstore/bundle': 5.0.1
       '@sigstore/core': 4.0.1
       '@sigstore/protobuf-specs': 0.5.1
       make-fetch-happen: 16.0.1
@@ -1848,7 +1855,7 @@ snapshots:
 
   '@sigstore/verify@4.1.2':
     dependencies:
-      '@sigstore/bundle': 5.0.0
+      '@sigstore/bundle': 5.0.1
       '@sigstore/core': 4.0.1
       '@sigstore/protobuf-specs': 0.5.1
     optional: true
