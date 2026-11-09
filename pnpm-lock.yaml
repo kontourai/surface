@@ -62,7 +62,7 @@ importers:
         version: 5.0.0
       '@sigstore/sign':
         specifier: ^5.0.0
-        version: 5.0.0
+        version: 5.1.0
       '@sigstore/verify':
         specifier: ^4.1.0
         version: 4.1.2
@@ -522,6 +522,10 @@ packages:
     resolution: {integrity: sha512-wefjygudENbzbQMks1t5u34EP0fFoD0XvaEP7DOUP/sXKvogzEJYFw5E6pegGyp3onGWzVEYKVa3bNZWyTYX+A==}
     engines: {node: ^22.22.2 || ^24.15.0 || >=26.0.0}
 
+  '@sigstore/bundle@5.0.1':
+    resolution: {integrity: sha512-7q8DOObFzN+/eQrvL2O0cylDp95ssgBCAomQxSYfGAMO9+q4xceRbg0L3L0G2/8NyideoYCs7HuVxWKCdn/maQ==}
+    engines: {node: ^22.22.2 || ^24.15.0 || >=26.0.0}
+
   '@sigstore/core@3.2.1':
     resolution: {integrity: sha512-qRsxPnCrbC/puegGxKuynfnxgLiHqWStrSjxkoB4YKqq3Z3s4cyZyj42ZdWFAEblNP65C+rBH8EuREHIXoi83g==}
     engines: {node: ^20.17.0 || >=22.9.0}
@@ -534,12 +538,16 @@ packages:
     resolution: {integrity: sha512-/ScWUhhoFasJsSRGTVBwId1loQjjnjAfE4djL6ZhrXRpNCmPTnUKF5Jokd58ILseOMjzET3UrMOtJPS9sYeI0g==}
     engines: {node: ^18.17.0 || >=20.5.0}
 
+  '@sigstore/protobuf-specs@0.5.2':
+    resolution: {integrity: sha512-SQqvFMt4V78fdjcDdYX6HbiVSOR4QK3ZgwCa2KOsopAgPIHy1rU5UDUmzLl02r5oyyaYcYHR1hpwDRk/yUe+Mw==}
+    engines: {node: ^18.17.0 || >=20.5.0}
+
   '@sigstore/sign@4.1.1':
     resolution: {integrity: sha512-Hf4xglukg0XXQ2RiD5vSoLjdPe8OBUPA8XeVjUObheuDcWdYWrnH/BNmxZCzkAy68MzmNCxXLeurJvs6hcP2OQ==}
     engines: {node: ^20.17.0 || >=22.9.0}
 
-  '@sigstore/sign@5.0.0':
-    resolution: {integrity: sha512-DSFivqz9/i5AkwZ5fq0YdjaJlc4o1WeS2Zffon0kqtChx0vy4W9NOjkEet9bF2vkzOufX72eVH8kZBIGtcBp1w==}
+  '@sigstore/sign@5.1.0':
+    resolution: {integrity: sha512-obt7Ukh6juytRSKFsUM0keWK/eRbasdkIh7s1ZszFFvCW1eNNeVe14EvQDsmCgfHrV41gN/y2qbAz2IiwUiFjw==}
     engines: {node: ^22.22.2 || ^24.15.0 || >=26.0.0}
 
   '@sigstore/verify@3.1.1':
@@ -1606,7 +1614,7 @@ snapshots:
 
   '@kontourai/surface@2.14.0':
     optionalDependencies:
-      '@sigstore/sign': 5.0.0
+      '@sigstore/sign': 5.1.0
       '@sigstore/verify': 4.1.2
     transitivePeerDependencies:
       - kerberos
@@ -1615,7 +1623,7 @@ snapshots:
   '@kontourai/surface@4.4.1':
     optionalDependencies:
       '@sigstore/bundle': 5.0.0
-      '@sigstore/sign': 5.0.0
+      '@sigstore/sign': 5.1.0
       '@sigstore/verify': 4.1.2
     transitivePeerDependencies:
       - kerberos
@@ -1624,7 +1632,7 @@ snapshots:
   '@kontourai/surface@5.0.0':
     optionalDependencies:
       '@sigstore/bundle': 5.0.0
-      '@sigstore/sign': 5.0.0
+      '@sigstore/sign': 5.1.0
       '@sigstore/verify': 4.1.2
     transitivePeerDependencies:
       - kerberos
@@ -1805,6 +1813,11 @@ snapshots:
       '@sigstore/protobuf-specs': 0.5.1
     optional: true
 
+  '@sigstore/bundle@5.0.1':
+    dependencies:
+      '@sigstore/protobuf-specs': 0.5.2
+    optional: true
+
   '@sigstore/core@3.2.1':
     optional: true
 
@@ -1812,6 +1825,9 @@ snapshots:
     optional: true
 
   '@sigstore/protobuf-specs@0.5.1':
+    optional: true
+
+  '@sigstore/protobuf-specs@0.5.2':
     optional: true
 
   '@sigstore/sign@4.1.1':
@@ -1826,12 +1842,12 @@ snapshots:
       - supports-color
     optional: true
 
-  '@sigstore/sign@5.0.0':
+  '@sigstore/sign@5.1.0':
     dependencies:
       '@gar/promise-retry': 1.0.3
-      '@sigstore/bundle': 5.0.0
+      '@sigstore/bundle': 5.0.1
       '@sigstore/core': 4.0.1
-      '@sigstore/protobuf-specs': 0.5.1
+      '@sigstore/protobuf-specs': 0.5.2
       make-fetch-happen: 16.0.1
       proc-log: 7.0.0
     transitivePeerDependencies:
