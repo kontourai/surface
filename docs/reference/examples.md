@@ -172,7 +172,7 @@ derive:
 
 The policy's seven-day `duration` window means a data-flow claim cannot stay
 `verified` on an old run: `deployment-a` derives `stale` after
-`2026-10-08T10:05Z`. The policy's `stalenessTriggers` (a new outbound
+`2026-10-08T10:05Z`, and by then so has `deployment-b`. The policy's `stalenessTriggers` (a new outbound
 integration, a changed runtime endpoint, changed logging) are descriptive. No
 derivation step reads them, so the producer must re-run the probe when one
 fires. Once its window lapses, `deployment-c` also derives `stale`, because
@@ -232,7 +232,9 @@ loads rules into an agent can refuse it or send it back for re-ratification.
 The unratified rule reports a `provenance_gap` for the missing
 `human_attestation` and a `policy_violation` for the missing `attestation`
 method. The extraction alone never establishes the rule, however confident the
-extractor was.
+extractor was. Its status is `unknown` rather than `proposed` because the
+policy's required `human_attestation` evidence is missing: a claim with all
+required evidence but no `verified` event would derive `proposed`.
 
 `tests/worked-examples.test.ts` validates both bundles against the schemas and
 Surface's validator, and checks every status above.

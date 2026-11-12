@@ -119,6 +119,10 @@ test("learned-rule example: ratified rules go stale on their own clock, unratifi
     [unratified]: "unknown",
   });
   assert.deepEqual(gapTypesAt(bundle, "2026-10-20T00:00:00.000Z", expiringRule), ["freshness_breach"]);
+  // The docs promise the stale rule's freshness gap is blocking, so a rule loader can refuse it.
+  const freshnessGap = buildTrustReport(bundle, { now: new Date("2026-10-20T00:00:00.000Z") }).transparencyGaps
+    .find((gap) => gap.claimId === expiringRule && gap.type === "freshness_breach");
+  assert.equal(freshnessGap?.blocking, true);
 
   // ttlSeconds 15552000 (180 days) from the 2026-07-01T12:00Z ratification ends on 2026-12-28T12:00Z.
   assert.equal(statusesAt(bundle, "2026-12-28T11:59:59.000Z")[ttlRule], "verified");
