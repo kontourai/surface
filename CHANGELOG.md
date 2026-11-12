@@ -1,5 +1,12 @@
 # Changelog
 
+## [6.3.1](https://github.com/kontourai/surface/compare/v6.3.0...v6.3.1) (2026-11-12)
+
+
+### Documentation
+
+* **examples:** add data-flow and learned-rule freshness worked examples ([#372](https://github.com/kontourai/surface/issues/372)) ([93084ee](https://github.com/kontourai/surface/commit/93084ee3cfd9cf5d9d4674a7f240f1294335a7f9))
+
 ## [6.3.0](https://github.com/kontourai/surface/compare/v6.2.1...v6.3.0) (2026-11-03)
 
 
