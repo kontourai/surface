@@ -14,7 +14,9 @@ const BUDGETS = {
   // MCP Apps 2 uses its official self-contained browser entry to avoid
   // duplicate protocol/schema graphs. Measured 120,968 gzip bytes; the owner
   // approved the 121,000-byte ceiling for this upgrade on 2026-11-05.
-  "src/basis/mcp.ts": 121_000,
+  // Apps 2.0.4 replaces bundled Zod 4.3.5 with 4.6.6. Measured 152,222
+  // gzip bytes; the owner explicitly approved 152,300 for this update.
+  "src/basis/mcp.ts": 152_300,
   // The shared Trust Panel embeds the same parser (measured 12,769 gzip bytes;
   // 13,264 with the reviewed-source choice; 14,798 with @kontourai/ui's
   // trust-state renderer and chip CSS with light fallbacks bundled in, #274).
