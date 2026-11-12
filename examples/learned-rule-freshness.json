@@ -1,0 +1,169 @@
+{
+  "schemaVersion": 9,
+  "source": "learned-rule-example:2026-10",
+  "producerId": "example-rule-registry",
+  "claims": [
+    {
+      "id": "claim.agent-rule.open-pull-request",
+      "subjectType": "agent-rule",
+      "subjectId": "repo:example-service/rule:open-pull-request",
+      "claimType": "agent-rule",
+      "fieldOrBehavior": "ratifiedRule",
+      "value": "Never push directly to the default branch; open a pull request and wait for review.",
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "updatedAt": "2026-07-01T12:00:00.000Z",
+      "ttlSeconds": 15552000,
+      "impactLevel": "high",
+      "verificationPolicyId": "policy.agent-rule.ratified"
+    },
+    {
+      "id": "claim.agent-rule.release-freeze",
+      "subjectType": "agent-rule",
+      "subjectId": "repo:example-service/rule:release-freeze",
+      "claimType": "agent-rule",
+      "fieldOrBehavior": "ratifiedRule",
+      "value": "Do not merge dependency upgrades until the 2026-10-15 release ships.",
+      "createdAt": "2026-10-02T09:00:00.000Z",
+      "updatedAt": "2026-10-02T09:00:00.000Z",
+      "expiresAt": "2026-10-16T00:00:00.000Z",
+      "impactLevel": "medium",
+      "verificationPolicyId": "policy.agent-rule.ratified"
+    },
+    {
+      "id": "claim.agent-rule.squash-commits",
+      "subjectType": "agent-rule",
+      "subjectId": "repo:example-service/rule:squash-commits",
+      "claimType": "agent-rule",
+      "fieldOrBehavior": "ratifiedRule",
+      "value": "Squash fixup commits before requesting review.",
+      "createdAt": "2026-10-05T16:00:00.000Z",
+      "updatedAt": "2026-10-05T16:00:00.000Z",
+      "ttlSeconds": 7776000,
+      "impactLevel": "low",
+      "verificationPolicyId": "policy.agent-rule.ratified"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "evidence.agent-rule.open-pull-request.source-message",
+      "claimId": "claim.agent-rule.open-pull-request",
+      "evidenceType": "source_excerpt",
+      "method": "extraction",
+      "supportStrength": "entails",
+      "sourceRef": "https://chat.example/threads/example-service-0612",
+      "sourceLocator": "message:14",
+      "excerptOrSummary": "Developer, message 14: \"Please don't push to main yourself again. Open a PR and wait for me to look at it.\"",
+      "observedAt": "2026-06-30T17:42:00.000Z",
+      "collectedBy": "rule-extractor",
+      "collectedByKind": "model",
+      "metadata": {
+        "collectorModel": { "name": "example-llm", "version": "2026-06" }
+      }
+    },
+    {
+      "id": "evidence.agent-rule.open-pull-request.ratification",
+      "claimId": "claim.agent-rule.open-pull-request",
+      "evidenceType": "human_attestation",
+      "method": "attestation",
+      "supportStrength": "entails",
+      "sourceRef": "https://review.example/rules/open-pull-request/decisions/1",
+      "excerptOrSummary": "Maintainer compared the extracted rule with message 14 and ratified the wording as a standing rule for this repository.",
+      "observedAt": "2026-07-01T12:00:00.000Z",
+      "collectedBy": "maintainer:example",
+      "collectedByKind": "human"
+    },
+    {
+      "id": "evidence.agent-rule.release-freeze.source-message",
+      "claimId": "claim.agent-rule.release-freeze",
+      "evidenceType": "source_excerpt",
+      "method": "extraction",
+      "supportStrength": "entails",
+      "sourceRef": "https://chat.example/threads/example-service-1001",
+      "sourceLocator": "message:3",
+      "excerptOrSummary": "Developer, message 3: \"Hold off on dependency bumps until the release on the 15th is out.\"",
+      "observedAt": "2026-10-01T15:10:00.000Z",
+      "collectedBy": "rule-extractor",
+      "collectedByKind": "model",
+      "metadata": {
+        "collectorModel": { "name": "example-llm", "version": "2026-06" }
+      }
+    },
+    {
+      "id": "evidence.agent-rule.release-freeze.ratification",
+      "claimId": "claim.agent-rule.release-freeze",
+      "evidenceType": "human_attestation",
+      "method": "attestation",
+      "supportStrength": "entails",
+      "sourceRef": "https://review.example/rules/release-freeze/decisions/1",
+      "excerptOrSummary": "Maintainer ratified the extracted rule and set it to expire the day after the release.",
+      "observedAt": "2026-10-02T09:00:00.000Z",
+      "collectedBy": "maintainer:example",
+      "collectedByKind": "human"
+    },
+    {
+      "id": "evidence.agent-rule.squash-commits.source-message",
+      "claimId": "claim.agent-rule.squash-commits",
+      "evidenceType": "source_excerpt",
+      "method": "extraction",
+      "supportStrength": "entails",
+      "sourceRef": "https://chat.example/threads/example-service-1005",
+      "sourceLocator": "message:22",
+      "excerptOrSummary": "Developer, message 22: \"Can you squash those fixups before you ask me to review?\"",
+      "observedAt": "2026-10-05T15:58:00.000Z",
+      "collectedBy": "rule-extractor",
+      "collectedByKind": "model",
+      "metadata": {
+        "collectorModel": { "name": "example-llm", "version": "2026-06" }
+      }
+    }
+  ],
+  "policies": [
+    {
+      "id": "policy.agent-rule.ratified",
+      "claimType": "agent-rule",
+      "requiredEvidence": ["source_excerpt", "human_attestation"],
+      "requiredMethods": ["extraction", "attestation"],
+      "requiresCorroboration": false,
+      "acceptanceCriteria": [
+        "the rule is extracted from a quoted message the developer actually wrote",
+        "a person with authority over the repository has compared the rule with its source and ratified it"
+      ],
+      "reviewAuthority": "repository-maintainer",
+      "validityRule": { "kind": "duration", "durationDays": 365 },
+      "stalenessTriggers": [
+        "the repository's contribution process changes",
+        "the developer contradicts or withdraws the rule"
+      ],
+      "conflictRules": ["a later ratified rule with an incompatible instruction disputes this one"],
+      "impactLevel": "high"
+    }
+  ],
+  "events": [
+    {
+      "id": "event.agent-rule.open-pull-request.verified",
+      "claimId": "claim.agent-rule.open-pull-request",
+      "status": "verified",
+      "actor": "maintainer:example",
+      "method": "human-ratification",
+      "evidenceIds": [
+        "evidence.agent-rule.open-pull-request.source-message",
+        "evidence.agent-rule.open-pull-request.ratification"
+      ],
+      "createdAt": "2026-07-01T12:00:00.000Z",
+      "verifiedAt": "2026-07-01T12:00:00.000Z"
+    },
+    {
+      "id": "event.agent-rule.release-freeze.verified",
+      "claimId": "claim.agent-rule.release-freeze",
+      "status": "verified",
+      "actor": "maintainer:example",
+      "method": "human-ratification",
+      "evidenceIds": [
+        "evidence.agent-rule.release-freeze.source-message",
+        "evidence.agent-rule.release-freeze.ratification"
+      ],
+      "createdAt": "2026-10-02T09:00:00.000Z",
+      "verifiedAt": "2026-10-02T09:00:00.000Z"
+    }
+  ]
+}
