@@ -1,6 +1,7 @@
 import { build } from "esbuild";
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { createRequire } from "node:module";
 
 const outfile = "dist/src/commands/mcp.js";
 const result = await build({
@@ -21,6 +22,11 @@ const packageRoots = new Set(
     .filter((input) => input.includes("node_modules/"))
     .map(packageRootForInput),
 );
+// The Apps SDK is embedded as generated text, so esbuild cannot discover it
+// while bundling the Node command that serves that text.
+packageRoots.add(packageRootForInput(
+  createRequire(import.meta.url).resolve("@modelcontextprotocol/ext-apps/app-with-deps").replaceAll("\\", "/"),
+));
 const notices = [];
 
 for (const packageRoot of [...packageRoots].sort()) {
