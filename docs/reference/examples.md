@@ -145,6 +145,100 @@ MUST represent the relation with this profile's free-form qualifiers and MUST
 NOT invent `hachure.org/*` extension namespaces for contract subjects,
 qualifiers, or claims.
 
+## Worked Example: Data-Flow (Privacy) Claim
+
+`examples/data-flow-privacy-claim.json` asserts that transcript excerpts reach
+only the configured model runtime. The claim is about what a running
+deployment does with data, so its policy requires `runtime_observation`
+evidence with the `observation` method, so a passing unit test, recorded
+honestly as `test_output`, cannot satisfy it.
+
+The evidence comes from a marker test. The probe plants a unique marker string
+in one transcript excerpt on the running deployment and captures every
+outbound path it can see: requests, log lines, and telemetry payloads. It then
+records where the marker appeared. The receipt is ordinary `Evidence` with
+`evidenceType: "runtime_observation"`, a `passing` result, and an `execution`
+block whose `environment` says where it ran. The excerpt records counts and
+destinations, never the transcript content.
+
+The bundle has three deployments under one policy. At `2026-10-04T00:00Z` they
+derive:
+
+| Claim | Evidence | Status |
+| --- | --- | --- |
+| `deployment-a` | Passing marker run in `staging` | `verified` |
+| `deployment-b` | Passing unit test against a network double (`test_output`, `environment: "test"`) | `proposed`, with a blocking `provenance_gap` and `policy_violation` |
+| `deployment-c` | A passing marker run, then a later run that found the marker in an error-report payload (`passing: false`, `blocking: true`) | `disputed` |
+
+The policy's seven-day `duration` window means a data-flow claim cannot stay
+`verified` on an old run: `deployment-a` derives `stale` after
+`2026-10-08T10:05Z`, and by then so has `deployment-b`. The policy's `stalenessTriggers` (a new outbound
+integration, a changed runtime endpoint, changed logging) are descriptive. No
+derivation step reads them, so the producer must re-run the probe when one
+fires. Once its window lapses, `deployment-c` also derives `stale`, because
+the staleness check runs before the blocking-failure check. Its blocking
+`policy_violation` gap for the leaking run remains, so a consumer that gates
+on blocking gaps still refuses it.
+
+The status function trusts the producer's labels. It checks that a
+`runtime_observation` with the `observation` method is present, not that the
+run touched a live system, and `environment` only records where the probe ran.
+What makes this evidence live is the probe itself: the marker crossed the real
+outbound paths of a running deployment. A producer that labels a unit test
+`runtime_observation` would derive `verified`, and that mislabel is the
+producer's fault, not something Surface detects.
+
+```ts
+import { readFileSync } from "node:fs";
+import { buildTrustReport, validateTrustBundle } from "@kontourai/surface";
+
+const bundle = validateTrustBundle(
+  JSON.parse(readFileSync("examples/data-flow-privacy-claim.json", "utf8")),
+);
+buildTrustReport(bundle, { now: new Date("2026-10-04T00:00:00Z") });
+```
+
+## Worked Example: Learned-Rule Freshness
+
+`examples/learned-rule-freshness.json` models rules an agent learned from a
+developer's messages. Each rule is a claim (`claimType: "agent-rule"`) whose
+value is the rule's wording. Its policy requires two kinds of evidence:
+
+- A `source_excerpt` with `method: "extraction"` that quotes the message the
+  rule came from and points at it with `sourceRef` and `sourceLocator`. A model
+  did the extraction, so the item records `collectedByKind: "model"` and names
+  the model in `metadata.collectorModel`.
+- A `human_attestation` with `method: "attestation"` and
+  `collectedByKind: "human"`, recording that a maintainer compared the rule
+  with its source and ratified it. A person's review of model output is
+  separate evidence, not a property of the extraction item.
+
+A producer that holds the full review record can project the extraction item
+with the [reviewed-extraction profile](../guides/reviewed-extraction-evidence.md)
+instead. This example keeps the extraction as plain evidence so the freshness
+behavior is easy to follow.
+
+Ratification is not permanent. Each rule carries its own freshness, which
+overrides the policy's validity window:
+
+| Claim | Freshness | `2026-10-06` | `2026-10-20` | `2027-01-05` |
+| --- | --- | --- | --- | --- |
+| `open-pull-request` | `ttlSeconds: 15552000` (180 days from the ratification) | `verified` | `verified` | `stale` |
+| `release-freeze` | `expiresAt: 2026-10-16T00:00Z` (a temporary rule) | `verified` | `stale` | `stale` |
+| `squash-commits` | Extracted, never ratified | `unknown` | `unknown` | `unknown` |
+
+A stale rule reports a blocking `freshness_breach` gap, so a consumer that
+loads rules into an agent can refuse it or send it back for re-ratification.
+The unratified rule reports a `provenance_gap` for the missing
+`human_attestation` and a `policy_violation` for the missing `attestation`
+method. The extraction alone never establishes the rule, however confident the
+extractor was. Its status is `unknown` rather than `proposed` because the
+policy's required `human_attestation` evidence is missing: a claim with all
+required evidence but no `verified` event would derive `proposed`.
+
+`tests/worked-examples.test.ts` validates both bundles against the schemas and
+Surface's validator, and checks every status above.
+
 ## Example contract
 
 An example is not just sample data. It is a regression contract for what the company means by trust: source, evidence, freshness, failure mode, and reviewability must remain visible.

@@ -1,0 +1,189 @@
+{
+  "schemaVersion": 9,
+  "source": "data-flow-privacy-example:2026-10",
+  "producerId": "example-egress-probe",
+  "claims": [
+    {
+      "id": "claim.data-flow.transcript-excerpts.deployment-a",
+      "subjectType": "data-flow",
+      "subjectId": "deployment-a:transcript-excerpts",
+      "claimType": "data-flow",
+      "fieldOrBehavior": "allowedDestinations",
+      "value": ["configured-model-runtime"],
+      "qualifiers": {
+        "dataClass": "transcript-excerpt",
+        "allowedDestination": "configured-model-runtime"
+      },
+      "createdAt": "2026-10-01T09:00:00.000Z",
+      "updatedAt": "2026-10-01T09:00:00.000Z",
+      "impactLevel": "critical",
+      "verificationPolicyId": "policy.data-flow.marker-observed"
+    },
+    {
+      "id": "claim.data-flow.transcript-excerpts.deployment-b",
+      "subjectType": "data-flow",
+      "subjectId": "deployment-b:transcript-excerpts",
+      "claimType": "data-flow",
+      "fieldOrBehavior": "allowedDestinations",
+      "value": ["configured-model-runtime"],
+      "qualifiers": {
+        "dataClass": "transcript-excerpt",
+        "allowedDestination": "configured-model-runtime"
+      },
+      "createdAt": "2026-10-01T09:00:00.000Z",
+      "updatedAt": "2026-10-01T09:00:00.000Z",
+      "impactLevel": "critical",
+      "verificationPolicyId": "policy.data-flow.marker-observed"
+    },
+    {
+      "id": "claim.data-flow.transcript-excerpts.deployment-c",
+      "subjectType": "data-flow",
+      "subjectId": "deployment-c:transcript-excerpts",
+      "claimType": "data-flow",
+      "fieldOrBehavior": "allowedDestinations",
+      "value": ["configured-model-runtime"],
+      "qualifiers": {
+        "dataClass": "transcript-excerpt",
+        "allowedDestination": "configured-model-runtime"
+      },
+      "createdAt": "2026-10-01T09:00:00.000Z",
+      "updatedAt": "2026-10-01T09:00:00.000Z",
+      "impactLevel": "critical",
+      "verificationPolicyId": "policy.data-flow.marker-observed"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "evidence.data-flow.deployment-a.marker-run",
+      "claimId": "claim.data-flow.transcript-excerpts.deployment-a",
+      "evidenceType": "runtime_observation",
+      "method": "observation",
+      "supportStrength": "entails",
+      "passing": true,
+      "sourceRef": "https://ci.example/runs/5101/egress-capture.json",
+      "excerptOrSummary": "Planted marker mk-7f3a in one transcript excerpt on the running deployment. The egress capture found it in 2 requests, both to the configured model runtime endpoint, and in 0 of 41 other captured outbound requests, log lines, and telemetry payloads.",
+      "observedAt": "2026-10-01T10:00:00.000Z",
+      "collectedBy": "egress-marker-probe",
+      "collectedByKind": "deterministic",
+      "execution": {
+        "runner": "bash",
+        "label": "transcript egress marker test",
+        "exitCode": 0,
+        "durationMs": 48211,
+        "environment": "staging"
+      }
+    },
+    {
+      "id": "evidence.data-flow.deployment-b.unit-test",
+      "claimId": "claim.data-flow.transcript-excerpts.deployment-b",
+      "evidenceType": "test_output",
+      "method": "validation",
+      "supportStrength": "entails",
+      "passing": true,
+      "sourceRef": "https://ci.example/runs/5102/unit-report.xml",
+      "excerptOrSummary": "Unit test: with the network layer replaced by a recording double, the excerpt was handed only to the model runtime client.",
+      "observedAt": "2026-10-01T10:00:00.000Z",
+      "collectedBy": "unit-test-runner",
+      "collectedByKind": "deterministic",
+      "execution": {
+        "runner": "bash",
+        "label": "transcript routing unit test",
+        "exitCode": 0,
+        "environment": "test"
+      }
+    },
+    {
+      "id": "evidence.data-flow.deployment-c.marker-run-1",
+      "claimId": "claim.data-flow.transcript-excerpts.deployment-c",
+      "evidenceType": "runtime_observation",
+      "method": "observation",
+      "supportStrength": "entails",
+      "passing": true,
+      "sourceRef": "https://ci.example/runs/5103/egress-capture.json",
+      "excerptOrSummary": "Planted marker mk-21c9 reached only the configured model runtime endpoint (2 of 38 captured outbound requests).",
+      "observedAt": "2026-10-01T10:00:00.000Z",
+      "collectedBy": "egress-marker-probe",
+      "collectedByKind": "deterministic",
+      "execution": {
+        "runner": "bash",
+        "label": "transcript egress marker test",
+        "exitCode": 0,
+        "environment": "staging"
+      }
+    },
+    {
+      "id": "evidence.data-flow.deployment-c.marker-run-2",
+      "claimId": "claim.data-flow.transcript-excerpts.deployment-c",
+      "evidenceType": "runtime_observation",
+      "method": "observation",
+      "supportStrength": "entails",
+      "passing": false,
+      "blocking": true,
+      "sourceRef": "https://ci.example/runs/5140/egress-capture.json",
+      "excerptOrSummary": "After an error-reporting integration was enabled, planted marker mk-90be appeared in 1 error-report payload sent to a destination other than the configured model runtime.",
+      "observedAt": "2026-10-03T10:00:00.000Z",
+      "collectedBy": "egress-marker-probe",
+      "collectedByKind": "deterministic",
+      "execution": {
+        "runner": "bash",
+        "label": "transcript egress marker test",
+        "exitCode": 1,
+        "environment": "staging"
+      }
+    }
+  ],
+  "policies": [
+    {
+      "id": "policy.data-flow.marker-observed",
+      "claimType": "data-flow",
+      "requiredEvidence": ["runtime_observation"],
+      "requiredMethods": ["observation"],
+      "requiresCorroboration": false,
+      "acceptanceCriteria": [
+        "a unique marker planted in the data class is traced across every captured outbound path of the running deployment",
+        "the marker appears only at the allowed destinations named by the claim"
+      ],
+      "reviewAuthority": "privacy-reviewer",
+      "validityRule": { "kind": "duration", "durationDays": 7 },
+      "stalenessTriggers": [
+        "an outbound integration is added or reconfigured",
+        "the model runtime endpoint changes",
+        "logging or telemetry configuration changes"
+      ],
+      "conflictRules": ["a blocking failed marker run disputes the claim"],
+      "impactLevel": "critical"
+    }
+  ],
+  "events": [
+    {
+      "id": "event.data-flow.deployment-a.verified",
+      "claimId": "claim.data-flow.transcript-excerpts.deployment-a",
+      "status": "verified",
+      "actor": "egress-marker-probe",
+      "method": "automated-check",
+      "evidenceIds": ["evidence.data-flow.deployment-a.marker-run"],
+      "createdAt": "2026-10-01T10:05:00.000Z",
+      "verifiedAt": "2026-10-01T10:05:00.000Z"
+    },
+    {
+      "id": "event.data-flow.deployment-b.verified",
+      "claimId": "claim.data-flow.transcript-excerpts.deployment-b",
+      "status": "verified",
+      "actor": "unit-test-runner",
+      "method": "automated-check",
+      "evidenceIds": ["evidence.data-flow.deployment-b.unit-test"],
+      "createdAt": "2026-10-01T10:05:00.000Z",
+      "verifiedAt": "2026-10-01T10:05:00.000Z"
+    },
+    {
+      "id": "event.data-flow.deployment-c.verified",
+      "claimId": "claim.data-flow.transcript-excerpts.deployment-c",
+      "status": "verified",
+      "actor": "egress-marker-probe",
+      "method": "automated-check",
+      "evidenceIds": ["evidence.data-flow.deployment-c.marker-run-1"],
+      "createdAt": "2026-10-01T10:05:00.000Z",
+      "verifiedAt": "2026-10-01T10:05:00.000Z"
+    }
+  ]
+}
