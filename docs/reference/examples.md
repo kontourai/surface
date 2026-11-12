@@ -150,8 +150,8 @@ qualifiers, or claims.
 `examples/data-flow-privacy-claim.json` asserts that transcript excerpts reach
 only the configured model runtime. The claim is about what a running
 deployment does with data, so its policy requires `runtime_observation`
-evidence with the `observation` method. A unit test cannot satisfy that
-requirement, however thorough it is.
+evidence with the `observation` method, so a passing unit test, recorded
+honestly as `test_output`, cannot satisfy it.
 
 The evidence comes from a marker test. The probe plants a unique marker string
 in one transcript excerpt on the running deployment and captures every
@@ -170,13 +170,23 @@ derive:
 | `deployment-b` | Passing unit test against a network double (`test_output`, `environment: "test"`) | `proposed`, with a blocking `provenance_gap` and `policy_violation` |
 | `deployment-c` | A passing marker run, then a later run that found the marker in an error-report payload (`passing: false`, `blocking: true`) | `disputed` |
 
-The policy's seven-day `duration` window, together with its
-`stalenessTriggers` (a new outbound integration, a changed runtime endpoint,
-changed logging), means a data-flow claim cannot stay `verified` on an old
-run: `deployment-a` derives `stale` from `2026-10-08T10:05Z`. `environment` is
-descriptive. It records where the probe ran but does not by itself make the
-observation live. What makes it live is that the marker crossed the real
-outbound paths of a running deployment.
+The policy's seven-day `duration` window means a data-flow claim cannot stay
+`verified` on an old run: `deployment-a` derives `stale` after
+`2026-10-08T10:05Z`. The policy's `stalenessTriggers` (a new outbound
+integration, a changed runtime endpoint, changed logging) are descriptive. No
+derivation step reads them, so the producer must re-run the probe when one
+fires. Once its window lapses, `deployment-c` also derives `stale`, because
+the staleness check runs before the blocking-failure check. Its blocking
+`policy_violation` gap for the leaking run remains, so a consumer that gates
+on blocking gaps still refuses it.
+
+The status function trusts the producer's labels. It checks that a
+`runtime_observation` with the `observation` method is present, not that the
+run touched a live system, and `environment` only records where the probe ran.
+What makes this evidence live is the probe itself: the marker crossed the real
+outbound paths of a running deployment. A producer that labels a unit test
+`runtime_observation` would derive `verified`, and that mislabel is the
+producer's fault, not something Surface detects.
 
 ```ts
 import { readFileSync } from "node:fs";

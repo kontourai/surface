@@ -88,6 +88,13 @@ test("data-flow example: only a passing runtime marker run verifies the claim", 
   assert.equal(statusesAt(bundle, "2026-10-08T10:04:59.000Z")[a], "verified");
   assert.equal(statusesAt(bundle, "2026-10-09T00:00:00.000Z")[a], "stale");
   assert.deepEqual(gapTypesAt(bundle, "2026-10-09T00:00:00.000Z", a), ["freshness_breach"]);
+
+  // The leaking deployment goes stale too (staleness is checked first), but
+  // keeps its blocking gap for the failed run.
+  assert.equal(statusesAt(bundle, "2026-10-09T00:00:00.000Z")[c], "stale");
+  const leakGaps = buildTrustReport(bundle, { now: new Date("2026-10-09T00:00:00.000Z") }).transparencyGaps
+    .filter((gap) => gap.claimId === c && gap.type === "policy_violation");
+  assert.ok(leakGaps.length > 0 && leakGaps.every((gap) => gap.blocking === true));
 });
 
 test("learned-rule example: ratified rules go stale on their own clock, unratified ones never verify", () => {
